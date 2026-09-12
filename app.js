@@ -11,6 +11,11 @@
     stations: [
       { id: 'cfrb', name: 'NewsTalk 1010', band: '1010 AM', tag: "Toronto's news, traffic and weather, all day.",
         url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CFRBAM.mp3', color: '#10307a', bass: 0, treble: 0 },
+      /* CBC hands out HLS. Edge and Safari play it; Chrome has no native
+         HLS, so this one may sit there refusing to start in Chrome. It is
+         kept because it is the station, not because the format is ideal. */
+      { id: 'cbc1', name: 'CBC Radio 1 Toronto', band: '99.1 FM', tag: 'CBLA-FM',
+        url: 'https://cbcradiolive.akamaized.net/hls/live/2041036/ES_R1ETR/master.m3u8', color: '#a8321c', bass: 0, treble: 0 },
       { id: 'kiss', name: 'KISS 92.5', band: '92.5 FM', tag: "Toronto's hit music station.",
         url: 'https://rogers-hls.leanstream.co/rogers/tor925.stream/icy', color: '#e11d74', bass: 0, treble: 0 }
     ],
