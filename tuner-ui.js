@@ -1,0 +1,353 @@
+/* Deskside Radio — shared tuner drawing: dial scales, VU face, spectrogram, name fitting.
+   Consumed by both the app (app.js) and the design preview page. */
+(function (root) {
+  'use strict';
+  var S = root.Signal;
+  var SVG = 'http://www.w3.org/2000/svg';
+
+  var VU_R = 76;          // arc radius
+  var VU_LABEL_R = 60;    // where the printed numbers sit
+  var VU_NEEDLE_R = 70;
+
+  function svg(tag, attrs) {
+    var e = document.createElementNS(SVG, tag);
+    for (var k in attrs) if (attrs.hasOwnProperty(k)) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function themeOf(el) {
+    var n = el && el.closest ? el.closest('[data-theme]') : null;
+    return n ? n.getAttribute('data-theme') : '';
+  }
+
+  // ---- dial scale: ticks and labels placed at their true frequency ----
+  function buildScale(scaleEl) {
+    var kind = scaleEl.getAttribute('data-scale');
+    var ticks = S.scaleTicks(kind);
+    if (!ticks.length) return;
+
+    var tickBox = scaleEl.querySelector('.scale-ticks');
+    var labelBox = scaleEl.querySelector('.scale-labels');
+    tickBox.textContent = '';
+    labelBox.textContent = '';
+
+    ticks.forEach(function (t) {
+      var i = document.createElement('i');
+      i.className = t.major ? 'tick is-major' : 'tick';
+      i.style.left = t.pct + '%';
+      tickBox.appendChild(i);
+      if (t.label !== null) {
+        var s = document.createElement('span');
+        s.textContent = t.label;
+        s.style.left = t.pct + '%';
+        labelBox.appendChild(s);
+      }
+    });
+  }
+
+  // Restart a one-shot animation that may already be running.
+  function replay(el, cls, ms, key) {
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+    clearTimeout(el[key]);
+    el[key] = setTimeout(function () { el.classList.remove(cls); }, ms);
+  }
+
+  /* Point the needle at a station. Crossing between AM and FM rolls the
+     band label, sweeps a glint along the newly lit scale, and sends the
+     needle travelling in from the side the other band sits on. */
+  function setNeedle(tunerEl, bandText) {
+    var band = S.parseBand(bandText);
+    var next = band ? band.kind : '';
+    var prev = tunerEl.getAttribute('data-band-kind') || '';
+    var changed = !!(prev && next && prev !== next);
+    tunerEl.setAttribute('data-band-kind', next);
+    if (changed) replay(tunerEl, 'band-change', 900, '_bandTimer');
+
+    var scales = tunerEl.querySelectorAll('[data-scale]');
+    Array.prototype.forEach.call(scales, function (scale) {
+      var kind = scale.getAttribute('data-scale');
+      var on = !!band && kind === next;
+      var needle = scale.querySelector('.needle');
+      var wasOn = scale.classList.contains('is-active');
+
+      if (on) {
+        var pct = S.dialPercent(kind, band.value);
+        if (changed && needle) {
+          needle.style.transition = 'none';
+          needle.style.setProperty('--pos', (next === 'fm' ? 0 : 100) + '%');
+          void needle.offsetWidth;
+          needle.style.transition = '';
+          replay(scale, 'is-sweeping', 900, '_sweepTimer');
+          requestAnimationFrame(function () { needle.style.setProperty('--pos', pct + '%'); });
+        } else if (needle) {
+          needle.style.setProperty('--pos', pct + '%');
+        }
+        scale.classList.add('is-active');
+      } else {
+        // Send the outgoing needle off the far edge as it fades.
+        if (changed && wasOn && needle) needle.style.setProperty('--pos', (next === 'fm' ? 100 : 0) + '%');
+        scale.classList.remove('is-active');
+      }
+    });
+    return band;
+  }
+
+  // ---- VU face, drawn from the same geometry the needle uses ----
+  function buildVuFace(host) {
+    var marks = S.vuMarks();
+    var pivot = S.VU_PIVOT;
+    var p0 = S.vuPoint(S.vuAngle(0), VU_R), p1 = S.vuPoint(S.vuAngle(1), VU_R);
+    var zero = marks.filter(function (m) { return m.vu === 0; })[0];
+    var pz = S.vuPoint(zero.angle, VU_R);
+
+    var face = svg('svg', { viewBox: '0 0 200 120', 'aria-hidden': 'true' });
+    face.appendChild(svg('rect', { class: 'vu-face', x: 2, y: 2, width: 196, height: 116, rx: 6 }));
+    face.appendChild(svg('path', { class: 'vu-arc', d: 'M' + p0.x + ' ' + p0.y + ' A' + VU_R + ' ' + VU_R + ' 0 0 1 ' + p1.x + ' ' + p1.y }));
+    face.appendChild(svg('path', { class: 'vu-red', d: 'M' + pz.x + ' ' + pz.y + ' A' + VU_R + ' ' + VU_R + ' 0 0 1 ' + p1.x + ' ' + p1.y }));
+
+    marks.forEach(function (m) {
+      var outer = S.vuPoint(m.angle, VU_R);
+      var inner = S.vuPoint(m.angle, m.major ? VU_R - 11 : VU_R - 6);
+      face.appendChild(svg('line', { class: m.major ? 'vu-tick is-major' : 'vu-tick', x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y }));
+      if (m.label !== null) {
+        var lp = S.vuPoint(m.angle, VU_LABEL_R);
+        var t = svg('text', { class: 'vu-label', x: lp.x, y: lp.y + 3, 'text-anchor': 'middle' });
+        t.textContent = m.label;
+        face.appendChild(t);
+      }
+    });
+
+    var vu = svg('text', { class: 'vu-mark', x: pivot.x, y: pivot.y - 18, 'text-anchor': 'middle' });
+    vu.textContent = 'VU';
+    face.appendChild(vu);
+
+    var tip = S.vuPoint(0, VU_NEEDLE_R);
+    var needle = svg('line', { class: 'vu-needle', x1: pivot.x, y1: pivot.y, x2: tip.x, y2: tip.y });
+    needle.style.transformOrigin = pivot.x + 'px ' + pivot.y + 'px';
+    face.appendChild(needle);
+    face.appendChild(svg('circle', { class: 'vu-pin', cx: pivot.x, cy: pivot.y, r: 4 }));
+
+    host.textContent = '';
+    host.appendChild(face);
+  }
+
+  // The LED bar's printed scale, positioned to match the bar's own fill.
+  function buildMeterScale(el) {
+    el.textContent = '';
+    S.vuMarks().filter(function (m) { return m.label !== null; }).forEach(function (m) {
+      var span = document.createElement('span');
+      span.textContent = m.label;
+      span.style.left = (S.vuFraction(m.vu) * 100).toFixed(3) + '%';
+      el.appendChild(span);
+    });
+  }
+
+  // Deflect every meter in the tuner to the same level (0..1).
+  function setLevel(tunerEl, level) {
+    tunerEl.style.setProperty('--vu', level.toFixed(4));
+    var needles = tunerEl.querySelectorAll('.vu-needle');
+    for (var i = 0; i < needles.length; i++) needles[i].style.transform = 'rotate(' + S.vuAngle(level) + 'deg)';
+  }
+
+  /* ---- level bars ----
+     Fixed columns mirrored about a centre line, rising and falling in
+     place. Heights come from the frequency bins, spaced logarithmically
+     so voice and music get the width rather than the top octave. */
+  function scopeState(cv) {
+    var w = Math.round(cv.clientWidth), h = Math.round(cv.clientHeight);
+    if (!w || !h) return null;
+    var st = cv._scope;
+    if (!st) st = cv._scope = { ctx: cv.getContext('2d') };
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    return st;
+  }
+
+  function clearScope(tunerEl) {
+    var cv = tunerEl.querySelector('.scope');
+    if (!cv || !cv.clientWidth) return;
+    var st = scopeState(cv);
+    if (!st) return;
+    st.ctx.clearRect(0, 0, cv.width, cv.height);
+    if (st.bars) for (var i = 0; i < st.bars.length; i++) st.bars[i] = 0;
+  }
+
+  var BAR_RISE = 0.55, BAR_FALL = 0.14;
+
+  function drawBars(tunerEl, data) {
+    var cv = tunerEl.querySelector('.scope');
+    if (!cv || !cv.clientWidth) return;
+    var st = scopeState(cv);
+    if (!st) return;
+
+    var ctx = st.ctx, w = cv.width, h = cv.height, mid = h / 2;
+    var gap = 3;
+    var want = Math.max(10, Math.min(56, Math.round(w / 11)));
+    if (!st.bars || st.bars.length !== want) st.bars = new Float32Array(want);
+    var n = st.bars.length;
+    var barWidth = Math.max(2, (w - (n - 1) * gap) / n);
+
+    var bins = data ? data.length : 0;
+    var top = Math.max(2, Math.floor(bins * 0.62));
+    for (var i = 0; i < n; i++) {
+      var value = 0;
+      if (bins) {
+        var lo = Math.floor(Math.pow(top, i / n));
+        var hi = Math.max(lo + 1, Math.floor(Math.pow(top, (i + 1) / n)));
+        var sum = 0, count = 0;
+        for (var b = lo; b < hi && b < bins; b++) { sum += data[b]; count++; }
+        value = count ? (sum / count) / 255 : 0;
+      }
+      var ease = value > st.bars[i] ? BAR_RISE : BAR_FALL;
+      st.bars[i] += (value - st.bars[i]) * ease;
+    }
+
+    ctx.clearRect(0, 0, w, h);
+    for (var k = 0; k < n; k++) {
+      var level = st.bars[k];
+      if (level < 0.02) continue;
+      var half = Math.max(1, level * (mid - 1));
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.5 + level * 0.5).toFixed(3) + ')';
+      ctx.fillRect(k * (barWidth + gap), mid - half, barWidth, half * 2);
+    }
+  }
+
+  // ---- station name: line breaks, then the largest size that fits ----
+  function setName(nameEl, text) {
+    if (!nameEl) return;
+    var lines = themeOf(nameEl) === 'editorial' ? S.splitStationName(text) : [String(text == null ? '' : text)];
+    nameEl.textContent = '';
+    lines.forEach(function (line) {
+      var s = document.createElement('span');
+      s.className = 'name-line';
+      s.textContent = line;
+      nameEl.appendChild(s);
+    });
+    fitName(nameEl);
+  }
+
+  // Widest line and total line height, taken from the lines themselves.
+  function contentSize(el) {
+    var w = 0, h = 0;
+    for (var i = 0; i < el.children.length; i++) {
+      var r = el.children[i].getBoundingClientRect();
+      if (r.width > w) w = r.width;
+      h += r.height;
+    }
+    return { w: w, h: h };
+  }
+
+  /* A line box tighter than the glyphs does not contain them: ink spills
+     above the first line and below the last, and an overflow-hidden box
+     shears whatever spills. Line boxes alone therefore report a fit that
+     visibly clips. Canvas reports the real ink extents of the face actually
+     in use, which is the only dependable way to know where the type ends. */
+  var INK_EM = 1.3;   // fallback allowance if canvas metrics are unavailable
+  var inkCtx;
+
+  function inkExtents(el, px, cs) {
+    if (inkCtx === undefined) {
+      var cv = document.createElement('canvas');
+      inkCtx = cv.getContext ? cv.getContext('2d') : null;
+    }
+    if (!inkCtx || !el.children.length) return null;
+    inkCtx.font = (cs.fontStyle || 'normal') + ' ' + (cs.fontWeight || '400') + ' ' + px + 'px ' + cs.fontFamily;
+    var first = inkCtx.measureText(el.children[0].textContent);
+    var last = inkCtx.measureText(el.children[el.children.length - 1].textContent);
+    if (typeof first.fontBoundingBoxAscent !== 'number') return null;
+    return {
+      fontAscent: first.fontBoundingBoxAscent,
+      fontDescent: first.fontBoundingBoxDescent,
+      inkAscent: first.actualBoundingBoxAscent,
+      inkDescent: last.actualBoundingBoxDescent
+    };
+  }
+
+  /* Height is only a constraint where the theme hands the name a fixed box,
+     which is exactly where it also sets --fit-max. Everywhere else the box
+     grows with its content, so testing height compares a number with itself
+     and every candidate size fails. */
+  function fitsAt(el, px, boxed) {
+    el.style.fontSize = px + 'px';
+    var c = contentSize(el);
+    if (c.w > el.clientWidth + 0.5) return false;
+    if (!boxed) return true;
+
+    var cs = getComputedStyle(el);
+    var lineHeight = parseFloat(cs.lineHeight) || px;
+    var lines = el.children.length || 1;
+    var box = el.clientHeight;
+    if (lines * lineHeight > box + 0.5) return false;
+
+    var ink = inkExtents(el, px, cs);
+    if (!ink) {
+      var ratio = lineHeight / px;
+      var slack = ratio < INK_EM ? (INK_EM - ratio) * px : 0;
+      return c.h + slack <= box + 0.5;
+    }
+
+    // Where the lines actually sit, so this holds whatever the alignment.
+    var blockTop = el.children[0].getBoundingClientRect().top - el.getBoundingClientRect().top;
+    var halfLeading = (lineHeight - (ink.fontAscent + ink.fontDescent)) / 2;
+    var firstBaseline = blockTop + halfLeading + ink.fontAscent;
+    var inkTop = firstBaseline - ink.inkAscent;
+    var inkBottom = firstBaseline + (lines - 1) * lineHeight + ink.inkDescent;
+    return inkTop >= -0.5 && inkBottom <= box + 0.5;
+  }
+
+  // Grow to --fit-max where a theme sets one, otherwise never exceed the CSS size.
+  function fitName(nameEl) {
+    if (!nameEl || !nameEl.textContent.trim()) return;
+    nameEl.style.fontSize = '';
+    var cs = getComputedStyle(nameEl);
+    var cap = parseFloat(cs.getPropertyValue('--fit-max'));
+    var boxed = cap > 0;
+    var hi = boxed ? cap : parseFloat(cs.fontSize);
+    if (!(hi > 0) || !nameEl.clientWidth) return;
+    var lo = 11;
+    if (fitsAt(nameEl, hi, boxed)) return;
+    for (var i = 0; i < 16; i++) {
+      var mid = (lo + hi) / 2;
+      if (fitsAt(nameEl, mid, boxed)) lo = mid; else hi = mid;
+    }
+    nameEl.style.fontSize = lo.toFixed(2) + 'px';
+  }
+
+  // Keep a name fitted through webfont swaps and container resizes.
+  function watchName(nameEl) {
+    if (!nameEl) return;
+    var box = nameEl.parentElement;
+    var last = '';
+    var refit = function () { fitName(nameEl); };
+    if (root.ResizeObserver && box) {
+      new ResizeObserver(function () {
+        var key = box.clientWidth + 'x' + box.clientHeight;
+        if (key === last) return;
+        last = key;
+        refit();
+      }).observe(box);
+    } else {
+      root.addEventListener('resize', refit);
+    }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(refit);
+    requestAnimationFrame(refit);
+  }
+
+  // Build the instruments inside one tuner element.
+  function init(tunerEl) {
+    var scales = tunerEl.querySelectorAll('[data-scale]');
+    for (var i = 0; i < scales.length; i++) buildScale(scales[i]);
+    var faces = tunerEl.querySelectorAll('.meter-face');
+    for (var k = 0; k < faces.length; k++) buildVuFace(faces[k]);
+    var meterScales = tunerEl.querySelectorAll('.meter-scale');
+    for (var j = 0; j < meterScales.length; j++) buildMeterScale(meterScales[j]);
+    watchName(tunerEl.querySelector('.display-name'));
+    setLevel(tunerEl, 0);
+  }
+
+  root.TunerUI = {
+    init: init, buildScale: buildScale, buildVuFace: buildVuFace, buildMeterScale: buildMeterScale,
+    setNeedle: setNeedle, setLevel: setLevel, drawBars: drawBars, clearScope: clearScope,
+    setName: setName, fitName: fitName, watchName: watchName
+  };
+})(window);

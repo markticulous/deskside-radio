@@ -1,0 +1,10 @@
+# Built distribution — made by tools/build-dist.js, attached to releases.
+dist/
+
+# Scratch from the browser refusing to name a shortcut file properly.
+*.download
+
+# OS clutter
+Thumbs.db
+desktop.ini
+.DS_Store

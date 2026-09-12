@@ -1,0 +1,110 @@
+<meta charset="utf-8">
+<title>Markticulous Byline Options</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;600&family=Oswald:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;500;600;700&family=Syne:wght@700;800&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../app.css">
+<style>
+  :root { --pg-bg: #efeee9; --pg-ink: #1a1a18; --pg-mute: #6b6a64; --pg-rule: #d8d6cf; --pg-accent: #b5461c; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --pg-bg: #151513; --pg-ink: #ecebe6; --pg-mute: #9a9891; --pg-rule: #2c2c29; --pg-accent: #e8783f; }
+  }
+  :root[data-theme="dark"] { --pg-bg: #151513; --pg-ink: #ecebe6; --pg-mute: #9a9891; --pg-rule: #2c2c29; --pg-accent: #e8783f; }
+
+  body {
+    background: var(--pg-bg); color: var(--pg-ink);
+    font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    padding-inline: clamp(16px, 4vw, 48px); padding-block: 40px 80px; line-height: 1.5;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 52px; }
+  h1 { font-family: "Syne", sans-serif; font-weight: 800; font-size: clamp(30px, 4.6vw, 48px); letter-spacing: -.03em; line-height: 1; margin: 0 0 14px; }
+  .lede { margin: 0; max-width: 66ch; color: var(--pg-mute); font-size: 16px; }
+  .lede + .lede { margin-top: 8px; }
+  .lede strong { color: var(--pg-ink); font-weight: 600; }
+  .lede a { color: var(--pg-accent); }
+
+  .option { display: grid; gap: 16px; }
+  .option-head { display: grid; grid-template-columns: auto 1fr; column-gap: 16px; align-items: baseline; border-top: 1px solid var(--pg-rule); padding-top: 14px; }
+  .option-key { font-family: "IBM Plex Mono", monospace; font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--pg-accent); }
+  .option-title { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
+  .option-why { margin: 3px 0 0; grid-column: 2; color: var(--pg-mute); font-size: 14px; max-width: 74ch; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+  .cell { display: grid; gap: 6px; }
+  .cell-label { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--pg-mute); }
+
+  /* Reuse the real themes, but show only the brand lockup. */
+  .lockup {
+    min-height: 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 18px 20px; overflow: visible;
+  }
+  [data-theme="dial"] .lockup { box-shadow: inset 0 0 0 3px var(--brass-2), inset 0 0 0 4px var(--brass); }
+  [data-theme="editorial"] .lockup, [data-theme="rams"] .lockup, [data-theme="console"] .lockup { min-height: 0; }
+
+  .zoom { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; padding: 22px 24px; border: 1px solid var(--pg-rule); border-radius: 8px; background: color-mix(in srgb, var(--pg-bg) 70%, #fff); }
+  .zoom .byline { font-size: 13px; }
+  .zoom .byline[data-byline="seal"] .byline-mark { width: 22px; height: 22px; font-size: 12px; }
+  .zoom-note { font-size: 13px; color: var(--pg-mute); }
+
+  .outro { border-top: 1px solid var(--pg-rule); padding-top: 20px; color: var(--pg-mute); font-size: 15px; max-width: 64ch; }
+  .outro strong { color: var(--pg-ink); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>A Markticulous build</h1>
+    <p class="lede">Five ways to sit the credit line beside the app name. It now reads "A Markticulous build", set a step smaller than before so it stays a footnote to the app name rather than a second title.</p>
+    <p class="lede">Every option is shown in all four tuner themes, because the badge has to hold up on brass, on matte black, on off-white and on paper. It picks up each theme's own type and accent rather than carrying its own colour, which is what keeps it feeling like part of the product instead of a sticker.</p>
+    <p class="lede"><strong>Plate is the one that shipped.</strong> The other four are kept here as a record of what was considered, not as a setting in the app. Tuner faces are on <a href="preview.html">the themes page</a>.</p>
+  </header>
+</div>
+
+<div class="wrap" id="options"></div>
+
+<div class="wrap">
+  <p class="outro">Say the word if the badge should go smaller again, change wording, or switch to one of the other four.</p>
+</div>
+
+<script>
+(function () {
+  var OPTIONS = [
+    { key: 'plate', title: 'Plate', why: 'An engraved maker plate, recessed into the panel. Reads as hardware. Strongest on the dial and console themes, where the chassis metaphor is already doing work.' },
+    { key: 'seal', title: 'Seal', why: 'A filled monogram roundel, then the credit. The article is dropped here so it reads "Markticulous build" beside the mark. The most brand-like of the five, and the only one that leaves you a mark that can stand alone as a favicon.' },
+    { key: 'rule', title: 'Rule', why: 'A hairline divider and the credit in small caps. The quietest option: nothing to notice unless you look. Best if the byline should never compete with the station name.' },
+    { key: 'callsign', title: 'Callsign', why: 'Bracketed monospace, the way a station logs its own identifier. Fits the broadcast subject matter, and it is the wittiest of the five without being a joke.' },
+    { key: 'tag', title: 'Tag', why: 'A filled accent pill. The most visible and the most conventional. Use it if the credit should be unmissable; it does pull attention from the clock.' }
+  ];
+  var THEMES = [
+    { key: 'dial', label: 'Analogue dial' },
+    { key: 'console', label: 'Broadcast console' },
+    { key: 'rams', label: 'Rams minimal' },
+    { key: 'editorial', label: 'Editorial' }
+  ];
+
+  function badge(variant) {
+    return '<span class="byline" data-byline="' + variant + '">' +
+           '<span class="byline-mark">M</span><span class="byline-by">A</span>' +
+           '<span class="byline-name">Markticulous</span><span class="byline-suffix">build</span></span>';
+  }
+
+  document.getElementById('options').innerHTML = OPTIONS.map(function (o) {
+    var cells = THEMES.map(function (t) {
+      return '<div class="cell">' +
+               '<span class="cell-label">' + t.label + '</span>' +
+               '<div data-theme="' + t.key + '"><div class="tuner lockup">' +
+                 '<span class="brand-mark"></span><span class="brand-name">Deskside Radio</span>' + badge(o.key) +
+               '</div></div>' +
+             '</div>';
+    }).join('');
+    return '<section class="option">' +
+             '<div class="option-head">' +
+               '<span class="option-key">' + o.key + '</span>' +
+               '<h2 class="option-title">' + o.title + '</h2>' +
+               '<p class="option-why">' + o.why + '</p>' +
+             '</div>' +
+             '<div data-theme="rams"><div class="tuner lockup zoom">' + badge(o.key) +
+               '<span class="zoom-note">Enlarged, on the Rams palette</span>' +
+             '</div></div>' +
+             '<div class="grid">' + cells + '</div>' +
+           '</section>';
+  }).join('');
+})();
+</script>

@@ -1,0 +1,712 @@
+<meta charset="utf-8">
+<title>Deskside Settings Drawer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Syne:wght@700;800&family=IBM+Plex+Mono:wght@400;600&family=Big+Shoulders+Display:wght@700;800&family=Barlow+Condensed:wght@600;700&family=Figtree:wght@400;600&display=swap">
+<style>
+  /* ------------------------------------------------------------------
+     This page is a mock. It borrows the drawer's token names from the
+     app so the three layouts are judged on layout, not on palette.
+     ------------------------------------------------------------------ */
+  :root {
+    --ui-bg: #ffffff; --ui-fg: #1d1d1b; --ui-mute: #77756e; --ui-line: #e2dfd8;
+    --ui-field: #f7f6f2; --ui-accent: #b5461c; --ui-radius: 8px;
+    --ui-font: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --pg-bg: #eceae4; --pg-ink: #1a1a18; --pg-mute: #6b6a64; --pg-rule: #d8d6cf;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-scheme="light"]) {
+      --ui-bg: #1b1c1a; --ui-fg: #ecebe6; --ui-mute: #9a9891; --ui-line: #33342f;
+      --ui-field: #232420; --ui-accent: #e8783f;
+      --pg-bg: #131412; --pg-ink: #ecebe6; --pg-mute: #9a9891; --pg-rule: #2c2c29;
+    }
+  }
+
+  body {
+    margin: 0; background: var(--pg-bg); color: var(--pg-ink);
+    font-family: var(--ui-font); line-height: 1.5;
+    padding-inline: clamp(16px, 4vw, 44px); padding-block: 40px 90px;
+  }
+  * { box-sizing: border-box; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+
+  .intro h1 { font-family: "Syne", sans-serif; font-weight: 800; font-size: clamp(30px, 4.6vw, 48px); letter-spacing: -.03em; line-height: 1; margin: 0 0 14px; }
+  .intro p { margin: 0; max-width: 66ch; color: var(--pg-mute); font-size: 16px; }
+  .intro p + p { margin-top: 8px; }
+  .intro strong { color: var(--pg-ink); font-weight: 600; }
+
+  .verdict {
+    margin: 26px 0 0; padding: 16px 20px; border-radius: 10px;
+    border: 1px solid var(--ui-accent); background: color-mix(in srgb, var(--ui-accent) 8%, transparent);
+    display: grid; gap: 6px;
+  }
+  .verdict h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; color: var(--pg-ink); }
+  .verdict p { margin: 0; font-size: 14px; color: var(--pg-mute); max-width: 74ch; }
+  .verdict b { color: var(--pg-ink); font-weight: 600; }
+  .shared { margin: 34px 0 8px; padding: 18px 20px; border: 1px solid var(--pg-rule); border-radius: 10px; }
+  .shared h2 { margin: 0 0 10px; font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--pg-mute); }
+  .shared ul { margin: 0; padding-left: 18px; color: var(--pg-mute); font-size: 14px; }
+  .shared li + li { margin-top: 5px; }
+  .shared b { color: var(--pg-ink); font-weight: 600; }
+
+  .caveat { margin: 26px 0 -6px; font-size: 13.5px; color: var(--pg-mute); max-width: 74ch; }
+  .lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(370px, 1fr)); gap: 26px; margin-top: 30px; align-items: start; }
+  .lane-head { display: grid; grid-template-columns: auto 1fr; column-gap: 14px; align-items: baseline; border-top: 2px solid var(--pg-ink); padding-top: 12px; margin-bottom: 14px; }
+  .lane-key { font-family: "Syne", sans-serif; font-weight: 800; font-size: 28px; line-height: 1; color: var(--ui-accent); }
+  .lane-title { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+  .lane-why { grid-column: 2; margin: 4px 0 0; font-size: 13px; color: var(--pg-mute); }
+
+  /* ---- the mock drawer ---- */
+  .sheet {
+    background: var(--ui-bg); color: var(--ui-fg); font-size: 14px;
+    border: 1px solid var(--ui-line); border-radius: var(--ui-radius);
+    box-shadow: 0 22px 44px -26px rgba(0,0,0,.5);
+    display: grid; grid-template-rows: auto 1fr auto; height: 560px; overflow: hidden;
+  }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--ui-line); }
+  .sheet-title { display: grid; gap: 3px; }
+  .sheet-title h3 { margin: 0; font-size: 17px; font-weight: 600; }
+  .sheet-ver { font-size: 11px; color: var(--ui-mute); }
+  .sheet-ver i { font-style: normal; font-weight: 800; font-size: 1.35em; color: var(--ui-fg); vertical-align: -.04em; }
+  .sheet-x { border: 0; background: none; color: var(--ui-mute); font-size: 20px; cursor: pointer; width: 30px; height: 30px; }
+  .sheet-foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--ui-line); background: var(--ui-bg); }
+  .body { overflow-y: auto; scrollbar-width: thin; position: relative; }
+  .sheet { position: relative; }
+  .sheet::after {
+    content: ""; position: absolute; left: 1px; right: 1px; bottom: 46px; height: 26px;
+    background: linear-gradient(transparent, var(--ui-bg)); pointer-events: none;
+  }
+
+  .btn { font: inherit; font-size: 13px; border-radius: 6px; cursor: pointer; padding: 8px 14px; }
+  .btn-primary { border: 0; background: var(--ui-fg); color: var(--ui-bg); font-weight: 600; }
+  .btn-ghost { border: 1px dashed var(--ui-line); background: none; color: var(--ui-fg); }
+  .btn-ghost:hover { border-style: solid; }
+  .btn-danger { border: 1px solid #c0392b; background: none; color: #c0392b; }
+
+  /* ---- nav. A is the shipped tab strip: every tab the same 44px box and
+     one accent bar that slides between them. B keeps its own rail. ---- */
+  .tabstrip { position: relative; display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--ui-line); }
+  .tabstrip button {
+    font: inherit; font-size: 12.5px; font-weight: 500; letter-spacing: .05em;
+    display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 12px;
+    border: 0; background: none; color: var(--ui-mute); cursor: pointer; transition: color .18s ease;
+  }
+  .tabstrip button:hover { color: var(--ui-fg); }
+  .tabstrip button[aria-selected="true"] { color: var(--ui-fg); font-weight: 600; }
+  .tabstrip .count:empty { display: none; }
+  .tabstrip .count {
+    font-size: 10.5px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums;
+    min-width: 17px; padding: 3px 5px; border-radius: 999px; text-align: center;
+    background: var(--ui-field); color: var(--ui-mute); transition: background .18s ease, color .18s ease;
+  }
+  .tabstrip button[aria-selected="true"] .count { background: var(--ui-accent); color: #fff; }
+  .tab-ink {
+    position: absolute; left: 0; bottom: -1px; height: 2px; border-radius: 2px 2px 0 0;
+    background: var(--ui-accent); width: var(--ink-w, 0px); transform: translateX(var(--ink-x, 0px));
+    transition: transform .24s cubic-bezier(.33, 1, .68, 1), width .24s cubic-bezier(.33, 1, .68, 1);
+  }
+
+  .split { display: grid; grid-template-columns: 158px 1fr; min-height: 0; }
+  .rail { border-right: 1px solid var(--ui-line); background: var(--ui-field); padding: 12px 10px; display: grid; gap: 2px; align-content: start; }
+  .rail button {
+    font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+    border: 0; background: none; color: var(--ui-mute);
+    padding: 9px 11px; border-radius: 6px; display: flex; justify-content: space-between; gap: 8px;
+  }
+  .rail button .count { font-size: 11px; opacity: .8; }
+  .rail button[aria-selected="true"] { background: var(--ui-bg); color: var(--ui-fg); font-weight: 600; box-shadow: inset 0 0 0 1px var(--ui-line); }
+
+  .pane { padding: 16px 18px 22px; display: grid; gap: 16px; align-content: start; }
+  .pane[hidden] { display: none; }
+  .pane-note { margin: 0; font-size: 12.5px; color: var(--ui-mute); }
+  .field-label { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ui-mute); }
+
+  /* ---- C: collapsible ---- */
+  .fold { border: 1px solid var(--ui-line); border-radius: var(--ui-radius); overflow: hidden; }
+  .fold + .fold { margin-top: 10px; }
+  .fold-head {
+    width: 100%; font: inherit; cursor: pointer; text-align: left;
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; border: 0; background: var(--ui-field); color: var(--ui-fg);
+  }
+  .fold-head .chev { color: var(--ui-mute); transition: transform .18s; font-size: 11px; }
+  .fold[open] .fold-head .chev { transform: rotate(90deg); }
+  .fold-head .name { font-weight: 600; }
+  .fold-head .count { margin-left: auto; font-size: 12px; color: var(--ui-mute); }
+  .fold-body { padding: 14px; display: grid; gap: 14px; }
+  .fold:not([open]) .fold-body { display: none; }
+  .fold-wrap { padding: 14px 16px 20px; }
+
+  /* ---- station cards, shared by all three ---- */
+  .list { display: grid; gap: 8px; }
+  .stn {
+    border: 1px solid var(--ui-line); border-left: 3px solid var(--c, var(--ui-line));
+    border-radius: 7px; background: var(--ui-bg); overflow: hidden;
+  }
+  .stn-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 9px 10px 9px 11px; cursor: pointer; }
+  .stn-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none; }
+  .stn-name { flex: 1 1 104px; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stn-band {
+    flex: none; font-size: 11px; font-weight: 600; letter-spacing: .04em;
+    padding: 3px 8px; border-radius: 999px; background: var(--ui-field); color: var(--ui-mute);
+  }
+  .stn-band.is-empty { color: #c0392b; background: color-mix(in srgb, #c0392b 12%, transparent); }
+  .stn-acts { display: flex; gap: 3px; flex: none; margin-left: auto; }
+  .stn-acts button {
+    font: inherit; font-size: 12px; cursor: pointer; width: 26px; height: 26px;
+    border: 1px solid var(--ui-line); border-radius: 5px; background: var(--ui-bg); color: var(--ui-mute);
+  }
+  .stn-acts button:hover { color: var(--ui-fg); }
+  .stn-edit { display: none; padding: 0 11px 12px; gap: 8px; grid-template-columns: 1fr .6fr 40px; }
+  .stn.is-open .stn-edit { display: grid; }
+  .stn.is-open { background: var(--ui-field); }
+  .stn-edit .wide { grid-column: 1 / -1; }
+  .in {
+    font: inherit; font-size: 13px; width: 100%; min-width: 0; padding: 7px 9px;
+    border: 1px solid var(--ui-line); border-radius: 5px; background: var(--ui-bg); color: var(--ui-fg);
+  }
+  .in::placeholder { color: var(--ui-mute); opacity: .55; font-style: italic; }
+  input[type="color"].in { padding: 2px; height: 33px; }
+
+  /* ---- collapsed finder ---- */
+  .finder { border: 1px solid var(--ui-line); border-radius: 7px; background: var(--ui-field); }
+  .finder-toggle {
+    width: 100%; font: inherit; font-size: 13px; cursor: pointer; text-align: left;
+    display: flex; align-items: center; gap: 9px; padding: 10px 12px;
+    border: 0; background: none; color: var(--ui-fg);
+  }
+  .finder-toggle .chev { margin-left: auto; color: var(--ui-mute); font-size: 11px; transition: transform .18s; }
+  .finder.is-open .finder-toggle .chev { transform: rotate(90deg); }
+  .finder-body { display: none; padding: 0 12px 12px; gap: 9px; }
+  .finder.is-open .finder-body { display: grid; }
+  .finder-fields { display: grid; grid-template-columns: 1fr 1.3fr; gap: 9px; }
+  .finder-note { margin: 0; font-size: 12px; color: var(--ui-mute); }
+
+  /* ---- schedule slots ---- */
+  .slot {
+    display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center;
+    padding: 9px 10px; border: 1px solid var(--ui-line); border-radius: 7px; background: var(--ui-bg);
+  }
+  .slot .to { color: var(--ui-mute); font-size: 12px; }
+  .slot .vol { font-size: 12px; color: var(--ui-mute); font-variant-numeric: tabular-nums; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip {
+    font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    padding: 3px 7px; border-radius: 4px; background: var(--ui-field); color: var(--ui-mute);
+  }
+  .miniswitch { display: flex; gap: 4px; }
+  .miniswitch button { font: inherit; font-size: 12px; padding: 6px 12px; border: 1px solid var(--ui-line); border-radius: 6px; background: none; color: var(--ui-mute); cursor: pointer; }
+  .miniswitch button[aria-selected="true"] { color: var(--ui-fg); border-color: var(--ui-fg); font-weight: 600; }
+
+  /* ---------- theme picker ----------
+     Each card carries a miniature of its tuner, drawn here rather than saved
+     as an image so it cannot go stale and costs nothing to load. The tuner
+     palettes live on [data-theme] .tuner and cannot reach outside it, so
+     these mirror them and have to be changed alongside. The call sign is a
+     made-up CDSK on 68.0 so no thumbnail looks like a real station. */
+  .themes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .theme-card { cursor: pointer; display: grid; gap: 8px; }
+  .theme-card input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .theme-thumb {
+    display: block; height: 78px; border-radius: 6px; overflow: hidden; position: relative;
+    box-shadow: 0 0 0 1px var(--ui-line); transition: box-shadow .18s ease, transform .18s ease;
+  }
+  .theme-card:hover .theme-thumb { transform: translateY(-1px); }
+  .theme-card input:checked + .theme-thumb { box-shadow: 0 0 0 2px var(--tint, var(--ui-fg)); }
+  .theme-card input:focus-visible + .theme-thumb { box-shadow: 0 0 0 2px var(--ui-accent), 0 0 0 5px color-mix(in srgb, var(--ui-accent) 30%, transparent); }
+  .theme-name { font-size: 13px; color: var(--ui-mute); }
+  .theme-card input:checked ~ .theme-name { color: var(--ui-fg); font-weight: 600; }
+
+  .tt { position: absolute; inset: 0; padding: 7px; display: grid; grid-template-rows: auto 1fr auto; gap: 5px; }
+  .tt-cap { font-size: 8px; line-height: 1; letter-spacing: .06em; display: flex; gap: 4px; }
+  .tt-cap b { font-weight: inherit; }
+  .tt-glass { border-radius: 3px; position: relative; overflow: hidden; }
+  .tt-keys { display: flex; gap: 3px; }
+  .tt-keys i { flex: 1; height: 10px; border-radius: 2px; }
+
+  /* Analogue dial: walnut cabinet, lit glass, VU movement at the right. */
+  .theme-thumb[data-theme="dial"] {
+    --tint: #c9a24a;
+    background: repeating-linear-gradient(88deg, #4a2c19 0 4px, #3a2214 4px 8px);
+    box-shadow: 0 0 0 1px var(--ui-line), inset 0 0 0 2px #8d6a25;
+  }
+  .theme-thumb[data-theme="dial"] .tt-cap { color: #d8bd7a; font-weight: 700; }
+  .theme-thumb[data-theme="dial"] .tt-glass {
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 16' preserveAspectRatio='none'%3E%3Cpath d='M2.5 13.5 A11.5 11.5 0 0 1 21.5 13.5' fill='none' stroke='%236b5324' stroke-width='1.1'/%3E%3Cpath d='M6.5 7.6 L7.6 8.9 M12 5.6 L12 7.3 M17.5 7.6 L16.4 8.9' stroke='%236b5324' stroke-width='.9'/%3E%3Cline x1='12' y1='14' x2='16.8' y2='7.4' stroke='%23c1402f' stroke-width='1.1'/%3E%3Ccircle cx='12' cy='14' r='1.2' fill='%233a2a12'/%3E%3C/svg%3E") right 5px center / 26px 17px no-repeat, linear-gradient(#f3e8c6, #ddc99a);
+  }
+  .theme-thumb[data-theme="dial"] .tt-glass::before {
+    content: ""; position: absolute; left: 5px; right: 34px; bottom: 7px; height: 6px;
+    border-bottom: 1px solid #6b5324;
+    background: repeating-linear-gradient(90deg, #6b5324 0 1px, transparent 1px 4px) bottom / 100% 4px no-repeat;
+  }
+  .theme-thumb[data-theme="dial"] .tt-glass::after {
+    content: ""; position: absolute; left: 38%; bottom: 5px; width: 1.5px; height: 13px; background: #c1402f;
+  }
+  .theme-thumb[data-theme="dial"] .tt-keys i { background: linear-gradient(#f2e2b8, #c6b489); }
+  .theme-thumb[data-theme="dial"] .tt-keys i:first-child { background: linear-gradient(#fff8e4, #f0dcae); }
+
+  /* Broadcast console: amber readout over a segmented level bar. */
+  .theme-thumb[data-theme="console"] { --tint: #ffb000; background: #0c0e11; }
+  .theme-thumb[data-theme="console"] .tt-cap { color: #6a7078; font-weight: 600; }
+  .theme-thumb[data-theme="console"] .tt-freq { display: none; }
+  .theme-thumb[data-theme="console"] .tt-glass { background: #050506; box-shadow: inset 0 0 0 1px #1d2126; }
+  .theme-thumb[data-theme="console"] .tt-glass::before {
+    content: "68.0"; position: absolute; left: 6px; top: 5px;
+    font: 700 16px/1 "Barlow Condensed", sans-serif; color: #ffb000; letter-spacing: .02em;
+  }
+  .theme-thumb[data-theme="console"] .tt-glass::after {
+    content: ""; position: absolute; left: 6px; right: 6px; bottom: 5px; height: 4px;
+    background: linear-gradient(90deg, #2ee56a 0 52%, #ffb000 52% 76%, #1b1e22 76%);
+    -webkit-mask: repeating-linear-gradient(90deg, #000 0 3px, transparent 3px 5px);
+    mask: repeating-linear-gradient(90deg, #000 0 3px, transparent 3px 5px);
+  }
+  .theme-thumb[data-theme="console"] .tt-keys i { background: #14161a; box-shadow: inset 0 0 0 1px #262a2f; }
+  .theme-thumb[data-theme="console"] .tt-keys i:first-child { box-shadow: inset 0 0 0 1px #ffb000; }
+
+  /* Rams minimal: charcoal rather than black, which reads far too hard at
+     this size, plus the orange band mark beside the scale. */
+  .theme-thumb[data-theme="rams"] { --tint: #f0842a; background: #f4f2ed; box-shadow: 0 0 0 1px #d6d3cb; }
+  .theme-thumb[data-theme="rams"] .tt { grid-template-rows: auto auto 1fr auto; }
+  .theme-thumb[data-theme="rams"] .tt-cap { color: #8a877f; font-weight: 600; }
+  .theme-thumb[data-theme="rams"] .tt-call { display: none; }
+  .theme-thumb[data-theme="rams"] .tt::before {
+    content: "CDSK"; font: 700 15px/1 "Archivo Narrow", "Archivo", sans-serif;
+    letter-spacing: -.02em; color: #3a3a37;
+  }
+  .theme-thumb[data-theme="rams"] .tt-glass {
+    background: linear-gradient(#f0842a, #f0842a) 0 100% / 15px 9px no-repeat;
+  }
+  .theme-thumb[data-theme="rams"] .tt-glass::before {
+    content: ""; position: absolute; left: 20px; right: 2px; bottom: 3px; height: 8px;
+    border-bottom: 1px solid #3a3a37;
+    background: repeating-linear-gradient(90deg, #9a978f 0 1px, transparent 1px 4px) bottom / 100% 5px no-repeat;
+  }
+  .theme-thumb[data-theme="rams"] .tt-glass::after {
+    content: ""; position: absolute; left: 46%; bottom: 3px; width: 0; height: 0;
+    border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 9px solid #f0842a;
+  }
+  .theme-thumb[data-theme="rams"] .tt-keys i { background: #e6e3dc; }
+  .theme-thumb[data-theme="rams"] .tt-keys i:first-child { background: #fff; box-shadow: inset 0 0 0 1px #3a3a37; }
+
+  /* Editorial: colour block, oversized name, and the bar bank the real
+     visualiser draws, mirrored about its centre line. */
+  .theme-thumb[data-theme="editorial"] { --tint: #e11d74; background: #fbfbfa; }
+  .theme-thumb[data-theme="editorial"] .tt { grid-template-columns: 1.35fr 1fr; grid-template-rows: 1fr; padding: 0; gap: 0; }
+  .theme-thumb[data-theme="editorial"] .tt-cap { display: none; }
+  .theme-thumb[data-theme="editorial"] .tt-glass { border-radius: 0; background: #e11d74; }
+  .theme-thumb[data-theme="editorial"] .tt-glass::before {
+    content: "CDSK"; position: absolute; left: 6px; top: 8px; right: 4px;
+    font: 800 19px/1 "Syne", sans-serif; color: #fff; letter-spacing: -.045em;
+  }
+  .theme-thumb[data-theme="editorial"] .tt-glass::after {
+    content: ""; position: absolute; left: 6px; right: 6px; bottom: 7px; height: 16px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 16' preserveAspectRatio='none'%3E%3Cg fill='%23ffffff' fill-opacity='.92'%3E%3Crect x='0.60' y='5.90' width='2.5' height='4.20' rx='.5'/%3E%3Crect x='4.90' y='3.70' width='2.5' height='8.60' rx='.5'/%3E%3Crect x='9.20' y='1.50' width='2.5' height='13.00' rx='.5'/%3E%3Crect x='13.50' y='4.80' width='2.5' height='6.40' rx='.5'/%3E%3Crect x='17.80' y='2.40' width='2.5' height='11.20' rx='.5'/%3E%3Crect x='22.10' y='0.50' width='2.5' height='15.00' rx='.5'/%3E%3Crect x='26.40' y='4.50' width='2.5' height='7.00' rx='.5'/%3E%3Crect x='30.70' y='1.80' width='2.5' height='12.40' rx='.5'/%3E%3Crect x='35.00' y='5.40' width='2.5' height='5.20' rx='.5'/%3E%3Crect x='39.30' y='1.10' width='2.5' height='13.80' rx='.5'/%3E%3Crect x='43.60' y='3.20' width='2.5' height='9.60' rx='.5'/%3E%3Crect x='47.90' y='6.10' width='2.5' height='3.80' rx='.5'/%3E%3Crect x='52.20' y='2.80' width='2.5' height='10.40' rx='.5'/%3E%3Crect x='56.50' y='5.00' width='2.5' height='6.00' rx='.5'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  }
+  .theme-thumb[data-theme="editorial"] .tt-keys { flex-direction: column; gap: 0; padding: 9px 8px 0 8px; }
+  .theme-thumb[data-theme="editorial"] .tt-keys i { height: 2px; background: #d3d2cd; margin-bottom: 9px; border-radius: 1px; }
+  .theme-thumb[data-theme="editorial"] .tt-keys i:first-child { width: 62%; height: 7px; background: #3a3a37; }
+  .theme-thumb[data-theme="editorial"] .tt-keys i:last-child { width: 74%; }
+
+  .autoplay { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 9px 11px; border: 1px solid var(--ui-line); border-radius: 7px; background: var(--ui-field); }
+  .switch { display: flex; align-items: center; gap: 9px; font-size: 13px; cursor: pointer; }
+  .switch input { position: absolute; opacity: 0; pointer-events: none; }
+  .switch span { width: 34px; height: 19px; border-radius: 999px; background: var(--ui-line); position: relative; flex: none; transition: background .15s; }
+  .switch span::after { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: var(--ui-bg); transition: left .15s; }
+  .switch input:checked + span { background: #2e9a5a; }
+  .switch input:checked + span::after { left: 17px; }
+  .autoplay-pick { flex: 1 1 130px; min-width: 0; font-size: 12.5px; padding: 5px 7px; }
+
+  .showcase { margin: 26px 0 0; padding: 18px 20px; border: 1px solid var(--pg-rule); border-radius: 10px; }
+  .showcase h2 { margin: 0 0 4px; font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--pg-mute); }
+  .showcase p { margin: 0 0 14px; font-size: 14px; color: var(--pg-mute); max-width: 66ch; }
+  .showcase .themes { max-width: 720px; }
+
+  .outro { margin-top: 44px; border-top: 1px solid var(--pg-rule); padding-top: 20px; color: var(--pg-mute); font-size: 15px; max-width: 66ch; }
+  .outro strong { color: var(--pg-ink); font-weight: 600; }
+
+  @media (max-width: 620px) {
+    .split { grid-template-columns: 1fr; }
+    .rail { border-right: 0; border-bottom: 1px solid var(--ui-line); grid-auto-flow: column; }
+    .finder-fields { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <h1>Three ways to lay out Settings</h1>
+    <p>The same six stations and three time slots in each, so the comparison is about structure rather than content. Tabs, sections and station rows all work, so click around.</p>
+    <p><strong>All three carry the same four changes</strong> listed below. Those are what actually fixes the clutter; the lanes only differ in how the four areas are arranged.</p>
+  </header>
+
+  <section class="verdict">
+    <h2>Decided: A, the tab strip</h2>
+    <p><b>This page is the record of the choice, not the finished thing.</b> Option A is now built into the app, along with everything in the shared list below. Two details changed on the way in: the tabs lost their folder borders for a single accent bar that slides between them, and the thumbnails now show a made-up station, CDSK on 68.0, so none of them reads as a real broadcaster.</p>
+    <p>The app also gained three things this page never showed: bass and treble are remembered per station, a schedule slot can impose volume, bass, treble and theme with a switch for each, and double-clicking any fader returns it to its resting position.</p>
+  </section>
+
+  <section class="shared">
+    <h2>Shared by all three</h2>
+    <ul>
+      <li><b>One line per station.</b> Colour rail, name, frequency pill, actions. Click a row to expand the full form. Six stations is six lines instead of eighteen form rows.</li>
+      <li><b>Search folds away.</b> The city and station lookup sits behind one bar until you want it.</li>
+      <li><b>Cards, not rows.</b> Each station carries a rail in its own colour so the list reads as separate things.</li>
+      <li><b>Play on launch.</b> A switch and a station picker at the top of Stations. Off by default; the browser still needs one click before audio starts, so when it blocks the start you get the usual tap panel and that station is what it tunes.</li>
+      <li><b>Theme thumbnails.</b> Four drawn miniatures rather than four words. Nothing to load and they cannot go stale.</li>
+    </ul>
+  </section>
+
+  <section class="showcase">
+    <h2>Theme thumbnails</h2>
+    <p>Drawn in CSS, so they cost nothing to load and cannot drift out of date. Each one is a miniature of its tuner: cabinet, display, band mark and preset keys. These appear in the Look area of every lane below.</p>
+    <div data-showcase></div>
+  </section>
+
+  <p class="caveat">Each mock sheet below is about 400&#8201;px wide so all three fit side by side. The real drawer is wider, so where a card here wraps its buttons onto a second line, in the app it stays on one.</p>
+  <div class="lanes" id="lanes"></div>
+
+  <p class="outro"><strong>Reply with a letter.</strong> Say if you want parts mixed, for instance the sidebar with the collapsible station list inside it.</p>
+</div>
+
+<template id="tpl-stations">
+  <div class="autoplay">
+    <label class="switch"><input type="checkbox" checked><span></span>Play on launch</label>
+    <select class="in autoplay-pick" aria-label="Station to play on launch">
+      <option>NewsTalk 1010</option><option>KISS 92.5</option><option>CBC Radio 1 Toronto</option>
+    </select>
+  </div>
+  <div class="finder">
+    <button type="button" class="finder-toggle" data-finder>
+      <span>&#9906;</span><span>Find a station</span><span class="chev">&#9654;</span>
+    </button>
+    <div class="finder-body">
+      <div class="finder-fields">
+        <label><span class="field-label">City</span><input class="in" placeholder="Toronto"></label>
+        <label><span class="field-label">Name or frequency</span><input class="in" placeholder="1010, KISS, CBC"></label>
+      </div>
+      <p class="finder-note">Listings come from radio-browser.info; the city lookup uses open-meteo.</p>
+    </div>
+  </div>
+  <div class="list" data-stations></div>
+  <button type="button" class="btn btn-ghost">+ Add station</button>
+</template>
+
+<template id="tpl-schedule">
+  <p class="pane-note">End time is exclusive: 07:00 to 10:00 plays until 09:59. Between slots the current station keeps playing. The chips say what each slot imposes when it starts.</p>
+  <div class="miniswitch">
+    <button type="button" aria-selected="true">Weekdays</button>
+    <button type="button" aria-selected="false">Weekend</button>
+  </div>
+  <div class="list" data-slots></div>
+  <button type="button" class="btn btn-ghost">+ Add time slot</button>
+</template>
+
+<template id="tpl-look">
+  <span class="field-label">Theme</span>
+  <div class="themes" data-themes></div>
+</template>
+
+<template id="tpl-data">
+  <span class="field-label">Backup</span>
+  <div style="display:flex;gap:9px;flex-wrap:wrap">
+    <button type="button" class="btn btn-ghost">Export settings</button>
+    <button type="button" class="btn btn-ghost">Import settings</button>
+  </div>
+  <span class="field-label" style="margin-top:6px">Reset</span>
+  <p class="pane-note">Puts everything back to a fresh install: the two original stations, an empty schedule, no remembered city.</p>
+  <button type="button" class="btn btn-danger">Reset to defaults</button>
+</template>
+
+<script>
+(function () {
+  var STATIONS = [
+    { name: 'NewsTalk 1010', band: '1010 AM', colour: '#10307a', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CFRBAM.mp3', tag: "Toronto's news, traffic and weather, all day." },
+    { name: 'KISS 92.5', band: '92.5 FM', colour: '#e11d74', url: 'https://rogers-hls.leanstream.co/rogers/tor925.stream/icy', tag: "Toronto's hit music station." },
+    { name: 'CBC Radio 1 Toronto', band: '99.1 FM', colour: '#a8321c', url: 'https://cbcradiolive.akamaized.net/hls/live/2041036/ES_R1ETR/master.m3u8', tag: 'AAC 48 kbps' },
+    { name: 'Q107', band: '107.1 FM', colour: '#0f6b4f', url: 'https://q107.example/stream', tag: 'Classic rock' },
+    { name: 'Jazz FM 91', band: '91.1 FM', colour: '#5b2a86', url: 'https://jazzfm.example/stream', tag: 'Jazz and blues' },
+    { name: 'Indie 88', band: '', colour: '#0b6a86', url: 'https://indie88.example/stream', tag: 'New music' }
+  ];
+  var SLOTS = [
+    { from: '07:00', to: '10:00', station: 'NewsTalk 1010', vol: 60, applies: ['vol'] },
+    { from: '10:00', to: '17:00', station: 'KISS 92.5', vol: 72, applies: ['vol', 'bass', 'treble', 'theme'] },
+    { from: '17:00', to: '23:00', station: 'Jazz FM 91', vol: 55, applies: ['theme'] }
+  ];
+  var THEMES = [
+    { key: 'dial', label: 'Analogue dial' },
+    { key: 'console', label: 'Broadcast console' },
+    { key: 'rams', label: 'Rams minimal' },
+    { key: 'editorial', label: 'Editorial' }
+  ];
+  var AREAS = [
+    { key: 'stations', label: 'Stations', count: STATIONS.length },
+    { key: 'schedule', label: 'Schedule', count: SLOTS.length },
+    { key: 'look', label: 'Look', count: null },
+    { key: 'data', label: 'Data', count: null }
+  ];
+  var LANES = [
+    { key: 'A', title: 'Tabs', why: 'One row of tabs, one pane at a time. Least screen furniture, and the tab strip already exists in the app for the weekday and weekend switch.' },
+    { key: 'B', title: 'Sidebar', why: 'A standing list of the four areas on the left. Roomiest for a long station list, and you can always see where everything lives.' },
+    { key: 'C', title: 'Collapsible sections', why: 'Today’s single scroll, but each section folds. The smallest change, and the only one where two areas can be open at once.' }
+  ];
+
+  var uid = 0;
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+
+  function stationCard(s) {
+    var card = el('div', 'stn');
+    card.style.setProperty('--c', s.colour);
+
+    var top = el('div', 'stn-top');
+    top.appendChild(el('span', 'stn-dot'));
+    top.appendChild(el('span', 'stn-name', s.name));
+    var band = el('span', 'stn-band' + (s.band ? '' : ' is-empty'), s.band || 'no frequency');
+    top.appendChild(band);
+
+    var acts = el('div', 'stn-acts');
+    [['✎', 'Edit'], ['↑', 'Move up'], ['↓', 'Move down'], ['✕', 'Remove']].forEach(function (a) {
+      var b = el('button', null, a[0]);
+      b.type = 'button';
+      b.title = a[1];
+      acts.appendChild(b);
+    });
+    top.appendChild(acts);
+    card.appendChild(top);
+
+    var edit = el('div', 'stn-edit');
+    edit.innerHTML =
+      '<input class="in" value="' + s.name + '" aria-label="Name">' +
+      '<input class="in" value="' + s.band + '" placeholder="1010 AM" aria-label="Band">' +
+      '<input class="in" type="color" value="' + s.colour + '" aria-label="Colour">' +
+      '<input class="in wide" value="' + s.url + '" aria-label="Stream URL">' +
+      '<input class="in wide" value="' + s.tag + '" placeholder="Tagline" aria-label="Tagline">';
+    card.appendChild(edit);
+
+    top.addEventListener('click', function (e) {
+      if (e.target.closest('.stn-acts') && e.target.title !== 'Edit') return;
+      var open = card.classList.contains('is-open');
+      var list = card.parentNode;
+      Array.prototype.forEach.call(list.children, function (c) { c.classList.remove('is-open'); });
+      if (!open) card.classList.add('is-open');
+    });
+    return card;
+  }
+
+  function slotRow(s) {
+    var row = el('div', 'slot');
+    row.appendChild(el('span', null, s.from));
+    row.appendChild(el('span', 'to', 'to'));
+    row.appendChild(el('span', null, s.to));
+    row.appendChild(el('span', null, s.station));
+    var chips = el('div', 'chips');
+    s.applies.forEach(function (c) { chips.appendChild(el('span', 'chip', c)); });
+    row.appendChild(chips);
+    return row;
+  }
+
+  function themeCards(checked) {
+    var box = el('div', 'themes');
+    THEMES.forEach(function (t) {
+      uid++;
+      var id = 'th' + uid;
+      var card = el('label', 'theme-card');
+      card.setAttribute('for', id);
+
+      var input = document.createElement('input');
+      input.type = 'radio';
+      input.name = 'theme' + (checked.group || '');
+      input.value = t.key;
+      input.id = id;
+      if (t.key === checked.value) input.checked = true;
+
+      var thumb = el('span', 'theme-thumb');
+      thumb.setAttribute('data-theme', t.key);
+      thumb.setAttribute('aria-hidden', 'true');
+      var tt = el('span', 'tt');
+      var cap = el('span', 'tt-cap');
+      cap.appendChild(el('b', 'tt-call', 'CDSK'));
+      cap.appendChild(el('b', 'tt-freq', '68.0'));
+      tt.appendChild(cap);
+      tt.appendChild(el('span', 'tt-glass'));
+      var keys = el('span', 'tt-keys');
+      keys.appendChild(el('i'));
+      keys.appendChild(el('i'));
+      keys.appendChild(el('i'));
+      tt.appendChild(keys);
+      thumb.appendChild(tt);
+
+      card.appendChild(input);
+      card.appendChild(thumb);
+      card.appendChild(el('span', 'theme-name', t.label));
+      box.appendChild(card);
+    });
+    return box;
+  }
+
+  function paneFor(area, group) {
+    var pane = el('div', 'pane');
+    var tpl = document.getElementById('tpl-' + area.key);
+    pane.appendChild(tpl.content.cloneNode(true));
+
+    var stations = pane.querySelector('[data-stations]');
+    if (stations) STATIONS.forEach(function (s) { stations.appendChild(stationCard(s)); });
+
+    var slots = pane.querySelector('[data-slots]');
+    if (slots) SLOTS.forEach(function (s) { slots.appendChild(slotRow(s)); });
+
+    var themes = pane.querySelector('[data-themes]');
+    if (themes) themes.replaceWith(themeCards({ value: 'dial', group: group }));
+
+    var finder = pane.querySelector('[data-finder]');
+    if (finder) finder.addEventListener('click', function () { finder.closest('.finder').classList.toggle('is-open'); });
+
+    return pane;
+  }
+
+  function shell(inner) {
+    var sheet = el('div', 'sheet');
+    var head = el('div', 'sheet-head');
+    var title = el('div', 'sheet-title');
+    title.appendChild(el('h3', null, 'Settings'));
+    var ver = el('span', 'sheet-ver');
+    ver.innerHTML = 'Deskside Radio&nbsp;&nbsp;<i>&#8729;</i>&nbsp;&nbsp;v1.0';
+    title.appendChild(ver);
+    head.appendChild(title);
+    var x = el('button', 'sheet-x', '×');
+    x.type = 'button';
+    head.appendChild(x);
+    sheet.appendChild(head);
+    inner.forEach(function (n) { sheet.appendChild(n); });
+    var foot = el('div', 'sheet-foot');
+    var save = el('button', 'btn btn-primary', 'Save');
+    save.type = 'button';
+    foot.appendChild(save);
+    sheet.appendChild(foot);
+    return sheet;
+  }
+
+  function buildTabs(group) {
+    var strip = el('div', 'tabstrip');
+    var body = el('div', 'body');
+    var ink = el('span', 'tab-ink');
+    var panes = {};
+    var buttons = [];
+
+    function moveInk(on) {
+      strip.style.setProperty('--ink-x', on.offsetLeft + 'px');
+      strip.style.setProperty('--ink-w', on.offsetWidth + 'px');
+    }
+
+    AREAS.forEach(function (area, i) {
+      var b = el('button');
+      b.type = 'button';
+      b.appendChild(el('span', null, area.label));
+      b.appendChild(el('span', 'count', area.count === null ? '' : area.count));
+      b.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+      var pane = paneFor(area, group);
+      pane.hidden = i !== 0;
+      panes[area.key] = pane;
+      body.appendChild(pane);
+      buttons.push(b);
+
+      b.addEventListener('click', function () {
+        buttons.forEach(function (o) { o.setAttribute('aria-selected', 'false'); });
+        b.setAttribute('aria-selected', 'true');
+        AREAS.forEach(function (a) { panes[a.key].hidden = a.key !== area.key; });
+        moveInk(b);
+      });
+      strip.appendChild(b);
+    });
+    strip.appendChild(ink);
+
+    var sheet = shell([strip, body]);
+    // Offsets are only real once the sheet is in the document.
+    requestAnimationFrame(function () { moveInk(buttons[0]); });
+    return sheet;
+  }
+
+  function buildSidebar(group) {
+    var split = el('div', 'split');
+    var rail = el('div', 'rail');
+    var body = el('div', 'body');
+    var panes = {};
+
+    AREAS.forEach(function (area, i) {
+      var b = el('button', null, area.label);
+      b.type = 'button';
+      b.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+      if (area.count !== null) b.appendChild(el('span', 'count', area.count));
+      var pane = paneFor(area, group);
+      pane.hidden = i !== 0;
+      panes[area.key] = pane;
+      body.appendChild(pane);
+
+      b.addEventListener('click', function () {
+        Array.prototype.forEach.call(rail.children, function (o) { o.setAttribute('aria-selected', 'false'); });
+        b.setAttribute('aria-selected', 'true');
+        AREAS.forEach(function (a) { panes[a.key].hidden = a.key !== area.key; });
+      });
+      rail.appendChild(b);
+    });
+
+    split.appendChild(rail);
+    split.appendChild(body);
+    return shell([split]);
+  }
+
+  function buildFolds(group) {
+    var body = el('div', 'body');
+    var wrap = el('div', 'fold-wrap');
+
+    AREAS.forEach(function (area, i) {
+      var fold = el('div', 'fold');
+      if (i === 0) fold.setAttribute('open', '');
+
+      var head = el('button', 'fold-head');
+      head.type = 'button';
+      head.appendChild(el('span', 'chev', '▶'));
+      head.appendChild(el('span', 'name', area.label));
+      if (area.count !== null) head.appendChild(el('span', 'count', area.count + ' items'));
+
+      var inner = el('div', 'fold-body');
+      var pane = paneFor(area, group);
+      pane.classList.remove('pane');
+      pane.style.display = 'grid';
+      pane.style.gap = '14px';
+      inner.appendChild(pane);
+
+      head.addEventListener('click', function () {
+        var open = fold.hasAttribute('open');
+        Array.prototype.forEach.call(wrap.children, function (f) { f.removeAttribute('open'); });
+        if (!open) fold.setAttribute('open', '');
+      });
+
+      fold.appendChild(head);
+      fold.appendChild(inner);
+      wrap.appendChild(fold);
+    });
+
+    body.appendChild(wrap);
+    return shell([body]);
+  }
+
+  document.querySelector("[data-showcase]").appendChild(themeCards({ value: "dial", group: "show" }));
+
+  var builders = { A: buildTabs, B: buildSidebar, C: buildFolds };
+  var lanes = document.getElementById('lanes');
+
+  LANES.forEach(function (lane) {
+    var section = el('section');
+    var head = el('div', 'lane-head');
+    head.appendChild(el('span', 'lane-key', lane.key));
+    head.appendChild(el('h2', 'lane-title', lane.title));
+    head.appendChild(el('p', 'lane-why', lane.why));
+    section.appendChild(head);
+    section.appendChild(builders[lane.key](lane.key));
+    lanes.appendChild(section);
+  });
+})();
+</script>
