@@ -70,10 +70,21 @@ test('normalizeStation prefers a secure URL when the resolved one is plain http'
   assert.equal(s.url, 'https://secure.example/live.mp3');
 });
 
-test('normalizeStation marks an HLS station unplayable', () => {
+test('normalizeStation treats an HLS station as playable', () => {
+  // Browsers caught up: Chrome plays an HLS playlist off the audio element,
+  // so flagging these as unplayable was turning away working stations.
   const s = D.normalizeStation(Object.assign({}, RESULT, { hls: 1 }));
-  assert.equal(s.playable, false);
+  assert.equal(s.playable, true);
   assert.equal(s.kind, 'hls');
+});
+
+test('normalizeStation still marks a playlist file unplayable', () => {
+  // A .pls lists streams; it is not one, so the element has nothing to play.
+  const s = D.normalizeStation(Object.assign({}, RESULT, {
+    url: 'https://x.example/listen.pls', url_resolved: 'https://x.example/listen.pls', hls: 0
+  }));
+  assert.equal(s.playable, false);
+  assert.equal(s.kind, 'playlist');
 });
 
 test('normalizeStation tidies a quoted callsign name and survives missing fields', () => {
