@@ -1,0 +1,215 @@
+<meta charset="utf-8">
+<title>Byline Plate Faces</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Bebas+Neue&family=Big+Shoulders+Display:wght@500;600;700;800&family=DM+Mono:wght@300;400;500&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Oswald:wght@400;500;600&family=Saira+Condensed:wght@500;600;700&family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap">
+<style>
+  :root {
+    --pg-bg: #eceae4; --pg-ink: #1a1a18; --pg-mute: #6b6a64; --pg-rule: #d8d6cf; --pg-accent: #b5461c;
+    --ui-font: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --pg-bg: #131412; --pg-ink: #ecebe6; --pg-mute: #9a9891; --pg-rule: #2c2c29; --pg-accent: #e8783f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--pg-bg); color: var(--pg-ink); font-family: var(--ui-font);
+    line-height: 1.5; padding-inline: clamp(16px, 4vw, 44px); padding-block: 40px 90px;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  h1 { font-family: "Syne", sans-serif; font-weight: 800; font-size: clamp(28px, 4.4vw, 44px); letter-spacing: -.03em; line-height: 1.02; margin: 0 0 14px; text-wrap: balance; }
+  .intro p { margin: 0; max-width: 68ch; color: var(--pg-mute); font-size: 15.5px; }
+  .intro p + p { margin-top: 8px; }
+  .intro b { color: var(--pg-ink); font-weight: 600; }
+
+  .group { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--pg-mute); margin: 42px 0 0; padding-top: 14px; border-top: 2px solid var(--pg-ink); }
+  .group-note { margin: 8px 0 0; font-size: 14px; color: var(--pg-mute); max-width: 72ch; }
+
+  .opt { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 26px; padding-bottom: 26px; border-bottom: 1px solid var(--pg-rule); }
+  .opt-head { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; align-items: baseline; }
+  .opt-n { font-family: "IBM Plex Mono", monospace; font-size: 13px; font-weight: 600; color: var(--pg-accent); font-variant-numeric: tabular-nums; }
+  .opt h3 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+  .opt p { grid-column: 2; margin: 3px 0 0; font-size: 13.5px; color: var(--pg-mute); max-width: 74ch; }
+
+  .big { background: var(--bg); border-radius: 8px; padding: 22px 26px; display: flex; align-items: center; overflow-x: auto; }
+  .zoom { zoom: 3.4; }
+
+  .swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+  .sw { background: var(--bg); border-radius: 7px; padding: 14px 16px 10px; display: grid; gap: 9px; justify-items: start; }
+  .sw-label { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--by-fg); opacity: .7; }
+
+  /* The plate itself, exactly as app.css draws it. */
+  .byline {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 9px; text-transform: uppercase; line-height: 1; white-space: nowrap;
+    color: var(--by-fg); padding: 4px 8px; border-radius: 1px 6px 1px 6px;
+    background: var(--by-plate);
+    box-shadow: inset 0 0 0 1px var(--by-line), inset 0 1px 0 var(--by-emboss);
+  }
+  .by-a, .by-suffix { opacity: .6; font-weight: 500; }
+
+  .outro { margin-top: 40px; border-top: 1px solid var(--pg-rule); padding-top: 20px; color: var(--pg-mute); font-size: 15px; max-width: 68ch; }
+  .outro b { color: var(--pg-ink); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <h1>Twelve faces for the maker’s plate</h1>
+    <p>The plate is nine pixels of uppercase with a hair of tracking, sitting beside the app name. At that size the shape of a letter matters more than its personality, so each option is shown twice: once enlarged, so the letterforms are visible, and then at its real size on all four theme grounds, which is the only size that counts.</p>
+    <p><b>Tracking and weight are tuned per face</b> rather than held identical. A condensed cut needs more air at nine pixels than a monospace does, and holding one value for all of them would flatter some and sink others.</p>
+  </header>
+
+  <h2 class="group">As it stands</h2>
+  <p class="group-note">Each theme picks its own face, so the plate changes with the cabinet. Everything below replaces that with one face everywhere.</p>
+  <section class="opt">
+    <div class="opt-head">
+      <span class="opt-n">00</span>
+      <h3>Per theme</h3>
+      <p>Today. Archivo Narrow on Analogue and Rams, Barlow Condensed on Console, Figtree on Editorial.</p>
+    </div>
+    <div class="big" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)">
+      <span class="byline zoom" style="font-family:'Archivo Narrow', 'Arial Narrow', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span>
+    </div>
+    <div class="swatches"><div class="sw" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)"><span class="byline " style="font-family:'Archivo Narrow', 'Arial Narrow', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Analogue dial</span></div><div class="sw" style="--bg:#0c0e11;--by-fg:#8a9096;--by-line:#3a3f45;--by-plate:#0b0c0e;--by-emboss:rgba(255,255,255,.05)"><span class="byline " style="font-family:'Barlow Condensed', 'Arial Narrow', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Broadcast console</span></div><div class="sw" style="--bg:#f4f2ed;--by-fg:#7a7871;--by-line:#cfcbc2;--by-plate:transparent;--by-emboss:transparent"><span class="byline " style="font-family:'Archivo Narrow', 'Arial Narrow', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Rams minimal</span></div><div class="sw" style="--bg:#fbfbfa;--by-fg:#6e6e6a;--by-line:#cfcfca;--by-plate:#f1f1ee;--by-emboss:rgba(255,255,255,.9)"><span class="byline " style="font-family:'Figtree', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Editorial</span></div></div>
+  </section>
+  <h2 class="group">Condensed — more letters in the same width</h2>
+
+  <section class="opt">
+    <div class="opt-head">
+      <span class="opt-n">01</span>
+      <h3>Archivo Narrow</h3>
+      <p>The quiet default. Narrow enough to stay small, plain enough to disappear beside the app name.</p>
+    </div>
+    <div class="big" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)">
+      <span class="byline zoom" style="font-family:'Archivo Narrow', 'Arial Narrow', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span>
+    </div>
+    <div class="swatches"><div class="sw" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)"><span class="byline " style="font-family:'Archivo Narrow', 'Arial Narrow', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Analogue dial</span></div><div class="sw" style="--bg:#0c0e11;--by-fg:#8a9096;--by-line:#3a3f45;--by-plate:#0b0c0e;--by-emboss:rgba(255,255,255,.05)"><span class="byline " style="font-family:'Archivo Narrow', 'Arial Narrow', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Broadcast console</span></div><div class="sw" style="--bg:#f4f2ed;--by-fg:#7a7871;--by-line:#cfcbc2;--by-plate:transparent;--by-emboss:transparent"><span class="byline " style="font-family:'Archivo Narrow', 'Arial Narrow', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Rams minimal</span></div><div class="sw" style="--bg:#fbfbfa;--by-fg:#6e6e6a;--by-line:#cfcfca;--by-plate:#f1f1ee;--by-emboss:rgba(255,255,255,.9)"><span class="byline " style="font-family:'Archivo Narrow', 'Arial Narrow', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Editorial</span></div></div>
+  </section>
+  <section class="opt">
+    <div class="opt-head">
+      <span class="opt-n">02</span>
+      <h3>Barlow Condensed</h3>
+      <p>Slightly softer and more mechanical. Reads as instrument labelling.</p>
+    </div>
+    <div class="big" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)">
+      <span class="byline zoom" style="font-family:'Barlow Condensed', 'Arial Narrow', sans-serif;letter-spacing:.14em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span>
+    </div>
+    <div class="swatches"><div class="sw" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)"><span class="byline " style="font-family:'Barlow Condensed', 'Arial Narrow', sans-serif;letter-spacing:.14em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Analogue dial</span></div><div class="sw" style="--bg:#0c0e11;--by-fg:#8a9096;--by-line:#3a3f45;--by-plate:#0b0c0e;--by-emboss:rgba(255,255,255,.05)"><span class="byline " style="font-family:'Barlow Condensed', 'Arial Narrow', sans-serif;letter-spacing:.14em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Broadcast console</span></div><div class="sw" style="--bg:#f4f2ed;--by-fg:#7a7871;--by-line:#cfcbc2;--by-plate:transparent;--by-emboss:transparent"><span class="byline " style="font-family:'Barlow Condensed', 'Arial Narrow', sans-serif;letter-spacing:.14em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Rams minimal</span></div><div class="sw" style="--bg:#fbfbfa;--by-fg:#6e6e6a;--by-line:#cfcfca;--by-plate:#f1f1ee;--by-emboss:rgba(255,255,255,.9)"><span class="byline " style="font-family:'Barlow Condensed', 'Arial Narrow', sans-serif;letter-spacing:.14em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Editorial</span></div></div>
+  </section>
+  <section class="opt">
+    <div class="opt-head">
+      <span class="opt-n">03</span>
+      <h3>Oswald</h3>
+      <p>Tighter and more upright. Signage rather than instrument.</p>
+    </div>
+    <div class="big" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)">
+      <span class="byline zoom" style="font-family:'Oswald', 'Arial Narrow', sans-serif;letter-spacing:.12em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span>
+    </div>
+    <div class="swatches"><div class="sw" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)"><span class="byline " style="font-family:'Oswald', 'Arial Narrow', sans-serif;letter-spacing:.12em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Analogue dial</span></div><div class="sw" style="--bg:#0c0e11;--by-fg:#8a9096;--by-line:#3a3f45;--by-plate:#0b0c0e;--by-emboss:rgba(255,255,255,.05)"><span class="byline " style="font-family:'Oswald', 'Arial Narrow', sans-serif;letter-spacing:.12em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Broadcast console</span></div><div class="sw" style="--bg:#f4f2ed;--by-fg:#7a7871;--by-line:#cfcbc2;--by-plate:transparent;--by-emboss:transparent"><span class="byline " style="font-family:'Oswald', 'Arial Narrow', sans-serif;letter-spacing:.12em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Rams minimal</span></div><div class="sw" style="--bg:#fbfbfa;--by-fg:#6e6e6a;--by-line:#cfcfca;--by-plate:#f1f1ee;--by-emboss:rgba(255,255,255,.9)"><span class="byline " style="font-family:'Oswald', 'Arial Narrow', sans-serif;letter-spacing:.12em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Editorial</span></div></div>
+  </section>
+  <section class="opt">
+    <div class="opt-head">
+      <span class="opt-n">04</span>
+      <h3>Saira Condensed</h3>
+      <p>Squarer terminals, a touch technical. Holds up well when very small.</p>
+    </div>
+    <div class="big" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)">
+      <span class="byline zoom" style="font-family:'Saira Condensed', 'Arial Narrow', sans-serif;letter-spacing:.13em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span>
+    </div>
+    <div class="swatches"><div class="sw" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)"><span class="byline " style="font-family:'Saira Condensed', 'Arial Narrow', sans-serif;letter-spacing:.13em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Analogue dial</span></div><div class="sw" style="--bg:#0c0e11;--by-fg:#8a9096;--by-line:#3a3f45;--by-plate:#0b0c0e;--by-emboss:rgba(255,255,255,.05)"><span class="byline " style="font-family:'Saira Condensed', 'Arial Narrow', sans-serif;letter-spacing:.13em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Broadcast console</span></div><div class="sw" style="--bg:#f4f2ed;--by-fg:#7a7871;--by-line:#cfcbc2;--by-plate:transparent;--by-emboss:transparent"><span class="byline " style="font-family:'Saira Condensed', 'Arial Narrow', sans-serif;letter-spacing:.13em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Rams minimal</span></div><div class="sw" style="--bg:#fbfbfa;--by-fg:#6e6e6a;--by-line:#cfcfca;--by-plate:#f1f1ee;--by-emboss:rgba(255,255,255,.9)"><span class="byline " style="font-family:'Saira Condensed', 'Arial Narrow', sans-serif;letter-spacing:.13em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Editorial</span></div></div>
+  </section>
+  <section class="opt">
+    <div class="opt-head">
+      <span class="opt-n">05</span>
+      <h3>Bebas Neue</h3>
+      <p>Caps only by design, so the uppercase plate suits it. The loudest of the condensed set.</p>
+    </div>
+    <div class="big" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)">
+      <span class="byline zoom" style="font-family:'Bebas Neue', Impact, sans-serif;letter-spacing:.16em;font-weight:400"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span>
+    </div>
+    <div class="swatches"><div class="sw" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)"><span class="byline " style="font-family:'Bebas Neue', Impact, sans-serif;letter-spacing:.16em;font-weight:400"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Analogue dial</span></div><div class="sw" style="--bg:#0c0e11;--by-fg:#8a9096;--by-line:#3a3f45;--by-plate:#0b0c0e;--by-emboss:rgba(255,255,255,.05)"><span class="byline " style="font-family:'Bebas Neue', Impact, sans-serif;letter-spacing:.16em;font-weight:400"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Broadcast console</span></div><div class="sw" style="--bg:#f4f2ed;--by-fg:#7a7871;--by-line:#cfcbc2;--by-plate:transparent;--by-emboss:transparent"><span class="byline " style="font-family:'Bebas Neue', Impact, sans-serif;letter-spacing:.16em;font-weight:400"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Rams minimal</span></div><div class="sw" style="--bg:#fbfbfa;--by-fg:#6e6e6a;--by-line:#cfcfca;--by-plate:#f1f1ee;--by-emboss:rgba(255,255,255,.9)"><span class="byline " style="font-family:'Bebas Neue', Impact, sans-serif;letter-spacing:.16em;font-weight:400"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Editorial</span></div></div>
+  </section>
+  <h2 class="group">Monospace — reads as a stamped serial number</h2>
+
+  <section class="opt">
+    <div class="opt-head">
+      <span class="opt-n">06</span>
+      <h3>IBM Plex Mono</h3>
+      <p>Engineering paperwork. Already loaded by the app, so it costs nothing to add.</p>
+    </div>
+    <div class="big" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)">
+      <span class="byline zoom" style="font-family:'IBM Plex Mono', ui-monospace, monospace;letter-spacing:.06em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span>
+    </div>
+    <div class="swatches"><div class="sw" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)"><span class="byline " style="font-family:'IBM Plex Mono', ui-monospace, monospace;letter-spacing:.06em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Analogue dial</span></div><div class="sw" style="--bg:#0c0e11;--by-fg:#8a9096;--by-line:#3a3f45;--by-plate:#0b0c0e;--by-emboss:rgba(255,255,255,.05)"><span class="byline " style="font-family:'IBM Plex Mono', ui-monospace, monospace;letter-spacing:.06em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Broadcast console</span></div><div class="sw" style="--bg:#f4f2ed;--by-fg:#7a7871;--by-line:#cfcbc2;--by-plate:transparent;--by-emboss:transparent"><span class="byline " style="font-family:'IBM Plex Mono', ui-monospace, monospace;letter-spacing:.06em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Rams minimal</span></div><div class="sw" style="--bg:#fbfbfa;--by-fg:#6e6e6a;--by-line:#cfcfca;--by-plate:#f1f1ee;--by-emboss:rgba(255,255,255,.9)"><span class="byline " style="font-family:'IBM Plex Mono', ui-monospace, monospace;letter-spacing:.06em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Editorial</span></div></div>
+  </section>
+  <section class="opt">
+    <div class="opt-head">
+      <span class="opt-n">07</span>
+      <h3>Space Mono</h3>
+      <p>The one with real personality: odd, slightly retro, distinctly not a system font.</p>
+    </div>
+    <div class="big" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)">
+      <span class="byline zoom" style="font-family:'Space Mono', ui-monospace, monospace;letter-spacing:.04em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span>
+    </div>
+    <div class="swatches"><div class="sw" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)"><span class="byline " style="font-family:'Space Mono', ui-monospace, monospace;letter-spacing:.04em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Analogue dial</span></div><div class="sw" style="--bg:#0c0e11;--by-fg:#8a9096;--by-line:#3a3f45;--by-plate:#0b0c0e;--by-emboss:rgba(255,255,255,.05)"><span class="byline " style="font-family:'Space Mono', ui-monospace, monospace;letter-spacing:.04em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Broadcast console</span></div><div class="sw" style="--bg:#f4f2ed;--by-fg:#7a7871;--by-line:#cfcbc2;--by-plate:transparent;--by-emboss:transparent"><span class="byline " style="font-family:'Space Mono', ui-monospace, monospace;letter-spacing:.04em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Rams minimal</span></div><div class="sw" style="--bg:#fbfbfa;--by-fg:#6e6e6a;--by-line:#cfcfca;--by-plate:#f1f1ee;--by-emboss:rgba(255,255,255,.9)"><span class="byline " style="font-family:'Space Mono', ui-monospace, monospace;letter-spacing:.04em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Editorial</span></div></div>
+  </section>
+  <section class="opt">
+    <div class="opt-head">
+      <span class="opt-n">08</span>
+      <h3>JetBrains Mono</h3>
+      <p>Even colour and open counters. The most legible mono at this size.</p>
+    </div>
+    <div class="big" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)">
+      <span class="byline zoom" style="font-family:'JetBrains Mono', ui-monospace, monospace;letter-spacing:.04em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span>
+    </div>
+    <div class="swatches"><div class="sw" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)"><span class="byline " style="font-family:'JetBrains Mono', ui-monospace, monospace;letter-spacing:.04em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Analogue dial</span></div><div class="sw" style="--bg:#0c0e11;--by-fg:#8a9096;--by-line:#3a3f45;--by-plate:#0b0c0e;--by-emboss:rgba(255,255,255,.05)"><span class="byline " style="font-family:'JetBrains Mono', ui-monospace, monospace;letter-spacing:.04em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Broadcast console</span></div><div class="sw" style="--bg:#f4f2ed;--by-fg:#7a7871;--by-line:#cfcbc2;--by-plate:transparent;--by-emboss:transparent"><span class="byline " style="font-family:'JetBrains Mono', ui-monospace, monospace;letter-spacing:.04em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Rams minimal</span></div><div class="sw" style="--bg:#fbfbfa;--by-fg:#6e6e6a;--by-line:#cfcfca;--by-plate:#f1f1ee;--by-emboss:rgba(255,255,255,.9)"><span class="byline " style="font-family:'JetBrains Mono', ui-monospace, monospace;letter-spacing:.04em;font-weight:500"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Editorial</span></div></div>
+  </section>
+  <section class="opt">
+    <div class="opt-head">
+      <span class="opt-n">09</span>
+      <h3>DM Mono</h3>
+      <p>Lighter and more refined. Whispers rather than stamps.</p>
+    </div>
+    <div class="big" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)">
+      <span class="byline zoom" style="font-family:'DM Mono', ui-monospace, monospace;letter-spacing:.06em;font-weight:400"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span>
+    </div>
+    <div class="swatches"><div class="sw" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)"><span class="byline " style="font-family:'DM Mono', ui-monospace, monospace;letter-spacing:.06em;font-weight:400"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Analogue dial</span></div><div class="sw" style="--bg:#0c0e11;--by-fg:#8a9096;--by-line:#3a3f45;--by-plate:#0b0c0e;--by-emboss:rgba(255,255,255,.05)"><span class="byline " style="font-family:'DM Mono', ui-monospace, monospace;letter-spacing:.06em;font-weight:400"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Broadcast console</span></div><div class="sw" style="--bg:#f4f2ed;--by-fg:#7a7871;--by-line:#cfcbc2;--by-plate:transparent;--by-emboss:transparent"><span class="byline " style="font-family:'DM Mono', ui-monospace, monospace;letter-spacing:.06em;font-weight:400"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Rams minimal</span></div><div class="sw" style="--bg:#fbfbfa;--by-fg:#6e6e6a;--by-line:#cfcfca;--by-plate:#f1f1ee;--by-emboss:rgba(255,255,255,.9)"><span class="byline " style="font-family:'DM Mono', ui-monospace, monospace;letter-spacing:.06em;font-weight:400"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Editorial</span></div></div>
+  </section>
+  <h2 class="group">Display and grotesque — a maker’s mark, not a label</h2>
+
+  <section class="opt">
+    <div class="opt-head">
+      <span class="opt-n">10</span>
+      <h3>Big Shoulders Display</h3>
+      <p>The app’s own display face, the one on the station name and the icon. Ties the byline to the brand.</p>
+    </div>
+    <div class="big" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)">
+      <span class="byline zoom" style="font-family:'Big Shoulders Display', 'Arial Narrow', sans-serif;letter-spacing:.14em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span>
+    </div>
+    <div class="swatches"><div class="sw" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)"><span class="byline " style="font-family:'Big Shoulders Display', 'Arial Narrow', sans-serif;letter-spacing:.14em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Analogue dial</span></div><div class="sw" style="--bg:#0c0e11;--by-fg:#8a9096;--by-line:#3a3f45;--by-plate:#0b0c0e;--by-emboss:rgba(255,255,255,.05)"><span class="byline " style="font-family:'Big Shoulders Display', 'Arial Narrow', sans-serif;letter-spacing:.14em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Broadcast console</span></div><div class="sw" style="--bg:#f4f2ed;--by-fg:#7a7871;--by-line:#cfcbc2;--by-plate:transparent;--by-emboss:transparent"><span class="byline " style="font-family:'Big Shoulders Display', 'Arial Narrow', sans-serif;letter-spacing:.14em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Rams minimal</span></div><div class="sw" style="--bg:#fbfbfa;--by-fg:#6e6e6a;--by-line:#cfcfca;--by-plate:#f1f1ee;--by-emboss:rgba(255,255,255,.9)"><span class="byline " style="font-family:'Big Shoulders Display', 'Arial Narrow', sans-serif;letter-spacing:.14em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Editorial</span></div></div>
+  </section>
+  <section class="opt">
+    <div class="opt-head">
+      <span class="opt-n">11</span>
+      <h3>Syne</h3>
+      <p>Geometric and a little strange. Reads as a studio mark rather than a component label.</p>
+    </div>
+    <div class="big" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)">
+      <span class="byline zoom" style="font-family:'Syne', sans-serif;letter-spacing:.1em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span>
+    </div>
+    <div class="swatches"><div class="sw" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)"><span class="byline " style="font-family:'Syne', sans-serif;letter-spacing:.1em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Analogue dial</span></div><div class="sw" style="--bg:#0c0e11;--by-fg:#8a9096;--by-line:#3a3f45;--by-plate:#0b0c0e;--by-emboss:rgba(255,255,255,.05)"><span class="byline " style="font-family:'Syne', sans-serif;letter-spacing:.1em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Broadcast console</span></div><div class="sw" style="--bg:#f4f2ed;--by-fg:#7a7871;--by-line:#cfcbc2;--by-plate:transparent;--by-emboss:transparent"><span class="byline " style="font-family:'Syne', sans-serif;letter-spacing:.1em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Rams minimal</span></div><div class="sw" style="--bg:#fbfbfa;--by-fg:#6e6e6a;--by-line:#cfcfca;--by-plate:#f1f1ee;--by-emboss:rgba(255,255,255,.9)"><span class="byline " style="font-family:'Syne', sans-serif;letter-spacing:.1em;font-weight:700"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Editorial</span></div></div>
+  </section>
+  <section class="opt">
+    <div class="opt-head">
+      <span class="opt-n">12</span>
+      <h3>Archivo</h3>
+      <p>Plain grotesque, full width. The most neutral option on the page.</p>
+    </div>
+    <div class="big" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)">
+      <span class="byline zoom" style="font-family:'Archivo', 'Helvetica Neue', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span>
+    </div>
+    <div class="swatches"><div class="sw" style="--bg:#3a2214;--by-fg:#e3cf9a;--by-line:rgba(201,162,74,.55);--by-plate:rgba(0,0,0,.3);--by-emboss:rgba(255,224,160,.16)"><span class="byline " style="font-family:'Archivo', 'Helvetica Neue', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Analogue dial</span></div><div class="sw" style="--bg:#0c0e11;--by-fg:#8a9096;--by-line:#3a3f45;--by-plate:#0b0c0e;--by-emboss:rgba(255,255,255,.05)"><span class="byline " style="font-family:'Archivo', 'Helvetica Neue', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Broadcast console</span></div><div class="sw" style="--bg:#f4f2ed;--by-fg:#7a7871;--by-line:#cfcbc2;--by-plate:transparent;--by-emboss:transparent"><span class="byline " style="font-family:'Archivo', 'Helvetica Neue', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Rams minimal</span></div><div class="sw" style="--bg:#fbfbfa;--by-fg:#6e6e6a;--by-line:#cfcfca;--by-plate:#f1f1ee;--by-emboss:rgba(255,255,255,.9)"><span class="byline " style="font-family:'Archivo', 'Helvetica Neue', sans-serif;letter-spacing:.12em;font-weight:600"><span class="by-a">A</span><span class="by-name">Markticulous</span><span class="by-suffix">build</span></span><span class="sw-label">Editorial</span></div></div>
+  </section>
+
+  <p class="outro"><b>Reply with a number.</b> Say if you want a face from one group with the tracking of another, or a different weight.</p>
+</div>

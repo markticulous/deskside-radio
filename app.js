@@ -1,0 +1,1757 @@
+/* Deskside Radio — state, audio engine, stream watchdog, metering, scheduler tick, UI. */
+(function () {
+  'use strict';
+
+  var KEY = 'radio.v1';
+  var THEMES = ['dial', 'console', 'rams', 'editorial'];
+  // Bump on release, and publish the same number in version.json.
+  var APP_VERSION = '1.0.0';
+
+  var DEFAULTS = {
+    stations: [
+      { id: 'cfrb', name: 'NewsTalk 1010', band: '1010 AM', tag: "Toronto's news, traffic and weather, all day.",
+        url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CFRBAM.mp3', color: '#10307a', bass: 0, treble: 0 },
+      { id: 'kiss', name: 'KISS 92.5', band: '92.5 FM', tag: "Toronto's hit music station.",
+        url: 'https://rogers-hls.leanstream.co/rogers/tor925.stream/icy', color: '#e11d74', bass: 0, treble: 0 }
+    ],
+    schedule: { weekday: [], weekend: [] },
+    schedulerEnabled: false,
+    theme: 'dial',
+    intendedPlaying: false,
+    currentStationId: 'cfrb',
+    volume: 50,
+    volumeCurve: 2,
+    autoplay: false,
+    autoplayStationId: null,
+    lastCity: null,
+    bass: 0,
+    treble: 0,
+    lastGood: null,
+    versionCheck: true,
+    versionLastCheck: 0,
+    versionLatest: null
+  };
+
+  function clampTone(v) {
+    if (typeof v !== 'number' || !isFinite(v)) return 0;
+    return Math.max(-12, Math.min(12, Math.round(v)));
+  }
+
+  // ---------- state ----------
+  var state = load();
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return clone(DEFAULTS);
+      var s = JSON.parse(raw);
+      var merged = Object.assign(clone(DEFAULTS), s);
+      merged.schedule = Object.assign({ weekday: [], weekend: [] }, s.schedule || {});
+      if (THEMES.indexOf(merged.theme) === -1) merged.theme = DEFAULTS.theme;
+      /* Bass and treble used to be one pair of numbers for the whole app.
+         They now belong to the station, so seed every station that has none
+         from the old global pair and the listener hears no change. */
+      // An empty schedule cannot run, so do not claim it is on.
+      if (!merged.schedule.weekday.length && !merged.schedule.weekend.length) {
+        merged.schedulerEnabled = false;
+      }
+
+      merged.stations.forEach(function (st) {
+        if (typeof st.bass !== 'number') st.bass = clampTone(merged.bass);
+        if (typeof st.treble !== 'number') st.treble = clampTone(merged.treble);
+      });
+
+      // Settings saved before the fader was rebuilt in decibels.
+      if (merged.volumeCurve !== 2) {
+        merged.volume = Signal.migrateVolume(merged.volume);
+        merged.volumeCurve = 2;
+        if (merged.lastGood) merged.lastGood.volume = Signal.migrateVolume(merged.lastGood.volume);
+        ['weekday', 'weekend'].forEach(function (group) {
+          (merged.schedule[group] || []).forEach(function (slot) { slot.volume = Signal.migrateVolume(slot.volume); });
+        });
+      }
+      return merged;
+    } catch (e) { return clone(DEFAULTS); }
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ } }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function station(id) { for (var i = 0; i < state.stations.length; i++) if (state.stations[i].id === id) return state.stations[i]; return null; }
+  function currentStation() { return station(state.currentStationId) || state.stations[0] || null; }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+  // ---------- dom ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var el = {
+    tuner: $('tuner'), clock: $('clock'),
+    schedToggle: $('schedToggle'), schedLabel: $('schedLabel'), schedNext: $('schedNext'),
+    band: $('band'), name: $('name'), tag: $('tag'), led: $('led'), status: $('status'),
+    presets: $('presets'), play: $('play'), volume: $('volume'), volumeOut: $('volumeOut'),
+    bass: $('bass'), bassOut: $('bassOut'), treble: $('treble'), trebleOut: $('trebleOut'),
+    overlay: $('startOverlay'), startSub: $('startSub'), settings: $('settings'),
+    blind: document.querySelector('.meter-blind')
+  };
+
+  /* ------------------------------------------------------------------
+     Audio engine.
+
+     Metering taps the stream through Web Audio, which requires the
+     element to be CORS-clean. Streams that refuse CORS play on a second,
+     untapped element instead: audio still works, the meter goes dark.
+     ------------------------------------------------------------------ */
+  var corsEl = new Audio();
+  corsEl.preload = 'none';
+  corsEl.crossOrigin = 'anonymous';
+  var plainEl = null;
+  var audio = corsEl;
+
+  var noCors = {};       // url -> true. Learned this session, never persisted.
+  var provenCors = {};   // url -> true, once it has actually played through the tap.
+
+  var ctx = null, analyser = null, gainNode = null, bassNode = null, trebleNode = null;
+  var timeData = null, freqData = null;
+
+  var status = 'idle';   // idle | connecting | live | reconnecting | stopped
+  var attempts = 0;
+  var retryTimer = null;
+  var liveSince = 0;
+  var lastTime = -1, stuckSince = 0;
+  var graphInterrupted = false;
+  var userStopping = false;
+  var startedThisTune = false;
+  var userGestured = false;
+  var everSustained = {};
+
+  /* Only ever with a real gesture, and only before playback begins.
+     Wrapping a MediaElementAudioSourceNode around an element that is
+     already playing, or resuming a context that has been buffering while
+     suspended, makes the stream stutter and rewind several seconds. */
+  function ensureGraph() {
+    if (!userGestured) return;
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try {
+      var c = new AC();
+      var src = c.createMediaElementSource(corsEl);
+      var an = c.createAnalyser();
+      an.fftSize = 2048;
+      var g = c.createGain();
+      // Tone sits after the analyser, so the meter keeps reading the broadcast
+      // rather than whatever shelf the listener has dialled in.
+      var lowShelf = c.createBiquadFilter();
+      lowShelf.type = 'lowshelf'; lowShelf.frequency.value = 200;
+      var highShelf = c.createBiquadFilter();
+      highShelf.type = 'highshelf'; highShelf.frequency.value = 3200;
+      // No limiter: the fader cannot exceed unity, so there is nothing to
+      // catch. A compressor here only squashed the top of the travel, and
+      // Chromium's adds makeup gain even far below its threshold.
+      src.connect(an); an.connect(lowShelf); lowShelf.connect(highShelf);
+      highShelf.connect(g); g.connect(c.destination);
+      /* An interruption of the Web Audio render thread does not drop samples,
+         it delays them, so a live stream comes back several seconds behind and
+         the listener hears what they just heard. Nothing can seek a live HLS
+         stream forward to the edge, so re-tune once the thread is back. */
+      c.addEventListener('statechange', function () {
+        if (c.state !== 'running') { graphInterrupted = true; return; }
+        if (!graphInterrupted) return;
+        graphInterrupted = false;
+        if (!state.intendedPlaying) return;
+        var back = currentStation();
+        if (!back) return;
+        setStatus('connecting', 'Re-syncing to live');
+        attempts = 0;
+        tune(back, state.volume);
+      });
+      ctx = c; analyser = an; gainNode = g; bassNode = lowShelf; trebleNode = highShelf;
+      timeData = new Float32Array(an.fftSize);
+      freqData = new Uint8Array(an.frequencyBinCount);
+      corsEl.volume = 1;
+      gainNode.gain.value = Signal.volumeToGain(state.volume);
+      applyTone();
+      if (ctx.state === 'suspended') ctx.resume();
+    } catch (e) { ctx = null; analyser = null; gainNode = null; bassNode = null; trebleNode = null; }
+  }
+  function markGesture() {
+    userGestured = true;
+    ensureGraph();
+    // Play on launch may already be running without a meter. Re-read it.
+    if (analyser) setStatus(status, el.status.textContent);
+  }
+  document.addEventListener('pointerdown', markGesture, { once: true });
+  document.addEventListener('keydown', markGesture, { once: true });
+
+  function wire(node) {
+    node.addEventListener('loadedmetadata', onStarted);
+    node.addEventListener('playing', onPlaying);
+    node.addEventListener('error', function () { onFailure(); });
+    node.addEventListener('ended', function () { onFailure(); });
+    node.addEventListener('waiting', onBuffering);
+    node.addEventListener('timeupdate', onProgressing);
+    node.addEventListener('pause', function () { if (state.intendedPlaying && !userStopping && !node.ended) onFailure(); });
+  }
+  /* Only `waiting` means the element genuinely cannot continue. `stalled`
+     merely says no data has arrived for a while, which a segmented HLS
+     stream does at every segment boundary, roughly every ten seconds, with
+     the audio running perfectly. Treating that as buffering latched the app
+     out of the live state for good, because no `playing` event follows to
+     put it back, and the meters follow the live state. */
+  function onBuffering() { if (status === 'live') setStatus('connecting', 'Buffering'); }
+
+  // Whatever the events claim, a clock that is advancing means it is playing.
+  function onProgressing() {
+    if (!state.intendedPlaying || userStopping || retryTimer) return;
+    if (status === 'live' || audio.paused) return;
+    onPlaying();
+  }
+  function onStarted() { startedThisTune = true; }
+  function onPlaying() {
+    attempts = 0;
+    launching = false;
+    liveSince = Date.now();
+    var st = currentStation();
+    if (st && audio === corsEl) provenCors[st.url] = true;
+    setStatus('live', 'Live \u00b7 ' + (st ? st.band : ''));
+    updateMediaSession();
+  }
+  wire(corsEl);
+
+  function elementFor(st) {
+    if (!noCors[st.url]) return corsEl;
+    if (!plainEl) { plainEl = new Audio(); plainEl.preload = 'none'; wire(plainEl); }
+    return plainEl;
+  }
+  function useElement(next) {
+    if (audio === next) return;
+    try { audio.pause(); audio.removeAttribute('src'); audio.load(); } catch (e) { /* already idle */ }
+    audio = next;
+  }
+
+  function setStatus(s, text) {
+    status = s;
+    el.status.textContent = text;
+    el.led.classList.toggle('live', s === 'live');
+    el.tuner.classList.toggle('is-playing', s === 'live');
+    el.tuner.classList.toggle('is-reconnecting', s === 'reconnecting');
+    /* Two ways to end up without a meter: a stream that blocks the
+       analysed path, or play on launch starting before any click, which
+       is what the Web Audio graph waits for. Say which. */
+    var noGraph = !analyser && audio === corsEl;
+    el.tuner.classList.toggle('is-blind', (audio === plainEl || noGraph) && state.intendedPlaying);
+    if (el.blind) {
+      el.blind.textContent = noGraph
+        ? 'meter off \u00b7 click anywhere to switch it on'
+        : 'meter off \u00b7 stream blocks analysis';
+    }
+    var toneOff = audio === plainEl;
+    el.bass.disabled = el.treble.disabled = toneOff;
+    el.bass.title = el.treble.title = toneOff ? 'This stream blocks the analysed audio path, so tone control is unavailable.' : '';
+    el.play.setAttribute('aria-pressed', state.intendedPlaying ? 'true' : 'false');
+  }
+
+  function tune(st, volume) {
+    if (!st) return;
+    clearTimeout(retryTimer); retryTimer = null;
+    state.currentStationId = st.id;
+    useElement(elementFor(st));
+    loadTone(st);
+    setVolume(typeof volume === 'number' ? volume : state.volume, true);
+    renderStation(st);
+    audio.src = st.url;
+    audio.load();
+    liveSince = 0; lastTime = -1; stuckSince = 0; startedThisTune = false;
+    setStatus(attempts ? 'reconnecting' : 'connecting', attempts ? 'Reconnecting \u00b7 try ' + attempts : 'Connecting');
+    var p = audio.play();
+    if (p && p.catch) p.catch(function (err) {
+      if (err && err.name === 'NotAllowedError') showOverlay();
+      else onFailure();
+    });
+    save();
+  }
+
+  function startPlayback() {
+    state.intendedPlaying = true;
+    attempts = 0;
+    ensureGraph();
+    var target = resolveTarget();
+    tune(target.station, target.volume);
+  }
+
+  function stopPlayback() {
+    state.intendedPlaying = false;
+    awaitingTap = false;
+    launching = false;
+    userStopping = true;
+    clearTimeout(retryTimer); retryTimer = null;
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
+    attempts = 0;
+    setStatus('stopped', 'Stopped');
+    save();
+    setTimeout(function () { userStopping = false; }, 0);
+  }
+
+  // Pressing Play resumes the display; recovery may fall back to lastGood.
+  function resolveTarget(forRecovery) {
+    var pick = Scheduler.playTarget(state, new Date(), !!forRecovery);
+    if (!pick) return { station: null, volume: state.volume };
+    return { station: station(pick.stationId), volume: pick.volume };
+  }
+
+  function onFailure() {
+    if (!state.intendedPlaying || userStopping || retryTimer || awaitingTap) return;
+    var st = currentStation();
+    /* A stream that never even began may be refusing the CORS request the
+       analyser needs, so retry it once on the untapped element. One that
+       had started is a plain outage: keep it on the tapped path, which is
+       the only one with tone control and the full fader range. */
+    if (st && audio === corsEl && !startedThisTune && !provenCors[st.url] && !noCors[st.url]) {
+      noCors[st.url] = true;
+      tune(st, state.volume);
+      return;
+    }
+    attempts += 1;
+
+    var hopeless = st ? Directory.hopelessReason(st.url, !!everSustained[st.url], attempts) : null;
+    if (hopeless) {
+      state.intendedPlaying = false;
+      clearTimeout(retryTimer); retryTimer = null;
+      try { audio.pause(); } catch (e) { /* already idle */ }
+      setStatus('stopped', hopeless);
+      save();
+      return;
+    }
+
+    var delay = Scheduler.backoffMs(attempts);
+    setStatus('reconnecting', 'Reconnecting \u00b7 try ' + attempts + ' in ' + Math.round(delay / 1000) + ' s');
+    retryTimer = setTimeout(function () {
+      retryTimer = null;
+      var target = resolveTarget(true);
+      tune(target.station, target.volume);
+    }, delay);
+  }
+
+  // Heartbeat: currentTime must keep advancing while we intend to play.
+  setInterval(function () {
+    if (!state.intendedPlaying || status === 'reconnecting' || retryTimer || awaitingTap) return;
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+    var t = audio.currentTime;
+    var now = Date.now();
+    if (t !== lastTime) { lastTime = t; stuckSince = now; }
+    /* A frozen clock alone is not a stall. With the analyser attached the
+       media clock can pause while the element still holds plenty of data,
+       and re-tuning then lands several seconds behind live, which the
+       listener hears as the last few seconds repeating. Only act when the
+       element itself reports it has run short. */
+    else if (stuckSince && now - stuckSince > (status === 'live' ? 15000 : 25000) && audio.readyState < 3) {
+      stuckSince = 0;
+      onFailure();
+    }
+    if (status === 'live' && liveSince && now - liveSince > 10000) {
+      // Ten unbroken seconds is what counts as a stream that works.
+      state.lastGood = { stationId: state.currentStationId, volume: state.volume, at: now };
+      var sustained = currentStation();
+      if (sustained) everSustained[sustained.url] = true;
+      liveSince = 0; save();
+    }
+  }, 5000);
+
+  // ---------- metering ----------
+  var level = 0, lastTs = 0, meterQuiet = false, quietSince = 0;
+  function meterLoop(ts) {
+    requestAnimationFrame(meterLoop);
+    var dt = lastTs ? Math.min(ts - lastTs, 250) : 16;
+    lastTs = ts;
+    var target = 0;
+    var lit = analyser && audio === corsEl && status === 'live' && !audio.paused;
+
+    /* A second of rebuffering is not the same as stopping. Hold the needle
+       where it is through a short interruption rather than dropping it to
+       nothing and back, which reads as the meter breaking. */
+    if (lit) quietSince = 0;
+    else if (!quietSince) quietSince = ts;
+    var holding = !lit && state.intendedPlaying && ts - quietSince < 2000;
+    if (lit) {
+      analyser.getFloatTimeDomainData(timeData);
+      var sum = 0;
+      for (var i = 0; i < timeData.length; i++) sum += timeData[i] * timeData[i];
+      target = Signal.rmsToVu(Math.sqrt(sum / timeData.length));
+      analyser.getByteFrequencyData(freqData);
+      TunerUI.drawBars(el.tuner, freqData);
+    }
+    if (!holding) level = Signal.vuBallistics(level, target, dt);
+    TunerUI.setLevel(el.tuner, level);
+
+    // Park the indicators only once the needle has actually fallen to rest.
+    var quiet = !lit && !holding && level < 0.004;
+    if (quiet !== meterQuiet) {
+      meterQuiet = quiet;
+      el.tuner.classList.toggle('is-quiet', quiet);
+      if (quiet) TunerUI.clearScope(el.tuner);
+    }
+    if (!lit && !quiet && !holding) TunerUI.drawBars(el.tuner, null);
+  }
+
+  function setVolume(v, silent) {
+    v = Math.max(0, Math.min(100, Math.round(v)));
+    state.volume = v;
+    var gain = Signal.volumeToGain(v);
+    // The curve tops out at unity, so both paths can carry it unchanged and
+    // the fader behaves the same whether or not the analyser tap is in use.
+    if (gainNode && audio === corsEl) { corsEl.volume = 1; gainNode.gain.value = gain; }
+    else audio.volume = gain;
+    el.volume.value = v;
+    el.volumeOut.value = v;
+    if (!silent) save();
+  }
+
+  function showDb(v) { return (v > 0 ? '+' : '') + v; }
+  /* The sliders show the current station's tone, so moving one writes
+     through to that station and the setting is there again next time. */
+  function rememberTone() {
+    var st = currentStation();
+    if (!st) return;
+    st.bass = state.bass;
+    st.treble = state.treble;
+  }
+  function loadTone(st) {
+    state.bass = clampTone(st && st.bass);
+    state.treble = clampTone(st && st.treble);
+    applyTone();
+  }
+
+  function applyTone() {
+    if (bassNode) bassNode.gain.value = state.bass;
+    if (trebleNode) trebleNode.gain.value = state.treble;
+    el.bass.value = state.bass; el.bassOut.value = showDb(state.bass);
+    el.treble.value = state.treble; el.trebleOut.value = showDb(state.treble);
+  }
+
+  // ---------- overlay (autoplay gate) ----------
+  /* While the panel is up nothing can start on its own, so the stall
+     heartbeat and the retry backoff have to stand down. Without that they
+     keep re-tuning behind the panel and every attempt is refused for the
+     same reason: nobody has clicked yet. */
+  var awaitingTap = false;
+  var launching = false;
+  function showOverlay() {
+    var st = currentStation();
+    var lead = launching ? "Starts " : "Resumes ";
+    el.startSub.textContent = st
+      ? lead + st.name + ". Browsers need one click before audio can play."
+      : "Browsers need one click before audio can play.";
+    awaitingTap = true;
+    clearTimeout(retryTimer); retryTimer = null;
+    el.overlay.hidden = false;
+    setStatus('idle', 'Waiting for tap');
+  }
+  el.overlay.addEventListener('click', function () {
+    awaitingTap = false;
+    launching = false;
+    el.overlay.hidden = true;
+    startPlayback();
+  });
+
+  /* ---------- scheduler tick ----------
+     Slot edges are whole minutes, so the tick has to land on them. A plain
+     twenty-second interval ran from whenever the page happened to open,
+     which left a slot that ends at 10:00 still playing for up to twenty
+     seconds past it. Re-arming on the top of each second costs nothing here
+     and puts every change within a few milliseconds of its edge. */
+  var tickTimer = null;
+  function startTicking() {
+    clearTimeout(tickTimer);
+    var wait = 1000 - (Date.now() % 1000) + 15;
+    tickTimer = setTimeout(function () { tick(); startTicking(); }, wait);
+  }
+
+  var lastSlotKey;
+  function slotKey(slot) { return slot ? slot.start + '|' + slot.end + '|' + slot.stationId + '|' + slot.volume : null; }
+
+  function tick() {
+    var now = new Date();
+    el.clock.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes());
+    var slot = state.schedulerEnabled ? Scheduler.activeSlot(state.schedule, now) : null;
+    var key = slotKey(slot);
+    if (key !== lastSlotKey) {
+      var first = lastSlotKey === undefined;
+      lastSlotKey = key;
+      if (slot && !first && state.intendedPlaying) {
+        var st = station(slot.stationId);
+        if (st) {
+          /* Whatever the slot applies wins over what is in use now. Tone is
+             written onto the station before tuning, because tone belongs to
+             the station and tune() reads it from there. */
+          var want = Scheduler.slotSettings(slot);
+          if (want.bass !== null) st.bass = want.bass;
+          if (want.treble !== null) st.treble = want.treble;
+          attempts = 0;
+          tune(st, want.volume === null ? state.volume : want.volume);
+          if (want.theme !== null && want.theme !== state.theme) {
+            state.theme = want.theme;
+            applyLook();
+            save();
+          }
+        }
+      }
+    }
+    renderNext(now);
+  }
+
+  /* Everything is restored from the last session, but a slot that is
+     already running at launch outranks it: the app should open looking and
+     sounding the way the schedule says it should at this hour, not the way
+     it happened to be left. Only what the slot opts into is applied. */
+  function applySlotNow(slot) {
+    if (!slot) return;
+    var want = Scheduler.slotSettings(slot);
+    var st = station(slot.stationId);
+    if (st) {
+      if (want.bass !== null) st.bass = want.bass;
+      if (want.treble !== null) st.treble = want.treble;
+    }
+    if (want.theme !== null && want.theme !== state.theme) { state.theme = want.theme; applyLook(); }
+    if (want.volume !== null) setVolume(want.volume, true);
+    save();
+  }
+
+  function renderNext(now) {
+    el.schedNext.setAttribute('aria-hidden', state.schedulerEnabled ? 'false' : 'true');
+    // Leave the old text in place while the chip is off: it is clipped to
+    // zero width by CSS, and keeping it is what gives the slide something
+    // to collapse.
+    if (!state.schedulerEnabled) { return; }
+    var n = Scheduler.nextChange(state.schedule, now);
+    if (!n) { el.schedNext.textContent = 'No slots yet'; return; }
+    var st = n.slot ? station(n.slot.stationId) : null;
+    var when = pad(n.at.getHours()) + ':' + pad(n.at.getMinutes());
+    var sameDay = n.at.toDateString() === now.toDateString();
+    var day = sameDay ? '' : ' ' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][n.at.getDay()];
+    el.schedNext.textContent = (st ? st.name : 'Free play') + ' at ' + when + day;
+  }
+
+  el.schedToggle.addEventListener('click', function () {
+    state.schedulerEnabled = !state.schedulerEnabled;
+    el.schedToggle.setAttribute('aria-pressed', state.schedulerEnabled);
+    el.schedLabel.textContent = state.schedulerEnabled ? 'Schedule on' : 'Schedule off';
+    lastSlotKey = undefined;
+    save(); tick();
+  });
+
+  // ---------- rendering ----------
+  function renderStation(st) {
+    el.band.textContent = st.band || 'Internet stream';
+    TunerUI.setName(el.name, st.name);
+    el.tag.textContent = st.tag || '';
+    el.tuner.style.setProperty('--station', st.color || '#10307a');
+    TunerUI.setNeedle(el.tuner, st.band);
+    var btns = el.presets.querySelectorAll('.preset[data-id]');
+    for (var k = 0; k < btns.length; k++) {
+      var on = btns[k].dataset.id === st.id;
+      btns[k].classList.toggle('is-active', on);
+      if (on && btns[k].scrollIntoView) btns[k].scrollIntoView({ block: 'nearest' });
+    }
+    document.title = st.name + ' · Deskside Radio';
+    updateMediaSession();
+  }
+
+  function renderPresets() {
+    el.presets.innerHTML = '';
+    state.stations.forEach(function (st, i) {
+      var b = document.createElement('button');
+      b.className = 'preset' + (st.id === state.currentStationId ? ' is-active' : '');
+      b.dataset.id = st.id;
+      b.appendChild(span('preset-n', String(i + 1)));
+      b.appendChild(span('preset-name', st.name));
+      b.appendChild(span('preset-band', st.band || ''));
+      b.addEventListener('click', function () {
+        /* Pressing the station already playing should do nothing. Re-tuning
+           tears the stream down and rebuilds it, which on a live stream means
+           a gap and a restart several seconds behind where it was. */
+        if (st.id === state.currentStationId && state.intendedPlaying && !awaitingTap) return;
+        ensureGraph();
+        state.intendedPlaying = true; attempts = 0;
+        el.overlay.hidden = true;
+        awaitingTap = false;
+        tune(st);
+      });
+      el.presets.appendChild(b);
+    });
+    var add = document.createElement('button');
+    add.className = 'preset preset-add';
+    add.appendChild(span('preset-n', '+'));
+    add.appendChild(span('preset-name', 'Add station'));
+    add.appendChild(span('preset-band', 'Name and stream URL'));
+    add.addEventListener('click', function () { openSettings(); $('addStation').click(); });
+    el.presets.appendChild(add);
+  }
+  function span(cls, text) { var s = document.createElement('span'); s.className = cls; s.textContent = text; return s; }
+
+  function applyLook() {
+    document.documentElement.setAttribute('data-theme', state.theme);
+    requestAnimationFrame(function () {
+      var st = currentStation();
+      if (!st) return;
+      TunerUI.setNeedle(el.tuner, st.band);
+      TunerUI.setName(el.name, st.name);
+    });
+  }
+
+  var refitTimer;
+  window.addEventListener('resize', function () {
+    clearTimeout(refitTimer);
+    refitTimer = setTimeout(function () { TunerUI.fitName(el.name); }, 120);
+  });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { TunerUI.fitName(el.name); });
+
+  // ---------- media session ----------
+  function updateMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+    var st = currentStation();
+    if (!st) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({ title: st.name, artist: st.band || '', album: 'Deskside Radio' });
+      navigator.mediaSession.playbackState = status === 'live' ? 'playing' : 'paused';
+    } catch (e) { /* unsupported */ }
+  }
+  if ('mediaSession' in navigator) {
+    try {
+      navigator.mediaSession.setActionHandler('play', startPlayback);
+      navigator.mediaSession.setActionHandler('pause', stopPlayback);
+      navigator.mediaSession.setActionHandler('stop', stopPlayback);
+    } catch (e) { /* unsupported */ }
+  }
+
+  // ---------- controls ----------
+  el.play.addEventListener('click', function () {
+    if (state.intendedPlaying) stopPlayback(); else { el.overlay.hidden = true; startPlayback(); }
+  });
+  var volumeSaveTimer;
+  el.volume.addEventListener('input', function () {
+    setVolume(+el.volume.value, true);
+    clearTimeout(volumeSaveTimer);
+    volumeSaveTimer = setTimeout(save, 250);
+  });
+  el.bass.addEventListener('input', function () { ensureGraph(); state.bass = +el.bass.value; rememberTone(); applyTone(); save(); });
+  el.treble.addEventListener('input', function () { ensureGraph(); state.treble = +el.treble.value; rememberTone(); applyTone(); save(); });
+
+  /* Double-click a fader to send it back where it started. It slides there
+     rather than jumping, so the eye can follow the handle and the ear hears
+     the level move instead of stepping. A range input cannot be animated in
+     CSS, so the value itself is walked over a few frames. */
+  var SLIDER_HOME = { volume: 50, bass: 0, treble: 0 };
+  var GLIDE_MS = 260;
+
+  function glide(input, to, onFrame, onDone) {
+    var from = +input.value;
+    if (from === to) { onFrame(to); if (onDone) onDone(); return; }
+
+    // Someone who has asked for less motion gets the old instant jump.
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (still) { onFrame(to); if (onDone) onDone(); return; }
+
+    // A second double-click, or a drag, cancels whatever is in flight.
+    if (input._glide) cancelAnimationFrame(input._glide);
+    var start = 0;
+
+    function step(now) {
+      if (!start) start = now;
+      var t = Math.min(1, (now - start) / GLIDE_MS);
+      // Ease out: leaves quickly, settles gently onto the mark.
+      var eased = 1 - Math.pow(1 - t, 3);
+      onFrame(t === 1 ? to : from + (to - from) * eased);
+      if (t < 1) input._glide = requestAnimationFrame(step);
+      else { input._glide = 0; if (onDone) onDone(); }
+    }
+    input._glide = requestAnimationFrame(step);
+  }
+
+  function stopGlide(input) {
+    if (input._glide) { cancelAnimationFrame(input._glide); input._glide = 0; }
+  }
+  el.volume.addEventListener('pointerdown', function () { stopGlide(el.volume); });
+  el.bass.addEventListener('pointerdown', function () { stopGlide(el.bass); });
+  el.treble.addEventListener('pointerdown', function () { stopGlide(el.treble); });
+
+  el.volume.addEventListener('dblclick', function () {
+    glide(el.volume, SLIDER_HOME.volume,
+      function (v) { setVolume(v, true); },
+      function () { save(); });
+  });
+  el.bass.addEventListener('dblclick', function () {
+    ensureGraph();
+    glide(el.bass, SLIDER_HOME.bass, function (v) {
+      state.bass = Math.round(v * 10) / 10;
+      el.bass.value = state.bass;
+      el.bassOut.value = showDb(Math.round(state.bass));
+      if (bassNode) bassNode.gain.value = state.bass;
+    }, function () {
+      state.bass = SLIDER_HOME.bass; rememberTone(); applyTone(); save();
+    });
+  });
+  el.treble.addEventListener('dblclick', function () {
+    ensureGraph();
+    glide(el.treble, SLIDER_HOME.treble, function (v) {
+      state.treble = Math.round(v * 10) / 10;
+      el.treble.value = state.treble;
+      el.trebleOut.value = showDb(Math.round(state.treble));
+      if (trebleNode) trebleNode.gain.value = state.treble;
+    }, function () {
+      state.treble = SLIDER_HOME.treble; rememberTone(); applyTone(); save();
+    });
+  });
+
+  // ---------- settings drawer ----------
+  var draft = null;
+  var slotGroup = 'weekday';
+
+  /* ---------- drawer tabs ----------
+     One ink bar slides between the tabs rather than each drawing its own
+     border, so the strip keeps a single baseline and every tab is the same
+     height whether or not it carries a count. */
+  var PANES = ['stations', 'schedule', 'look', 'data'];
+  var pane = 'stations';
+
+  function moveInk(animate) {
+    var strip = $('drawerTabs');
+    var on = strip.querySelector('.dtab[aria-selected="true"]');
+    if (!on) return;
+    if (!animate) strip.classList.add('is-still');
+    strip.style.setProperty('--ink-x', on.offsetLeft + 'px');
+    strip.style.setProperty('--ink-w', on.offsetWidth + 'px');
+    if (!animate) {
+      void strip.offsetWidth;
+      strip.classList.remove('is-still');
+    }
+  }
+
+  function showPane(next, animate) {
+    if (PANES.indexOf(next) === -1) next = PANES[0];
+    pane = next;
+    PANES.forEach(function (key) {
+      var cap = key.charAt(0).toUpperCase() + key.slice(1);
+      $('tab' + cap).setAttribute('aria-selected', key === pane ? 'true' : 'false');
+      $('pane' + cap).hidden = key !== pane;
+    });
+    moveInk(animate);
+  }
+
+  $('drawerTabs').addEventListener('click', function (e) {
+    var btn = e.target.closest('.dtab');
+    if (btn) showPane(btn.dataset.pane, true);
+  });
+
+  function renderCounts() {
+    refreshSaveBtn();
+    $('countStations').textContent = draft.stations.length || '';
+    var slots = draft.schedule.weekday.length + draft.schedule.weekend.length;
+    $('countSchedule').textContent = slots || '';
+  }
+
+  function openSettings() {
+    draft = clone({
+      stations: state.stations, schedule: state.schedule, theme: state.theme,
+      autoplay: state.autoplay, autoplayStationId: state.autoplayStationId
+    });
+    slotGroup = 'weekday';
+    // Updates sit outside the draft: the switch takes effect as it is used.
+    $('versionCheckOn').checked = !!state.versionCheck;
+    renderUpdateLine();
+    renderDrawer();
+    // Snapshot after the render, which fills in any blanks of its own.
+    draftClean = draftSnapshot();
+    resetFinder();
+    refreshSaveBtn();
+    $('saveMsg').textContent = '';
+    if (!el.settings.open) el.settings.showModal();
+    // Offsets only exist once the dialog is laid out.
+    showPane('stations', false);
+  }
+  $('openSettings').addEventListener('click', openSettings);
+
+  /* ---------- desktop shortcut ----------
+     A page cannot write to the desktop; nothing in the browser is allowed
+     to. What it can do is hand over the shortcut file itself, so the save
+     dialog is where the desktop gets chosen. Windows takes a .url, which
+     carries a custom icon; macOS takes a .webloc, which does not.
+     The file name becomes the label under the icon, so it is the app name. */
+  function appFolderUrl() {
+    return location.href.replace(/[^/]*$/, '');
+  }
+  function windowsPathOf(url) {
+    // file:///D:/Folder/x.ico back to D:\Folder\x.ico
+    var p = decodeURIComponent(url.replace(/^file:\/\/\//, ''));
+    return p.replace(/\//g, '\\');
+  }
+  function isMac() {
+    var ua = navigator.userAgentData;
+    if (ua && ua.platform) return /mac/i.test(ua.platform);
+    return /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
+  }
+
+  /* The file still goes out, but Windows needs a word of explanation with
+     it. Chrome will not hand over a .url under its own name: it treats the
+     type as dangerous, because such a file can point anywhere, and renames
+     it to .download on the way out — from http as well as from file://,
+     and the File System Access API blocks the extension too. So the file is
+     downloaded, and a panel says what to rename it to, with the helper
+     script offered as the way round it. macOS has no such rule. */
+  $('makeShortcut').addEventListener('click', function () {
+    var here = location.href.split('#')[0];
+    var mac = isMac();
+    var body, type, name;
+
+    if (mac) {
+      body = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+        '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n' +
+        '<plist version="1.0"><dict><key>URL</key><string>' + here + '</string></dict></plist>\n';
+      type = 'application/xml';
+      name = 'Deskside Radio.webloc';
+    } else {
+      /* The shortcut keeps the theme that was showing when it was made:
+         each theme ships its own .ico, and a per-theme path also sidesteps
+         the Windows icon cache, which keys on the file it was told about. */
+      var known = /^(dial|console|rams|editorial)$/.test(state.theme);
+      var icon = windowsPathOf(appFolderUrl() + (known ? 'favicon-' + state.theme + '.ico' : 'favicon.ico'));
+      // .url files want CRLF and the icon given as a full path.
+      body = ['[InternetShortcut]', 'URL=' + here, 'IconFile=' + icon, 'IconIndex=0', ''].join('\r\n');
+      type = 'text/plain';
+      name = 'Deskside Radio.url';
+    }
+
+    var blob = new Blob([body], { type: type });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+
+    if (mac) {
+      setStatus(status, 'Shortcut downloaded · drag it to your Desktop');
+      return;
+    }
+    setStatus(status, 'Shortcut downloaded · see the panel');
+
+    /* The panel shows the icon the shortcut will carry, which is the theme
+       showing right now — the same file the .url above points at, so what
+       is previewed here is literally what lands on the Desktop. */
+    var theme = known ? state.theme : 'dial';
+    var label = { dial: 'Analogue dial', console: 'Broadcast console', rams: 'Rams minimal', editorial: 'Editorial' };
+    $('shortcutIcon').src = known ? 'favicon-' + theme + '.ico' : 'favicon.ico';
+    $('shortcutIcon').alt = label[theme] + ' icon';
+    $('shortcutTheme').textContent = label[theme];
+    $('shortcutCmd').textContent = windowsPathOf(appFolderUrl()) + 'Create Desktop Shortcut.cmd ' + theme;
+    $('shortcutHelp').showModal();
+  });
+
+  $('shortcutCopy').addEventListener('click', function () {
+    var btn = this;
+    var cmd = $('shortcutCmd').textContent;
+    try {
+      navigator.clipboard.writeText(cmd).then(function () {
+        btn.textContent = 'Copied';
+        setTimeout(function () { btn.textContent = 'Copy command'; }, 1400);
+      }, function () { btn.textContent = 'Select it above'; });
+    } catch (e) {
+      // A page opened from disk is often refused the clipboard outright.
+      btn.textContent = 'Select it above';
+    }
+  });
+
+  /* The footer button reads Close until the draft differs from what is
+     saved, then becomes Save. Comparing serialised drafts is cheap at this
+     size and catches every path, including reordering and deleting, which
+     fire no input event. */
+  var draftClean = null;
+  function draftSnapshot() {
+    if (!draft) return null;
+    return JSON.stringify({
+      stations: draft.stations, schedule: draft.schedule, theme: draft.theme,
+      autoplay: !!draft.autoplay, autoplayStationId: draft.autoplayStationId || null
+    });
+  }
+  function draftIsDirty() { return draftClean !== null && draftSnapshot() !== draftClean; }
+  function refreshSaveBtn() {
+    var btn = $('saveBtn');
+    var dirty = draftIsDirty();
+    btn.textContent = dirty ? 'Save' : 'Close';
+    btn.classList.toggle('is-dirty', dirty);
+  }
+  el.settings.addEventListener('input', refreshSaveBtn);
+  el.settings.addEventListener('change', refreshSaveBtn);
+
+  function renderDrawer() {
+    renderThemeCards();
+    renderStationRows();
+    renderSlotRows();
+    renderCounts();
+    var tabs = el.settings.querySelectorAll('.tabs .tab');
+    for (var t = 0; t < tabs.length; t++) tabs[t].classList.toggle('is-active', tabs[t].dataset.group === slotGroup);
+  }
+
+  var THEME_CARDS = [
+    { key: 'dial', label: 'Analogue dial' },
+    { key: 'console', label: 'Broadcast console' },
+    { key: 'rams', label: 'Rams minimal' },
+    { key: 'editorial', label: 'Editorial' }
+  ];
+  function renderThemeCards() {
+    var box = $('themeCards');
+    box.innerHTML = '';
+    THEME_CARDS.forEach(function (t) {
+      var card = document.createElement('label');
+      card.className = 'theme-card';
+      card.innerHTML =
+        '<input type="radio" name="theme" value="' + t.key + '">' +
+        '<span class="theme-thumb" data-theme="' + t.key + '" aria-hidden="true">' +
+          '<span class="tt"><span class="tt-cap"><b class="tt-call">CDSK</b><b class="tt-freq">68.0</b></span><span class="tt-glass"></span>' +
+          '<span class="tt-keys"><i></i><i></i><i></i></span></span>' +
+        '</span>' +
+        '<span class="theme-name">' + t.label + '</span>';
+      card.querySelector('input').checked = draft.theme === t.key;
+      box.appendChild(card);
+    });
+  }
+
+  el.settings.addEventListener('change', function (e) {
+    if (e.target.name === 'theme') {
+      draft.theme = e.target.value;
+      // This listener runs after the generic one, so refresh the footer here.
+      refreshSaveBtn();
+      document.documentElement.setAttribute('data-theme', draft.theme);
+      var cur = currentStation();
+      if (cur) TunerUI.setName(el.name, cur.name);
+    }
+  });
+
+  /* The picker lists the draft, not the saved state, so a station added
+     in this sitting can be chosen as the launch station before saving. */
+  function renderAutoplay() {
+    var on = $('autoplayOn'), pick = $('autoplayStation');
+    on.checked = !!draft.autoplay;
+    on.closest('.autoplay').setAttribute('data-on', on.checked ? 'true' : 'false');
+    $('autoplayHint').hidden = !on.checked;
+
+    var named = draft.stations.filter(function (st) { return String(st.name || '').trim(); });
+    pick.innerHTML = '';
+    if (!named.length) {
+      pick.appendChild(new Option('Name a station first', ''));
+      pick.disabled = true;
+      return;
+    }
+    pick.disabled = false;
+    var chosen = null;
+    named.forEach(function (st) {
+      pick.appendChild(new Option(st.name, st.id));
+      if (st.id === draft.autoplayStationId) chosen = st.id;
+    });
+    // A launch station that was deleted or renamed away falls to the first.
+    if (!chosen) chosen = named[0].id;
+    draft.autoplayStationId = chosen;
+    pick.value = chosen;
+  }
+
+  $('autoplayOn').addEventListener('change', function () {
+    draft.autoplay = this.checked;
+    renderAutoplay();
+  });
+  $('autoplayStation').addEventListener('change', function () {
+    draft.autoplayStationId = this.value || null;
+  });
+
+  /* One line per station, expanding to the full form. Six stations used to
+     be eighteen form rows stacked on top of each other. `openStation` holds
+     the id of the one card that is open, so it survives a re-render. */
+  var openStation = null;
+  var reordering = false;
+  var FOLD_MS = 200, SLIDE_MS = 260;
+
+  function stillMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  /* Opening a card used to re-render the list, which threw away the very
+     elements the transition needs. Only the class changes now. */
+  function syncOpenCards() {
+    var kids = $('stationRows').children;
+    for (var k = 0; k < kids.length; k++) {
+      var st = draft.stations[k];
+      kids[k].classList.toggle('is-open', !!st && st.id === openStation);
+    }
+  }
+
+  /* Reordering with a card open would slide two different heights past each
+     other, so everything folds shut first. Then the rows trade places under
+     a FLIP: measure where they are, re-render, put them back with a
+     transform, and release it on the next frame. */
+  function moveStation(i, dir) {
+    if (reordering) return;
+    var j = i + dir;
+    if (j < 0 || j >= draft.stations.length) return;
+    var box = $('stationRows');
+    var still = stillMotion();
+    var moved = draft.stations[i].id;
+
+    function commit() {
+      var first = {};
+      var kids = box.children;
+      for (var k = 0; k < kids.length; k++) {
+        var st = draft.stations[k];
+        if (st) first[st.id] = kids[k].getBoundingClientRect().top;
+      }
+
+      draft.stations.splice(j, 0, draft.stations.splice(i, 1)[0]);
+      renderStationRows(); renderSlotRows(); renderCounts(); renderAutoplay();
+
+      if (still) { reordering = false; return; }
+
+      var next = box.children, sliding = [];
+      for (var m = 0; m < next.length; m++) {
+        var id = draft.stations[m] && draft.stations[m].id;
+        var was = first[id];
+        if (was == null) continue;
+        var dy = was - next[m].getBoundingClientRect().top;
+        if (!dy) continue;
+        next[m].classList.add('is-sliding');
+        if (id === moved) next[m].classList.add('is-lead');
+        next[m].style.transition = 'none';
+        next[m].style.transform = 'translateY(' + dy + 'px)';
+        sliding.push(next[m]);
+      }
+      // Read layout back, or the inverted position never gets painted and
+      // the cards simply appear in their new places.
+      void box.offsetHeight;
+      sliding.forEach(function (node) { node.style.transition = ''; node.style.transform = ''; });
+
+      setTimeout(function () {
+        sliding.forEach(function (node) { node.classList.remove('is-sliding', 'is-lead'); });
+        reordering = false;
+      }, SLIDE_MS);
+    }
+
+    reordering = true;
+    if (openStation !== null && !still) {
+      openStation = null;
+      syncOpenCards();
+      setTimeout(commit, FOLD_MS);
+    } else {
+      openStation = null;
+      commit();
+    }
+  }
+
+  function renderStationRows() {
+    var box = $('stationRows');
+    box.innerHTML = '';
+    draft.stations.forEach(function (st, i) {
+      var card = document.createElement('div');
+      card.className = 'card' + (st.id === openStation ? ' is-open' : '');
+      card.style.setProperty('--c', st.color || '#8a8a84');
+
+      var name = String(st.name || '').trim();
+      var band = String(st.band || '').trim();
+      card.innerHTML =
+        /* The header is a div holding a toggle button, not one big button:
+           the move and remove buttons used to sit inside it, and a button
+           inside a button is not parseable — the browser hoisted them out of
+           the header, where nothing was listening for their clicks. */
+        '<div class="card-top">' +
+          '<button type="button" class="card-toggle" data-act="toggle">' +
+            /* The marker is the station colour and the open/closed state in
+               one glyph: a play arrow with a heavily rounded tail, turned
+               down when the card is open. */
+            '<span class="card-mark" aria-hidden="true">' +
+              '<svg viewBox="0 0 24 24" fill="currentColor">' +
+                '<path d="M18.3 10.8 Q20 12 18.3 13.2 L11.2 18.9 Q6.4 22.6 6.4 16.5 L6.4 7.5 Q6.4 1.4 11.2 5.1 Z"/>' +
+              '</svg>' +
+            '</span>' +
+            '<span class="card-name' + (name ? '' : ' is-blank') + '">' + escapeHtml(name || 'Unnamed station') + '</span>' +
+            '<span class="card-pill' + (band ? '' : ' is-empty') + '">' + escapeHtml(band || 'no frequency') + '</span>' +
+          '</button>' +
+          '<span class="card-acts">' +
+            '<button type="button" class="mini" data-act="up" aria-label="Move up">&uarr;</button>' +
+            '<button type="button" class="mini" data-act="down" aria-label="Move down">&darr;</button>' +
+            '<button type="button" class="mini danger" data-act="del" aria-label="Remove">&times;</button>' +
+          '</span>' +
+        '</div>' +
+        '<div class="card-fold">' +
+        '<div class="card-body">' +
+          '<div class="station-grid">' +
+            '<input class="in" data-k="name" placeholder="Station name" aria-label="Name">' +
+            '<input class="in in-band" data-k="band" placeholder="1010 AM" aria-label="Frequency">' +
+            '<input class="in in-color" data-k="color" type="color" aria-label="Colour">' +
+            '<input class="in in-url" data-k="url" placeholder="https://stream.example.com/live.mp3" aria-label="Stream URL">' +
+            '<input class="in in-tag" data-k="tag" placeholder="Tagline (optional)" aria-label="Tagline">' +
+          '</div>' +
+        '</div>' +
+        '</div>';
+
+      var ins = card.querySelectorAll('.card-body .in');
+      for (var k = 0; k < ins.length; k++) {
+        ins[k].value = st[ins[k].dataset.k] || (ins[k].type === 'color' ? '#10307a' : '');
+        ins[k].addEventListener('input', function (e) {
+          var key = e.target.dataset.k;
+          st[key] = e.target.value;
+          if (key === 'name') {
+            var label = card.querySelector('.card-name');
+            var now = String(e.target.value || '').trim();
+            label.textContent = now || 'Unnamed station';
+            label.classList.toggle('is-blank', !now);
+            renderAutoplay();
+          }
+          if (key === 'band') {
+            var pill = card.querySelector('.card-pill');
+            var b = String(e.target.value || '').trim();
+            pill.textContent = b || 'no frequency';
+            pill.classList.toggle('is-empty', !b);
+          }
+          if (key === 'color') card.style.setProperty('--c', e.target.value);
+        });
+      }
+
+      card.querySelector('.card-top').addEventListener('click', function (e) {
+        var act = (e.target.closest('[data-act]') || {}).dataset;
+        act = act ? act.act : 'toggle';
+        if (act === 'del') { draft.stations.splice(i, 1); openStation = null; }
+        else if (act === 'up' && i > 0) { moveStation(i, -1); return; }
+        else if (act === 'down' && i < draft.stations.length - 1) { moveStation(i, 1); return; }
+        else { openStation = st.id === openStation ? null : st.id; syncOpenCards(); return; }
+        renderStationRows(); renderSlotRows(); renderCounts(); renderAutoplay();
+      });
+
+      box.appendChild(card);
+    });
+    renderAutoplay();
+  }
+
+  // Open a station card and put the cursor in one of its fields.
+  function focusStationField(index, key) {
+    var st = draft.stations[index];
+    if (!st) return;
+    openStation = st.id;
+    renderStationRows();
+    var card = $('stationRows').children[index];
+    var field = card && card.querySelector('[data-k="' + key + '"]');
+    if (field) { field.focus(); field.select(); }
+  }
+  $('addStation').addEventListener('click', function () {
+    var fresh = { id: 'st_' + Date.now().toString(36), name: '', band: '', tag: '', url: '', color: '#2a6f4e', bass: 0, treble: 0 };
+    draft.stations.push(fresh);
+    openStation = fresh.id;
+    renderStationRows();
+    renderCounts();
+    var last = $('stationRows').lastElementChild;
+    if (last) { var f = last.querySelector('[data-k="name"]'); if (f) f.focus(); }
+  });
+
+  el.settings.querySelector('.tabs').addEventListener('click', function (e) {
+    if (!e.target.dataset.group) return;
+    slotGroup = e.target.dataset.group;
+    renderDrawer();
+  });
+
+  /* ---------- schedule slots ----------
+     A slot is a time range and a station, plus up to four settings it can
+     impose when it becomes the active one. Each of those is opt-in, so the
+     card shows a chip for whichever are switched on and keeps the controls
+     folded away until the card is opened. */
+  var openSlot = null;
+
+  var APPLIES = [
+    { key: 'volume', flag: 'applyVolume', label: 'Volume', kind: 'range', min: 0, max: 100, home: 50, chip: 'vol' },
+    { key: 'bass', flag: 'applyBass', label: 'Bass', kind: 'range', min: -12, max: 12, home: 0, chip: 'bass' },
+    { key: 'treble', flag: 'applyTreble', label: 'Treble', kind: 'range', min: -12, max: 12, home: 0, chip: 'treble' },
+    { key: 'theme', flag: 'applyTheme', label: 'Theme', kind: 'theme', home: 'dial', chip: 'theme' }
+  ];
+
+  function applyOn(slot, spec) {
+    return spec.flag === 'applyVolume' ? slot.applyVolume !== false : !!slot[spec.flag];
+  }
+  function slotValue(slot, spec) {
+    if (spec.kind === 'theme') return slot.theme || spec.home;
+    return typeof slot[spec.key] === 'number' ? slot[spec.key] : spec.home;
+  }
+  function showValue(spec, v) {
+    if (spec.kind === 'theme') {
+      for (var i = 0; i < THEME_CARDS.length; i++) if (THEME_CARDS[i].key === v) return THEME_CARDS[i].label;
+      return v;
+    }
+    if (spec.key === 'volume') return v + '%';
+    return (v > 0 ? '+' : '') + v + ' dB';
+  }
+
+  function syncOpenSlots() {
+    var kids = $('slotRows').children;
+    for (var k = 0; k < kids.length; k++) {
+      if (kids[k].className.indexOf('card') !== 0) continue;   // the empty hint
+      kids[k].classList.toggle('is-open', slotGroup + k === openSlot);
+    }
+  }
+
+  function renderSlotRows(errors) {
+    var box = $('slotRows');
+    box.innerHTML = '';
+    var slots = draft.schedule[slotGroup];
+    if (!slots.length) {
+      var none = document.createElement('p');
+      none.className = 'hint';
+      none.textContent = 'No slots. Whatever you pick plays all day.';
+      box.appendChild(none);
+    }
+
+    slots.forEach(function (slot, i) {
+      if (!slot.stationId && draft.stations[0]) slot.stationId = draft.stations[0].id;
+      var key = slotGroup + i;
+      var card = document.createElement('div');
+      card.className = 'card' + (key === openSlot ? ' is-open' : '');
+      var st = draft.stations.filter(function (x) { return x.id === slot.stationId; })[0];
+      card.style.setProperty('--c', (st && st.color) || '#8a8a84');
+
+      var chips = APPLIES.filter(function (spec) { return applyOn(slot, spec); })
+        .map(function (spec) { return '<span class="chip">' + spec.chip + '</span>'; }).join('');
+
+      card.innerHTML =
+        /* Same shape as the station cards: the remove button cannot live
+           inside the toggle button, or the parser lifts it out and its
+           clicks never reach the header's listener. */
+        '<div class="card-top">' +
+          '<button type="button" class="card-toggle" data-act="toggle">' +
+            '<span class="card-dot"></span>' +
+            '<span class="card-name">' + escapeHtml(slot.start || '--:--') + ' to ' + escapeHtml(slot.end || '--:--') + '</span>' +
+            '<span class="card-pill">' + escapeHtml(st ? (st.name || '(unnamed)') : 'Pick a station') + '</span>' +
+            '<span class="chips">' + chips + '</span>' +
+          '</button>' +
+          '<span class="card-acts">' +
+            '<button type="button" class="mini danger" data-act="del" aria-label="Remove">&times;</button>' +
+          '</span>' +
+        '</div>' +
+        '<div class="card-fold">' +
+        '<div class="card-body">' +
+          '<div class="slot-inner">' +
+            '<div class="slot-when">' +
+              '<input class="in in-time" data-k="start" type="time" aria-label="Start" required>' +
+              '<span class="to">to</span>' +
+              '<input class="in in-time" data-k="end" type="time" aria-label="End" required>' +
+              '<select class="in" data-k="stationId" aria-label="Station"></select>' +
+            '</div>' +
+            '<div class="slot-applies">' +
+              '<span class="field-head">Apply when this slot starts</span>' +
+            '</div>' +
+            '<p class="err"></p>' +
+          '</div>' +
+        '</div>' +
+        '</div>';
+
+      var sel = card.querySelector('[data-k="stationId"]');
+      draft.stations.forEach(function (x) {
+        var opt = new Option(x.name || '(unnamed)', x.id);
+        if (x.id === slot.stationId) opt.selected = true;
+        sel.appendChild(opt);
+      });
+
+      var times = card.querySelectorAll('.slot-when .in');
+      for (var t = 0; t < times.length; t++) {
+        times[t].value = slot[times[t].dataset.k] != null ? slot[times[t].dataset.k] : '';
+        times[t].addEventListener('input', function (e) {
+          slot[e.target.dataset.k] = e.target.value;
+          if (e.target.dataset.k === 'stationId') { renderSlotRows(); return; }
+          card.querySelector('.card-name').textContent =
+            (slot.start || '--:--') + ' to ' + (slot.end || '--:--');
+        });
+      }
+
+      var applies = card.querySelector('.slot-applies');
+      APPLIES.forEach(function (spec) {
+        var on = applyOn(slot, spec);
+        var v = slotValue(slot, spec);
+        var row = document.createElement('div');
+        row.className = 'apply-row' + (on ? '' : ' is-off');
+
+        var control = spec.kind === 'theme'
+          ? '<select class="in" data-role="value" aria-label="' + spec.label + '">' +
+              THEME_CARDS.map(function (th) {
+                return '<option value="' + th.key + '"' + (th.key === v ? ' selected' : '') + '>' + th.label + '</option>';
+              }).join('') + '</select>'
+          : '<input type="range" data-role="value" min="' + spec.min + '" max="' + spec.max + '" value="' + v + '" aria-label="' + spec.label + '">';
+
+        row.innerHTML =
+          '<label class="switch">' +
+            '<input type="checkbox" data-role="flag"' + (on ? ' checked' : '') + '>' +
+            '<span class="switch-track" aria-hidden="true"></span>' +
+            '<span class="switch-text">' + spec.label + '</span>' +
+          '</label>' +
+          control +
+          (spec.kind === 'theme' ? '' : '<span class="apply-val"></span>');
+
+        var flag = row.querySelector('[data-role="flag"]');
+        var value = row.querySelector('[data-role="value"]');
+        var out = row.querySelector('.apply-val');
+        if (out) out.textContent = showValue(spec, v);
+
+        flag.addEventListener('change', function () {
+          slot[spec.flag] = flag.checked;
+          row.classList.toggle('is-off', !flag.checked);
+          renderSlotChips(card, slot);
+        });
+        value.addEventListener('input', function () {
+          var next = spec.kind === 'theme' ? value.value : +value.value;
+          slot[spec.key === 'theme' ? 'theme' : spec.key] = next;
+          if (out) out.textContent = showValue(spec, next);
+        });
+        if (spec.kind === 'range') {
+          value.addEventListener('pointerdown', function () { stopGlide(value); });
+          value.addEventListener('dblclick', function () {
+            glide(value, spec.home, function (v) {
+              value.value = Math.round(v);
+              if (out) out.textContent = showValue(spec, Math.round(v));
+            }, function () {
+              slot[spec.key] = spec.home;
+            });
+          });
+        }
+
+        applies.appendChild(row);
+      });
+
+      card.querySelector('.card-top').addEventListener('click', function (e) {
+        var hit = e.target.closest('[data-act]');
+        var act = hit ? hit.dataset.act : 'toggle';
+        if (act === 'del') { slots.splice(i, 1); openSlot = null; renderSlotRows(); renderCounts(); return; }
+        openSlot = key === openSlot ? null : key;
+        // Only the class changes, so the fold has something to animate.
+        syncOpenSlots();
+      });
+
+      var errs = (errors || []).filter(function (er) { return er.index === i; });
+      if (errs.length) {
+        card.classList.add('has-err', 'is-open');
+        card.querySelector('.err').textContent = errs.map(function (er) { return er.message; }).join(' ');
+      }
+      box.appendChild(card);
+    });
+  }
+
+  function renderSlotChips(card, slot) {
+    card.querySelector('.chips').innerHTML = APPLIES
+      .filter(function (spec) { return applyOn(slot, spec); })
+      .map(function (spec) { return '<span class="chip">' + spec.chip + '</span>'; }).join('');
+  }
+
+  $('addSlot').addEventListener('click', function () {
+    var slots = draft.schedule[slotGroup];
+    var last = slots[slots.length - 1];
+    slots.push({
+      start: last ? last.end : '07:00',
+      end: last ? '23:00' : '10:00',
+      stationId: draft.stations[0] ? draft.stations[0].id : '',
+      volume: state.volume, applyVolume: true,
+      bass: 0, applyBass: false,
+      treble: 0, applyTreble: false,
+      theme: state.theme, applyTheme: false
+    });
+    openSlot = slotGroup + (slots.length - 1);
+    renderSlotRows();
+    renderCounts();
+  });
+
+  /* ---------- station finder ----------
+     City goes to open-meteo for coordinates, then radio-browser lists the
+     stations near them. Both are public, key-free and CORS-open. */
+  var finder = { city: null, cityTimer: null, stationTimer: null, cityAbort: null, stationAbort: null };
+
+  function finderStatus(text, bad) {
+    var box = $('finderStatus');
+    box.textContent = text;
+    box.className = 'finder-status' + (bad ? ' bad' : '');
+  }
+
+  $('finderToggle').addEventListener('click', function () {
+    var open = this.getAttribute('aria-expanded') === 'true';
+    this.setAttribute('aria-expanded', open ? 'false' : 'true');
+    $('finderBody').hidden = open;
+    if (!open) $('cityInput').focus();
+  });
+
+  function resetFinder() {
+    finder.city = state.lastCity || null;
+    $('cityInput').value = finder.city ? finder.city.label : '';
+    $('stationInput').value = '';
+    $('cityMenu').hidden = true;
+    $('cityMenu').innerHTML = '';
+    $('finderResults').innerHTML = '';
+    finderStatus(finder.city
+      ? 'Searching near ' + finder.city.label + '. Type a station name or frequency.'
+      : 'Pick a city, then search by name or frequency.');
+  }
+
+  function debounce(slot, fn, ms) { clearTimeout(finder[slot]); finder[slot] = setTimeout(fn, ms); }
+  function abortable(slot) {
+    if (finder[slot]) finder[slot].abort();
+    finder[slot] = typeof AbortController === 'function' ? new AbortController() : null;
+    return finder[slot] ? finder[slot].signal : undefined;
+  }
+
+  $('cityInput').addEventListener('input', function () {
+    var q = this.value.trim();
+    finder.city = null;
+    if (q.length < 2) { $('cityMenu').hidden = true; return; }
+    debounce('cityTimer', function () {
+      Directory.findCities(q, abortable('cityAbort')).then(function (cities) {
+        var menu = $('cityMenu');
+        menu.innerHTML = '';
+        if (!cities.length) { menu.hidden = true; finderStatus('No place found called ' + q + '.'); return; }
+        cities.forEach(function (c) {
+          var li = document.createElement('li');
+          li.textContent = c.label;
+          li.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            finder.city = c;
+            state.lastCity = c;
+            save();
+            $('cityInput').value = c.label;
+            menu.hidden = true;
+            runStationSearch();
+          });
+          menu.appendChild(li);
+        });
+        menu.hidden = false;
+      }).catch(function (err) {
+        if (err && err.name === 'AbortError') return;
+        finderStatus('City lookup failed. Check the network, or type the stream URL by hand below.', true);
+      });
+    }, 320);
+  });
+  $('cityInput').addEventListener('blur', function () { setTimeout(function () { $('cityMenu').hidden = true; }, 120); });
+  $('stationInput').addEventListener('input', function () { debounce('stationTimer', runStationSearch, 380); });
+
+  function runStationSearch() {
+    var opts = { name: $('stationInput').value.trim(), limit: 25 };
+    if (finder.city) {
+      opts.lat = finder.city.lat;
+      opts.lon = finder.city.lon;
+      opts.region = finder.city.region;
+      opts.countryCode = finder.city.countryCode;
+      opts.radiusKm = 60;
+    }
+    if (!opts.name && !finder.city) {
+      $('finderResults').innerHTML = '';
+      finderStatus('Pick a city, then search by name or frequency.');
+      return;
+    }
+    finderStatus('Searching...');
+    Directory.findStations(opts, abortable('stationAbort')).then(renderResults).catch(function (err) {
+      if (err && err.name === 'AbortError') return;
+      $('finderResults').innerHTML = '';
+      finderStatus('Could not reach the station directory. Type the stream URL by hand below.', true);
+    });
+  }
+
+  function renderResults(list) {
+    var box = $('finderResults');
+    box.innerHTML = '';
+    if (!list.length) {
+      finderStatus('Nothing found. Try a shorter name, or clear the city to search everywhere.');
+      return;
+    }
+    finderStatus(list.length + ' found. Add the one you want, then press Save.');
+    list.forEach(function (s) {
+      var li = document.createElement('li');
+      li.className = 'result' + (s.playable ? '' : ' is-unplayable');
+      var meta = [];
+      if (s.band) meta.push(s.band);
+      if (s.tag) meta.push(s.tag);
+      if (typeof s.distanceKm === 'number') meta.push(s.distanceKm + ' km away');
+      if (!s.playable) meta.push(s.kind === 'hls' ? 'HLS, may not play here' : 'playlist file, may not play');
+      li.appendChild(span('result-name', s.name || 'Unnamed station'));
+      li.appendChild(span('result-meta', meta.join(' \u00b7 ')));
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'result-add';
+      btn.textContent = s.playable ? 'Add station' : 'Add anyway';
+      btn.title = s.playable ? '' : 'The directory flags this as HLS, which may not play in this browser.';
+      btn.addEventListener('click', function () {
+        if (!addFoundStation(s)) return;
+        li.classList.add('is-added');
+        btn.textContent = 'Added';
+        btn.disabled = true;
+      });
+      li.appendChild(btn);
+      box.appendChild(li);
+    });
+  }
+
+  function addFoundStation(s) {
+    if (!draft) return false;
+    var clash = draft.stations.filter(function (x) { return x.url === s.url; })[0];
+    if (clash) { finderStatus(s.name + ' is already on the list.'); return false; }
+    var entry = {
+      id: s.id, name: s.name, band: s.band, tag: s.tag, url: s.url,
+      color: Directory.pickColour(draft.stations.length), bass: 0, treble: 0
+    };
+    draft.stations = Directory.placeStation(draft.stations, entry);
+    renderStationRows();
+    renderSlotRows();
+    renderCounts();
+    finderStatus('Added ' + s.name + '. Press Save to keep it.');
+
+    // Take the colour from the station artwork where the host allows it.
+    if (s.favicon) {
+      Directory.logoColour(s.favicon).then(function (hex) {
+        if (!hex || !draft) return;
+        if (draft.stations.indexOf(entry) === -1) return;
+        entry.color = hex;
+        renderStationRows();
+      });
+    }
+    return true;
+  }
+
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  function draftIsValid() {
+    var msg = $('saveMsg');
+    if (!draft.stations.length) { msg.textContent = 'Keep at least one station.'; msg.className = 'save-msg bad'; return false; }
+    for (var i = 0; i < draft.stations.length; i++) {
+      var s = draft.stations[i];
+      if (!s.name.trim() || !/^https?:\/\/\S+$/i.test(s.url.trim())) {
+        msg.textContent = 'Station ' + (i + 1) + ' needs a name and an http(s) stream URL.'; msg.className = 'save-msg bad'; return false;
+      }
+      s.name = s.name.trim(); s.url = s.url.trim();
+    }
+    var ids = draft.stations.map(function (s) { return s.id; });
+    var groups = ['weekday', 'weekend'];
+    for (var g = 0; g < groups.length; g++) {
+      var errs = Scheduler.validateSlots(draft.schedule[groups[g]], ids);
+      if (errs.length) {
+        slotGroup = groups[g]; renderDrawer(); renderSlotRows(errs);
+        msg.textContent = 'Fix the highlighted ' + groups[g] + ' slots.'; msg.className = 'save-msg bad'; return false;
+      }
+    }
+    return true;
+  }
+
+  function stationsWithoutBand() {
+    return draft.stations.filter(function (s) { return !String(s.band || '').trim(); });
+  }
+
+  function commitSettings() {
+    var msg = $('saveMsg');
+    state.stations = draft.stations;
+    state.schedule = draft.schedule;
+    state.theme = draft.theme;
+    state.autoplay = !!draft.autoplay;
+    state.autoplayStationId = draft.autoplayStationId;
+    if (!station(state.currentStationId)) state.currentStationId = state.stations[0].id;
+    if (state.lastGood && !station(state.lastGood.stationId)) state.lastGood = null;
+    save(); applyLook(); renderPresets(); renderStation(currentStation());
+    lastSlotKey = undefined; tick();
+    draftClean = draftSnapshot();
+    // Deliberately no refreshSaveBtn() here: the drawer is closing, and
+    // flipping the label back to Close under the cursor reads as a second,
+    // different button. openSettings() resets it on the next visit.
+    msg.textContent = 'Saved'; msg.className = 'save-msg good';
+    setTimeout(function () { if (el.settings.open) el.settings.close(); }, 350);
+  }
+
+  $('saveBtn').addEventListener('click', function () {
+    // Nothing changed, so this is just a way out of the drawer.
+    if (!draftIsDirty()) { el.settings.close(); return; }
+    if (!draftIsValid()) return;
+    var missing = stationsWithoutBand();
+    if (!missing.length) { commitSettings(); return; }
+    $('bandMissingList').textContent = missing.length === 1
+      ? (missing[0].name || 'One station') + ' has no frequency yet.'
+      : missing.length + ' stations have no frequency yet: ' + missing.map(function (s) { return s.name || 'unnamed'; }).join(', ') + '.';
+    $('confirmBand').showModal();
+  });
+
+  $('confirmBand').addEventListener('close', function () {
+    if (this.returnValue === 'save') { commitSettings(); return; }
+    // Send them to the first frequency field that needs filling in. With the
+    // cards collapsed that means opening the right one first.
+    showPane('stations', true);
+    for (var i = 0; i < draft.stations.length; i++) {
+      if (String(draft.stations[i].band || '').trim()) continue;
+      focusStationField(i, 'band');
+      break;
+    }
+  });
+
+  el.settings.addEventListener('close', applyLook);
+
+  function resetEverything() {
+    if (state.intendedPlaying) stopPlayback();
+    try { localStorage.removeItem(KEY); } catch (e) { /* storage unavailable */ }
+    state = clone(DEFAULTS);
+    noCors = {};
+    provenCors = {};
+    save();
+    applyLook();
+    renderPresets();
+    setVolume(state.volume, true);
+    applyTone();
+    el.schedToggle.setAttribute('aria-pressed', state.schedulerEnabled);
+    el.schedLabel.textContent = 'Schedule on';
+    var st = currentStation();
+    if (st) renderStation(st);
+    lastSlotKey = undefined;
+    tick();
+    draft = null;
+    if (el.settings.open) el.settings.close();
+
+    el.tuner.classList.remove('is-resetting');
+    void el.tuner.offsetWidth;
+    el.tuner.classList.add('is-resetting');
+    clearTimeout(resetAnim);
+    resetAnim = setTimeout(function () { el.tuner.classList.remove('is-resetting'); }, 1000);
+  }
+  var resetAnim;
+
+  /* ---------- version check ----------
+     One request a day to a static file on the repo, which is the whole of
+     it: no identifiers go out, nothing is downloaded or installed, and the
+     answer is a version string the listener can act on or ignore. The file
+     sits on raw.githubusercontent.com rather than the API because that has
+     no rate limit worth worrying about and sends the header a page opened
+     from disk needs. Off in one click, and then nothing is ever sent. */
+  var VERSION_URL = 'https://raw.githubusercontent.com/Markticulous/deskside-radio/main/version.json';
+  var RELEASES_URL = 'https://github.com/Markticulous/deskside-radio/releases/latest';
+  var CHECK_EVERY = 24 * 60 * 60 * 1000;
+
+  // 1.2.10 is newer than 1.2.9, which a string compare gets wrong.
+  function newerThan(a, b) {
+    var x = String(a || '').split('.'), y = String(b || '').split('.');
+    for (var i = 0; i < Math.max(x.length, y.length); i++) {
+      var d = (parseInt(x[i], 10) || 0) - (parseInt(y[i], 10) || 0);
+      if (d) return d > 0;
+    }
+    return false;
+  }
+
+  function updateAvailable() {
+    return !!(state.versionLatest && newerThan(state.versionLatest, APP_VERSION));
+  }
+
+  function renderUpdateLine(note) {
+    var line = $('updateLine');
+    if (!line) return;
+    line.className = 'update-line';
+    if (note) { line.textContent = note; return; }
+    if (!state.versionCheck) { line.textContent = 'Checking is off. Nothing is sent.'; return; }
+    if (updateAvailable()) {
+      line.className = 'update-line is-new';
+      line.innerHTML = 'Version ' + escapeHtml(state.versionLatest) + ' is out. ' +
+        '<a href="' + RELEASES_URL + '" target="_blank" rel="noopener">Open the releases page</a>';
+      return;
+    }
+    var when = state.versionLastCheck ? new Date(state.versionLastCheck).toLocaleDateString() : 'not yet';
+    line.textContent = 'Running ' + APP_VERSION + ' · last checked ' + when;
+  }
+
+  function checkVersion(force) {
+    if (!state.versionCheck) { renderUpdateLine(); return; }
+    if (!force && Date.now() - (state.versionLastCheck || 0) < CHECK_EVERY) { renderUpdateLine(); return; }
+    if (typeof fetch !== 'function') return;
+    fetch(VERSION_URL, { cache: 'no-store' }).then(function (r) {
+      return r.ok ? r.json() : null;
+    }).then(function (data) {
+      state.versionLastCheck = Date.now();
+      if (data && typeof data.version === 'string') state.versionLatest = data.version;
+      save();
+      renderUpdateLine();
+      if (updateAvailable()) $('appVersion').classList.add('is-stale');
+    }).catch(function () {
+      // Offline, or GitHub is having a day. Say so and try again tomorrow.
+      renderUpdateLine('Could not reach GitHub just now · running ' + APP_VERSION);
+    });
+  }
+
+  $('versionCheckOn').addEventListener('change', function () {
+    state.versionCheck = this.checked;
+    save();
+    if (state.versionCheck) checkVersion(true);
+    else renderUpdateLine();
+  });
+
+  $('resetBtn').addEventListener('click', function () {
+    var box = $('confirmReset');
+    if (box && !box.open) box.showModal();
+  });
+  $('confirmReset').addEventListener('close', function () {
+    if (this.returnValue === 'reset') resetEverything();
+  });
+
+  $('exportBtn').addEventListener('click', function () {
+    var blob = new Blob([JSON.stringify({ stations: state.stations, schedule: state.schedule, theme: state.theme, volume: state.volume, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId }, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'deskside-radio-settings.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+  $('importFile').addEventListener('change', function () {
+    var f = this.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var data = JSON.parse(r.result);
+        if (!Array.isArray(data.stations)) throw new Error('no stations');
+        draft.stations = data.stations;
+        draft.schedule = Object.assign({ weekday: [], weekend: [] }, data.schedule || {});
+        if (THEMES.indexOf(data.theme) !== -1) draft.theme = data.theme;
+        draft.autoplay = !!data.autoplay;
+        draft.autoplayStationId = data.autoplayStationId || null;
+        renderDrawer();
+        refreshSaveBtn();
+        $('saveMsg').textContent = 'Imported. Press Save to keep it.'; $('saveMsg').className = 'save-msg good';
+      } catch (e) { $('saveMsg').textContent = 'That file is not a Deskside Radio export.'; $('saveMsg').className = 'save-msg bad'; }
+    };
+    r.readAsText(f);
+    this.value = '';
+  });
+
+  // ---------- boot ----------
+  window.addEventListener('beforeunload', save);
+  document.addEventListener('visibilitychange', function () {
+    // Background tabs get their timers throttled, so re-align on return.
+    if (!document.hidden) { tick(); startTicking(); }
+  });
+
+  applyLook();
+  TunerUI.init(el.tuner);
+  renderPresets();
+  setVolume(state.volume, true);
+  applyTone();
+  el.schedToggle.setAttribute('aria-pressed', state.schedulerEnabled);
+  el.schedLabel.textContent = state.schedulerEnabled ? 'Schedule on' : 'Schedule off';
+  applySlotNow(state.schedulerEnabled ? Scheduler.activeSlot(state.schedule, new Date()) : null);
+  var boot = resolveTarget();
+  if (boot.station) {
+    state.currentStationId = boot.station.id;
+    renderStation(boot.station);
+    // The sliders showed the tone left in place rather than this station's.
+    loadTone(boot.station);
+  }
+  tick();
+  startTicking();
+  $('appVersion').textContent = 'v' + APP_VERSION;
+  if (updateAvailable()) $('appVersion').classList.add('is-stale');
+  // Not on the critical path: let the radio come up first.
+  setTimeout(function () { checkVersion(false); }, 3000);
+  el.tuner.classList.add('is-quiet');
+  meterQuiet = true;
+  requestAnimationFrame(meterLoop);
+
+  /* Play on launch. The graph needs a click before it can be built, so
+     this plays on the bare element and the first click anywhere attaches
+     the meter. If the browser refuses to start audio without a gesture,
+     tune() catches that and puts up the tap panel instead. */
+  var launch = Scheduler.bootTarget(state, new Date());
+  if (launch && station(launch.stationId)) {
+    state.currentStationId = launch.stationId;
+    renderStation(station(launch.stationId));
+    launching = true;
+    startPlayback();
+  } else if (state.intendedPlaying && boot.station) showOverlay();
+  else setStatus('idle', 'Idle');
+})();

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Deskside Radio">
+  <defs>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f7eed2"/>
+      <stop offset="1" stop-color="#d8c08d"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".14"/>
+      <stop offset=".55" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity=".18"/>
+    </linearGradient>
+    <linearGradient id="bezel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d6b25e"/>
+      <stop offset="1" stop-color="#a5802f"/>
+    </linearGradient>
+    <pattern id="grain" width="9" height="9" patternUnits="userSpaceOnUse">
+      <rect width="9" height="9" fill="#4a2c19"/>
+      <rect width="4" height="9" fill="#412616"/>
+    </pattern>
+  </defs>
+
+  <!-- cabinet -->
+  <rect x="0" y="0" width="256" height="256" rx="40" fill="url(#grain)"/>
+  <rect x="0" y="0" width="256" height="256" rx="40" fill="url(#sheen)"/>
+  <rect x="2" y="2" width="252" height="252" rx="38" fill="none" stroke="#2c1a0f" stroke-width="4"/>
+
+  <!-- brass bezel -->
+  <rect x="13" y="13" width="230" height="230" rx="29" fill="none" stroke="url(#bezel)" stroke-width="9"/>
+
+  <!-- lit dial glass -->
+  <rect x="28" y="58" width="200" height="140" rx="10" fill="url(#glass)"/>
+  <rect x="28" y="58" width="200" height="140" rx="10" fill="none" stroke="#6b5324" stroke-opacity=".35" stroke-width="2"/>
+
+  <!-- scale -->
+  <rect x="48" y="172" width="160" height="6" rx="3" fill="#6b5324" opacity=".8"/>
+  <rect x="44.50" y="146.00" width="7" height="26" rx="3.50" fill="#6b5324" opacity="0.95"/><rect x="84.50" y="146.00" width="7" height="26" rx="3.50" fill="#6b5324" opacity="0.95"/><rect x="124.50" y="146.00" width="7" height="26" rx="3.50" fill="#6b5324" opacity="0.95"/><rect x="164.50" y="146.00" width="7" height="26" rx="3.50" fill="#6b5324" opacity="0.95"/><rect x="204.50" y="146.00" width="7" height="26" rx="3.50" fill="#6b5324" opacity="0.95"/>
+
+  <!-- needle -->
+  <rect x="150.5" y="72" width="15" height="114.0" rx="7.5" fill="#c1402f"/>
+  <rect x="154.6" y="72" width="3.3" height="114.0" rx="1.6" fill="#ffffff" opacity=".3"/>
+
+</svg>

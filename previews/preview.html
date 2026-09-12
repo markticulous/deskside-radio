@@ -1,0 +1,294 @@
+<meta charset="utf-8">
+<title>Deskside Radio Faces</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@1,500&family=IBM+Plex+Mono:wght@400;600&family=Oswald:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;500;600;700&family=Syne:wght@700;800&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../app.css">
+<style>
+  :root {
+    --pg-bg: #efeee9; --pg-ink: #1a1a18; --pg-mute: #6b6a64; --pg-rule: #d8d6cf; --pg-accent: #b5461c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --pg-bg: #151513; --pg-ink: #ecebe6; --pg-mute: #9a9891; --pg-rule: #2c2c29; --pg-accent: #e8783f; }
+  }
+  :root[data-theme="dark"] { --pg-bg: #151513; --pg-ink: #ecebe6; --pg-mute: #9a9891; --pg-rule: #2c2c29; --pg-accent: #e8783f; }
+
+  body {
+    background: var(--pg-bg); color: var(--pg-ink);
+    font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    padding-inline: clamp(16px, 4vw, 48px); padding-block: 40px 80px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 64px; }
+  .intro h1 { font-family: "Syne", sans-serif; font-weight: 800; font-size: clamp(32px, 5vw, 54px); letter-spacing: -.03em; line-height: 1; margin: 0 0 14px; text-wrap: balance; }
+  .intro p { margin: 0; max-width: 64ch; color: var(--pg-mute); font-size: 16px; }
+  .intro p + p { margin-top: 8px; }
+  .intro strong { color: var(--pg-ink); font-weight: 600; }
+  .intro a { color: var(--pg-accent); }
+
+  .face { display: grid; gap: 18px; }
+  .face-head { display: grid; grid-template-columns: auto 1fr; column-gap: 18px; align-items: baseline; border-top: 1px solid var(--pg-rule); padding-top: 16px; }
+  .face-letter { font-family: "Syne", sans-serif; font-weight: 800; font-size: 40px; line-height: 1; color: var(--pg-accent); }
+  .face-title { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+  .face-note { margin: 0; grid-column: 2; font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--pg-accent); }
+  .face-why { margin: 4px 0 0; grid-column: 2; color: var(--pg-mute); font-size: 14px; max-width: 72ch; }
+
+  .outro { border-top: 1px solid var(--pg-rule); padding-top: 20px; color: var(--pg-mute); font-size: 15px; max-width: 64ch; }
+  .outro strong { color: var(--pg-ink); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <h1>Four faces for one radio</h1>
+    <p>Same controls in every mock: now-playing display, two presets, play/stop, volume, scheduler state, settings. Only the visual language changes. Presets and buttons are live, so click around.</p>
+    <p>Dial scales are drawn to the real broadcast bands, so the needle sits at 1010 kHz or 92.5 MHz where a receiver would put it. Volume, bass and treble share the control row. The meters here run on a simulated signal; in the app they read the actual stream.</p>
+    <p><strong>All four ship as switchable themes.</strong> Analogue dial is the default. Byline options live on <a href="byline-preview.html">the byline page</a>.</p>
+  </header>
+
+  <section class="face">
+    <div class="face-head">
+      <span class="face-letter">A</span>
+      <h2 class="face-title">Vintage analogue dial</h2>
+      <p class="face-note">Current default</p>
+      <p class="face-why">Walnut cabinet, brass hardware, backlit cream glass carrying both band scales. The lit red badge says which band you are on. Preset keys light up when selected and sit dark when not.</p>
+    </div>
+    <div class="slot" data-theme="dial"></div>
+  </section>
+
+  <section class="face">
+    <div class="face-head">
+      <span class="face-letter">B</span>
+      <h2 class="face-title">Broadcast console</h2>
+      <p class="face-why">Rack-mounted matte black with corner screws, recessed amber readout, blinking on-air indicator, segmented LED meter scaled from -20 to +3 VU. Nothing rounded.</p>
+    </div>
+    <div class="slot" data-theme="console"></div>
+  </section>
+
+  <section class="face">
+    <div class="face-head">
+      <span class="face-letter">C</span>
+      <h2 class="face-title">Braun / Dieter Rams minimal</h2>
+      <p class="face-why">Off-white body, hairline rules, one orange marker on the single scale for whichever band is tuned. Small type, restrained weight, nothing decorative.</p>
+    </div>
+    <div class="slot" data-theme="rams"></div>
+  </section>
+
+  <section class="face">
+    <div class="face-head">
+      <span class="face-letter">D</span>
+      <h2 class="face-title">Editorial</h2>
+      <p class="face-why">Type does the work. Each station owns a colour and the block cross-fades on switch. The frequency always drops to its own line and the name grows to the largest size the panel allows, so it never wraps mid-word. A bank of level bars replaces the VU meter here, mirrored about a centre line and rising and falling in place.</p>
+    </div>
+    <div class="slot" data-theme="editorial"></div>
+  </section>
+
+  <p class="outro"><strong>Reply with a letter</strong> to change the default, or say what to adjust. The others stay one click away in Settings.</p>
+</div>
+
+<template id="tuner-tpl">
+  <main class="tuner is-playing">
+    <header class="tuner-bar">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <span class="brand-name">Deskside Radio</span>
+        <span class="byline" data-byline="plate">
+          <span class="byline-mark">M</span>
+          <span class="byline-by">A</span>
+          <span class="byline-name">Markticulous</span>
+          <span class="byline-suffix">build</span>
+        </span>
+      </div>
+      <time class="clock" data-clock>--:--</time>
+      <button class="sched-chip" data-sched aria-pressed="true">
+        <span class="sched-led"></span>
+        <span class="sched-label">Schedule on</span>
+        <span class="sched-next" data-next></span>
+      </button>
+      <button class="icon-btn settings-btn" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>
+      </button>
+    </header>
+
+    <section class="display">
+      <div class="display-band" data-band></div>
+      <h1 class="display-name" data-name></h1>
+      <p class="display-tag" data-tag></p>
+      <div class="display-status"><span class="status-led live"></span><span class="status-text" data-status></span></div>
+
+      <div class="dial" aria-hidden="true">
+        <div class="dial-reel">
+          <div class="scale" data-scale="am">
+            <span class="scale-badge">AM</span>
+            <div class="scale-ticks"></div>
+            <span class="needle"></span>
+            <div class="scale-labels"></div>
+          </div>
+          <div class="scale" data-scale="fm">
+            <span class="scale-badge">FM</span>
+            <div class="scale-ticks"></div>
+            <span class="needle"></span>
+            <div class="scale-labels"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="meter" aria-hidden="true">
+        <div class="meter-face"></div>
+        <div class="meter-bar"></div>
+        <div class="meter-scale"></div>
+        <canvas class="scope"></canvas>
+        <span class="meter-blind">meter off &middot; stream blocks analysis</span>
+      </div>
+    </section>
+
+    <nav class="presets" data-presets></nav>
+
+    <footer class="controls">
+      <button class="play-btn" data-play aria-pressed="true" aria-label="Play or stop">
+        <svg class="ic-play" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12-7.5z"/></svg>
+        <svg class="ic-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="5.5" y="5.5" width="13" height="13" rx="1"/></svg>
+        <span class="btn-text"></span>
+      </button>
+      <div class="fader volume">
+        <label>Volume</label>
+        <input type="range" min="0" max="100" value="60" data-vol>
+        <output data-volout>60</output>
+      </div>
+      <div class="fader tone">
+        <label>Bass</label>
+        <input type="range" min="-12" max="12" step="1" value="0" data-tone="bass">
+        <output data-toneout="bass">0</output>
+      </div>
+      <div class="fader tone">
+        <label>Treble</label>
+        <input type="range" min="-12" max="12" step="1" value="0" data-tone="treble">
+        <output data-toneout="treble">0</output>
+      </div>
+    </footer>
+  </main>
+</template>
+
+<script src="../signal.js"></script>
+<script src="../tuner-ui.js"></script>
+<script>
+(function () {
+  var STATIONS = [
+    { id: 'cfrb', name: 'NewsTalk 1010', band: '1010 AM', tag: "Toronto's news, traffic and weather, all day.", color: '#10307a', status: 'Live \u00b7 64 kbps MP3', loud: .48 },
+    { id: 'kiss', name: 'KISS 92.5', band: '92.5 FM', tag: "Toronto's hit music station.", color: '#e11d74', status: 'Live \u00b7 48 kbps AAC', loud: .78 }
+  ];
+
+  var tpl = document.getElementById('tuner-tpl');
+  var rigs = [];
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function clockText() { var d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function nextText() { return new Date().getHours() < 10 ? 'KISS 92.5 at 10:00' : 'NewsTalk 1010 at 07:00'; }
+
+  function mount(slot, index) {
+    var root = tpl.content.firstElementChild.cloneNode(true);
+    slot.appendChild(root);
+    var q = function (s) { return root.querySelector(s); };
+    var rig = { root: root, level: 0, playing: true, station: STATIONS[index % 2] };
+
+    STATIONS.forEach(function (s, i) {
+      var b = document.createElement('button');
+      b.className = 'preset';
+      b.dataset.id = s.id;
+      b.innerHTML = '<span class="preset-n">' + (i + 1) + '</span><span class="preset-name">' + s.name + '</span><span class="preset-band">' + s.band + '</span>';
+      b.addEventListener('click', function () { tune(s); });
+      q('[data-presets]').appendChild(b);
+    });
+    var add = document.createElement('button');
+    add.className = 'preset preset-add';
+    add.innerHTML = '<span class="preset-n">+</span><span class="preset-name">Add station</span><span class="preset-band">Name and stream URL</span>';
+    q('[data-presets]').appendChild(add);
+
+    function tune(s) {
+      rig.station = s;
+      root.style.setProperty('--station', s.color);
+      q('[data-band]').textContent = s.band;
+      q('[data-tag]').textContent = s.tag;
+      q('[data-status]').textContent = rig.playing ? s.status : 'Stopped';
+      var ps = root.querySelectorAll('.preset[data-id]');
+      for (var i = 0; i < ps.length; i++) ps[i].classList.toggle('is-active', ps[i].dataset.id === s.id);
+      TunerUI.setNeedle(root, s.band);
+      TunerUI.setName(q('[data-name]'), s.name);
+    }
+
+    q('[data-play]').addEventListener('click', function () {
+      rig.playing = this.getAttribute('aria-pressed') !== 'true';
+      this.setAttribute('aria-pressed', rig.playing);
+      root.classList.toggle('is-playing', rig.playing);
+      q('.status-led').classList.toggle('live', rig.playing);
+      q('[data-status]').textContent = rig.playing ? rig.station.status : 'Stopped';
+    });
+    q('[data-sched]').addEventListener('click', function () {
+      var on = this.getAttribute('aria-pressed') !== 'true';
+      this.setAttribute('aria-pressed', on);
+      q('.sched-label').textContent = on ? 'Schedule on' : 'Schedule off';
+      q('[data-next]').textContent = on ? nextText() : '';
+    });
+    var vol = q('[data-vol]'), out = q('[data-volout]');
+    vol.id = 'vol-' + index; q('.volume label').setAttribute('for', vol.id);
+    vol.addEventListener('input', function () { out.value = vol.value; });
+    root.querySelectorAll('[data-tone]').forEach(function (input) {
+      var kind = input.getAttribute('data-tone');
+      var display = root.querySelector('[data-toneout="' + kind + '"]');
+      input.id = kind + '-' + index;
+      input.closest('.tone').querySelector('label').setAttribute('for', input.id);
+      input.addEventListener('input', function () { display.value = input.value; });
+    });
+
+    TunerUI.init(root);
+    q('[data-next]').textContent = nextText();
+    q('[data-clock]').textContent = clockText();
+    tune(rig.station);
+    rigs.push(rig);
+  }
+
+  document.querySelectorAll('.slot').forEach(mount);
+
+  setInterval(function () {
+    var t = clockText();
+    document.querySelectorAll('[data-clock]').forEach(function (c) { c.textContent = t; });
+  }, 1000);
+
+  // Simulated programme level and spectrum, so the instruments here read
+  // like the real ones will once a stream is playing.
+  var spectrum = new Uint8Array(256);
+  function fakeSpectrum(out, t, gain) {
+    for (var i = 0; i < out.length; i++) {
+      var f = i / out.length;
+      var tilt = Math.exp(-f * 2.6) * 230;
+      var wobble = Math.sin(t * 2.4 + f * 22) * 26 + Math.sin(t * 6.1 + f * 8) * 18;
+      var hiss = Math.random() * 20;
+      var bandLimit = f > 0.55 ? Math.max(0, 1 - (f - 0.55) * 6) : 1;
+      out[i] = Math.max(0, Math.min(255, (tilt + wobble + hiss) * gain * bandLimit));
+    }
+  }
+
+  var last = 0;
+  requestAnimationFrame(function loop(ts) {
+    requestAnimationFrame(loop);
+    var dt = last ? Math.min(ts - last, 250) : 16;
+    last = ts;
+    rigs.forEach(function (rig, i) {
+      var t = ts / 1000 + i * 1.7;
+      var swing = (Math.sin(t * 2.3) + Math.sin(t * 5.1) * .6 + Math.sin(t * 11.7) * .3) / 1.9;
+      var target = rig.playing ? Math.max(0, Math.min(1, rig.station.loud + swing * .22)) : 0;
+      rig.level = Signal.vuBallistics(rig.level, target, dt);
+      TunerUI.setLevel(rig.root, rig.level);
+      var quiet = !rig.playing && rig.level < 0.004;
+      if (quiet !== rig.quiet) {
+        rig.quiet = quiet;
+        rig.root.classList.toggle('is-quiet', quiet);
+        if (quiet) TunerUI.clearScope(rig.root);
+      }
+      if (rig.playing) {
+        fakeSpectrum(spectrum, t, 0.5 + rig.level * 0.6);
+        TunerUI.drawBars(rig.root, spectrum);
+      } else if (!quiet) {
+        TunerUI.drawBars(rig.root, null);
+      }
+    });
+  });
+})();
+</script>

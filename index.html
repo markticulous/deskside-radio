@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en" data-theme="dial">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deskside Radio</title>
+<!-- The ICO carries seven hand-tuned frames; the small ones drop the fine
+     ticks and the wordmark because they turn to mush below 32px. -->
+<link rel="icon" href="favicon.ico" sizes="16x16 24x24 32x32 48x48 64x64 128x128 256x256">
+<link rel="icon" href="icon-small.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-256.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@1,500&family=IBM+Plex+Mono:wght@400;600&family=Oswald:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;500;600;700&family=Syne:wght@700;800&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body class="app">
+
+<main class="tuner" id="tuner">
+  <header class="tuner-bar">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <span class="brand-name">Deskside Radio</span>
+      <span class="byline" data-byline="plate">
+        <span class="byline-mark">M</span>
+        <span class="byline-by">A</span>
+        <span class="byline-name">Markticulous</span>
+        <span class="byline-suffix">build</span>
+      </span>
+    </div>
+    <time class="clock" id="clock">--:--</time>
+    <button class="sched-chip" id="schedToggle" aria-pressed="true" title="Turn the schedule on or off">
+      <span class="sched-led"></span>
+      <span class="sched-label" id="schedLabel">Schedule on</span>
+      <span class="sched-next" id="schedNext"></span>
+    </button>
+    <button class="icon-btn shortcut-btn" id="makeShortcut" aria-label="Put a shortcut on the desktop" title="Put a shortcut on the desktop">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="12" rx="1.6"/><path d="M9 20h6M12 16v4"/><path d="M12 7v5M12 12l-2.2-2.2M12 12l2.2-2.2"/>
+      </svg>
+    </button>
+    <button class="icon-btn settings-btn" id="openSettings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>
+    </button>
+  </header>
+
+  <section class="display">
+    <div class="display-band" id="band"></div>
+    <h1 class="display-name" id="name"></h1>
+    <p class="display-tag" id="tag"></p>
+    <div class="display-status"><span class="status-led" id="led"></span><span class="status-text" id="status">Idle</span></div>
+
+    <div class="dial" aria-hidden="true">
+      <div class="dial-reel">
+        <div class="scale" data-scale="am">
+          <span class="scale-badge">AM</span>
+          <div class="scale-ticks"></div>
+          <span class="needle"></span>
+          <div class="scale-labels"></div>
+        </div>
+        <div class="scale" data-scale="fm">
+          <span class="scale-badge">FM</span>
+          <div class="scale-ticks"></div>
+          <span class="needle"></span>
+          <div class="scale-labels"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="meter" aria-hidden="true">
+      <div class="meter-face"></div>
+      <div class="meter-bar"></div>
+      <div class="meter-scale"></div>
+      <canvas class="scope"></canvas>
+      <span class="meter-blind">meter off &middot; stream blocks analysis</span>
+    </div>
+  </section>
+
+  <nav class="presets" id="presets" aria-label="Stations"></nav>
+
+  <footer class="controls">
+    <button class="play-btn" id="play" aria-pressed="false" aria-label="Play or stop">
+      <svg class="ic-play" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12-7.5z"/></svg>
+      <svg class="ic-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="5.5" y="5.5" width="13" height="13" rx="1"/></svg>
+      <span class="btn-text"></span>
+    </button>
+    <div class="fader volume">
+      <label for="volume">Volume</label>
+      <input type="range" id="volume" min="0" max="100" value="60">
+      <output id="volumeOut" for="volume">60</output>
+    </div>
+    <div class="fader tone">
+      <label for="bass">Bass</label>
+      <input type="range" id="bass" min="-12" max="12" step="1" value="0">
+      <output id="bassOut" for="bass">0</output>
+    </div>
+    <div class="fader tone">
+      <label for="treble">Treble</label>
+      <input type="range" id="treble" min="-12" max="12" step="1" value="0">
+      <output id="trebleOut" for="treble">0</output>
+    </div>
+  </footer>
+
+  <button class="start-overlay" id="startOverlay" hidden>
+    <span class="start-title">Tap to start</span>
+    <span class="start-sub" id="startSub">Browsers need one click before audio can play.</span>
+  </button>
+</main>
+
+<dialog class="drawer" id="settings">
+  <form method="dialog" class="drawer-form" id="settingsForm">
+    <header class="drawer-head">
+      <div class="drawer-title">
+        <h2>Settings</h2>
+        <span class="app-version">Deskside Radio&nbsp;&nbsp;<i class="ver-dot" aria-hidden="true"></i>&nbsp;&nbsp;<span id="appVersion">v1.0.0</span></span>
+      </div>
+      <button type="submit" value="close" class="drawer-x" aria-label="Close">&times;</button>
+    </header>
+
+    <div class="drawer-tabs" role="tablist" id="drawerTabs">
+      <button type="button" class="dtab" role="tab" data-pane="stations" id="tabStations" aria-selected="true" aria-controls="paneStations">
+        <span class="dtab-label">Stations</span><span class="dtab-n" id="countStations"></span>
+      </button>
+      <button type="button" class="dtab" role="tab" data-pane="schedule" id="tabSchedule" aria-selected="false" aria-controls="paneSchedule">
+        <span class="dtab-label">Schedule</span><span class="dtab-n" id="countSchedule"></span>
+      </button>
+      <button type="button" class="dtab" role="tab" data-pane="look" id="tabLook" aria-selected="false" aria-controls="paneLook">
+        <span class="dtab-label">Look</span><span class="dtab-n"></span>
+      </button>
+      <button type="button" class="dtab" role="tab" data-pane="data" id="tabData" aria-selected="false" aria-controls="paneData">
+        <span class="dtab-label">Data</span><span class="dtab-n"></span>
+      </button>
+      <span class="dtab-ink" aria-hidden="true"></span>
+    </div>
+
+    <div class="drawer-body">
+
+      <section class="pane" id="paneStations" role="tabpanel" aria-labelledby="tabStations">
+        <div class="autoplay">
+          <label class="switch">
+            <input type="checkbox" id="autoplayOn">
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">Play on launch</span>
+          </label>
+          <select class="in autoplay-pick" id="autoplayStation" aria-label="Station to play when the app opens"></select>
+        </div>
+        <p class="hint" id="autoplayHint" hidden>Browsers need one click before audio can play. When yours blocks the start you get the usual tap panel, already tuned to this station.</p>
+
+        <div class="finder" id="finder">
+          <button type="button" class="finder-toggle" id="finderToggle" aria-expanded="false" aria-controls="finderBody">
+            <span class="finder-icon" aria-hidden="true">&#9906;</span>
+            <span class="finder-title">Find a station</span>
+            <span class="finder-chev" aria-hidden="true">&#9654;</span>
+          </button>
+          <div class="finder-body" id="finderBody" hidden>
+            <div class="finder-fields">
+              <label class="finder-field">
+                <span>City</span>
+                <input class="in" type="text" id="cityInput" placeholder="Toronto" autocomplete="off">
+                <ul class="finder-menu" id="cityMenu" hidden></ul>
+              </label>
+              <label class="finder-field">
+                <span>Station name or frequency</span>
+                <input class="in" type="text" id="stationInput" placeholder="1010, KISS, CBC" autocomplete="off">
+              </label>
+            </div>
+            <p class="finder-status" id="finderStatus">Pick a city, then search by name or frequency.</p>
+            <ul class="finder-results" id="finderResults"></ul>
+            <p class="hint">Listings come from radio-browser.info; the city lookup uses open-meteo. Direct MP3 and AAC streams play here. Entries flagged as HLS can still be added, but may not play.</p>
+          </div>
+        </div>
+
+        <div class="cards" id="stationRows"></div>
+        <button type="button" class="ghost" id="addStation">+ Add station</button>
+      </section>
+
+      <section class="pane" id="paneSchedule" role="tabpanel" aria-labelledby="tabSchedule" hidden>
+        <p class="hint">End time is exclusive: 07:00 to 10:00 plays until 09:59. A slot may run past midnight. Between slots the current station keeps playing. Whatever a slot applies wins over the settings in use at the time.</p>
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab is-active" data-group="weekday" role="tab">Weekdays</button>
+          <button type="button" class="tab" data-group="weekend" role="tab">Weekend</button>
+        </div>
+        <div class="cards" id="slotRows"></div>
+        <button type="button" class="ghost" id="addSlot">+ Add time slot</button>
+      </section>
+
+      <section class="pane" id="paneLook" role="tabpanel" aria-labelledby="tabLook" hidden>
+        <div class="themes" id="themeCards"></div>
+      </section>
+
+      <section class="pane" id="paneData" role="tabpanel" aria-labelledby="tabData" hidden>
+        <div class="pane-block">
+          <h3>Backup</h3>
+          <p class="hint">A settings file holds the stations, the schedule, the theme and the sound settings. Nothing else leaves this machine.</p>
+          <div class="btn-row">
+            <button type="button" class="ghost" id="exportBtn">Export settings</button>
+            <label class="ghost file-btn">Import settings <input type="file" id="importFile" accept="application/json" hidden></label>
+          </div>
+        </div>
+        <div class="pane-block">
+          <h3>Updates</h3>
+          <p class="hint">Once a day the app asks GitHub whether a newer version has been published. It sends nothing but the request itself &mdash; no settings, no listening history &mdash; and never installs anything on its own.</p>
+          <label class="switch">
+            <input type="checkbox" id="versionCheckOn">
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">Check for new versions</span>
+          </label>
+          <p class="update-line" id="updateLine"></p>
+        </div>
+        <div class="pane-block">
+          <h3>Reset</h3>
+          <p class="hint">Puts everything back to a fresh install: the two original stations, an empty schedule, no remembered city, and the sound settings at their middle.</p>
+          <button type="button" class="ghost danger" id="resetBtn">Reset to defaults</button>
+        </div>
+      </section>
+
+    </div>
+
+    <footer class="drawer-foot">
+      <span class="save-msg" id="saveMsg"></span>
+      <button type="button" class="primary" id="saveBtn">Close</button>
+    </footer>
+  </form>
+</dialog>
+
+<dialog class="confirm" id="confirmBand">
+  <form method="dialog" class="confirm-box">
+    <h2>No frequency set</h2>
+    <p id="bandMissingList"></p>
+    <p>Without one the dial has nothing to point at and the AM or FM badge stays dark. Enter it as <strong>99.1 FM</strong> or <strong>1010 AM</strong>. Internet-only stations genuinely have no frequency, and saving without one is fine.</p>
+    <div class="confirm-actions">
+      <button type="submit" value="fix" class="ghost">Let me add it</button>
+      <button type="submit" value="save" class="primary">Save anyway</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="confirm" id="confirmReset">
+  <form method="dialog" class="confirm-box">
+    <h2>Reset to defaults?</h2>
+    <p>Every station you have added goes, along with the whole schedule, the remembered city, and your volume and tone settings. NewsTalk 1010 and KISS 92.5 come back. This cannot be undone.</p>
+    <div class="confirm-actions">
+      <button type="submit" value="cancel" class="ghost">Cancel</button>
+      <button type="submit" value="reset" class="primary danger">Reset everything</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Chrome will not let a page save a .url under its own name, so the file
+     arrives renamed and the listener has to be told what to do with it. -->
+<dialog class="confirm" id="shortcutHelp">
+  <form method="dialog" class="confirm-box">
+    <h2>Shortcut downloaded</h2>
+    <p>Your browser will not save a shortcut file under its own name &mdash; it renames it, because a shortcut can point anywhere. Two ways to finish:</p>
+    <ol class="help-steps">
+      <li><strong>Rename it.</strong> In your Downloads folder, rename <code>Deskside Radio.download</code> to <code>Deskside&nbsp;Radio.url</code>, then drag it to your Desktop.</li>
+      <li><strong>Or run the helper</strong> in the app folder, which makes the shortcut and puts it on the Desktop for you:
+        <span class="help-path"><code id="shortcutCmd"></code></span>
+      </li>
+    </ol>
+    <figure class="help-icon">
+      <img id="shortcutIcon" width="48" height="48" alt="">
+      <figcaption>Either way the Desktop icon looks like this &mdash; the <span id="shortcutTheme"></span> theme you have on now.</figcaption>
+    </figure>
+    <div class="confirm-actions">
+      <button type="button" class="ghost" id="shortcutCopy">Copy command</button>
+      <button type="submit" value="ok" class="primary">Got it</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="signal.js"></script>
+<script src="radio-directory.js"></script>
+<script src="scheduler.js"></script>
+<script src="tuner-ui.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
