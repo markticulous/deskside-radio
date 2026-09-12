@@ -71,7 +71,7 @@ No dependencies, no test runner to install — Node's own.
 
 Deskside Radio is a player, not a broadcaster. It hosts, caches, rebroadcasts and re-encodes nothing: it points an `<audio>` element at a URL you give it, exactly as a browser tab would.
 
-It ships with two Toronto stations as a starting point — **NewsTalk 1010 (CFRB)** and **KISS 92.5** — using the same public stream endpoints those stations' own web players use. Those streams, their content and their trademarks belong to their broadcasters, who are not affiliated with this project and have not endorsed it. Any station you add yourself is likewise the property of whoever runs it.
+It ships with three Toronto stations as a starting point — **NewsTalk 1010 (CFRB)**, **CBC Radio 1 Toronto (CBLA-FM)** and **KISS 92.5** — using the same public stream endpoints those stations' own web players use. CBC's is an HLS playlist: Edge and Safari play it natively, Chrome does not. Those streams, their content and their trademarks belong to their broadcasters, who are not affiliated with this project and have not endorsed it. Any station you add yourself is likewise the property of whoever runs it.
 
 If you operate one of these streams and would rather it were not listed as a default, open an issue and it will be removed.
 
