@@ -63,6 +63,10 @@ node --test tests/*.test.js
 
 No dependencies, no test runner to install — Node's own.
 
+## Licence
+
+[MIT](LICENSE). The code is yours to use, change and ship. The licence covers this project only — not the streams it plays, which belong to the broadcasters below.
+
 ## Streams and attribution
 
 Deskside Radio is a player, not a broadcaster. It hosts, caches, rebroadcasts and re-encodes nothing: it points an `<audio>` element at a URL you give it, exactly as a browser tab would.
