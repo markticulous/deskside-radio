@@ -39,7 +39,11 @@
     return DIRECTORY + '?' + q.join('&');
   }
 
-  // The player is a plain audio element, so only direct streams work here.
+  /* What the audio element is being handed. HLS used to belong on the same
+     side of this line as .pls and .m3u — it does not any more: current
+     desktop browsers, Chrome included, play an HLS playlist off the element
+     with no library. A .pls or .m3u is still a text file listing streams
+     rather than a stream, so it genuinely has nothing to play. */
   function streamKind(url, hlsFlag) {
     if (hlsFlag) return 'hls';
     var path = String(url || '').split('?')[0].toLowerCase();
@@ -102,7 +106,7 @@
       url: url,
       colour: pickColour(index || 0),
       kind: kind,
-      playable: kind === 'direct',
+      playable: kind !== 'playlist',
       distanceKm: typeof result.geo_distance === 'number' ? Math.round(result.geo_distance / 1000) : null,
       lat: typeof result.geo_lat === 'number' ? result.geo_lat : null,
       lon: typeof result.geo_long === 'number' ? result.geo_long : null,

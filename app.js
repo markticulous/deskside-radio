@@ -1467,14 +1467,14 @@
       if (s.band) meta.push(s.band);
       if (s.tag) meta.push(s.tag);
       if (typeof s.distanceKm === 'number') meta.push(s.distanceKm + ' km away');
-      if (!s.playable) meta.push(s.kind === 'hls' ? 'HLS, may not play here' : 'playlist file, may not play');
+      if (!s.playable) meta.push('playlist file, may not play');
       li.appendChild(span('result-name', s.name || 'Unnamed station'));
       li.appendChild(span('result-meta', meta.join(' \u00b7 ')));
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'result-add';
       btn.textContent = s.playable ? 'Add station' : 'Add anyway';
-      btn.title = s.playable ? '' : 'The directory flags this as HLS, which may not play in this browser.';
+      btn.title = s.playable ? '' : 'This link is a playlist file listing streams, not a stream, so it may not play. Adding it is still worth a try.';
       btn.addEventListener('click', function () {
         if (!addFoundStation(s)) return;
         li.classList.add('is-added');
