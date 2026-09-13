@@ -422,15 +422,7 @@
 
      Both sides of this are shared with the preset buttons, which had the
      same twitch on a name a few pixels too wide. */
-  var MAX_SQUEEZE_EM = 0.03;
-  /* And below a character of travel, moving is worse than not moving. The
-     eye reads a few pixels of drift as a fault rather than as a scroll, and
-     slowing it down only makes it stranger: what it shows is one more
-     letter, and what it costs is a button that never sits still. Somewhere
-     with an ellipsis can afford to stand still and lose that letter, so it
-     does. A readout that clips instead of eliding cannot -- a sheared glyph
-     reads as breakage -- so it moves however short the distance. */
-  var MIN_SCROLL_EM = 0.9;
+  var MAX_SQUEEZE_EM = 0.04;
 
   function clearFit(el) {
     if (!el) return;
@@ -476,7 +468,13 @@
       el.style.letterSpacing = ((parseFloat(cs.letterSpacing) || 0) - squeeze).toFixed(3) + 'px';
       return;
     }
-    if (over < MIN_SCROLL_EM * px && cs.textOverflow === 'ellipsis') return;
+    /* Anything the tracking cannot absorb moves. There was a floor here,
+       below which a short overrun was left to the ellipsis on the grounds
+       that a few pixels of drift reads as a fault -- but an ellipsis that
+       never resolves reads as a fault too, and worse, because it is the
+       app telling you there is more and then not showing it. The twitch
+       that floor was guarding against was a stale measurement, and that is
+       fixed where it belongs. */
     startScroll(el, over);
   }
 

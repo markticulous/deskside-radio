@@ -827,8 +827,13 @@
     var gap = parseFloat(cs.rowGap) || 0;
     var rowH = first.offsetHeight;
     if (!(want > 0) || !(rowH > 0)) return;
+    /* The room left for a pressed key to move down into is padding on the
+       scroll box, so it counts as content. Left out of the height, a list
+       that fits exactly overflows by those few pixels and shows a
+       scrollbar for a row that is entirely visible. */
+    var press = parseFloat(cs.paddingBottom) || 0;
     var rows = Math.max(1, Math.round((want + gap) / (rowH + gap)));
-    el.presets.style.setProperty('--presets-max', (rows * rowH + (rows - 1) * gap) + 'px');
+    el.presets.style.setProperty('--presets-max', (rows * rowH + (rows - 1) * gap + press) + 'px');
   }
 
   /* Anything that changes how wide a name renders has to re-run the
