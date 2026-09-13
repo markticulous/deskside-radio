@@ -22,6 +22,8 @@
     ],
     schedule: { weekday: [], weekend: [] },
     schedulerEnabled: false,
+    // Where the window was left. Filled in once there is one to remember.
+    windowBox: null,
     theme: 'dial',
     intendedPlaying: false,
     currentStationId: 'cfrb',
@@ -562,6 +564,13 @@
     }, delay);
   }
 
+  /* Dragging a window fires no event of any kind, so where it has got to
+     is read on the heartbeat that is already running rather than on a
+     timer of its own, and once more on the way out. Both are cheap: the
+     box is only written when it has actually changed. */
+  setInterval(rememberBox, 5000);
+  window.addEventListener('pagehide', rememberBox);
+
   // Heartbeat: currentTime must keep advancing while we intend to play.
   setInterval(function () {
     if (!state.intendedPlaying || status === 'reconnecting' || retryTimer || awaitingTap) return;
@@ -865,7 +874,7 @@
          round, a name that just fits is measured against a column that is
          about to get narrower. */
       snapPresetRows();
-      fitWindow();
+      if (sizedOnce) fitWindow();
       var names = el.presets.querySelectorAll('.preset-name');
       // Cleared for all of them first, so each is measured against the
       // button rather than against its own previous fit.
@@ -946,9 +955,57 @@
     return frame > 0 && frame < 60;
   }
 
+  /* Where the window was when it was last shut, so it opens there again.
+     Chrome will not do this for us: an --app window opened on the same
+     profile it was closed from comes up in the top-left corner at a size
+     of its own choosing. That was measured rather than assumed -- a window
+     moved to 420,260 at 760x520 and closed reopened at 10,10 at 1265x1372. */
+  function rememberBox() {
+    if (!windowIsOurs()) return;
+    var box = {
+      x: window.screenX, y: window.screenY,
+      w: window.outerWidth, h: window.outerHeight
+    };
+    // Minimised, or caught mid-drag, is not a position worth keeping.
+    if (!(box.w > 200 && box.h > 200)) return;
+    var had = state.windowBox;
+    if (had && had.x === box.x && had.y === box.y && had.w === box.w && had.h === box.h) return;
+    state.windowBox = box;
+    save();
+  }
+
+  /* Clamped to the screen in front of the user now, not the one the box
+     was saved on: a second monitor that has since been unplugged would
+     otherwise put the window somewhere it cannot be reached. */
+  function restoreBox() {
+    var box = state.windowBox;
+    if (!box || !windowIsOurs()) return false;
+    var w = Math.min(box.w, screen.availWidth);
+    var h = Math.min(box.h, screen.availHeight);
+    var x = Math.max(0, Math.min(box.x, screen.availWidth - w));
+    var y = Math.max(0, Math.min(box.y, screen.availHeight - h));
+    try {
+      window.resizeTo(w, h);
+      window.moveTo(x, y);
+    } catch (e) { return false; }
+    return true;
+  }
+
   function fitWindow(pass) {
-    if (!windowIsOurs() || !el.tuner) return;
+    if (!mayFit || keepBox || !windowIsOurs() || !el.tuner) return;
     pass = pass || 0;
+
+    /* Measured with the scrollbar suppressed, which is what took this from
+       three resizes to one. The first measurement used to be taken with a
+       scrollbar present; that narrows the tuner, which makes it taller than
+       it will be once the bar goes, so the window was sized to a height it
+       then had to be corrected away from. Correcting it in front of the
+       user is the flicker. Take the bar out of the measurement and the
+       first answer is the right one. */
+    var root = document.documentElement;
+    var hadOverflow = root.style.overflow;
+    root.style.overflow = 'hidden';
+
     var cs = getComputedStyle(document.body);
     var padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
     var padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
@@ -961,17 +1018,71 @@
     var w = Math.min(Math.ceil(cap + padX) + frameW + 1, screen.availWidth);
     var h = Math.min(Math.ceil(el.tuner.offsetHeight + padY) + frameH + 1, screen.availHeight);
 
+    root.style.overflow = hadOverflow;
+
     if (Math.abs(w - window.outerWidth) > 1 || Math.abs(h - window.outerHeight) > 1) {
       try { window.resizeTo(w, h); } catch (e) { return; }
     }
 
-    /* Settle rather than measure once. The first measurement is taken with
-       a scrollbar still present, which narrows the tuner and so makes it
-       taller than it will be once the bar goes; and a resize does not land
-       within a frame, so re-reading immediately gets the old size back.
-       Three passes is comfortably enough to converge, and each one is a
-       no-op when nothing moved. */
-    if (pass < 3) setTimeout(function () { fitWindow(pass + 1); }, 120);
+    /* One confirming pass rather than three. A resize does not land within
+       a frame, so a height that follows from the new width can only be read
+       afterwards; when nothing moved this costs a measurement and resizes
+       nothing, which is the usual case now. */
+    if (pass < 1) setTimeout(function () { fitWindow(pass + 1); }, 120);
+    else rememberBox();
+  }
+
+  /* The window is sized once on opening and again on every theme change,
+     and those want different things.
+
+     Opening: a saved box is the size and the place the user left the
+     window in, possibly one they chose by hand, so it is restored as it
+     stands and nothing is fitted over the top of it.
+
+     Opening for the first time, with no box to restore, is the only time
+     the fit is seen. It waits for the webfonts before it measures. The
+     radio is genuinely shorter in a fallback face -- around eighty pixels
+     shorter, measured -- so fitting before they land sizes the window to a
+     height it is about to grow out of, and the correction is a second
+     resize in front of the user. A tenth of a second at the size the
+     shortcut asked for, and then one move, is what this is buying.
+
+     A theme change always fits: the height belongs to the theme, and the
+     saved box belongs to the one being left behind. */
+  var sizedOnce = false;
+  /* True while the window stands at the box the user left it in. The
+     preset measurement settles over the first second and asks for a fit on
+     each pass, so without this the restored box would be quietly fitted
+     away a few hundred milliseconds after being restored. A theme change
+     clears it: the height then belongs to the new theme rather than to the
+     window the old one was closed in. */
+  var keepBox = false;
+  /* Nothing resizes the window before the layout has settled once. */
+  var mayFit = false;
+
+  function sizeWindow() {
+    if (sizedOnce) { keepBox = false; mayFit = true; fitWindow(); return; }
+    sizedOnce = true;
+    if (restoreBox()) { keepBox = true; mayFit = true; return; }
+
+    /* Nothing touches the window until the layout has stopped changing
+       under it. Three things move the height during the first second --
+       the webfonts arriving, the preset names being measured against them,
+       and the preset list snapping to whole rows -- and each one used to
+       drag the window with it. Waiting for the fonts and then for the
+       measurement to settle costs a second at the size the shortcut asked
+       for, and buys a single resize instead of three.
+
+       The failsafe fires regardless: a webfont that never resolves must
+       not leave the window unfitted for ever. Both paths land on the same
+       call, and the second one finds nothing to do. */
+    var fitNow = function () { mayFit = true; fitWindow(); };
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () { setTimeout(fitNow, 1300); });
+    } else {
+      setTimeout(fitNow, 1300);
+    }
+    setTimeout(fitNow, 2600);
   }
 
   function applyLook() {
@@ -983,7 +1094,7 @@
       TunerUI.setName(el.name, st.name);
     });
     // After the theme has painted, so the new height is the one measured.
-    requestAnimationFrame(function () { fitWindow(); });
+    requestAnimationFrame(function () { sizeWindow(); });
     measurePresetNames();
   }
 
