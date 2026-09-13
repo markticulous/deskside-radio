@@ -16,6 +16,25 @@ To put it on the Desktop, double-click **Create Desktop Shortcut.cmd** in the sa
 
 With no argument it uses the analogue dial icon. The app's own shortcut button shows the exact line to run, because a web page is not allowed to write a shortcut file itself — Chrome renames `.url` downloads to `.download`, on the grounds that such a file can point anywhere.
 
+### Starting without a click
+
+Browsers refuse to start audio until something on the page has been clicked, which is why opening `index.html` normally with **Play on launch** switched on gets you a *Tap to start* panel rather than a radio.
+
+The shortcut that script writes gets around it. Rather than handing the page to your everyday browser, it launches Chrome — or Edge, on a machine without Chrome — as a window of its own with the autoplay policy lifted, so the radio is playing before you have touched anything:
+
+```
+chrome.exe --app="file:///.../index.html"
+           --autoplay-policy=no-user-gesture-required
+           --user-data-dir="%LOCALAPPDATA%\DesksideRadio\profile"
+           --allow-file-access-from-files
+```
+
+The separate `--user-data-dir` is not optional: a browser reads these flags once, at startup, so one that is already running would take the page and quietly drop them.
+
+That separate profile is also why the radio opens with nothing in it the first time. To bring your stations, schedule and theme across, export them from **Settings → Data → Export settings** and leave the resulting `deskside-radio-settings.json` beside `index.html`. The first launch reads it once and then keeps its own settings from there. It doubles as a way to ship a machine a ready-made setup.
+
+Two things to know: opening the page the ordinary way still works and still shows the tap panel, and double-clicking the shortcut while the radio is already open gives you a second window playing over the first.
+
 ## What it does
 
 - **Stations.** Any stream URL with a name, frequency, colour and tagline. A built-in finder looks up stations near a city through [radio-browser](https://www.radio-browser.info/), which is public and key-free.
@@ -23,6 +42,7 @@ With no argument it uses the analogue dial icon. The app's own shortcut button s
 - **Themes.** Analogue dial, broadcast console, Rams minimal, editorial. Each has its own desktop icon.
 - **Watchdog.** A frozen media clock plus a starved buffer means the stream died; it reconnects with exponential backoff rather than sitting silent.
 - **Memory.** Theme, station, volume and per-station tone come back exactly as you left them — unless a schedule slot covering that moment says otherwise, in which case the schedule wins.
+- **Play on launch.** Starts a station the moment the app opens, with no click at all when it is opened through the shortcut above.
 
 Everything is kept in `localStorage` on the machine it runs on. Nothing is uploaded.
 
