@@ -1271,6 +1271,37 @@
     }
   }
 
+  /* Remove sits one small button away from the toggle that opens the card,
+     and a slot carries times, a station and up to four applied settings
+     with no undo behind it. So it asks, and the question names the slot
+     rather than saying "are you sure" about nothing in particular. */
+  var pendingSlotDelete = null;
+
+  function askDeleteSlot(group, index) {
+    var slot = (draft.schedule[group] || [])[index];
+    if (!slot) return;
+    pendingSlotDelete = { group: group, index: index };
+    var st = draft.stations.filter(function (s) { return s.id === slot.stationId; })[0];
+    $('slotDeleteWhat').textContent =
+      (slot.start || '--:--') + ' to ' + (slot.end || '--:--') +
+      (st && st.name ? ', ' + st.name : '') +
+      ', on ' + (group === 'weekend' ? 'weekends' : 'weekdays') + '.';
+    $('confirmSlot').showModal();
+  }
+
+  $('confirmSlot').addEventListener('close', function () {
+    var target = pendingSlotDelete;
+    pendingSlotDelete = null;
+    // Esc and "Keep it" both land here; only the delete button acts.
+    if (this.returnValue !== 'delete' || !target) return;
+    var slots = draft.schedule[target.group] || [];
+    if (target.index >= slots.length) return;
+    slots.splice(target.index, 1);
+    openSlot = null;
+    renderSlotRows();
+    renderCounts();
+  });
+
   function renderSlotRows(errors) {
     var box = $('slotRows');
     box.innerHTML = '';
@@ -1399,7 +1430,7 @@
       card.querySelector('.card-top').addEventListener('click', function (e) {
         var hit = e.target.closest('[data-act]');
         var act = hit ? hit.dataset.act : 'toggle';
-        if (act === 'del') { slots.splice(i, 1); openSlot = null; renderSlotRows(); renderCounts(); return; }
+        if (act === 'del') { askDeleteSlot(slotGroup, i); return; }
         openSlot = key === openSlot ? null : key;
         // Only the class changes, so the fold has something to animate.
         syncOpenSlots();
