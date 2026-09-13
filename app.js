@@ -1074,14 +1074,18 @@
     for (var t = 0; t < tabs.length; t++) tabs[t].classList.toggle('is-active', tabs[t].dataset.group === slotGroup);
   }
 
+  /* A line under each thumbnail, because a picture 78px tall cannot say what
+     a theme is and several of the names assume you already know. The note
+     describes what you are looking at rather than naming the movement it
+     came from. */
   var THEME_CARDS = [
-    { key: 'dial', label: 'Analogue dial' },
-    { key: 'console', label: 'Broadcast console' },
-    { key: 'rams', label: 'Rams minimal' },
-    { key: 'editorial', label: 'Editorial' },
-    { key: 'retro', label: 'Retro 8-bit' },
-    { key: 'departures', label: 'Departures board' },
-    { key: 'marconi', label: 'Marconi deco' }
+    { key: 'dial', label: 'Analogue dial', note: 'Walnut and brass, lit glass scale' },
+    { key: 'console', label: 'Broadcast console', note: 'Rack panel, amber readouts, LED meter' },
+    { key: 'rams', label: 'Rams minimal', note: 'Off-white and one orange marker' },
+    { key: 'editorial', label: 'Editorial', note: 'Big type, a colour for each station' },
+    { key: 'retro', label: 'Retro 8-bit', note: 'Four colours on an 8-pixel grid' },
+    { key: 'departures', label: 'Departures board', note: 'Split-flap, one letter per flap' },
+    { key: 'marconi', label: 'Marconi deco', note: 'Black lacquer, gold and a sunburst' }
   ];
   function renderThemeCards() {
     var box = $('themeCards');
@@ -1095,7 +1099,10 @@
           '<span class="tt"><span class="tt-cap"><b class="tt-call">CDSK</b><b class="tt-freq">68.0</b></span><span class="tt-glass"></span>' +
           '<span class="tt-keys"><i></i><i></i><i></i></span></span>' +
         '</span>' +
-        '<span class="theme-name">' + t.label + '</span>';
+        '<span class="theme-label">' +
+          '<span class="theme-name">' + escapeHtml(t.label) + '</span>' +
+          '<span class="theme-note">' + escapeHtml(t.note) + '</span>' +
+        '</span>';
       card.querySelector('input').checked = draft.theme === t.key;
       box.appendChild(card);
     });
