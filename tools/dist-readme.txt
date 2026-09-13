@@ -55,6 +55,12 @@ It uses Chrome, or Edge if Chrome is not installed. If you have neither,
 the shortcut still opens the radio in your normal browser, and you will
 just click once to start it.
 
+The window remembers where you put it. The first time, it sizes itself
+to the radio; after that it opens at the size and in the place you last
+closed it, including a size you set yourself by dragging the edge. Move
+it to the corner of the screen you want it in and it will be there
+tomorrow.
+
 To give the shortcut a different theme's icon, run the script with that
 theme's name:
 

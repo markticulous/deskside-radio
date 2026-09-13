@@ -35,6 +35,14 @@ That separate profile is also why the radio opens with nothing in it the first t
 
 Two things to know: opening the page the ordinary way still works and still shows the tap panel, and double-clicking the shortcut while the radio is already open gives you a second window playing over the first.
 
+### Window size and position
+
+Chrome does not remember where an `--app` window was: one moved to `420,260` at `760x520` and closed reopens at `10,10` at a size of Chrome's choosing, which was measured rather than assumed. So the app keeps its own box in `state.windowBox`, read off the heartbeat that is already running — dragging a window fires no event of any kind — and again on `pagehide`, and restores it on the next launch, clamped to the screen actually in front of the user.
+
+A restored box is left alone: it is the size the user chose, possibly by hand. Only a theme change refits, because the height then belongs to the new theme rather than to the window the old one was closed in.
+
+The fit itself used to resize the window three times while the user watched. Two causes: it measured with a scrollbar present, which narrows the tuner and so overstates its height, and it ran before the webfonts had landed, which understates it by about eighty pixels. It now measures with the scrollbar suppressed and does not run at all until `document.fonts.ready` has resolved and the preset measurement has settled, with a failsafe in case a font never arrives. First launch: one resize. Every launch after that: none, just the restore.
+
 ## What it does
 
 - **Stations.** Any stream URL with a name, frequency, colour and tagline. A built-in finder looks up stations near a city through [radio-browser](https://www.radio-browser.info/), which is public and key-free.
