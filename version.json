@@ -1,6 +1,6 @@
 {
-  "version": "1.2.2",
+  "version": "1.2.3",
   "released": "2026-09-13",
-  "notes": "The broadcast console readout is set in a real 14-segment face. Station names that will not fit now scroll instead of being shrunk, in every theme, and preset buttons no longer twitch on a name a few pixels too long. The analogue VU meter is lit from behind.",
+  "notes": "CBC Radio 1 no longer replays the last few seconds shortly after it starts. A new Model One theme, a window that opens where you left it without flickering, and a script to start the radio when you sign in to Windows.",
   "url": "https://github.com/Markticulous/deskside-radio/releases/latest"
 }
