@@ -1,9 +1,9 @@
 DESKSIDE RADIO
 ==============
 
-A radio for the corner of your desk. It plays internet streams from
-stations you choose, on a schedule if you want one, and it looks like a
-radio rather than a browser tab.
+A radio for the corner of your computer desktop. It plays internet
+streams from stations you choose, on a schedule if you want one, and it
+looks like a radio rather than a browser tab.
 
 It is a single web page. There is nothing to install, no account, no
 server, and nothing is sent anywhere.
