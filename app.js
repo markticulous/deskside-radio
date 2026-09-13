@@ -1256,8 +1256,14 @@
   function refreshRec() {
     if (!el.rec) return;
     var running = !!recorder;
-    el.rec.hidden = !(shiftHeld || running);
-    if (el.rec.hidden) return;
+    var up = shiftHeld || running;
+    /* Shown by width rather than by display, so the controls beside it
+       slide over instead of jumping. The attribute is dropped once, on the
+       first pass: it is in the markup so that a page with no script does
+       not offer a button that cannot work. */
+    el.rec.hidden = false;
+    el.rec.classList.toggle('is-up', up);
+    if (!up) { el.rec.disabled = true; return; }
     var why = running ? '' : recBlockedReason();
     el.rec.disabled = !!why;
     el.rec.title = why || (running ? 'Stop recording and save it' : 'Record this station');
@@ -1303,7 +1309,7 @@
       refreshRec();
       /* Said on the button, because the button is the only thing that is
          certainly in view: it is the thing that was just pressed. */
-      if (!el.rec.hidden && blob.size) {
+      if (el.rec.classList.contains('is-up') && blob.size) {
         el.recWord.textContent = 'SAVED';
         setTimeout(refreshRec, 1600);
       }
