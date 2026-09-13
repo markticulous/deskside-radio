@@ -2178,7 +2178,7 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 /* align-content:start or the rows stretch to whatever the tallest card in
    the row needs, which pushes the thumbnail down and leaves the names
    sitting at different heights along the row. */
-.theme-card { cursor: pointer; display: grid; gap: 8px; align-content: start; }
+.theme-card { cursor: pointer; display: grid; gap: 8px; align-content: start; position: relative; }
 .theme-card input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .theme-thumb {
   display: block; height: 78px; border-radius: 6px; overflow: hidden; position: relative;
@@ -2197,17 +2197,37 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
     0 5px 16px -5px color-mix(in srgb, var(--tint, var(--ui-fg)) 60%, transparent);
   transform: translateY(-2px);
 }
-.theme-card input:checked + .theme-thumb::before {
+/* On the card, not on the thumbnail. Three themes draw their own artwork
+   with ::before and ::after on .theme-thumb -- Model One's driver and
+   knob, Retro's frame, Marconi's rays -- and a badge that took those two
+   pseudo-elements replaced the artwork with a tick the moment the card was
+   selected. The card has its own to spare, and the thumbnail is its first
+   row, so the corner is the same corner. */
+/* The badge is drawn by the card and every --tint is declared on the
+   thumbnail inside it, so the card cannot see one. Rather than lift eight
+   palettes up a level, the badge is given the two values it needs. The
+   ink is dark on all of these but two, which are dark enough themselves
+   that a dark tick would disappear into them. */
+.theme-card:has([data-theme="dial"])       { --tint-badge: #c9a24a; }
+.theme-card:has([data-theme="console"])    { --tint-badge: #ffb000; }
+.theme-card:has([data-theme="rams"])       { --tint-badge: #f0842a; }
+.theme-card:has([data-theme="editorial"])  { --tint-badge: #e11d74; --tint-ink: #fff; }
+.theme-card:has([data-theme="retro"])      { --tint-badge: #f83800; --tint-ink: #fff; }
+.theme-card:has([data-theme="departures"]) { --tint-badge: #a9c23a; }
+.theme-card:has([data-theme="marconi"])    { --tint-badge: #c9a227; }
+.theme-card:has([data-theme="tivoli"])     { --tint-badge: #ff9d2e; }
+
+.theme-card:has(input:checked)::before {
   content: ""; position: absolute; right: 6px; top: 6px; width: 19px; height: 19px;
-  border-radius: 50%; background: var(--tint, var(--ui-fg));
-  box-shadow: 0 1px 3px rgba(0,0,0,.5); z-index: 3;
+  border-radius: 50%; background: var(--tint-badge, var(--ui-fg));
+  box-shadow: 0 1px 3px rgba(0,0,0,.5); z-index: 3; pointer-events: none;
 }
 /* Two borders of an empty box, turned: a glyph would be set in whatever
    face the thumbnail is using, and half of them have no tick worth
    having. */
-.theme-card input:checked + .theme-thumb::after {
+.theme-card:has(input:checked)::after {
   content: ""; position: absolute; right: 12px; top: 9px;
-  width: 5px; height: 9px; z-index: 4;
+  width: 5px; height: 9px; z-index: 4; pointer-events: none;
   border: solid var(--tint-ink, #16140d);
   border-width: 0 2px 2px 0;
   transform: rotate(43deg);
@@ -2431,33 +2451,56 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   box-shadow: 0 2px 5px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.75);
 }
 /* The knurl, cut to the rim. A background layer cannot be clipped to a
-   ring, so it borrows a pseudo-element that can be masked; .tt-cap is not
-   positioned, so this lands on the thumbnail like the knob it sits on. */
-.theme-thumb[data-theme="tivoli"] .tt-cap::after {
-  content: ""; position: absolute; right: 7px; top: 50%; margin-top: -17px;
-  width: 34px; height: 34px; border-radius: 50%; pointer-events: none;
+   ring, so it borrows a pseudo-element that can be masked. It hangs off
+   .tt-keys, which is not positioned, so it measures from the thumbnail and
+   lands on the knob. It cannot hang off .tt-cap: that one is positioned,
+   to put the band on the plate, and the knurl went with it. */
+.theme-thumb[data-theme="tivoli"] .tt-keys::after {
+  content: ""; position: absolute; right: 4px; top: 50%; margin-top: -20px;
+  width: 40px; height: 40px; border-radius: 50%; pointer-events: none;
   background: repeating-conic-gradient(from 0deg,
-    rgba(255,255,255,.66) 0deg 2.4deg, rgba(0,0,0,.46) 2.4deg 4.8deg);
-  -webkit-mask: radial-gradient(circle, transparent 0 63%, #000 66% 96%, transparent 99%);
-          mask: radial-gradient(circle, transparent 0 63%, #000 66% 96%, transparent 99%);
+    rgba(240,244,243,.8) 0deg 2.2deg, rgba(52,57,56,.62) 2.2deg 4.4deg);
+  /* Wider than the knob it rings, and masked to the band outside it. The
+     knob is the thumbnail's own ::after and paints after every descendant,
+     so a knurl drawn inside its edge is covered by it; drawn around the
+     edge it is a rim, which is what a knurl is.
+
+     closest-side, not the default. A radial-gradient with no size given
+     measures to the farthest corner, which on a square box is 1.41 times
+     the radius -- so a band written as 84% to 99% lands outside the circle
+     altogether and paints nothing at all. */
+  -webkit-mask: radial-gradient(circle closest-side, transparent 0 80%, #000 83% 100%);
+          mask: radial-gradient(circle closest-side, transparent 0 80%, #000 83% 100%);
 }
-.theme-thumb[data-theme="tivoli"] .tt { padding: 8px 48px 8px 64px; gap: 3px; }
+.theme-thumb[data-theme="tivoli"] .tt {
+  padding: 8px 48px 8px 64px; gap: 3px; grid-template-rows: 1fr auto;
+}
+/* On the plate, where the radio puts it, rather than on the wood above it.
+   The band reads as the small grey line over the station name, which is
+   the first thing anyone recognises about this front. */
 .theme-thumb[data-theme="tivoli"] .tt-cap {
-  color: #e8cdb1; font-weight: 400; letter-spacing: .1em; font-size: 6.5px;
+  position: absolute; left: 69px; top: 12px; z-index: 1;
+  color: #948d82; font-weight: 400; letter-spacing: .06em; font-size: 5.5px;
 }
 .theme-thumb[data-theme="tivoli"] .tt-glass {
   border-radius: 2px;
   background: linear-gradient(#f5f2ea, #e6e1d4);
   box-shadow: inset 0 1px 0 #fffefa, 0 0 0 1px rgba(52,24,10,.45);
 }
-/* The slide rule, printed on the plate. */
+/* The station name, set as the block of ink it is at this size. */
 .theme-thumb[data-theme="tivoli"] .tt-glass::before {
-  content: ""; position: absolute; left: 4px; right: 4px; bottom: 4px; height: 4px;
-  border-bottom: 1px solid #b9b1a0;
-  background: repeating-linear-gradient(90deg, #c3bbaa 0 1px, transparent 1px 4px) bottom / 100% 3px no-repeat;
+  content: ""; position: absolute; left: 5px; top: 13px;
+  width: 62%; height: 8px; border-radius: 1px;
+  background: #3a352f; opacity: .85;
 }
+/* The slide rule and its needle, in one layer: the scale line, the ticks
+   standing on it, and the red pointer where the station sits. */
 .theme-thumb[data-theme="tivoli"] .tt-glass::after {
-  content: ""; position: absolute; left: 42%; bottom: 3px; width: 1px; height: 9px; background: #c1402f;
+  content: ""; position: absolute; left: 5px; right: 5px; bottom: 4px; height: 9px;
+  background:
+    linear-gradient(#c1402f, #c1402f) 41% 0 / 1px 9px no-repeat,
+    repeating-linear-gradient(90deg, #c3bbaa 0 1px, transparent 1px 4px) bottom / 100% 3px no-repeat,
+    linear-gradient(#b9b1a0, #b9b1a0) bottom / 100% 1px no-repeat;
 }
 /* The control row is a transport and two tone knobs, all machined, which
    is what is actually under the plate. */
