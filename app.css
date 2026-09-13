@@ -1199,11 +1199,15 @@
 [data-theme="marconi"]    { --page-bg: #080604; }
 
 body.app {
+  /* border-box or the 24px of block padding is added to the 100vh, leaving
+     the page 48px taller than the window and a scrollbar at every size. */
+  box-sizing: border-box;
   margin: 0; min-height: 100vh; background: var(--page-bg);
   display: grid; place-items: center; padding-inline: 16px; padding-block: 24px;
   transition: background .5s;
 }
-body.app .tuner { width: min(1100px, 100%); }
+body.app { --tuner-max: 1100px; }
+body.app .tuner { width: min(var(--tuner-max), 100%); }
 
 /* Scoped under .tuner because `.tuner button` up top resets background and
    colour and outranks a lone class: the scrim never painted, and the text
@@ -1714,8 +1718,26 @@ body.app .tuner { width: min(1100px, 100%); }
 .update-line.is-new { color: var(--ui-fg); }
 .update-line a { color: inherit; }
 
-.save-msg { font-size: 13px; color: var(--ui-mute); }
-.save-msg.bad { color: #d33; } .save-msg.good { color: #2e9a5a; }
+/* Beside the button rather than marooned at the far end of the footer,
+   and carrying its own tint: at the old size and distance the word Saved
+   went by unread, which is the one moment the drawer has to confirm. */
+.drawer-foot { justify-content: flex-end; }
+.save-msg {
+  font-size: 13.5px; font-weight: 600; line-height: 1;
+  padding: 8px 12px; border-radius: 999px; color: var(--ui-mute);
+}
+.save-msg:empty { display: none; }
+.save-msg.bad {
+  color: #a3271a; background: color-mix(in srgb, #d33 14%, var(--ui-bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #d33 35%, transparent);
+}
+.save-msg.good {
+  color: #1d7a45; background: color-mix(in srgb, #2e9a5a 15%, var(--ui-bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #2e9a5a 38%, transparent);
+}
+.save-msg.good, .save-msg.bad { animation: save-msg-in .18s ease-out; }
+@keyframes save-msg-in { from { opacity: 0; transform: translateY(3px); } }
+@media (prefers-reduced-motion: reduce) { .save-msg.good, .save-msg.bad { animation: none; } }
 
 @media (max-width: 640px) {
   .drawer-form { width: 100%; height: 100%; margin: 0; border: 0; border-radius: 0; }

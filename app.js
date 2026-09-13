@@ -665,6 +665,50 @@
   }
   function span(cls, text) { var s = document.createElement('span'); s.className = cls; s.textContent = text; return s; }
 
+  /* ---------- window fitting ----------
+     The shortcut opens a window of its own, so the app can size that window
+     to the radio rather than leave a border of empty page around it. The
+     themes are not the same height -- Marconi is nearly 200px taller than
+     Editorial -- so this runs again on every theme change.
+
+     Chrome's barprop flags cannot be used to tell an app window from a tab:
+     locationbar.visible and friends answer true in both. Measured, the
+     chrome above the page is the giveaway -- 37px for an app window against
+     94px for a tab -- so that is what gates it. In a tab resizeTo is ignored
+     anyway, but this keeps it from being called at all. */
+  function windowIsOurs() {
+    var frame = window.outerHeight - window.innerHeight;
+    return frame > 0 && frame < 60;
+  }
+
+  function fitWindow(pass) {
+    if (!windowIsOurs() || !el.tuner) return;
+    pass = pass || 0;
+    var cs = getComputedStyle(document.body);
+    var padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    var padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    var cap = parseFloat(cs.getPropertyValue('--tuner-max')) || 1100;
+    var frameW = window.outerWidth - window.innerWidth;
+    var frameH = window.outerHeight - window.innerHeight;
+
+    // A pixel of slack each way: a fractional layout would round up into a
+    // scrollbar, which is the one thing this is meant to avoid.
+    var w = Math.min(Math.ceil(cap + padX) + frameW + 1, screen.availWidth);
+    var h = Math.min(Math.ceil(el.tuner.offsetHeight + padY) + frameH + 1, screen.availHeight);
+
+    if (Math.abs(w - window.outerWidth) > 1 || Math.abs(h - window.outerHeight) > 1) {
+      try { window.resizeTo(w, h); } catch (e) { return; }
+    }
+
+    /* Settle rather than measure once. The first measurement is taken with
+       a scrollbar still present, which narrows the tuner and so makes it
+       taller than it will be once the bar goes; and a resize does not land
+       within a frame, so re-reading immediately gets the old size back.
+       Three passes is comfortably enough to converge, and each one is a
+       no-op when nothing moved. */
+    if (pass < 3) setTimeout(function () { fitWindow(pass + 1); }, 120);
+  }
+
   function applyLook() {
     document.documentElement.setAttribute('data-theme', state.theme);
     requestAnimationFrame(function () {
@@ -673,6 +717,8 @@
       TunerUI.setNeedle(el.tuner, st.band);
       TunerUI.setName(el.name, st.name);
     });
+    // After the theme has painted, so the new height is the one measured.
+    requestAnimationFrame(function () { fitWindow(); });
   }
 
   var refitTimer;
@@ -1724,7 +1770,8 @@
     // flipping the label back to Close under the cursor reads as a second,
     // different button. openSettings() resets it on the next visit.
     msg.textContent = 'Saved'; msg.className = 'save-msg good';
-    setTimeout(function () { if (el.settings.open) el.settings.close(); }, 350);
+    // Long enough to read the word before the drawer takes it away.
+    setTimeout(function () { if (el.settings.open) el.settings.close(); }, 700);
   }
 
   $('saveBtn').addEventListener('click', function () {
