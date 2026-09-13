@@ -675,6 +675,32 @@
   box-shadow: 0 1px 0 #6d1408, 0 2px 4px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.35);
 }
 [data-theme="console"] .play-btn[aria-pressed="true"]:hover { background: linear-gradient(#ff5537, #cc2410); }
+/* A console button blinks between the press and the machine actually
+   running, then goes steady. Connecting and reconnecting are exactly
+   that gap here, so the transport flashes through it and settles the
+   moment the source is up. The face keeps its lit gradient and loses the
+   lamp behind it, which is what an unlit button on a board looks like:
+   still a button, just not on. */
+@keyframes console-start-flash {
+  0%, 45%   { filter: brightness(1); box-shadow: 0 4px 0 #0b5c2c, 0 6px 10px rgba(0,0,0,.6), 0 0 14px rgba(109,247,155,.45), inset 0 1px 0 rgba(255,255,255,.35); }
+  55%, 100% { filter: brightness(.42); box-shadow: 0 4px 0 #0b5c2c, 0 6px 10px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.35); }
+}
+@keyframes console-stop-flash {
+  0%, 45%   { filter: brightness(1); box-shadow: 0 1px 0 #6d1408, 0 2px 4px rgba(0,0,0,.6), 0 0 14px rgba(255,59,31,.45), inset 0 1px 0 rgba(255,255,255,.35); }
+  55%, 100% { filter: brightness(.42); box-shadow: 0 1px 0 #6d1408, 0 2px 4px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.35); }
+}
+[data-theme="console"] .tuner.is-connecting .play-btn,
+[data-theme="console"] .tuner.is-reconnecting .play-btn {
+  animation: console-start-flash .5s steps(1) infinite;
+}
+[data-theme="console"] .tuner.is-connecting .play-btn[aria-pressed="true"],
+[data-theme="console"] .tuner.is-reconnecting .play-btn[aria-pressed="true"] {
+  animation-name: console-stop-flash;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="console"] .tuner.is-connecting .play-btn,
+  [data-theme="console"] .tuner.is-reconnecting .play-btn { animation: none; }
+}
 [data-theme="console"] .fader { gap: 14px; }
 [data-theme="console"] .fader label { color: #8a9096; }
 [data-theme="console"] .fader output { color: var(--amber); font-weight: 600; font-size: 18px; }
