@@ -297,7 +297,9 @@
     liveSince = Date.now();
     var st = currentStation();
     if (st && audio === corsEl) provenCors[st.url] = true;
-    setStatus('live', 'Live \u00b7 ' + (st ? st.band : ''));
+    /* No band means an internet-only station, and a separator with nothing
+       after it reads as something that failed to load. */
+    setStatus('live', st && st.band ? 'Live \u00b7 ' + st.band : 'Live');
     updateMediaSession();
   }
   wire(corsEl);
