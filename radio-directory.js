@@ -126,6 +126,39 @@
     return best || firstUrl || '';
   }
 
+  /* The one rendition to hand the browser out of an HLS master playlist, or
+     '' when the text is not a master at all. Chrome plays HLS itself, and
+     given the master it starts on the lowest bitrate and steps up once it
+     has measured the connection. CBC's master lists every bitrate twice, on
+     two CDN paths, and those are packaged separately: their live windows
+     sit some seconds apart, so the step-up lands on the other path and the
+     listener hears the last few seconds over again. Handed one media
+     playlist there is nothing to switch to.
+
+     The highest bandwidth wins, and on a tie the one listed first, which
+     keeps whichever path the master leads with. A URI relative to the
+     master is resolved against it. */
+  function pickHlsVariant(text, masterUrl) {
+    var lines = String(text == null ? '' : text).split(/\r?\n/);
+    var best = '', bestBw = -1, pending = null;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) continue;
+      if (/^#EXT-X-STREAM-INF:/i.test(line)) {
+        var m = /BANDWIDTH=(\d+)/i.exec(line);
+        pending = m ? parseInt(m[1], 10) : 0;
+        continue;
+      }
+      if (line.charAt(0) === '#' || pending === null) continue;
+      if (pending > bestBw) {
+        bestBw = pending;
+        try { best = new URL(line, masterUrl).href; } catch (e) { best = line; }
+      }
+      pending = null;
+    }
+    return best;
+  }
+
   function normalizeStation(result, index) {
     if (!result) return null;
     var resolved = String(result.url_resolved || '').trim();
@@ -343,7 +376,8 @@
   return {
     PALETTE: PALETTE, pickColour: pickColour,
     geocodeUrl: geocodeUrl, searchUrl: searchUrl,
-    streamKind: streamKind, parsePlaylist: parsePlaylist, bandFromName: bandFromName, callSignFrom: callSignFrom, bandFrom: bandFrom, normalizeStation: normalizeStation, dedupe: dedupe,
+    streamKind: streamKind, parsePlaylist: parsePlaylist, pickHlsVariant: pickHlsVariant,
+    bandFromName: bandFromName, callSignFrom: callSignFrom, bandFrom: bandFrom, normalizeStation: normalizeStation, dedupe: dedupe,
     haversineKm: haversineKm, rankByPlace: rankByPlace,
     placeStation: placeStation, dominantColour: dominantColour, logoColour: logoColour,
     hopelessReason: hopelessReason,

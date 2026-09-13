@@ -54,7 +54,7 @@ A station's URL goes straight onto an `<audio>` element, so what the browser can
 |---|---|---|
 | MP3, AAC (Icecast, Shoutcast) | anything not matched below | Plays. Meter and tone controls work when the host sends permissive CORS headers. |
 | `.pls`, `.m3u` | extension | Fetched once, parsed by `Directory.parsePlaylist()`, and the stream address inside it replaces `station.url` and is saved. Later plays go straight to the stream. |
-| `.m3u8` (HLS) | extension | Plays on desktop browsers with native HLS. Higher latency, and `seekable` is empty, so the live-edge seek below cannot help it. |
+| `.m3u8` (HLS) | extension | Master playlists are read once and one rendition is handed to the element (see below). Higher latency than a plain stream, and `seekable` is empty, so the live-edge seek below cannot help it. |
 | `.asx`, `.xspf` | not handled | XML playlists. They reach the audio element unchanged and fail there, as they always did. |
 
 `parsePlaylist` reads both formats with one pass: it takes the lowest-numbered `FileN=` entry in a `.pls` (which is not obliged to list them in order) and otherwise the first non-comment line that is an absolute `http(s)` URL. Relative entries are rejected — there is no base to resolve them against that is worth trusting. Reading the file at all needs the host to allow the request; when it refuses, the station is tuned unchanged rather than being left unplayable in a new way.
@@ -66,6 +66,16 @@ A station hands over a second or so of already-broadcast audio the moment you co
 `tune()` therefore seeks forward on the first `playing` event of each tune, to `buffered.end - LIVE_MARGIN` (1.5s). It retries every 60ms for up to eight tries, because `seekable` and `buffered` are not both populated at the instant `playing` fires. The first attempt is deferred by `setTimeout(..., 0)` so it runs after `setStatus('live')`, not before it.
 
 This is generic: it applies to every station, with no per-station configuration, and it is a no-op for anything that cannot honour it. HLS reports an empty `seekable`, so it declines and keeps its 10–20s rewind. There is no fix for that without an HLS library, which would mean a dependency and a build step.
+
+### One rendition, not the master
+
+A master playlist lists the same programme at several bitrates. Chrome plays HLS itself, and given the master it starts on the lowest and steps up once it has measured the connection.
+
+CBC's master lists four bitrates on each of two CDN paths, `2041036` and `2041036-b`, and those are packaged independently: no `EXT-X-PROGRAM-DATE-TIME`, different segment numbering, and live windows about six seconds apart. Chrome's step-up crosses from one path to the other, and at that splice the listener hears the last several seconds again. Measured, not inferred: with the master handed over, a run requests `adaptive_48`, then `adaptive_192`, then `2041036-b`; the repeat lands where the `-b` segment is appended.
+
+`Directory.pickHlsVariant()` therefore reads the master once per session and takes the highest bandwidth, first listed on a tie, which keeps whichever path the master leads with. `tune()` hands the element that one media playlist, and with nothing to switch to there is no splice. The same run afterwards requests only `2041036/adaptive_192`, never `adaptive_48` and never `-b`, which also means full bitrate from the first second rather than the tenth.
+
+The choice is held in memory, never saved: the master is the address the station publishes, and a rendition that has stopped working should not outlive the session that chose it. A load failure forgets it, so the next attempt reads the master again rather than retrying a dead address until the page is reloaded.
 
 There is no drift correction. It was written and then removed: playing at 0.5x for nine seconds did not widen `buffered.end - currentTime` by a hundredth of a second. The browser holds about 2.3s and throttles the download to maintain it, so there is never enough buffer ahead to correct into.
 

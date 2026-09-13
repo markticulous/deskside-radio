@@ -164,7 +164,18 @@ HLS streams (.m3u8)
   These play, but they carry a longer delay by design, and stopping and
   starting one rewinds you ten to twenty seconds. The player is handed
   whole pre-recorded chunks and has to begin at the start of the newest
-  one. There is no way around it from here. CBC Radio 1 is one of these.
+  one. There is no way around that from here.
+
+  What the radio does fix is the other HLS fault, which sounds worse:
+  a few seconds in, the last several seconds play again. A station like
+  CBC Radio 1 publishes a list of the same programme at several
+  bitrates, twice over, on two different delivery networks. Browsers
+  start on the lowest bitrate and step up once they have measured the
+  connection, and the step up can land on the other network, whose copy
+  is a few seconds behind -- so you hear those seconds twice. The radio
+  reads that list itself and hands the browser one entry, the best one,
+  so there is nothing for it to switch to. It also means you get the
+  full bitrate from the first second instead of the tenth.
 
 .asx and .xspf
   Not handled. They are Windows Media and XML playlist formats. Open one
