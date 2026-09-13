@@ -1207,7 +1207,7 @@
     { key: 'console', label: 'Broadcast console', note: 'The on-air mixing desk of a radio control room' },
     { key: 'rams', label: 'Rams minimal', note: 'Homage to the work of German industrial designer Dieter Rams' },
     { key: 'editorial', label: 'Editorial', note: 'Type-led layouts from a printed magazine' },
-    { key: 'retro', label: 'Retro 8-bit', note: 'Home game consoles of the 1980s' },
+    { key: 'retro', label: 'Retro 8-bit', note: 'Interface style of 80s home game consoles' },
     { key: 'departures', label: 'Departures board', note: 'Split-flap boards in airports and railway stations' },
     { key: 'marconi', label: 'Marconi deco', note: 'Art deco radio cabinets of the 1930s' }
   ];
