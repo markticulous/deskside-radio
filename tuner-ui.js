@@ -260,17 +260,81 @@
   }
 
   // ---- station name: line breaks, then the largest size that fits ----
+  /* ---- split-flap ----
+     The departures board sets each character in its own flap so the name
+     can be turned into place the way the real thing does: every panel
+     starts moving at once and they land left to right. The flaps are built
+     inside the .name-line span rather than beside it, so fitName still
+     counts one line and measures one box. */
+  var FLAP_GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-';
+  var flapRun = 0;
+
+  function buildFlaps(line, text) {
+    for (var i = 0; i < text.length; i++) {
+      var c = document.createElement('span');
+      c.className = 'flap-ch';
+      c.setAttribute('data-ch', text.charAt(i));
+      c.textContent = text.charAt(i);
+      line.appendChild(c);
+    }
+  }
+
+  function randomGlyph() {
+    return FLAP_GLYPHS.charAt((Math.random() * FLAP_GLYPHS.length) | 0);
+  }
+
+  function flapReveal(nameEl) {
+    var chars = nameEl.querySelectorAll('.flap-ch');
+    if (!chars.length) return;
+    // A run number, so a station changed mid-turn abandons the old one
+    // instead of two sets of timers fighting over the same panels.
+    var run = ++flapRun;
+    nameEl.setAttribute('data-flap-run', run);
+
+    for (var i = 0; i < chars.length; i++) {
+      (function (ch, index) {
+        var target = ch.getAttribute('data-ch');
+        if (target === ' ') return;          // a blank flap has nothing to show
+        var left = 3 + (index % 4);          // uneven, so they do not land together
+        ch.classList.add('is-flapping');
+        ch.textContent = randomGlyph();
+        var tick = function () {
+          if (nameEl.getAttribute('data-flap-run') !== String(run)) return;
+          if (left <= 0) {
+            ch.textContent = target;
+            ch.classList.remove('is-flapping');
+            return;
+          }
+          left -= 1;
+          ch.textContent = randomGlyph();
+          setTimeout(tick, 60);
+        };
+        setTimeout(tick, 60 + index * 45);
+      })(chars[i], i);
+    }
+  }
+
   function setName(nameEl, text) {
     if (!nameEl) return;
-    var lines = themeOf(nameEl) === 'editorial' ? S.splitStationName(text) : [String(text == null ? '' : text)];
+    var str = String(text == null ? '' : text);
+    var theme = themeOf(nameEl);
+    var lines = theme === 'editorial' ? S.splitStationName(str) : [str];
+    // Only a real change turns the board. Re-rendering the same name, which
+    // a theme switch does, leaves it standing.
+    var changed = nameEl.getAttribute('data-name') !== str;
+    nameEl.setAttribute('data-name', str);
+
     nameEl.textContent = '';
     lines.forEach(function (line) {
       var s = document.createElement('span');
       s.className = 'name-line';
-      s.textContent = line;
+      if (theme === 'departures') buildFlaps(s, line); else s.textContent = line;
       nameEl.appendChild(s);
     });
     fitName(nameEl);
+
+    var still = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (theme === 'departures' && changed && !still) flapReveal(nameEl);
   }
 
   // Widest line and total line height, taken from the lines themselves.
