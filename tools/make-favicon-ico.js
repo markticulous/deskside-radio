@@ -18,7 +18,7 @@ const zlib = require('zlib');
 const SRC = process.argv[2];
 if (!SRC) { console.error('usage: node tools/make-favicon-ico.js <srcdir>'); process.exit(1); }
 const OUT = path.join(__dirname, '..');
-const THEMES = ['dial', 'console', 'rams', 'editorial', 'retro', 'departures', 'marconi'];
+const THEMES = ['dial', 'console', 'rams', 'editorial', 'retro', 'departures', 'marconi', 'tivoli'];
 
 // ---------- CRC32 ----------
 const CRC_TABLE = (function () {

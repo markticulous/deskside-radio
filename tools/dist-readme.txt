@@ -106,14 +106,16 @@ Play on launch
   Turn it on, pick a station, and the radio starts by itself when you
   open the shortcut. An active schedule slot wins over it.
 
-Seven themes
+Eight themes
   Analogue dial      Walnut, brass, a lit glass scale and a real VU meter
-  Broadcast console  Matte rack panel, amber readouts, segmented LEDs
+  Broadcast console  Matte rack panel, a segment readout, segmented LEDs
   Rams minimal       Off-white, hairline rules, one orange marker
   Editorial          Type-led, a colour per station, a bank of level bars
   Retro 8-bit        Four colours, an 8px grid, a meter built from cells
   Departures board   Split-flap, one character per flap
   Marconi deco       Black lacquer and gold, with a gold VU meter
+  Model One          A cherry cabinet and one big knob; the speaker is
+                     the meter, and the cloth ripples with the level
 
   Each theme brings its own Desktop icon.
 

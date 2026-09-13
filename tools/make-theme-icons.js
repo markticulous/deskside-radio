@@ -407,6 +407,128 @@ function marconiSvg(small) {
   );
 }
 
+/* ---------- H · tivoli ----------
+   The object in three shapes: driver, plate, knob. The small cut keeps
+   only the knob, because at sixteen pixels the knob is the one part of a
+   Model One nobody would mistake for something else. The weave is a
+   pattern rather than a texture: at icon sizes it resolves to a tone,
+   which is exactly what cloth does at arm's length. */
+const TIVOLI = {
+  cherryHi: '#8a4828', cherry: '#6b3620', cherryLo: '#3f1d0d',
+  cream: '#f3f0e8', creamLo: '#ddd7c8', ink: '#3a352f', mute: '#948d82',
+  cloth: '#c3b596', clothHi: '#d6c8a8', clothLo: '#8e8267',
+  alHi: '#fdfdfc', al: '#c2c6c5', alLo: '#6f7473', amber: '#ff9d2e',
+  red: '#c1402f'
+};
+
+function tivoliKnob(cx, cy, r) {
+  const C = TIVOLI;
+  const flutes = [];
+  const n = 48;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const x1 = cx + Math.cos(a) * (r - r * 0.16), y1 = cy + Math.sin(a) * (r - r * 0.16);
+    const x2 = cx + Math.cos(a) * r, y2 = cy + Math.sin(a) * r;
+    flutes.push(`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"` +
+      ` stroke="#2f3433" stroke-opacity=".45" stroke-width="${(r * 0.045).toFixed(2)}"/>`);
+  }
+  return L(
+    `  <circle cx="${cx}" cy="${cy + r * 0.05}" r="${r}" fill="#2a1408" fill-opacity=".55"/>`,
+    `  <circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#tv-al)"/>`,
+    '  ' + flutes.join(''),
+    `  <circle cx="${cx}" cy="${cy}" r="${r * 0.78}" fill="url(#tv-al)" stroke="${C.alLo}" stroke-width="${(r * 0.03).toFixed(2)}"/>`,
+    `  <circle cx="${cx}" cy="${cy}" r="${r * 0.78}" fill="url(#tv-cap)"/>`,
+    `  <rect x="${(cx - r * 0.045).toFixed(1)}" y="${(cy - r * 0.9).toFixed(1)}" width="${(r * 0.09).toFixed(1)}"` +
+      ` height="${(r * 0.3).toFixed(1)}" rx="${(r * 0.04).toFixed(1)}" fill="#3f4443"/>`
+  );
+}
+
+function tivoliSvg(small) {
+  const C = TIVOLI;
+  const defs = L(
+    '  <defs>',
+    '    <linearGradient id="tv-wood" x1="0" y1="0" x2=".34" y2="1">',
+    `      <stop offset="0" stop-color="${C.cherryHi}"/>`,
+    `      <stop offset=".58" stop-color="${C.cherry}"/>`,
+    `      <stop offset="1" stop-color="${C.cherryLo}"/>`,
+    '    </linearGradient>',
+    '    <radialGradient id="tv-cloth" cx=".36" cy=".3" r=".8">',
+    `      <stop offset="0" stop-color="${C.clothHi}"/>`,
+    `      <stop offset=".58" stop-color="${C.cloth}"/>`,
+    `      <stop offset="1" stop-color="${C.clothLo}"/>`,
+    '    </radialGradient>',
+    '    <pattern id="tv-weave" width="7" height="7" patternUnits="userSpaceOnUse">',
+    '      <rect width="7" height="7" fill="#c3b596"/>',
+    '      <path d="M0 .5 H7 M0 3.5 H7" stroke="#261608" stroke-opacity=".26" stroke-width="1"/>',
+    '      <path d="M.5 0 V7 M3.5 0 V7" stroke="#fff8e8" stroke-opacity=".22" stroke-width="1"/>',
+    '    </pattern>',
+    '    <radialGradient id="tv-al" cx=".34" cy=".26" r=".86">',
+    `      <stop offset="0" stop-color="${C.alHi}"/>`,
+    `      <stop offset=".5" stop-color="${C.al}"/>`,
+    `      <stop offset="1" stop-color="${C.alLo}"/>`,
+    '    </radialGradient>',
+    '    <radialGradient id="tv-cap" cx=".36" cy=".28" r=".8">',
+    '      <stop offset="0" stop-color="#ffffff" stop-opacity=".55"/>',
+    '      <stop offset=".6" stop-color="#ffffff" stop-opacity="0"/>',
+    '      <stop offset="1" stop-color="#5f6463" stop-opacity=".3"/>',
+    '    </radialGradient>',
+    '  </defs>'
+  );
+
+  const wood = L(
+    `  <rect x="0" y="0" width="256" height="256" fill="url(#tv-wood)"/>`,
+    '  <g stroke="#3a1406" stroke-opacity=".3" stroke-width="1">',
+    '    ' + [26, 58, 96, 140, 178, 214, 240].map(function (x) {
+      return `<line x1="${x}" y1="0" x2="${x - 8}" y2="256"/>`;
+    }).join(''),
+    '  </g>'
+  );
+
+  if (small) {
+    return L(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Deskside Radio">',
+      defs,
+      wood,
+      '  <!-- the knob, and nothing else: it is what the set is known by -->',
+      tivoliKnob(128, 128, 92),
+      '</svg>',
+      ''
+    );
+  }
+
+  const ticks = [];
+  for (let i = 0; i < 17; i++) {
+    const x = 126 + i * 3.6;
+    ticks.push(`<line x1="${x.toFixed(1)}" y1="${i % 4 === 0 ? 150 : 154}" x2="${x.toFixed(1)}" y2="158" stroke="#b9b1a0" stroke-width="1.4"/>`);
+  }
+
+  return L(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Deskside Radio">',
+    defs,
+    wood,
+    '',
+    '  <!-- the driver -->',
+    `  <circle cx="64" cy="128" r="48" fill="url(#tv-weave)" stroke="${C.cherryLo}" stroke-width="6"/>`,
+    `  <circle cx="64" cy="128" r="12" fill="#20120a" fill-opacity=".22"/>`,
+    `  <circle cx="64" cy="128" r="26" fill="none" stroke="#fff8e8" stroke-opacity=".28" stroke-width="3"/>`,
+    `  <circle cx="64" cy="128" r="38" fill="none" stroke="#fff8e8" stroke-opacity=".16" stroke-width="2"/>`,
+    '',
+    '  <!-- the plate -->',
+    `  <rect x="116" y="86" width="80" height="84" rx="3" fill="${C.cream}" stroke="#2f1408" stroke-opacity=".5" stroke-width="2"/>`,
+    `  <circle cx="126" cy="100" r="4" fill="${C.amber}"/>`,
+    `  <rect x="136" y="96" width="50" height="9" rx="2" fill="${C.ink}" fill-opacity=".82"/>`,
+    `  <rect x="126" y="116" width="60" height="7" rx="2" fill="${C.mute}" fill-opacity=".55"/>`,
+    '  ' + ticks.join(''),
+    `  <line x1="126" y1="158" x2="186" y2="158" stroke="#b9b1a0" stroke-width="1.6"/>`,
+    `  <line x1="150" y1="146" x2="150" y2="162" stroke="${C.red}" stroke-width="3"/>`,
+    '',
+    '  <!-- the knob -->',
+    tivoliKnob(222, 128, 28),
+    '</svg>',
+    ''
+  );
+}
+
 /* ---------- write ----------
    Dial reuses the artwork already in the repo; the other three are drawn
    above. The wrapper loads the app's webfonts with display=block, or the
@@ -414,7 +536,7 @@ function marconiSvg(small) {
 const FONTS = 'https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800' +
   '&family=IBM+Plex+Mono:wght@400;600;700&family=Barlow+Condensed:wght@500;600;700' +
   '&family=Archivo+Narrow:wght@400;500;600;700&family=Syne:wght@700;800&family=Figtree:wght@400;500;600' +
-  '&family=Press+Start+2P&family=Saira+Condensed:wght@400;500;600;700&family=Cinzel:wght@600;700&display=block';
+  '&family=Press+Start+2P&family=Saira+Condensed:wght@400;500;600;700&family=Cinzel:wght@600;700&family=Jost:wght@300;400;500&display=block';
 
 function wrapper(svg) {
   return L(
@@ -438,7 +560,8 @@ const CUTS = {
   editorial: { small: editorialSvg(true), wordmark: editorialSvg(false) },
   retro: { small: retroSvg(true), wordmark: retroSvg(false) },
   departures: { small: departuresSvg(true), wordmark: departuresSvg(false) },
-  marconi: { small: marconiSvg(true), wordmark: marconiSvg(false) }
+  marconi: { small: marconiSvg(true), wordmark: marconiSvg(false) },
+  tivoli: { small: tivoliSvg(true), wordmark: tivoliSvg(false) }
 };
 
 Object.keys(CUTS).forEach(function (theme) {

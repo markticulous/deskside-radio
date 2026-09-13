@@ -1360,6 +1360,462 @@
 }
 
 /* ================================================================== */
+/* H · TIVOLI — one cherry box, one knob, a speaker that moves          */
+/* ================================================================== */
+
+/* A Model One is not a screen pretending to be a radio, it is a small
+   dense object: cherry veneer, a cream plate, and a machined knob the
+   size of a plum. So the theme is built as that object and the app is
+   fitted into its parts rather than laid over them.
+
+   Three things across the front, where the radio puts them: the driver
+   at the left, the plate through the middle, the knob at the right. The
+   driver and the knob are taken out of the grid and pinned to the
+   cabinet, because they belong to the box and not to a row of controls,
+   and the cabinet is padded to leave them their space. */
+[data-theme="tivoli"] .tuner {
+  --cherry-hi: #9c5630;
+  --cherry: #7a3f22;
+  --cherry-lo: #4e2411;
+  --cream: #f1eee5;
+  --cream-lo: #e2ddcf;
+  --ink: #3a352f;
+  --mute: #948d82;
+  --pilot: #ff9d2e;
+  --cloth: #c3b596;
+  --al-hi: #fdfdfc;
+  --al: #c2c6c5;
+  --al-lo: #7e8382;
+  --grille: 252px;
+  --knob: 158px;
+  --gap: 16px;
+  --by-mono: "Jost", sans-serif;
+  --by-fg: #d8bfa4;
+  --by-line: rgba(255,220,180,.3);
+  --by-plate: rgba(0,0,0,.24);
+  --by-emboss: rgba(255,220,180,.2);
+  --by-accent: var(--pilot);
+  --by-on-accent: #2a1608;
+  /* Not --pad: the cabinet is not padded evenly, it is padded round the
+     two things standing in it. */
+  padding: 28px calc(var(--knob) + 56px) 28px calc(var(--grille) + 58px);
+  /* The driver is centred on the front, so the front cannot be shorter
+     than the driver and the badge line above it. */
+  min-height: calc(var(--grille) + 116px);
+  font-family: "Jost", "Futura", "Century Gothic", sans-serif;
+  color: var(--cream);
+  border-radius: 13px;
+  /* Cherry: a warm light from the top left, then the figure of the
+     veneer in two passes at slightly different angles, over the run of
+     the grain. Two passes because one repeating gradient gives stripes
+     and wood is never striped. */
+  background:
+    radial-gradient(125% 95% at 20% 12%, rgba(255,216,172,.24), transparent 56%),
+    repeating-linear-gradient(93deg, rgba(58,20,6,.10) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(96.5deg, rgba(255,226,192,.05) 0 1px, transparent 1px 13px),
+    repeating-linear-gradient(91deg, rgba(58,20,6,.06) 0 3px, transparent 3px 31px),
+    repeating-linear-gradient(89deg, rgba(255,226,192,.035) 0 2px, transparent 2px 47px),
+    linear-gradient(168deg, #8a4828, #6b3620 58%, #582c18);
+  box-shadow:
+    inset 0 1px 0 rgba(255,222,186,.3),
+    inset 0 -2px 7px rgba(0,0,0,.5),
+    0 2px 0 #3b1c0c,
+    0 30px 54px -24px rgba(0,0,0,.9);
+}
+
+/* The name plate above the plate, printed small on the wood. */
+/* Pulled back out to the full width of the front. The driver and the knob
+   are centred on the cabinet, so the corners above them are free, and a
+   badge line squeezed into the gap between them wraps on to two rows. */
+[data-theme="tivoli"] .tuner-bar {
+  padding-bottom: 12px;
+  margin-left: calc((var(--grille) + 30px) * -1);
+  margin-right: calc((var(--knob) + 30px) * -1);
+}
+[data-theme="tivoli"] .brand-mark {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--pilot);
+  box-shadow: 0 0 7px rgba(255,157,46,.7);
+}
+[data-theme="tivoli"] .brand-name {
+  font-size: 13px; font-weight: 400; letter-spacing: .3em; text-transform: uppercase;
+  color: #e8cdb1;
+}
+[data-theme="tivoli"] .clock { font-size: 15px; font-weight: 300; letter-spacing: .1em; color: #e8cdb1; }
+[data-theme="tivoli"] .sched-chip {
+  gap: 8px; padding: 5px 11px; border-radius: 3px; color: #d8bfa4;
+  background: rgba(0,0,0,.2); box-shadow: inset 0 0 0 1px rgba(255,220,180,.22);
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+}
+[data-theme="tivoli"] .sched-chip[aria-pressed="true"] { color: #fbe6cf; }
+[data-theme="tivoli"] .sched-led { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,220,180,.3); }
+[data-theme="tivoli"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--pilot); box-shadow: 0 0 6px rgba(255,157,46,.8); }
+[data-theme="tivoli"] .sched-next { font-size: 11px; letter-spacing: .1em; color: rgba(216,191,164,.8); }
+[data-theme="tivoli"] .icon-btn {
+  width: 32px; height: 32px; border-radius: 3px; color: #d8bfa4;
+  background: rgba(0,0,0,.18); box-shadow: inset 0 0 0 1px rgba(255,220,180,.2);
+}
+[data-theme="tivoli"] .icon-btn:hover { color: #fbe6cf; background: rgba(0,0,0,.3); }
+
+/* ---- the plate ---- */
+/* Screen-printed card, set into the cabinet. The shadow above it and the
+   light below are what make it sit in the wood rather than on it. */
+/* Static, so the driver pinned inside it measures from the cabinet and not
+   from the plate it happens to be written next to. */
+[data-theme="tivoli"] .display { position: static; }
+[data-theme="tivoli"] .display {
+  padding: 14px 16px 12px;
+  border-radius: 3px;
+  background: linear-gradient(#f5f2ea, #e6e1d4);
+  box-shadow:
+    inset 0 1px 0 #fffefa,
+    inset 0 -1px 0 #cec7b6,
+    0 0 0 1px rgba(52,24,10,.45),
+    0 1px 0 rgba(255,222,186,.2),
+    0 3px 8px rgba(0,0,0,.45);
+  display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; row-gap: 2px;
+  color: var(--ink);
+}
+[data-theme="tivoli"] .display-band {
+  font-size: 11px; font-weight: 400; letter-spacing: .24em; text-transform: uppercase; color: var(--mute);
+}
+[data-theme="tivoli"] .display-name {
+  margin: 2px 0 0;
+  font-family: "Jost", sans-serif; font-weight: 500;
+  font-size: clamp(30px, 3.6vw, 44px); line-height: 1.08; letter-spacing: -.005em;
+  white-space: nowrap; overflow: hidden;
+}
+[data-theme="tivoli"] .display-tag { margin: 2px 0 0; font-size: 12.5px; font-weight: 300; color: var(--mute); }
+[data-theme="tivoli"] .display-status {
+  margin-top: 8px; font-size: 10.5px; font-weight: 400; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--mute);
+}
+/* The tuning lamp, which on the real set is the only lit thing on the
+   front and is amber whatever else is going on. */
+[data-theme="tivoli"] .status-led { width: 7px; height: 7px; border-radius: 50%; background: #cfc7b6; }
+[data-theme="tivoli"] .status-led.live { background: var(--pilot); box-shadow: 0 0 8px rgba(255,157,46,.85); }
+
+/* ---- the slide rule ---- */
+/* Printed on the plate, not lit: on a set of this age the dial is ink on
+   card and the only light in the front panel is the pilot. */
+[data-theme="tivoli"] .dial { margin-top: 10px; display: grid; gap: 12px; }
+[data-theme="tivoli"] .scale { height: 24px; }
+[data-theme="tivoli"] .scale-badge {
+  position: absolute; left: 0; top: 2px; z-index: 2;
+  font-size: 9px; font-weight: 500; letter-spacing: .18em; color: var(--mute);
+}
+[data-theme="tivoli"] .scale-ticks { left: 30px; border-bottom: 1px solid #b9b1a0; }
+[data-theme="tivoli"] .tick { background: #b9b1a0; width: 1px; height: 5px; }
+[data-theme="tivoli"] .tick.is-major { height: 9px; background: #8c8474; }
+[data-theme="tivoli"] .scale-labels { left: 30px; font-size: 9px; font-weight: 400; color: #8c8474; }
+[data-theme="tivoli"] .needle { width: 1.5px; background: #c1402f; box-shadow: 0 0 3px rgba(193,64,47,.5); }
+
+/* ---- the driver ---- */
+/* Cloth over a paper cone. The weave is two passes crossing at a right
+   angle, fine enough that at this size it reads as a texture rather than
+   as a grid, and the cone below it darkens towards the middle the way a
+   cone does. The ring of wood round it is the cut edge of the baffle. */
+[data-theme="tivoli"] .meter {
+  position: absolute; left: 30px; top: 50%;
+  /* The cone moves as a whole, which is the part of a loudspeaker anyone
+     has ever actually seen move. A percent and a half is enough: more and
+     it stops being a driver and starts being a jellyfish. */
+  transform: translateY(-50%) scale(calc(1 + var(--vu, 0) * .015));
+  transition: transform .07s linear;
+  display: block; width: var(--grille); height: var(--grille);
+  margin: 0; border-radius: 50%; overflow: hidden;
+  background:
+    repeating-linear-gradient(90deg, rgba(255,248,232,.16) 0 1px, rgba(38,22,10,.20) 1px 2px, transparent 2px 3px),
+    repeating-linear-gradient(0deg, rgba(255,248,232,.13) 0 1px, rgba(38,22,10,.24) 1px 2px, transparent 2px 3px),
+    radial-gradient(circle at 50% 50%, rgba(30,18,8,.30) 0 9%, rgba(30,18,8,.13) 20%, transparent 34%),
+    radial-gradient(circle at 50% 50%, transparent 0 76%, rgba(30,18,8,.16) 82%, transparent 90%),
+    radial-gradient(circle at 36% 30%, #d6c8a8, var(--cloth) 58%, #8e8267 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(52,30,14,.55),
+    inset 0 12px 26px rgba(0,0,0,.32),
+    inset 0 -6px 16px rgba(0,0,0,.25),
+    0 0 0 4px #4b240f,
+    0 0 0 5px rgba(255,214,170,.16),
+    0 3px 9px rgba(0,0,0,.6);
+}
+/* The sheen off the cloth, fixed where the room light falls. */
+[data-theme="tivoli"] .meter::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 32% 24%, rgba(255,250,236,.30), rgba(255,250,236,0) 52%);
+}
+/* The dust cap, which is the part of a cone you can actually see move. */
+[data-theme="tivoli"] .meter::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 15%; height: 15%;
+  border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 38% 32%, rgba(255,244,224,.14), rgba(32,18,8,.28) 74%);
+  transform: translate(-50%, -50%) scale(calc(1 + var(--vu, 0) * .13));
+  transition: transform .07s linear;
+}
+
+/* The meter is the speaker. Rings leave the cap and run out across the
+   cone, and how far they get is the level: quiet programme moves the
+   middle only, and it takes something loud to reach the surround. Three
+   rings on one cycle, started a third apart, so there is always one on
+   its way out. */
+[data-theme="tivoli"] .meter-face,
+[data-theme="tivoli"] .meter-bar,
+[data-theme="tivoli"] .meter-scale {
+  display: block; position: absolute; left: 50%; top: 50%;
+  width: 100%; height: 100%; margin: 0; padding: 0;
+  /* Dark, with a lit edge either side. A pale ring on pale cloth is
+     invisible; a wave running through cloth is a shadow with the weave
+     catching the light along its crest. */
+  /* The border is drawn thick because the ring is scaled up from almost
+     nothing, and a transform scales the stroke with everything else: nine
+     pixels at a tenth of size is one. It thins as the ring widens, which
+     is what a wave losing amplitude does anyway. */
+  border-radius: 50%; border: 9px solid rgba(44,25,10,.62);
+  box-shadow:
+    inset 0 0 0 2px rgba(255,252,240,.62),
+    0 0 0 2px rgba(255,252,240,.5);
+  pointer-events: none; opacity: 0;
+  animation: tivoli-ripple 1.45s linear infinite;
+}
+/* These three are the meter's own parts, borrowed for their boxes. What
+   the builder drew inside them -- the VU face, the scale marks -- has no
+   place on a speaker. */
+[data-theme="tivoli"] .meter-face > *,
+[data-theme="tivoli"] .meter-scale > * { display: none; }
+[data-theme="tivoli"] .meter-bar { animation-delay: -.48s; }
+[data-theme="tivoli"] .meter-scale { animation-delay: -.96s; }
+@keyframes tivoli-ripple {
+  0%   { transform: translate(-50%, -50%) scale(.12); opacity: 0; }
+  12%  { opacity: calc(.40 + var(--vu, 0) * .6); }
+  68%  { opacity: calc(.22 + var(--vu, 0) * .5); }
+  /* Quiet programme moves the middle of the cone and no more; it takes
+     something loud to run a wave all the way out to the surround. */
+  100% { transform: translate(-50%, -50%) scale(calc(.30 + var(--vu, 0) * 1)); opacity: 0; }
+}
+[data-theme="tivoli"] .scope { display: none; }
+/* Nothing to say on the front of a radio, so it says it quietly on the
+   cloth. */
+[data-theme="tivoli"] .meter-blind {
+  position: absolute; left: 12%; right: 12%; top: 50%; transform: translateY(-50%);
+  margin: 0; text-align: center; z-index: 2;
+  font-size: 9px; font-weight: 400; line-height: 1.4; letter-spacing: .1em;
+  text-transform: uppercase; color: #f4ead6;
+  text-shadow: 0 1px 3px rgba(20,10,4,.9);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="tivoli"] .meter-face,
+  [data-theme="tivoli"] .meter-bar,
+  [data-theme="tivoli"] .meter-scale { animation: none; }
+  [data-theme="tivoli"] .meter::after { transition: none; }
+}
+
+/* ---- presets: the piano keys under the plate ---- */
+[data-theme="tivoli"] .presets {
+  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  gap: 7px; --presets-max: 132px; --presets-press: 2px; --presets-thumb: rgba(255,220,180,.28);
+}
+[data-theme="tivoli"] .preset {
+  grid-template-areas: "n name" "n band";
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 9px; align-items: center;
+  padding: 8px 10px; border-radius: 3px; color: var(--ink);
+  background: linear-gradient(#f7f4ed, #e3ded1);
+  box-shadow:
+    inset 0 1px 0 #fffefb,
+    inset 0 -2px 0 #c6bfae,
+    0 0 0 1px rgba(52,24,10,.4),
+    0 2px 3px rgba(0,0,0,.4);
+  transition: transform .07s ease, box-shadow .07s ease, background .12s ease;
+}
+[data-theme="tivoli"] .preset:hover { background: linear-gradient(#fffdf7, #eae5d8); }
+/* Pressed in, and the lamp beside the number lit: a key that is down. */
+[data-theme="tivoli"] .preset.is-active {
+  transform: translateY(2px);
+  background: linear-gradient(#eae5d7, #f3efe4);
+  box-shadow:
+    inset 0 2px 4px rgba(90,72,44,.3),
+    inset 0 -1px 0 #fffefb,
+    0 0 0 1px rgba(52,24,10,.45);
+}
+[data-theme="tivoli"] .preset-n {
+  grid-area: n; width: 20px; height: 20px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 10px; font-weight: 500;
+  color: var(--mute); background: #ddd7c8; box-shadow: inset 0 1px 2px rgba(90,72,44,.35);
+}
+[data-theme="tivoli"] .preset.is-active .preset-n {
+  color: #2a1608; background: var(--pilot); box-shadow: 0 0 8px rgba(255,157,46,.7);
+}
+[data-theme="tivoli"] .preset-name { grid-area: name; font-size: 15px; font-weight: 500; letter-spacing: -.005em; }
+[data-theme="tivoli"] .preset-band { grid-area: band; font-size: 10.5px; font-weight: 300; letter-spacing: .12em; color: var(--mute); }
+[data-theme="tivoli"] .preset-add {
+  opacity: 1; color: #d8bfa4; background: none;
+  box-shadow: inset 0 0 0 1px rgba(255,220,180,.26);
+}
+[data-theme="tivoli"] .preset-add:hover { color: #fbe6cf; background: rgba(0,0,0,.16); }
+[data-theme="tivoli"] .preset-add .preset-name { color: inherit; }
+[data-theme="tivoli"] .preset-add .preset-band { color: rgba(216,191,164,.72); }
+
+/* ---- the controls ---- */
+[data-theme="tivoli"] .controls {
+  padding-top: 14px; gap: 26px; align-items: flex-start;
+  box-shadow: inset 0 1px 0 rgba(255,220,180,.14);
+}
+/* A machined push-button, the kind that is a disc of aluminium with a
+   glyph cut into it and a spring behind. */
+[data-theme="tivoli"] .play-btn {
+  width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center;
+  color: #434847;
+  background:
+    radial-gradient(circle at 36% 28%, rgba(255,255,255,.85), rgba(255,255,255,0) 50%),
+    repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.09) 0 1px, rgba(60,65,64,.07) 1px 2px),
+    conic-gradient(from 205deg, #fbfbfa, #c6cac9 12%, #909594 24%, #eef0ef 38%, #b2b7b6 52%, #828786 66%, #f2f4f3 82%, #b8bcbb 94%, #fbfbfa);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.8),
+    inset 0 -2px 4px rgba(0,0,0,.3),
+    0 3px 0 #55402f,
+    0 5px 10px rgba(0,0,0,.55);
+  transition: transform .07s ease, box-shadow .07s ease;
+}
+[data-theme="tivoli"] .play-btn { margin-top: 2px; }
+[data-theme="tivoli"] .play-btn svg { width: 17px; height: 17px; filter: drop-shadow(0 1px 0 rgba(255,255,255,.55)); }
+[data-theme="tivoli"] .play-btn:hover { color: #2f3433; }
+[data-theme="tivoli"] .play-btn:active,
+[data-theme="tivoli"] .play-btn[aria-pressed="true"] {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 2px 5px rgba(0,0,0,.4),
+    inset 0 -1px 0 rgba(255,255,255,.5),
+    0 1px 0 #55402f,
+    0 2px 5px rgba(0,0,0,.5);
+}
+
+/* ---- knobs ---- */
+/* Turned aluminium. The face is a conic gradient because a lathe leaves
+   its marks round the axis and a linear one leaves them across it, the
+   knurl is a repeating conic masked to the rim alone, and both turn with
+   the setting. The light does not: it lives on the input, which sits over
+   the top and never rotates, so the highlight stays where the room is. */
+[data-theme="tivoli"] .fader {
+  position: relative; display: grid; justify-items: center; gap: 0;
+}
+[data-theme="tivoli"] .fader::before,
+[data-theme="tivoli"] .fader::after {
+  content: ""; position: absolute; top: 0; left: 50%;
+  width: var(--dia); height: var(--dia); margin-left: calc(var(--dia) / -2);
+  border-radius: 50%; pointer-events: none;
+  transform: rotate(calc(-140deg + var(--turn, .5) * 280deg));
+}
+[data-theme="tivoli"] .fader::before {
+  background:
+    /* the index mark, cut into the rim */
+    linear-gradient(#4a4f4e, #4a4f4e) 50% 7% / 2.5px 15% no-repeat,
+    /* the step down from rim to cap */
+    radial-gradient(circle, transparent 0 61%, rgba(0,0,0,.34) 62.5%, rgba(255,255,255,.5) 65.5%, transparent 67%),
+    /* turning marks */
+    repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.10) 0 1px, rgba(52,58,57,.09) 1px 2px),
+    conic-gradient(from 205deg, #fdfdfc, #c2c6c5 9%, #8d9291 17%, #eef0ef 26%, #b9bdbc 35%, #7e8382 44%, #f2f4f3 55%, #aeb3b2 66%, #868b8a 75%, #e7e9e8 86%, #c6cac9 94%, #fdfdfc);
+  box-shadow:
+    inset 0 2px 3px rgba(255,255,255,.6),
+    inset 0 -3px 7px rgba(0,0,0,.34),
+    0 4px 0 #54402f,
+    0 8px 16px rgba(0,0,0,.6);
+}
+[data-theme="tivoli"] .fader::after {
+  background: repeating-conic-gradient(from 0deg,
+    rgba(255,255,255,.72) 0deg .8deg,
+    rgba(150,156,155,.2) .8deg 1.6deg,
+    rgba(0,0,0,.46) 1.6deg 2.4deg,
+    rgba(150,156,155,.2) 2.4deg 3.2deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 63.5%, #000 66.5% 96%, transparent 98%);
+          mask: radial-gradient(circle, transparent 0 63.5%, #000 66.5% 96%, transparent 98%);
+}
+[data-theme="tivoli"] .fader input {
+  -webkit-appearance: none; appearance: none;
+  /* Centred the same way the knob is. The control row gives the tone
+     faders a minimum width of their own, so left:0 put the light on the
+     wood beside the knob rather than on it. */
+  position: absolute; top: 0; left: 50%; margin-left: calc(var(--dia) / -2);
+  width: var(--dia); height: var(--dia); margin-top: 0; padding: 0;
+  border-radius: 50%; cursor: grab; background:
+    radial-gradient(circle at 33% 25%, rgba(255,255,255,.6), rgba(255,255,255,0) 46%),
+    radial-gradient(circle at 72% 86%, rgba(0,0,0,.26), rgba(0,0,0,0) 44%);
+}
+[data-theme="tivoli"] .fader input:active { cursor: grabbing; }
+[data-theme="tivoli"] .fader input::-webkit-slider-thumb { -webkit-appearance: none; width: 0; height: 0; }
+[data-theme="tivoli"] .fader input::-moz-range-thumb { width: 0; height: 0; border: 0; background: transparent; }
+[data-theme="tivoli"] .fader input:focus-visible { outline: 2px solid var(--pilot); outline-offset: 5px; }
+[data-theme="tivoli"] .fader label {
+  order: 2; margin-top: 9px;
+  font-size: 9.5px; font-weight: 400; letter-spacing: .26em; text-transform: uppercase;
+  color: #d8bfa4;
+}
+[data-theme="tivoli"] .fader output {
+  order: 3; margin-top: 1px; font-size: 13px; font-weight: 300; color: #fbe6cf;
+}
+[data-theme="tivoli"] .fader input:disabled { opacity: .45; cursor: default; }
+
+/* The big one. It is the whole right-hand third of the front, taken out
+   of the control row and pinned to the cabinet, because on the real set
+   it is the first thing the hand finds. */
+[data-theme="tivoli"] .fader.volume {
+  --dia: var(--knob);
+  position: absolute; right: 30px; top: 50%;
+  width: var(--knob); transform: translateY(-50%);
+  padding-top: var(--knob);
+}
+[data-theme="tivoli"] .fader.volume label { font-size: 10px; letter-spacing: .3em; }
+[data-theme="tivoli"] .fader.volume output { font-size: 17px; }
+
+[data-theme="tivoli"] .fader.tone {
+  --dia: 54px;
+  width: 54px; padding-top: 54px; flex: 0 0 auto;
+}
+/* Shadows scale with the thing casting them; the big knob's on a small one
+   reads as a smudge under it rather than as a knob standing proud. */
+/* Coarser flutes: the big knob's pitch on a small one falls below a pixel
+   per flute and reads as moire rather than as knurling. */
+[data-theme="tivoli"] .fader.tone::after {
+  background: repeating-conic-gradient(from 0deg,
+    rgba(255,255,255,.72) 0deg 1.7deg,
+    rgba(150,156,155,.2) 1.7deg 3.4deg,
+    rgba(0,0,0,.46) 3.4deg 5.1deg,
+    rgba(150,156,155,.2) 5.1deg 6.8deg);
+}
+[data-theme="tivoli"] .fader.tone::before {
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,.6),
+    inset 0 -2px 4px rgba(0,0,0,.34),
+    0 2px 0 #54402f,
+    0 3px 7px rgba(0,0,0,.5);
+}
+
+[data-theme="tivoli"] .start-title { color: #fbe6cf; }
+
+/* A narrow window gets a smaller set, not a different one. Taking the
+   driver and the knob out of the flow is what makes the composition, and
+   putting them back into it puts the driver inside the plate and the knob
+   at the top of the cabinet: the two parts are written where the radio
+   has them, not where the document would. So the cabinet shrinks around
+   them instead, which is what a smaller radio is. */
+@media (max-width: 940px) {
+  [data-theme="tivoli"] .tuner { --grille: 176px; --knob: 118px; }
+  [data-theme="tivoli"] .fader.volume label { letter-spacing: .22em; }
+}
+@media (max-width: 720px) {
+  [data-theme="tivoli"] .tuner {
+    --grille: 128px; --knob: 84px; --gap: 12px;
+    padding: 20px calc(var(--knob) + 34px) 20px calc(var(--grille) + 34px);
+    min-height: calc(var(--grille) + 96px);
+  }
+  [data-theme="tivoli"] .meter { left: 18px; }
+  [data-theme="tivoli"] .fader.volume { right: 18px; }
+  [data-theme="tivoli"] .fader.volume output { font-size: 14px; }
+  [data-theme="tivoli"] .tuner-bar {
+    margin-left: calc((var(--grille) + 18px) * -1);
+    margin-right: calc((var(--knob) + 18px) * -1);
+  }
+  [data-theme="tivoli"] .controls { gap: 18px; }
+}
+
+/* ================================================================== */
 /* App page, start overlay, settings drawer                            */
 /* ================================================================== */
 
@@ -1386,6 +1842,7 @@
 [data-theme="retro"]      { --page-bg: #050506; }
 [data-theme="departures"] { --page-bg: #050506; }
 [data-theme="marconi"]    { --page-bg: #080604; }
+[data-theme="tivoli"]     { --page-bg: #241811; }
 
 body.app {
   /* border-box or the 24px of block padding is added to the 100vh, leaving
@@ -1899,6 +2356,57 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 }
 .theme-thumb[data-theme="marconi"] .tt-keys i { background: #171309; border-radius: 0; box-shadow: inset 0 0 0 1px #4a3d1e; }
 .theme-thumb[data-theme="marconi"] .tt-keys i:first-child { background: linear-gradient(#f0d98a, #c9a227); box-shadow: none; }
+
+/* Model One: the driver at one end, the knob at the other, the plate
+   between them -- the whole point of the object in three shapes. */
+.theme-thumb[data-theme="tivoli"] {
+  --tint: #ff9d2e;
+  background:
+    repeating-linear-gradient(93deg, rgba(58,20,6,.1) 0 1px, transparent 1px 9px),
+    linear-gradient(168deg, #8a4828, #6b3620 58%, #582c18);
+  box-shadow: 0 0 0 1px var(--ui-line), inset 0 1px 0 rgba(255,222,186,.26);
+}
+.theme-thumb[data-theme="tivoli"]::before {
+  content: ""; position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+  width: 46px; height: 46px; border-radius: 50%;
+  background:
+    repeating-linear-gradient(90deg, rgba(255,248,232,.2) 0 1px, rgba(38,22,10,.22) 1px 2px, transparent 2px 3px),
+    repeating-linear-gradient(0deg, rgba(255,248,232,.16) 0 1px, rgba(38,22,10,.26) 1px 2px, transparent 2px 3px),
+    radial-gradient(circle at 50% 50%, rgba(30,18,8,.28) 0 10%, transparent 32%),
+    radial-gradient(circle at 36% 30%, #d6c8a8, #c3b596 58%, #8e8267);
+  box-shadow: 0 0 0 2px #4b240f, inset 0 4px 9px rgba(0,0,0,.3);
+}
+.theme-thumb[data-theme="tivoli"]::after {
+  content: ""; position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
+  width: 28px; height: 28px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 26%, rgba(255,255,255,.7), rgba(255,255,255,0) 48%),
+    conic-gradient(from 205deg, #fdfdfc, #c2c6c5 12%, #8d9291 24%, #eef0ef 40%, #b9bdbc 56%, #7e8382 70%, #f2f4f3 86%, #fdfdfc);
+  box-shadow: 0 2px 4px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.75);
+}
+.theme-thumb[data-theme="tivoli"] .tt { padding: 9px 46px 9px 62px; gap: 4px; }
+.theme-thumb[data-theme="tivoli"] .tt-cap {
+  color: #e8cdb1; font-weight: 400; letter-spacing: .12em; font-size: 7px;
+}
+.theme-thumb[data-theme="tivoli"] .tt-glass {
+  border-radius: 2px;
+  background: linear-gradient(#f5f2ea, #e6e1d4);
+  box-shadow: inset 0 1px 0 #fffefa, 0 0 0 1px rgba(52,24,10,.45);
+}
+/* The slide rule, printed on the plate. */
+.theme-thumb[data-theme="tivoli"] .tt-glass::before {
+  content: ""; position: absolute; left: 5px; right: 5px; bottom: 6px; height: 5px;
+  border-bottom: 1px solid #b9b1a0;
+  background: repeating-linear-gradient(90deg, #c3bbaa 0 1px, transparent 1px 4px) bottom / 100% 4px no-repeat;
+}
+.theme-thumb[data-theme="tivoli"] .tt-glass::after {
+  content: ""; position: absolute; left: 42%; bottom: 4px; width: 1px; height: 11px; background: #c1402f;
+}
+.theme-thumb[data-theme="tivoli"] .tt-keys i {
+  border-radius: 1px; background: linear-gradient(#f7f4ed, #e3ded1);
+  box-shadow: inset 0 1px 0 #fffefb, 0 0 0 1px rgba(52,24,10,.35);
+}
+.theme-thumb[data-theme="tivoli"] .tt-keys i:first-child { background: linear-gradient(#ffb257, #ff9d2e); box-shadow: none; }
 
 
 .confirm { border: 0; padding: 0; background: transparent; max-width: none; max-height: none; position: fixed; inset: 0; width: auto; height: auto; }
