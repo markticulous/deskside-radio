@@ -448,8 +448,11 @@
   --green: #2ee56a;
   --text: #d7dadd;
   --mute: #6c7176;
-  --gap: 18px;
-  --pad: 26px;
+  --gap: 20px;
+  /* A rack panel leaves a margin round its fixings; at 26px the text was
+     starting three pixels clear of a screw head. */
+  --pad: 46px;
+  --screw: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Cdefs%3E%3CradialGradient id='h' cx='.35' cy='.3' r='.8'%3E%3Cstop offset='0' stop-color='%23585f66'/%3E%3Cstop offset='.55' stop-color='%233a4046'/%3E%3Cstop offset='1' stop-color='%2323272b'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='11' cy='11' r='9.4' fill='%230a0b0d'/%3E%3Ccircle cx='11' cy='11.5' r='9' fill='%231b1f23'/%3E%3Ccircle cx='11' cy='11' r='8' fill='url(%23h)'/%3E%3Cpath d='M4 13.5 A8 8 0 0 1 13.5 4' fill='none' stroke='%238e969d' stroke-width='1.1' opacity='.5' stroke-linecap='round'/%3E%3Cpath d='M18 8.5 A8 8 0 0 1 8.5 18' fill='none' stroke='%23000' stroke-width='1.1' opacity='.45' stroke-linecap='round'/%3E%3Cg transform='rotate(14 11 11)'%3E%3Cg fill='%230d0f11'%3E%3Crect x='10.25' y='6.6' width='1.5' height='8.8' rx='.35'/%3E%3Crect x='6.6' y='10.25' width='8.8' height='1.5' rx='.35'/%3E%3C/g%3E%3Cg fill='%237e868d' opacity='.35'%3E%3Crect x='11.25' y='6.6' width='.5' height='8.8'/%3E%3Crect x='6.6' y='11.25' width='8.8' height='.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   --by-mono: "IBM Plex Mono", monospace;
   --by-fg: #8a9096;
   --by-line: #3a3f45;
@@ -460,10 +463,10 @@
   font-family: "IBM Plex Mono", "Courier New", monospace;
   color: var(--text);
   background:
-    radial-gradient(circle at 16px 16px, #2c3036 4.5px, #0e1013 5.5px, transparent 6.5px),
-    radial-gradient(circle at calc(100% - 16px) 16px, #2c3036 4.5px, #0e1013 5.5px, transparent 6.5px),
-    radial-gradient(circle at 16px calc(100% - 16px), #2c3036 4.5px, #0e1013 5.5px, transparent 6.5px),
-    radial-gradient(circle at calc(100% - 16px) calc(100% - 16px), #2c3036 4.5px, #0e1013 5.5px, transparent 6.5px),
+    var(--screw) left 14px top 14px / 22px 22px no-repeat,
+    var(--screw) right 14px top 14px / 22px 22px no-repeat,
+    var(--screw) left 14px bottom 14px / 22px 22px no-repeat,
+    var(--screw) right 14px bottom 14px / 22px 22px no-repeat,
     linear-gradient(#0d0f12, #090a0c);
   border: 1px solid #1f2327;
   border-radius: 2px;
@@ -1825,21 +1828,43 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
    went by unread, which is the one moment the drawer has to confirm. */
 .drawer-foot { justify-content: flex-end; }
 .save-msg {
-  font-size: 13.5px; font-weight: 600; line-height: 1;
-  padding: 8px 12px; border-radius: 999px; color: var(--ui-mute);
+  /* Cut to the same stamped plate as the maker byline: two corners square,
+     two rounded, a hairline ring and a lit top edge. */
+  font-size: 12.5px; font-weight: 600; line-height: 1;
+  padding: 7px 11px; border-radius: 1px 7px 1px 7px; color: var(--ui-mute);
 }
 .save-msg:empty { display: none; }
 .save-msg.bad {
   color: #a3271a; background: color-mix(in srgb, #d33 14%, var(--ui-bg));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #d33 35%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #d33 35%, transparent),
+              inset 0 1px 0 rgba(255,255,255,.55);
 }
 .save-msg.good {
   color: #1d7a45; background: color-mix(in srgb, #2e9a5a 15%, var(--ui-bg));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #2e9a5a 38%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #2e9a5a 38%, transparent),
+              inset 0 1px 0 rgba(255,255,255,.6);
 }
-.save-msg.good, .save-msg.bad { animation: save-msg-in .18s ease-out; }
-@keyframes save-msg-in { from { opacity: 0; transform: translateY(3px); } }
-@media (prefers-reduced-motion: reduce) { .save-msg.good, .save-msg.bad { animation: none; } }
+.save-msg.bad { animation: save-msg-in .18s ease-out; }
+.save-msg.good { animation: save-msg-in .22s ease-out; }
+/* Saving is the one message that ends the drawer, so it plays out rather
+   than being cut off: up, a beat long enough to read, then back down. The
+   drawer closes as it lands, on the same clock in commitSettings. */
+.save-msg.good.is-exit {
+  /* Only this one word is set like a stamped plate; the other messages are
+     sentences, and sentences in caps read as shouting. */
+  letter-spacing: .12em; text-transform: uppercase;
+  animation: save-msg-cycle 1.4s ease-out both;
+}
+@keyframes save-msg-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes save-msg-cycle {
+  0%   { opacity: 0; transform: translateY(10px); }
+  16%  { opacity: 1; transform: translateY(0); }
+  76%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(10px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .save-msg.good, .save-msg.bad, .save-msg.good.is-exit { animation: none; }
+}
 
 @media (max-width: 640px) {
   .drawer-form { width: 100%; height: 100%; margin: 0; border: 0; border-radius: 0; }

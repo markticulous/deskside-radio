@@ -1927,9 +1927,9 @@
     // Deliberately no refreshSaveBtn() here: the drawer is closing, and
     // flipping the label back to Close under the cursor reads as a second,
     // different button. openSettings() resets it on the next visit.
-    msg.textContent = 'Saved'; msg.className = 'save-msg good';
-    // Long enough to read the word before the drawer takes it away.
-    setTimeout(function () { if (el.settings.open) el.settings.close(); }, 700);
+    msg.textContent = 'Saved'; msg.className = 'save-msg good is-exit';
+    // Matches save-msg-cycle, so the drawer goes as the plate drops away.
+    setTimeout(function () { if (el.settings.open) el.settings.close(); }, 1400);
   }
 
   $('saveBtn').addEventListener('click', function () {
