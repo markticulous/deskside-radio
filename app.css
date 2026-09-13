@@ -1307,8 +1307,20 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
    the first of those the lamp never flashed in ordinary use, because
    nothing but a dropped stream reached it. Steady red, once live, is the
    tally; see the console block above. */
+/* The shared blink only dims to 35% opacity, which on an 8px square is a
+   pulse you have to be hunting for. A tally asking for attention goes
+   properly dark and takes its glow with it, and it does so quickly enough
+   that even a connection lasting a few hundred milliseconds shows at least
+   one change rather than sitting lit for its whole life. */
+@keyframes tally-flash {
+  0%, 45%   { opacity: 1; box-shadow: 0 0 9px currentColor; }
+  55%, 100% { opacity: .15; box-shadow: 0 0 0 transparent; }
+}
 .tuner.is-reconnecting .status-led,
-.tuner.is-connecting .status-led { background: #f0842a; animation: blink 1s steps(1) infinite; }
+.tuner.is-connecting .status-led {
+  color: #f0842a; background: currentColor;
+  animation: tally-flash .5s steps(1) infinite;
+}
 
 .drawer { border: 0; padding: 0; background: transparent; max-width: none; max-height: none; position: fixed; inset: 0; width: auto; height: auto; }
 .drawer::backdrop { background: rgba(0,0,0,.55); }
