@@ -797,7 +797,9 @@
 }
 
 /* Only the editorial play button carries a text label */
-[data-theme="dial"] .btn-text, [data-theme="console"] .btn-text, [data-theme="rams"] .btn-text { display: none; }
+[data-theme="dial"] .btn-text, [data-theme="console"] .btn-text, [data-theme="rams"] .btn-text,
+[data-theme="retro"] .btn-text, [data-theme="departures"] .btn-text,
+[data-theme="marconi"] .btn-text { display: none; }
 
 /* ================================================================== */
 /* E · RETRO 8-BIT — four colours, an 8px grid, a CRT in front          */
@@ -820,11 +822,6 @@
   content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
   background-image: repeating-conic-gradient(#131318 0 25%, transparent 0 50%);
   background-size: 4px 4px;
-}
-/* Scanlines. None of this was ever seen on anything but a CRT. */
-[data-theme="retro"] .tuner::after {
-  content: ""; position: absolute; inset: 0; z-index: 5; pointer-events: none;
-  background: repeating-linear-gradient(rgba(0,0,0,.30) 0 1px, transparent 1px 3px);
 }
 [data-theme="retro"] .tuner-bar, [data-theme="retro"] .display,
 [data-theme="retro"] .presets, [data-theme="retro"] .controls { position: relative; z-index: 1; }
@@ -1230,11 +1227,18 @@ body.app .tuner { width: min(1100px, 100%); }
    radial gradient inside a larger box gives the edge real pixels to
    antialias across, so a dot this small still reads as round. */
 .ver-dot {
-  display: inline-block; width: 8px; height: 8px; vertical-align: .14em;
+  display: inline-block; width: 6px; height: 6px;
+  /* vertical-align: middle puts the box centre at the baseline plus half
+     the x-height, which is exactly where a middot sits. Every em value
+     tried here was a guess and every one of them rode too high. */
+  vertical-align: middle;
   /* Its own colour, not the line's: the line is already mixed toward
      transparent, and a soft edge on top of that washes out to nothing. */
   color: var(--ui-mute);
-  background: radial-gradient(circle at 50% 50%, currentColor 0 .5px, transparent 2.1px);
+  /* The falloff sets the apparent size, not the core: spreading it to 2.1px
+     made a 1px core look like a 3px blob. Keep it tight, and the dot reads
+     as a dot rather than as the 2x2 block a hard edge rasterises to. */
+  background: radial-gradient(circle at 50% 50%, currentColor 0 .7px, transparent 1.35px);
 }
 .drawer-x { font: inherit; font-size: 22px; line-height: 1; background: none; border: 0; color: var(--ui-mute); cursor: pointer; width: 36px; height: 36px; }
 .hint { margin: 0; color: var(--ui-mute); font-size: 13px; max-width: 70ch; }

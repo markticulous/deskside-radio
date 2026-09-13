@@ -222,8 +222,8 @@ function editorialSvg(small) {
 
 /* ---------- E · retro 8-bit ----------
    No curves anywhere, four colours, and the meter quantised into cells.
-   The small cut drops the dither and the scanlines: both are 1px features
-   that turn into grey mush the moment the icon is scaled down. */
+   The small cut drops the dither: a 1px checker turns to grey mush the
+   moment the icon is scaled down. */
 /* "Press Start 2P" must be quoted wherever it appears: an unquoted CSS
    family name cannot have a component starting with a digit, so "2P"
    invalidates the whole stack and the text falls back to serif. */
@@ -261,9 +261,6 @@ function retroSvg(small) {
       '      <rect width="2" height="2" fill="#14141a"/>',
       '      <rect x="2" y="2" width="2" height="2" fill="#14141a"/>',
       '    </pattern>',
-      '    <pattern id="scan" width="3" height="3" patternUnits="userSpaceOnUse">',
-      '      <rect width="3" height="1" fill="#000000" fill-opacity=".34"/>',
-      '    </pattern>',
       '  </defs>',
       ''),
     '  <!-- screen, then the hard pixel bezel: grey outer, white inner -->',
@@ -284,7 +281,6 @@ function retroSvg(small) {
     '',
     '  <!-- level, in cells -->',
     '  ' + cells.join(''),
-    small ? '' : `  <rect x="${bez + 3}" y="${bez + 3}" width="${256 - (bez + 3) * 2}" height="${256 - (bez + 3) * 2}" fill="url(#scan)"/>`,
     '</svg>',
     ''
   );
