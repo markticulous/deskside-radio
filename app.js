@@ -99,8 +99,7 @@
     tuner: $('tuner'), clock: $('clock'),
     schedToggle: $('schedToggle'), schedLabel: $('schedLabel'), schedNext: $('schedNext'),
     band: $('band'), name: $('name'), tag: $('tag'), led: $('led'), status: $('status'),
-    presets: $('presets'), play: $('play'), live: $('liveBtn'),
-    volume: $('volume'), volumeOut: $('volumeOut'),
+    presets: $('presets'), play: $('play'), volume: $('volume'), volumeOut: $('volumeOut'),
     bass: $('bass'), bassOut: $('bassOut'), treble: $('treble'), trebleOut: $('trebleOut'),
     overlay: $('startOverlay'), startSub: $('startSub'), settings: $('settings'),
     blind: document.querySelector('.meter-blind')
@@ -279,7 +278,7 @@
        something to aim at. Without the guard every rebuffer would seek. */
     if (!syncedThisTune) {
       syncedThisTune = true;
-      setTimeout(function () { if (status === 'live') { seekToLive(); renderLiveBtn(); } }, 400);
+      setTimeout(function () { if (status === 'live') seekToLive(); }, 400);
     }
     launching = false;
     liveSince = Date.now();
@@ -304,21 +303,24 @@
      HLS reports an empty seekable range and ignores the assignment outright,
      which is why the control hides itself rather than sitting there inert. */
   var LIVE_MARGIN = 1.5;   // seconds kept in hand against jitter
-  /* Measured: a healthy stream settles about 2.3s ahead of the playhead,
-     which is the browser's own buffer and not something to chase. The
-     control lights only past 4s, which means real drift -- the machine
-     slept, or the audio graph was interrupted and the clock fell behind.
-     Set any nearer and it would sit lit through ordinary playback, gain
-     three quarters of a second, and light again. */
-  var LIVE_SLACK = 4;
+  /* There is deliberately no running drift correction here, and the reason
+     is worth writing down so it is not attempted again.
+
+     Measured: the browser holds about 2.3 seconds of audio ahead of the
+     playhead and throttles the download to keep it there. Playing at half
+     speed for nine seconds did not widen that gap by a hundredth of a
+     second -- the download simply slowed to match. So buffered.end minus
+     currentTime measures buffer depth, never staleness, and cannot see
+     drift at all.
+
+     It also means a seek can never recover more than the buffer holds. If
+     the clock really has fallen ten seconds behind, the newer audio is not
+     in memory to seek to. The only cure is a fresh connection, which is
+     what the AudioContext statechange handler above already does when the
+     graph is interrupted -- the one mechanism known to cause it. */
 
   function canSeekLive() {
     return !!(audio.seekable && audio.seekable.length && audio.buffered && audio.buffered.length);
-  }
-
-  function liveGap() {
-    if (!audio.buffered || !audio.buffered.length) return 0;
-    return Math.max(0, audio.buffered.end(audio.buffered.length - 1) - audio.currentTime);
   }
 
   function seekToLive() {
@@ -328,23 +330,6 @@
     try { audio.currentTime = edge; } catch (e) { return false; }
     return true;
   }
-
-  function renderLiveBtn() {
-    var btn = el.live;
-    if (!btn) return;
-    var usable = status === 'live' && !audio.paused && canSeekLive();
-    btn.hidden = !usable;
-    btn.classList.toggle('is-behind', usable && liveGap() > LIVE_SLACK);
-  }
-
-  /* Pressable whenever the stream can be seeked at all, not only when it is
-     far behind: there is usually a little to gain, and a control that is
-     visible but refuses the press is worse than one that does something
-     small. The lit state is emphasis, not permission. */
-  el.live.addEventListener('click', function () {
-    seekToLive();
-    renderLiveBtn();
-  });
 
   function elementFor(st) {
     if (!noCors[st.url]) return corsEl;
@@ -622,7 +607,6 @@
   function tick() {
     var now = new Date();
     el.clock.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes());
-    renderLiveBtn();
     var slot = state.schedulerEnabled ? Scheduler.activeSlot(state.schedule, now) : null;
     var key = slotKey(slot);
     if (key !== lastSlotKey) {
