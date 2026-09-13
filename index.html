@@ -9,7 +9,7 @@
 <link rel="icon" href="favicon.ico" sizes="16x16 24x24 32x32 48x48 64x64 128x128 256x256">
 <link rel="icon" href="icon-small.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-256.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@1,500&family=IBM+Plex+Mono:wght@400;600&family=Oswald:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;500;600;700&family=Syne:wght@700;800&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=Cinzel:wght@600;700&family=Cormorant+Garamond:ital,wght@1,500&family=IBM+Plex+Mono:wght@400;600&family=Oswald:wght@400;500;600&family=Poiret+One&family=Press+Start+2P&family=Saira+Condensed:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;500;600;700&family=Syne:wght@700;800&family=Figtree:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="app.css">
 </head>
 <body class="app">
@@ -70,7 +70,7 @@
       <div class="meter-bar"></div>
       <div class="meter-scale"></div>
       <canvas class="scope"></canvas>
-      <span class="meter-blind">meter off &middot; stream blocks analysis</span>
+      <span class="meter-blind">meter off &middot; stream failed the analysed path</span>
     </div>
   </section>
 
@@ -125,8 +125,8 @@
       <button type="button" class="dtab" role="tab" data-pane="look" id="tabLook" aria-selected="false" aria-controls="paneLook">
         <span class="dtab-label">Look</span><span class="dtab-n"></span>
       </button>
-      <button type="button" class="dtab" role="tab" data-pane="data" id="tabData" aria-selected="false" aria-controls="paneData">
-        <span class="dtab-label">Data</span><span class="dtab-n"></span>
+      <button type="button" class="dtab" role="tab" data-pane="service" id="tabService" aria-selected="false" aria-controls="paneService">
+        <span class="dtab-label">Service</span><span class="dtab-n"></span>
       </button>
       <span class="dtab-ink" aria-hidden="true"></span>
     </div>
@@ -186,7 +186,7 @@
         <div class="themes" id="themeCards"></div>
       </section>
 
-      <section class="pane" id="paneData" role="tabpanel" aria-labelledby="tabData" hidden>
+      <section class="pane" id="paneService" role="tabpanel" aria-labelledby="tabService" hidden>
         <div class="pane-block">
           <h3>Backup</h3>
           <p class="hint">A settings file holds the stations, the schedule, the theme and the sound settings. Nothing else leaves this machine.</p>
@@ -207,7 +207,7 @@
         </div>
         <div class="pane-block">
           <h3>Reset</h3>
-          <p class="hint">Puts everything back to a fresh install: the two original stations, an empty schedule, no remembered city, and the sound settings at their middle.</p>
+          <p class="hint">Puts everything back to a fresh install: the three original stations, an empty schedule, no remembered city, and the sound settings at their middle.</p>
           <button type="button" class="ghost danger" id="resetBtn">Reset to defaults</button>
         </div>
       </section>

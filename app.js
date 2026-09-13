@@ -3,7 +3,7 @@
   'use strict';
 
   var KEY = 'radio.v1';
-  var THEMES = ['dial', 'console', 'rams', 'editorial'];
+  var THEMES = ['dial', 'console', 'rams', 'editorial', 'retro', 'departures', 'marconi'];
   // Bump on release, and publish the same number in version.json.
   var APP_VERSION = '1.1.0';
 
@@ -247,7 +247,10 @@
   function wire(node) {
     node.addEventListener('loadedmetadata', onStarted);
     node.addEventListener('playing', onPlaying);
-    node.addEventListener('error', function () { onFailure(); });
+    /* Only this one reports that the resource itself would not load, which
+       is what a refused analysed path raises. Every other route into
+       onFailure is a stall, a re-tune, or a plain outage. */
+    node.addEventListener('error', function () { onFailure(true); });
     node.addEventListener('ended', function () { onFailure(); });
     node.addEventListener('waiting', onBuffering);
     node.addEventListener('timeupdate', onProgressing);
@@ -304,11 +307,11 @@
     if (el.blind) {
       el.blind.textContent = noGraph
         ? 'meter off \u00b7 click anywhere to switch it on'
-        : 'meter off \u00b7 stream blocks analysis';
+        : 'meter off \u00b7 stream failed the analysed path';
     }
     var toneOff = audio === plainEl;
     el.bass.disabled = el.treble.disabled = toneOff;
-    el.bass.title = el.treble.title = toneOff ? 'This stream blocks the analysed audio path, so tone control is unavailable.' : '';
+    el.bass.title = el.treble.title = toneOff ? 'This stream would not load on the analysed path, so tone control is unavailable.' : '';
     el.play.setAttribute('aria-pressed', state.intendedPlaying ? 'true' : 'false');
   }
 
@@ -326,7 +329,13 @@
     setStatus(attempts ? 'reconnecting' : 'connecting', attempts ? 'Reconnecting \u00b7 try ' + attempts : 'Connecting');
     var p = audio.play();
     if (p && p.catch) p.catch(function (err) {
-      if (err && err.name === 'NotAllowedError') showOverlay();
+      var name = err && err.name;
+      /* The load() above rejects the previous tune's pending play() with
+         AbortError. That is this function's own doing, not a fault in the
+         stream, and counting it as one used to brand the incoming station
+         unanalysable before it had played a note. */
+      if (name === 'AbortError') return;
+      if (name === 'NotAllowedError') showOverlay();
       else onFailure();
     });
     save();
@@ -362,14 +371,17 @@
     return { station: station(pick.stationId), volume: pick.volume };
   }
 
-  function onFailure() {
+  function onFailure(loadFailed) {
     if (!state.intendedPlaying || userStopping || retryTimer || awaitingTap) return;
     var st = currentStation();
-    /* A stream that never even began may be refusing the CORS request the
-       analyser needs, so retry it once on the untapped element. One that
-       had started is a plain outage: keep it on the tapped path, which is
-       the only one with tone control and the full fader range. */
-    if (st && audio === corsEl && !startedThisTune && !provenCors[st.url] && !noCors[st.url]) {
+    /* A stream whose resource would not load at all may be refusing the
+       CORS request the analyser needs, so retry it once on the untapped
+       element. One that had started is a plain outage: keep it on the
+       tapped path, which is the only one with tone control and the full
+       fader range. Only a load error qualifies — a stall or a re-tune says
+       nothing about whether the analysed path is allowed, and treating one
+       as proof cost the station its meter for the rest of the session. */
+    if (loadFailed && st && audio === corsEl && !startedThisTune && !provenCors[st.url] && !noCors[st.url]) {
       noCors[st.url] = true;
       tune(st, state.volume);
       return;
@@ -775,7 +787,7 @@
      One ink bar slides between the tabs rather than each drawing its own
      border, so the strip keeps a single baseline and every tab is the same
      height whether or not it carries a count. */
-  var PANES = ['stations', 'schedule', 'look', 'data'];
+  var PANES = ['stations', 'schedule', 'look', 'service'];
   var pane = 'stations';
 
   function moveInk(animate) {
@@ -877,7 +889,7 @@
       /* The shortcut keeps the theme that was showing when it was made:
          each theme ships its own .ico, and a per-theme path also sidesteps
          the Windows icon cache, which keys on the file it was told about. */
-      var known = /^(dial|console|rams|editorial)$/.test(state.theme);
+      var known = /^(dial|console|rams|editorial|retro|departures|marconi)$/.test(state.theme);
       var icon = windowsPathOf(appFolderUrl() + (known ? 'favicon-' + state.theme + '.ico' : 'favicon.ico'));
       // .url files want CRLF and the icon given as a full path.
       body = ['[InternetShortcut]', 'URL=' + here, 'IconFile=' + icon, 'IconIndex=0', ''].join('\r\n');
@@ -902,10 +914,12 @@
        showing right now — the same file the .url above points at, so what
        is previewed here is literally what lands on the Desktop. */
     var theme = known ? state.theme : 'dial';
-    var label = { dial: 'Analogue dial', console: 'Broadcast console', rams: 'Rams minimal', editorial: 'Editorial' };
+    var named = label[state.theme] || 'Deskside Radio';
+    var label = { dial: 'Analogue dial', console: 'Broadcast console', rams: 'Rams minimal', editorial: 'Editorial',
+                  retro: 'Retro 8-bit', departures: 'Departures board', marconi: 'Marconi deco' };
     $('shortcutIcon').src = known ? 'favicon-' + theme + '.ico' : 'favicon.ico';
-    $('shortcutIcon').alt = label[theme] + ' icon';
-    $('shortcutTheme').textContent = label[theme];
+    $('shortcutIcon').alt = named + ' icon';
+    $('shortcutTheme').textContent = named;
     $('shortcutCmd').textContent = windowsPathOf(appFolderUrl()) + 'Create Desktop Shortcut.cmd ' + theme;
     $('shortcutHelp').showModal();
   });
@@ -959,7 +973,10 @@
     { key: 'dial', label: 'Analogue dial' },
     { key: 'console', label: 'Broadcast console' },
     { key: 'rams', label: 'Rams minimal' },
-    { key: 'editorial', label: 'Editorial' }
+    { key: 'editorial', label: 'Editorial' },
+    { key: 'retro', label: 'Retro 8-bit' },
+    { key: 'departures', label: 'Departures board' },
+    { key: 'marconi', label: 'Marconi deco' }
   ];
   function renderThemeCards() {
     var box = $('themeCards');

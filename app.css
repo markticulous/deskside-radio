@@ -214,6 +214,9 @@
   .tuner *, .tuner *::before, .tuner *::after { transition-duration: 0s !important; animation: none !important; }
   .sched-next { transition-duration: 0s !important; }
   .card-mark, .card-fold, .card.is-sliding { transition-duration: 0s !important; }
+  .mini:active, .tab:active, .ghost:active, .file-btn:active, .primary:active,
+  .drawer-x:active, .result-add:active, .dtab:active, .finder-toggle:active,
+  .theme-card:active .theme-thumb { transform: none; }
 }
 
 /* ================================================================== */
@@ -797,6 +800,368 @@
 [data-theme="dial"] .btn-text, [data-theme="console"] .btn-text, [data-theme="rams"] .btn-text { display: none; }
 
 /* ================================================================== */
+/* E · RETRO 8-BIT — four colours, an 8px grid, a CRT in front          */
+/* ================================================================== */
+
+[data-theme="retro"] .tuner {
+  --ink: #fcfcfc; --grey: #7c7c7c; --dark: #3c3c3c; --void: #0a0a0c;
+  --red: #f83800; --gold: #f8b800; --green: #b8f818; --sky: #3cbcfc;
+  --gap: 20px; --pad: 30px;
+  --by-mono: "Press Start 2P", monospace;
+  --by-fg: #7c7c7c; --by-line: #3c3c3c; --by-plate: #0a0a0c;
+  --by-emboss: transparent; --by-accent: #f83800; --by-on-accent: #fcfcfc;
+  font-family: "Press Start 2P", "Courier New", monospace;
+  color: var(--ink); background: var(--void);
+  box-shadow: inset 0 0 0 4px var(--ink), inset 0 0 0 8px var(--void), inset 0 0 0 12px var(--grey);
+  image-rendering: pixelated;
+}
+/* Dither field: a two-pixel checker was the era's only gradient. */
+[data-theme="retro"] .tuner::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: repeating-conic-gradient(#131318 0 25%, transparent 0 50%);
+  background-size: 4px 4px;
+}
+/* Scanlines. None of this was ever seen on anything but a CRT. */
+[data-theme="retro"] .tuner::after {
+  content: ""; position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  background: repeating-linear-gradient(rgba(0,0,0,.30) 0 1px, transparent 1px 3px);
+}
+[data-theme="retro"] .tuner-bar, [data-theme="retro"] .display,
+[data-theme="retro"] .presets, [data-theme="retro"] .controls { position: relative; z-index: 1; }
+
+[data-theme="retro"] .tuner-bar { gap: 13px; font-size: 9px; }
+[data-theme="retro"] .brand-mark { width: 10px; height: 10px; border-radius: 0; background: var(--gold); }
+[data-theme="retro"] .brand-name { font-size: 10px; letter-spacing: 0; font-weight: 400; }
+[data-theme="retro"] .clock { font-size: 10px; color: var(--sky); }
+[data-theme="retro"] .sched-chip { gap: 8px; padding: 8px 10px; font-size: 8px; color: var(--grey);
+  border-radius: 0; box-shadow: inset 0 0 0 2px var(--dark); }
+[data-theme="retro"] .sched-chip[aria-pressed="true"] { color: var(--green); box-shadow: inset 0 0 0 2px var(--green); }
+[data-theme="retro"] .sched-led { width: 8px; height: 8px; border-radius: 0; background: var(--dark); }
+[data-theme="retro"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--green); }
+[data-theme="retro"] .sched-next { font-size: 8px; color: var(--grey); opacity: 1; }
+[data-theme="retro"] .icon-btn { width: 32px; height: 32px; border-radius: 0; color: var(--grey);
+  box-shadow: inset 0 0 0 2px var(--dark); }
+[data-theme="retro"] .icon-btn:hover { color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+
+[data-theme="retro"] .display-band { font-size: 9px; letter-spacing: 0; color: var(--sky); }
+[data-theme="retro"] .display-name {
+  margin: 14px 0 0; font-size: clamp(17px, 3.1vw, 32px); line-height: 1.35;
+  letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; overflow: hidden;
+}
+[data-theme="retro"] .display-tag { margin: 14px 0 0; font-size: 8px; line-height: 2; color: var(--grey); text-transform: uppercase; }
+[data-theme="retro"] .display-status { margin-top: 16px; font-size: 8px; color: var(--grey); }
+[data-theme="retro"] .status-led { width: 8px; height: 8px; border-radius: 0; background: var(--dark); }
+[data-theme="retro"] .status-led.live { background: var(--red); animation: blink 1.6s steps(1) infinite; }
+/* No slide-rule here: an 8-bit HUD picks from a list, it does not sweep. */
+[data-theme="retro"] .dial { display: none; }
+
+/* The meter quantises. Full-width gradient clipped to the level, then the
+   whole bar chopped into cells, so colour stays fixed to the scale. */
+[data-theme="retro"] .meter { display: block; margin-top: 22px; }
+[data-theme="retro"] .meter-face, [data-theme="retro"] .meter-scale { display: none; }
+[data-theme="retro"] .meter-bar {
+  position: relative; height: 22px; background: var(--dark);
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 15px, transparent 15px 19px);
+          mask: repeating-linear-gradient(90deg, #000 0 15px, transparent 15px 19px);
+}
+[data-theme="retro"] .meter-bar::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, var(--green) 0 62%, var(--gold) 62% 84%, var(--red) 84%);
+  clip-path: inset(0 calc(100% - var(--vu, 0) * 100%) 0 0);
+}
+[data-theme="retro"] .meter-blind { font-size: 8px; line-height: 1.9; color: var(--grey); margin-top: 10px; text-transform: uppercase; }
+
+/* Presets are a menu. The cursor marks the choice, nothing else moves. */
+[data-theme="retro"] .presets { grid-template-columns: 1fr; gap: 0; --presets-max: 150px; --presets-thumb: #3c3c3c; }
+[data-theme="retro"] .preset {
+  grid-template-columns: 22px 1fr auto; grid-template-areas: "n name band";
+  align-items: center; column-gap: 10px; padding: 9px 8px;
+  border-radius: 0; background: none; color: var(--grey);
+}
+[data-theme="retro"] .preset:hover { color: var(--ink); }
+[data-theme="retro"] .preset.is-active { color: var(--ink); }
+[data-theme="retro"] .preset-n { grid-area: n; font-size: 0; color: var(--red); }
+[data-theme="retro"] .preset.is-active .preset-n::before { content: "\25B6"; font-size: 11px; }
+[data-theme="retro"] .preset-name { grid-area: name; font-size: 11px; text-transform: uppercase; letter-spacing: 0; }
+[data-theme="retro"] .preset-band { grid-area: band; font-size: 8px; color: var(--sky); }
+[data-theme="retro"] .preset-add { color: var(--dark); box-shadow: inset 0 0 0 2px var(--dark); margin-top: 8px; opacity: 1; }
+[data-theme="retro"] .preset-add:hover { color: var(--grey); }
+
+[data-theme="retro"] .controls { gap: 18px; padding-top: 18px; box-shadow: inset 0 2px 0 var(--dark); }
+[data-theme="retro"] .play-btn {
+  width: auto; height: auto; border-radius: 0; padding: 14px 18px; gap: 10px;
+  font-size: 9px; text-transform: uppercase; color: var(--ink); background: var(--red);
+  box-shadow: inset -4px -4px 0 #a01000, inset 4px 4px 0 #ff7c5c;
+}
+[data-theme="retro"] .play-btn:active { box-shadow: inset 4px 4px 0 #a01000, inset -4px -4px 0 #ff7c5c; }
+[data-theme="retro"] .fader label { font-size: 8px; letter-spacing: 0; text-transform: uppercase; color: var(--grey); }
+[data-theme="retro"] .fader output { font-size: 9px; color: var(--green); }
+[data-theme="retro"] .fader input {
+  -webkit-appearance: none; appearance: none; height: 10px; border-radius: 0; background: var(--dark);
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 10px);
+          mask: repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 10px);
+}
+[data-theme="retro"] .fader input::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 18px; border-radius: 0; background: var(--green); cursor: grab;
+}
+[data-theme="retro"] .fader input::-moz-range-thumb { width: 12px; height: 18px; border: 0; border-radius: 0; background: var(--green); }
+
+/* ================================================================== */
+/* F · DEPARTURES — a split-flap board; the schedule is the subject     */
+/* ================================================================== */
+
+[data-theme="departures"] .tuner {
+  --board: #0b0b0c; --tile: #1b1c20; --tile-hi: #26282d; --seam: #08090b;
+  --ink: #f5f3ec; --amber: #ffc400; --mute: #6f7176; --line: #2a2c31;
+  --gap: 20px; --pad: 28px;
+  --by-mono: "IBM Plex Mono", monospace;
+  --by-fg: #6f7176; --by-line: #2a2c31; --by-plate: #111214;
+  --by-emboss: rgba(255,255,255,.04); --by-accent: #ffc400; --by-on-accent: #0b0b0c;
+  font-family: "Saira Condensed", "Arial Narrow", sans-serif;
+  color: var(--ink); background: var(--board);
+  box-shadow: inset 0 0 0 1px var(--line), inset 0 0 90px rgba(0,0,0,.9);
+}
+[data-theme="departures"] .tuner-bar { padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+[data-theme="departures"] .brand-mark { width: 9px; height: 9px; border-radius: 0; background: var(--amber); }
+[data-theme="departures"] .brand-name { font-size: 16px; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; }
+[data-theme="departures"] .clock { font-size: 17px; font-weight: 600; letter-spacing: .12em; color: var(--amber); }
+[data-theme="departures"] .sched-chip { gap: 9px; padding: 6px 12px; border-radius: 0; color: var(--mute);
+  font-size: 12px; letter-spacing: .2em; text-transform: uppercase; box-shadow: inset 0 0 0 1px var(--line); }
+[data-theme="departures"] .sched-chip[aria-pressed="true"] { color: var(--amber); box-shadow: inset 0 0 0 1px #4a3c10; }
+[data-theme="departures"] .sched-led { width: 7px; height: 7px; border-radius: 0; background: var(--line); }
+[data-theme="departures"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--amber); }
+[data-theme="departures"] .sched-next { font-size: 12px; letter-spacing: .12em; color: var(--mute); opacity: 1; }
+[data-theme="departures"] .icon-btn { width: 32px; height: 32px; border-radius: 0; color: var(--mute); box-shadow: inset 0 0 0 1px var(--line); }
+[data-theme="departures"] .icon-btn:hover { color: var(--ink); }
+
+[data-theme="departures"] .display-band { font-size: 13px; letter-spacing: .24em; text-transform: uppercase; color: var(--mute); }
+/* The name sits on the flap grid: tile faces, their fold seam, and the
+   split between one flap and the next. The glyphs ride on top rather than
+   being boxed one per tile, which no proportional face would line up with. */
+[data-theme="departures"] .display-name {
+  /* Shrink to the name plus a couple of blank flaps. A full-width grid of
+     empty tiles is what a real board does, but on screen it reads as dead
+     space rather than as slack. */
+  display: inline-block; max-width: 100%;
+  margin: 10px 0 0; padding: 10px 92px 10px 12px;
+  font-size: clamp(36px, 5.4vw, 64px); font-weight: 600; line-height: 1.1;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--amber);
+  white-space: nowrap; overflow: hidden;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 37px, var(--seam) 37px 40px),
+    linear-gradient(var(--tile-hi) 0 50%, #15161a 50% 100%);
+  box-shadow: inset 0 0 0 1px #33363c;
+}
+[data-theme="departures"] .display-name::after { content: ""; }
+[data-theme="departures"] .display-tag { margin: 12px 0 0; font-size: 15px; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
+[data-theme="departures"] .display-status { margin-top: 12px; font-size: 14px; letter-spacing: .18em; text-transform: uppercase; color: var(--mute); }
+[data-theme="departures"] .status-led { width: 8px; height: 8px; border-radius: 0; background: var(--line); }
+[data-theme="departures"] .status-led.live { background: var(--amber); }
+[data-theme="departures"] .dial { display: none; }
+
+[data-theme="departures"] .meter { display: block; margin-top: 20px; }
+[data-theme="departures"] .meter-face, [data-theme="departures"] .meter-scale { display: none; }
+[data-theme="departures"] .meter-bar {
+  position: relative; height: 14px; background: var(--tile);
+  box-shadow: inset 0 0 0 1px var(--line);
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 15px, transparent 15px 17px);
+          mask: repeating-linear-gradient(90deg, #000 0 15px, transparent 15px 17px);
+}
+[data-theme="departures"] .meter-bar::before {
+  content: ""; position: absolute; inset: 0; background: var(--amber);
+  clip-path: inset(0 calc(100% - var(--vu, 0) * 100%) 0 0);
+}
+[data-theme="departures"] .meter-blind { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--mute); margin-top: 8px; }
+
+/* Presets read as board rows, because that is what they are. */
+[data-theme="departures"] .presets { grid-template-columns: 1fr; gap: 0; --presets-max: 212px; --presets-thumb: #2a2c31; }
+[data-theme="departures"] .preset {
+  grid-template-columns: auto 1fr auto; grid-template-areas: "n name band";
+  align-items: center; column-gap: 16px; padding: 11px 4px;
+  border-radius: 0; background: none; color: var(--ink);
+  border-bottom: 1px solid #17181c;
+}
+[data-theme="departures"] .preset:hover { background: #121316; }
+[data-theme="departures"] .preset.is-active { color: var(--amber); }
+[data-theme="departures"] .preset-n {
+  grid-area: n; width: 26px; height: 22px; display: grid; place-items: center;
+  font-size: 13px; font-weight: 600; color: var(--mute); background: var(--tile);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+[data-theme="departures"] .preset.is-active .preset-n { color: var(--board); background: var(--amber); box-shadow: none; }
+[data-theme="departures"] .preset-name { grid-area: name; font-size: 19px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
+[data-theme="departures"] .preset-band { grid-area: band; font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: var(--mute); }
+[data-theme="departures"] .preset.is-active .preset-band { color: var(--amber); }
+[data-theme="departures"] .preset-add { opacity: 1; color: var(--mute); border-bottom: 1px dashed var(--line); }
+[data-theme="departures"] .preset-add:hover { color: var(--ink); }
+
+[data-theme="departures"] .controls { padding-top: 18px; border-top: 1px solid var(--line); }
+[data-theme="departures"] .play-btn {
+  width: auto; height: auto; border-radius: 0; padding: 12px 22px; gap: 10px;
+  font-size: 15px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--board); background: var(--amber);
+}
+[data-theme="departures"] .play-btn:hover { background: #ffd23f; }
+[data-theme="departures"] .fader label { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--mute); }
+[data-theme="departures"] .fader output { font-size: 16px; font-weight: 600; color: var(--amber); }
+[data-theme="departures"] .fader input { -webkit-appearance: none; appearance: none; height: 4px; background: var(--tile); box-shadow: inset 0 0 0 1px var(--line); }
+[data-theme="departures"] .fader input::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 10px; height: 22px; border-radius: 0; background: var(--amber); cursor: grab;
+}
+[data-theme="departures"] .fader input::-moz-range-thumb { width: 10px; height: 22px; border: 0; border-radius: 0; background: var(--amber); }
+
+/* ================================================================== */
+/* G · MARCONI — black lacquer, gold, the sunburst over the speaker     */
+/* ================================================================== */
+
+[data-theme="marconi"] .tuner {
+  --lacquer: #0f0c09; --gold: #c9a227; --gold-hi: #f0d98a; --gold-lo: #6d5a2c;
+  --ink: #f3e8cd; --mute: #9a875c;
+  --gap: 22px; --pad: 34px;
+  --by-mono: "IBM Plex Mono", monospace;
+  --by-fg: #9a875c; --by-line: rgba(201,162,39,.5); --by-plate: rgba(0,0,0,.35);
+  --by-emboss: rgba(240,217,138,.14); --by-accent: linear-gradient(#f0d98a, #a9832f); --by-on-accent: #0f0c09;
+  font-family: "Poiret One", "Cormorant Garamond", serif;
+  color: var(--ink);
+  background: radial-gradient(120% 90% at 50% 4%, #1d1811, var(--lacquer) 62%);
+  box-shadow: inset 0 0 0 1px #3a2f18, inset 0 0 0 7px var(--lacquer), inset 0 0 0 8px var(--gold-lo);
+}
+/* The rays every 1930s cabinet wore, masked to a ring so the type on top
+   of them stays readable. */
+[data-theme="marconi"] .tuner::before {
+  content: ""; position: absolute; z-index: 0; pointer-events: none;
+  left: 50%; top: -120px; width: 620px; height: 620px; margin-left: -310px;
+  background: repeating-conic-gradient(from 0deg, rgba(201,162,39,.14) 0 2.2deg, transparent 2.2deg 9deg);
+  -webkit-mask: radial-gradient(circle, transparent 17%, #000 33%, rgba(0,0,0,.4) 58%, transparent 73%);
+          mask: radial-gradient(circle, transparent 17%, #000 33%, rgba(0,0,0,.4) 58%, transparent 73%);
+}
+[data-theme="marconi"] .tuner-bar, [data-theme="marconi"] .display,
+[data-theme="marconi"] .presets, [data-theme="marconi"] .controls { position: relative; z-index: 1; }
+
+[data-theme="marconi"] .tuner-bar { font-family: "Cinzel", serif; font-size: 11px; letter-spacing: .4em; text-transform: uppercase; color: var(--mute); }
+[data-theme="marconi"] .brand-mark { width: 8px; height: 8px; transform: rotate(45deg); background: var(--gold); }
+[data-theme="marconi"] .brand-name { font-size: 12px; font-weight: 600; letter-spacing: .38em; }
+[data-theme="marconi"] .clock { font-family: "Cinzel", serif; font-size: 13px; letter-spacing: .24em; color: var(--gold); }
+[data-theme="marconi"] .sched-chip { gap: 9px; padding: 7px 14px; border-radius: 0; font-size: 10px; letter-spacing: .24em;
+  color: var(--mute); box-shadow: inset 0 0 0 1px #4a3d1e; }
+[data-theme="marconi"] .sched-chip[aria-pressed="true"] { color: var(--gold-hi); box-shadow: inset 0 0 0 1px var(--gold); }
+[data-theme="marconi"] .sched-led { width: 6px; height: 6px; background: #4a3d1e; transform: rotate(45deg); }
+[data-theme="marconi"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--gold-hi); box-shadow: 0 0 7px rgba(240,217,138,.8); }
+[data-theme="marconi"] .sched-next { font-size: 10px; letter-spacing: .16em; color: var(--mute); opacity: 1; }
+[data-theme="marconi"] .icon-btn { width: 32px; height: 32px; border-radius: 0; color: var(--mute); box-shadow: inset 0 0 0 1px #4a3d1e; }
+[data-theme="marconi"] .icon-btn:hover { color: var(--gold-hi); box-shadow: inset 0 0 0 1px var(--gold); }
+
+[data-theme="marconi"] .display { text-align: center; }
+[data-theme="marconi"] .display-band { font-size: 12px; letter-spacing: .44em; text-transform: uppercase; color: var(--mute); }
+[data-theme="marconi"] .display-name {
+  margin: 10px 0 0; font-family: "Cinzel", serif; font-weight: 700;
+  font-size: clamp(30px, 4.4vw, 54px); line-height: 1.1; letter-spacing: .09em; text-transform: uppercase;
+  background: linear-gradient(#f8eac0, var(--gold) 52%, #8a6d1c);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  white-space: nowrap; overflow: hidden;
+}
+[data-theme="marconi"] .display-tag { margin: 10px 0 0; font-size: 15px; letter-spacing: .16em; color: var(--mute); }
+[data-theme="marconi"] .display-status { margin-top: 12px; justify-content: center; font-size: 11px; letter-spacing: .28em; text-transform: uppercase; color: var(--mute); }
+[data-theme="marconi"] .status-led { width: 7px; height: 7px; background: #4a3d1e; transform: rotate(45deg); }
+[data-theme="marconi"] .status-led.live { background: var(--gold-hi); box-shadow: 0 0 9px rgba(240,217,138,.85); }
+
+/* A gold slide-rule, hairline ticks, one lit pointer. */
+[data-theme="marconi"] .dial { display: grid; gap: 18px; margin: 22px auto 0; max-width: 520px; padding-left: 54px; }
+[data-theme="marconi"] .scale { color: var(--gold); border-bottom: 1px solid var(--gold); height: 26px; }
+[data-theme="marconi"] .scale:not(.is-active) { opacity: .3; }
+[data-theme="marconi"] .scale-labels { font-size: 11px; letter-spacing: .1em; color: var(--mute); padding-top: 5px; }
+[data-theme="marconi"] .scale-badge {
+  position: absolute; left: -54px; top: 50%; transform: translateY(-50%);
+  width: 42px; text-align: center;
+  font-family: "Cinzel", serif; font-size: 10px; letter-spacing: .18em;
+  padding: 4px 0; color: var(--mute); box-shadow: inset 0 0 0 1px #4a3d1e;
+}
+[data-theme="marconi"] .scale.is-active .scale-badge {
+  color: var(--lacquer); background: linear-gradient(var(--gold-hi), var(--gold)); box-shadow: none;
+}
+[data-theme="marconi"] .needle { background: var(--gold-hi); box-shadow: 0 0 10px rgba(240,217,138,.85); }
+
+/* The analogue VU earns its place here — same instrument, gold palette. */
+[data-theme="marconi"] .meter { display: block; width: 230px; margin: 24px auto 0; position: relative; }
+[data-theme="marconi"] .meter-bar, [data-theme="marconi"] .meter-scale { display: none; }
+[data-theme="marconi"] .vu-face { stroke: var(--gold-lo); stroke-width: 1.5; }
+[data-theme="marconi"] .vu-paper-a { stop-color: #241d12; }
+[data-theme="marconi"] .vu-paper-b { stop-color: #0d0a06; }
+[data-theme="marconi"] .vu-vig-a { stop-color: #000; stop-opacity: 0; }
+[data-theme="marconi"] .vu-vig-b { stop-color: #000; stop-opacity: .5; }
+[data-theme="marconi"] .vu-gloss-a { stop-color: #f0d98a; stop-opacity: .12; }
+[data-theme="marconi"] .vu-gloss-b { stop-color: #f0d98a; stop-opacity: 0; }
+[data-theme="marconi"] .vu-pin-a { stop-color: #f0d98a; }
+[data-theme="marconi"] .vu-pin-b { stop-color: #4a3d1e; }
+[data-theme="marconi"] .vu-pin { stroke: #2a2210; stroke-width: .6; }
+[data-theme="marconi"] .vu-pin-gloss { fill: #fff6d8; opacity: .5; }
+[data-theme="marconi"] .vu-arc { fill: none; stroke: var(--gold); stroke-width: 1.4; }
+[data-theme="marconi"] .vu-red { fill: none; stroke: #c1402f; stroke-width: 4; }
+[data-theme="marconi"] .vu-tick { stroke: var(--gold); stroke-width: 1; }
+[data-theme="marconi"] .vu-tick.is-major { stroke-width: 1.8; }
+[data-theme="marconi"] .vu-label { font: 600 10px "Cinzel", serif; fill: var(--gold-hi); }
+[data-theme="marconi"] .vu-mark { font: 600 9px "Cinzel", serif; fill: var(--mute); letter-spacing: .18em; }
+[data-theme="marconi"] .vu-needle { fill: var(--gold-hi); }
+[data-theme="marconi"] .meter-blind {
+  position: absolute; left: 8%; right: 8%; top: 6%; margin-top: 0;
+  font-size: 8.5px; line-height: 1.35; letter-spacing: .1em; text-transform: uppercase;
+  color: #f3e8cd; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.7);
+}
+
+[data-theme="marconi"] .presets { gap: 12px; }
+[data-theme="marconi"] .preset {
+  grid-template-columns: auto 1fr; grid-template-areas: "n name" "n band";
+  column-gap: 12px; align-items: center; padding: 12px 16px; border-radius: 0;
+  color: var(--mute); background: linear-gradient(#171309, #0d0a06);
+  box-shadow: inset 0 0 0 1px #4a3d1e;
+  transition: color .15s, background .15s, box-shadow .15s;
+}
+[data-theme="marconi"] .preset:hover { color: var(--ink); box-shadow: inset 0 0 0 1px var(--gold); }
+[data-theme="marconi"] .preset.is-active {
+  color: var(--lacquer); background: linear-gradient(var(--gold-hi), var(--gold));
+  box-shadow: 0 0 22px rgba(201,162,39,.35), inset 0 1px 0 rgba(255,255,255,.4);
+}
+[data-theme="marconi"] .preset-n {
+  grid-area: n; position: relative; width: 28px; height: 28px;
+  display: grid; place-items: center;
+  font-family: "Cinzel", serif; font-size: 13px; color: var(--gold);
+}
+/* Rotating the box would rotate the numeral with it, and a text node has
+   nothing to counter-rotate. Draw the diamond behind it instead. */
+[data-theme="marconi"] .preset-n::before {
+  content: ""; position: absolute; inset: 3px; transform: rotate(45deg);
+  box-shadow: inset 0 0 0 1px #4a3d1e;
+}
+[data-theme="marconi"] .preset.is-active .preset-n { color: var(--lacquer); }
+[data-theme="marconi"] .preset.is-active .preset-n::before { box-shadow: inset 0 0 0 1px rgba(15,12,9,.45); }
+[data-theme="marconi"] .preset-name { grid-area: name; font-family: "Cinzel", serif; font-size: 16px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+[data-theme="marconi"] .preset-band { grid-area: band; margin-top: 3px; font-size: 11px; letter-spacing: .26em; }
+[data-theme="marconi"] .preset-add { opacity: 1; background: none; color: var(--mute); box-shadow: inset 0 0 0 1px #3a2f18; }
+[data-theme="marconi"] .preset-add:hover { color: var(--gold-hi); }
+
+[data-theme="marconi"] .controls { padding-top: 20px; box-shadow: inset 0 1px 0 #3a2f18; }
+[data-theme="marconi"] .play-btn {
+  width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center;
+  color: var(--lacquer); background: linear-gradient(var(--gold-hi), var(--gold));
+  box-shadow: 0 3px 12px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.5);
+}
+[data-theme="marconi"] .play-btn:hover { background: linear-gradient(#fbeec2, var(--gold-hi)); }
+[data-theme="marconi"] .fader label { font-family: "Cinzel", serif; font-size: 10px; letter-spacing: .26em; text-transform: uppercase; color: var(--mute); }
+[data-theme="marconi"] .fader output { font-family: "Cinzel", serif; font-size: 17px; color: var(--gold); }
+[data-theme="marconi"] .fader input {
+  -webkit-appearance: none; appearance: none; height: 2px; background: #4a3d1e;
+}
+[data-theme="marconi"] .fader input::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; cursor: grab;
+  background: radial-gradient(circle at 35% 30%, #f8eac0, var(--gold) 60%, #8a6d1c);
+  box-shadow: 0 1px 4px rgba(0,0,0,.7);
+}
+[data-theme="marconi"] .fader input::-moz-range-thumb {
+  width: 16px; height: 16px; border: 0; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f8eac0, var(--gold) 60%, #8a6d1c);
+}
+
+/* ================================================================== */
 /* App page, start overlay, settings drawer                            */
 /* ================================================================== */
 
@@ -804,6 +1169,9 @@
 [data-theme="console"]   { --page-bg: #06070a; --ui-bg: #14161a; --ui-fg: #d7dadd; --ui-mute: #8a9096; --ui-line: #2a2e33; --ui-field: #0b0c0e; --ui-accent: #ffb000; --ui-font: "IBM Plex Mono", monospace; --ui-radius: 2px; }
 [data-theme="rams"]      { --page-bg: #e9e6df; --ui-bg: #ffffff; --ui-fg: #1d1d1b; --ui-mute: #7a7871; --ui-line: #d6d2c9; --ui-field: #f6f5f1; --ui-accent: #f0842a; --ui-font: "Archivo", sans-serif; --ui-radius: 6px; }
 [data-theme="editorial"] { --page-bg: #efeeea; --ui-bg: #ffffff; --ui-fg: #111; --ui-mute: #6e6e6a; --ui-line: #e3e3df; --ui-field: #f7f7f5; --ui-accent: #111; --ui-font: "Figtree", sans-serif; --ui-radius: 8px; }
+[data-theme="retro"]      { --page-bg: #050506; --ui-bg: #14141a; --ui-fg: #fcfcfc; --ui-mute: #7c7c7c; --ui-line: #3c3c3c; --ui-field: #0a0a0c; --ui-accent: #f83800; --ui-font: "Press Start 2P", monospace; --ui-radius: 0px; }
+[data-theme="departures"] { --page-bg: #050506; --ui-bg: #131417; --ui-fg: #f5f3ec; --ui-mute: #6f7176; --ui-line: #2a2c31; --ui-field: #0b0b0c; --ui-accent: #ffc400; --ui-font: "Saira Condensed", sans-serif; --ui-radius: 0px; }
+[data-theme="marconi"]    { --page-bg: #080604; --ui-bg: #14110b; --ui-fg: #f3e8cd; --ui-mute: #9a875c; --ui-line: #3a2f18; --ui-field: #0d0a06; --ui-accent: #c9a227; --ui-font: "Cinzel", serif; --ui-radius: 0px; }
 
 body.app {
   margin: 0; min-height: 100vh; background: var(--page-bg);
@@ -850,16 +1218,23 @@ body.app .tuner { width: min(1100px, 100%); }
 .drawer-head { border-bottom: 1px solid var(--ui-line); }
 .drawer-foot { background: var(--ui-bg); border-top: 1px solid var(--ui-line); }
 .drawer-head h2 { margin: 0; font-size: 18px; font-weight: 600; }
-.drawer-title { display: grid; gap: 3px; min-width: 0; }
+.drawer-title { display: grid; gap: 7px; min-width: 0; }
 .app-version {
   font-size: 11px; font-weight: 500; letter-spacing: .06em;
   color: color-mix(in srgb, var(--ui-mute) 78%, transparent); font-variant-numeric: tabular-nums;
 }
 /* Drawn rather than typed: the bullet operator renders square-shouldered at
-   11px, and bolding it to make it visible only made the corners worse. */
+   11px, and bolding it to make it visible only made the corners worse.
+   border-radius could not save it either — a 3px box rounds to a blob
+   because there are too few pixels to describe a curve. Painting it as a
+   radial gradient inside a larger box gives the edge real pixels to
+   antialias across, so a dot this small still reads as round. */
 .ver-dot {
-  display: inline-block; width: 3px; height: 3px; border-radius: 50%;
-  background: currentColor; vertical-align: .3em;
+  display: inline-block; width: 8px; height: 8px; vertical-align: .14em;
+  /* Its own colour, not the line's: the line is already mixed toward
+     transparent, and a soft edge on top of that washes out to nothing. */
+  color: var(--ui-mute);
+  background: radial-gradient(circle at 50% 50%, currentColor 0 .5px, transparent 2.1px);
 }
 .drawer-x { font: inherit; font-size: 22px; line-height: 1; background: none; border: 0; color: var(--ui-mute); cursor: pointer; width: 36px; height: 36px; }
 .hint { margin: 0; color: var(--ui-mute); font-size: 13px; max-width: 70ch; }
@@ -1031,6 +1406,45 @@ body.app .tuner { width: min(1100px, 100%); }
 }
 .ghost:hover, .file-btn:hover { border-style: solid; }
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ---- pointer feedback ----
+   Every control in the drawer answers the same way: a tint on hover and a
+   1px press on click. The tints are mixed from the theme's own ink and
+   ground, so they read correctly on the light themes and the dark ones
+   without a per-theme rule. */
+.mini, .tab, .ghost, .file-btn, .primary, .drawer-x, .result-add, .finder-toggle, .dtab, .card-top {
+  transition: background .13s ease, color .13s ease, border-color .13s ease, transform .06s ease;
+}
+.mini:hover { background: color-mix(in srgb, var(--ui-fg) 9%, var(--ui-bg)); border-color: var(--ui-fg); }
+.mini:active { transform: translateY(1px); background: color-mix(in srgb, var(--ui-fg) 18%, var(--ui-bg)); }
+.mini.danger:hover { background: color-mix(in srgb, #d33 12%, var(--ui-bg)); }
+.mini.danger:active { transform: translateY(1px); background: color-mix(in srgb, #d33 22%, var(--ui-bg)); }
+
+.tab:hover { color: var(--ui-fg); background: color-mix(in srgb, var(--ui-fg) 7%, transparent); }
+.tab:active { transform: translateY(1px); background: color-mix(in srgb, var(--ui-fg) 14%, transparent); }
+
+.ghost:hover, .file-btn:hover { background: color-mix(in srgb, var(--ui-fg) 7%, transparent); }
+.ghost:active, .file-btn:active { transform: translateY(1px); background: color-mix(in srgb, var(--ui-fg) 14%, transparent); }
+.ghost.danger:active { transform: translateY(1px); background: #a5301f; color: #fff; }
+
+.primary:hover { background: color-mix(in srgb, var(--ui-fg) 84%, var(--ui-bg)); }
+.primary:active { transform: translateY(1px); background: color-mix(in srgb, var(--ui-fg) 70%, var(--ui-bg)); }
+.primary.danger:hover { background: #d2503f; }
+.primary.danger:active { transform: translateY(1px); background: #a5301f; }
+
+.drawer-x { border-radius: var(--ui-radius); }
+.drawer-x:hover { color: var(--ui-fg); background: color-mix(in srgb, var(--ui-fg) 9%, transparent); }
+.drawer-x:active { transform: translateY(1px); background: color-mix(in srgb, var(--ui-fg) 18%, transparent); }
+
+.result-add:active { transform: translateY(1px); background: color-mix(in srgb, var(--ui-fg) 80%, var(--ui-bg)); color: var(--ui-bg); }
+
+.dtab:active { transform: translateY(1px); }
+.finder-toggle:hover { color: var(--ui-fg); }
+.finder-toggle:active { transform: translateY(1px); }
+
+.card-top:hover { background: color-mix(in srgb, var(--ui-fg) 4%, transparent); }
+.card-top:active { background: color-mix(in srgb, var(--ui-fg) 8%, transparent); }
+.theme-card:active .theme-thumb { transform: translateY(1px); }
 .tabs { display: flex; gap: 4px; }
 .tab { font: inherit; font-size: 13px; padding: 7px 14px; border: 1px solid var(--ui-line); background: none; color: var(--ui-mute); border-radius: var(--ui-radius); cursor: pointer; }
 .tab.is-active { color: var(--ui-fg); border-color: var(--ui-fg); }
@@ -1150,6 +1564,73 @@ body.app .tuner { width: min(1100px, 100%); }
 .theme-thumb[data-theme="editorial"] .tt-keys i { height: 2px; background: #d3d2cd; margin-bottom: 9px; border-radius: 1px; }
 .theme-thumb[data-theme="editorial"] .tt-keys i:first-child { width: 62%; height: 7px; background: #3a3a37; }
 .theme-thumb[data-theme="editorial"] .tt-keys i:last-child { width: 74%; }
+
+/* Retro 8-bit: the HUD in miniature — a dithered field, a pixel call sign
+   and the meter quantised into cells. */
+.theme-thumb[data-theme="retro"] { --tint: #f83800; background: #0a0a0c; box-shadow: inset 0 0 0 2px #fcfcfc; }
+.theme-thumb[data-theme="retro"]::before {
+  content: ""; position: absolute; inset: 0;
+  background-image: repeating-conic-gradient(#141419 0 25%, transparent 0 50%);
+  background-size: 4px 4px;
+}
+.theme-thumb[data-theme="retro"] .tt-cap { color: #3cbcfc; font: 400 6px/1 "Press Start 2P", monospace; }
+.theme-thumb[data-theme="retro"] .tt-freq { color: #7c7c7c; }
+.theme-thumb[data-theme="retro"] .tt-glass { border-radius: 0; background: none; }
+.theme-thumb[data-theme="retro"] .tt-glass::before {
+  content: "CDSK"; position: absolute; left: 0; top: 2px;
+  font: 400 11px/1 "Press Start 2P", monospace; color: #fcfcfc;
+}
+.theme-thumb[data-theme="retro"] .tt-glass::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 2px; height: 7px;
+  background: linear-gradient(90deg, #b8f818 0 62%, #f8b800 62% 84%, #f83800 84%) 0 0 / 74% 100% no-repeat,
+              #3c3c3c;
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 4px, transparent 4px 6px);
+          mask: repeating-linear-gradient(90deg, #000 0 4px, transparent 4px 6px);
+}
+.theme-thumb[data-theme="retro"] .tt-keys i { background: #3c3c3c; border-radius: 0; }
+.theme-thumb[data-theme="retro"] .tt-keys i:first-child { background: #f83800; }
+
+/* Departures: flap tiles with their fold seam, and one amber row. */
+.theme-thumb[data-theme="departures"] { --tint: #ffc400; background: #0b0b0c; box-shadow: inset 0 0 0 1px #2a2c31; }
+.theme-thumb[data-theme="departures"] .tt-cap { color: #6f7176; font: 600 7px/1 "Saira Condensed", sans-serif; letter-spacing: .16em; text-transform: uppercase; }
+.theme-thumb[data-theme="departures"] .tt-freq { color: #ffc400; }
+.theme-thumb[data-theme="departures"] .tt-glass {
+  border-radius: 0;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 13px, #08090b 13px 15px),
+    linear-gradient(#26282d 0 50%, #15161a 50% 100%);
+  box-shadow: inset 0 0 0 1px #33363c;
+}
+.theme-thumb[data-theme="departures"] .tt-glass::before {
+  content: "CDSK"; position: absolute; left: 3px; top: 50%; transform: translateY(-50%);
+  font: 600 15px/1 "Saira Condensed", sans-serif; letter-spacing: .06em; color: #ffc400;
+}
+.theme-thumb[data-theme="departures"] .tt-keys i { background: #1b1c20; border-radius: 0; box-shadow: inset 0 0 0 1px #2a2c31; }
+.theme-thumb[data-theme="departures"] .tt-keys i:first-child { background: #ffc400; box-shadow: none; }
+
+/* Marconi: lacquer, a ray fan over the speaker, gold serif call sign. */
+.theme-thumb[data-theme="marconi"] { --tint: #c9a227; background: radial-gradient(120% 90% at 50% 0%, #1d1811, #0f0c09 66%); box-shadow: inset 0 0 0 1px #6d5a2c; }
+.theme-thumb[data-theme="marconi"]::before {
+  content: ""; position: absolute; left: 50%; top: -30%; width: 150%; aspect-ratio: 1; transform: translateX(-50%);
+  background: repeating-conic-gradient(from 0deg, rgba(201,162,39,.2) 0 2.2deg, transparent 2.2deg 9deg);
+  -webkit-mask: radial-gradient(circle, transparent 16%, #000 32%, transparent 66%);
+          mask: radial-gradient(circle, transparent 16%, #000 32%, transparent 66%);
+}
+.theme-thumb[data-theme="marconi"] .tt-cap { color: #9a875c; font: 600 6px/1 "Cinzel", serif; letter-spacing: .2em; }
+.theme-thumb[data-theme="marconi"] .tt-glass { background: none; }
+.theme-thumb[data-theme="marconi"] .tt-glass::before {
+  content: "CDSK"; position: absolute; left: 0; right: 0; top: 2px; text-align: center;
+  font: 700 14px/1 "Cinzel", serif; letter-spacing: .06em;
+  background: linear-gradient(#f8eac0, #c9a227 55%, #8a6d1c);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.theme-thumb[data-theme="marconi"] .tt-glass::after {
+  content: ""; position: absolute; left: 14%; right: 14%; bottom: 3px; height: 9px;
+  border-top: 1px solid #c9a227; border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+}
+.theme-thumb[data-theme="marconi"] .tt-keys i { background: #171309; border-radius: 0; box-shadow: inset 0 0 0 1px #4a3d1e; }
+.theme-thumb[data-theme="marconi"] .tt-keys i:first-child { background: linear-gradient(#f0d98a, #c9a227); box-shadow: none; }
+
 
 .confirm { border: 0; padding: 0; background: transparent; max-width: none; max-height: none; position: fixed; inset: 0; width: auto; height: auto; }
 .confirm::backdrop { background: rgba(0,0,0,.62); }

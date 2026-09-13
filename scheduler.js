@@ -101,7 +101,7 @@
      known to work. Letting Play consult lastGood was a bug: a station
      played for under ten seconds never became lastGood, so stopping and
      starting jumped back to the station before it. */
-  var THEMES = ['dial', 'console', 'rams', 'editorial'];
+  var THEMES = ['dial', 'console', 'rams', 'editorial', 'retro', 'departures', 'marconi'];
 
   function clampNum(v, lo, hi) {
     if (typeof v !== 'number' || !isFinite(v)) return null;
