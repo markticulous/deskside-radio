@@ -1,6 +1,6 @@
 {
-  "version": "1.2.0",
+  "version": "1.2.1",
   "released": "2026-09-13",
-  "notes": "Three new themes (Retro 8-bit, Departures board, Marconi deco) with icons to match, call signs in the station finder, and confirmation before anything is deleted.",
+  "notes": "Streams now join at the live edge, so stopping and starting no longer repeats the last second. Playlist links (.pls and .m3u) work. The shortcut window sizes itself to the radio. The broadcast console gets a proper VFD readout and real mounting screws.",
   "url": "https://github.com/Markticulous/deskside-radio/releases/latest"
 }
