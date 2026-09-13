@@ -1140,11 +1140,18 @@
     ['weekday', 'weekend'].forEach(function (g) {
       (draft.schedule[g] || []).forEach(function (sl) { if (sl.stationId === st.id) used += 1; });
     });
+
+    /* Losing the last one is a different question from losing one of
+       several, so it gets said outright rather than left to be discovered
+       at the save, which is where it is actually refused. */
+    var last = draft.stations.length === 1;
+    var notes = [];
+    if (last) notes.push('This is your only station. Delete it and there is nothing left to play, and Settings will not save until you add one back.');
+    if (used) notes.push('The schedule points at it from ' + used + ' slot' + (used === 1 ? '' : 's') + ', which will need another station.');
     var note = $('stationDeleteUsed');
-    note.hidden = !used;
-    note.textContent = used
-      ? 'The schedule points at it from ' + used + ' slot' + (used === 1 ? '' : 's') + ', which will need another station.'
-      : '';
+    note.hidden = !notes.length;
+    note.textContent = notes.join(' ');
+    $('stationDeleteGo').textContent = last ? 'Delete anyway' : 'Delete station';
 
     $('confirmStation').showModal();
   }

@@ -63,6 +63,11 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
   fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
 });
 
+/* The folder people actually download needs its own readme: the one in the
+   repository is written for someone reading the source, not for someone who
+   has just unzipped this. Plain .txt so it opens on a double-click. */
+fs.copyFileSync(path.join(ROOT, 'tools', 'dist-readme.txt'), path.join(OUT, 'README.txt'));
+
 const files = fs.readdirSync(OUT);
 const total = files.reduce(function (n, f) { return n + fs.statSync(path.join(OUT, f)).size; }, 0);
 console.log('dist/  ' + files.length + ' files, ' + (total / 1024).toFixed(0) + ' KB');
