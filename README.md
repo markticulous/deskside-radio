@@ -64,6 +64,18 @@ The fit itself used to resize the window three times while the user watched. Two
 
 Everything is kept in `localStorage` on the machine it runs on. Nothing is uploaded.
 
+## Recording
+
+Holding either Shift key reveals a REC button beside play; it stays up while recording whatever the key is doing, because a recording nobody can see is one nobody can stop. Files go to the browser's download folder as `DSRadio-<yymmddhhmmss>-<seconds>.m4a`, stamped with the moment recording began.
+
+`MediaRecorder` is fed by a `MediaStreamAudioDestinationNode` hung off the **analyser**, which is before the tone shelves and the volume gain. So the file is a constant-level copy of the broadcast: moving the fader or dialling in bass changes what reaches the speakers and not what reaches the file.
+
+AAC in MP4 at 96 kbps, by choice rather than by limitation. Chrome and Edge will both produce `audio/webm;codecs=opus`, which is about half the size, but Windows will not play it without help, and a recording that will not open on the machine that made it is not much of a recording. Neither browser can produce MP3 or WAV at all — `MediaRecorder.isTypeSupported` was asked rather than assumed.
+
+The constraint worth knowing: recording taps the Web Audio graph, and that graph only exists for streams that permit cross-origin access. A station that shows *meter off · stream failed the analysed path* cannot be recorded, for exactly the same reason, and the button is shown disabled carrying that reason rather than being hidden. Nor can anything be recorded before the first click, since the graph waits for one.
+
+Verified in a real window with a real audio device, which is the only place this can be verified: headless Chrome has no audio output, so the context never renders and the recorder emits zero-byte chunks. Seven seconds gave five chunks and 87,804 bytes.
+
 ## Stream types
 
 A station's URL goes straight onto an `<audio>` element, so what the browser can play, the app can play. `Directory.streamKind()` in `radio-directory.js` classifies a URL and the rest follows from that.

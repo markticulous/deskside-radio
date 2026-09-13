@@ -104,6 +104,7 @@
     presets: $('presets'), play: $('play'), volume: $('volume'), volumeOut: $('volumeOut'),
     bass: $('bass'), bassOut: $('bassOut'), treble: $('treble'), trebleOut: $('trebleOut'),
     overlay: $('startOverlay'), startSub: $('startSub'), settings: $('settings'),
+    rec: $('rec'), recWord: document.querySelector('.rec-word'),
     blind: document.querySelector('.meter-blind')
   };
 
@@ -124,6 +125,7 @@
   var provenCors = {};   // url -> true, once it has actually played through the tap.
 
   var ctx = null, analyser = null, gainNode = null, bassNode = null, trebleNode = null;
+  var recTap = null;
   var timeData = null, freqData = null;
 
   var status = 'idle';   // idle | connecting | live | reconnecting | stopped
@@ -176,6 +178,14 @@
     // Chromium's adds makeup gain even far below its threshold.
     src.connect(an); an.connect(lowShelf); lowShelf.connect(highShelf);
     highShelf.connect(g); g.connect(c.destination);
+    /* The recorder taps in beside the tone controls rather than after
+       them, so a recording is a copy of what was broadcast: turning the
+       volume down, or dialling in bass for the room, changes what comes
+       out of the speakers and not what lands in the file. */
+    try {
+      recTap = c.createMediaStreamDestination();
+      an.connect(recTap);
+    } catch (e) { recTap = null; }
     /* An interruption of the Web Audio render thread does not drop samples,
        it delays them, so a live stream comes back several seconds behind and
        the listener hears what they just heard. Nothing can seek a live HLS
@@ -192,6 +202,7 @@
       tune(back, state.volume);
     });
     ctx = c; analyser = an; gainNode = g; bassNode = lowShelf; trebleNode = highShelf;
+    refreshRec();
     timeData = new Float32Array(an.fftSize);
     freqData = new Uint8Array(an.frequencyBinCount);
     corsEl.volume = 1;
@@ -361,6 +372,7 @@
 
   function setStatus(s, text) {
     status = s;
+    refreshRec();
     el.status.textContent = text;
     el.led.classList.toggle('live', s === 'live');
     el.tuner.classList.toggle('is-playing', s === 'live');
@@ -1211,6 +1223,124 @@
       state.treble = SLIDER_HOME.treble; rememberTone(); applyTone(); save();
     });
   });
+
+  /* ---------- recording ----------
+     Shift reveals it, and nothing else does: recording is not what the
+     radio is for, and a record button sitting on the front of it all day
+     would say otherwise. It stays up while it is running, whether Shift is
+     down or not, because a recording nobody can see is a recording nobody
+     can stop.
+
+     The tap is built with the graph, so a station that refused the
+     analysed path has nothing to record from. That is the same reason its
+     meter is off and its tone controls are dead, and the button says so
+     rather than disappearing.
+
+     AAC in an MP4 container, at the user's asking. Opus in WebM is about
+     half the size and Chrome will make it happily, but Windows will not
+     play it without help, and a recording that will not open on the
+     machine that made it is not much of a recording. */
+  var REC_MIME = 'audio/mp4;codecs=mp4a.40.2';
+  var recorder = null, recChunks = [], recStartedAt = 0, shiftHeld = false;
+
+  function recBlockedReason() {
+    if (!window.MediaRecorder || !MediaRecorder.isTypeSupported(REC_MIME)) {
+      return 'This browser cannot record audio.';
+    }
+    if (audio === plainEl) return 'This stream blocks recording, the same way it blocks the meter.';
+    if (!recTap) return 'Click anywhere first: recording needs the audio graph, and the graph waits for a click.';
+    if (status !== 'live') return 'Nothing is playing.';
+    return '';
+  }
+
+  function refreshRec() {
+    if (!el.rec) return;
+    var running = !!recorder;
+    el.rec.hidden = !(shiftHeld || running);
+    if (el.rec.hidden) return;
+    var why = running ? '' : recBlockedReason();
+    el.rec.disabled = !!why;
+    el.rec.title = why || (running ? 'Stop recording and save it' : 'Record this station');
+    el.rec.setAttribute('aria-pressed', running ? 'true' : 'false');
+    el.recWord.textContent = running ? 'STOP' : 'REC';
+  }
+
+  // yymmddhhmmss, local time, taken when the recording started.
+  function recStamp(d) {
+    return String(d.getFullYear()).slice(2) + pad(d.getMonth() + 1) + pad(d.getDate()) +
+      pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+  }
+
+  /* A page cannot write to the Downloads folder; it can only hand the
+     browser a file and let it land there, which is what a download is. */
+  function saveRecording(blob, seconds) {
+    var name = 'DSRadio-' + recStamp(new Date(recStartedAt)) + '-' + seconds + '.m4a';
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Revoked late: the download reads from the blob after the click.
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+  }
+
+  function startRec() {
+    if (recBlockedReason()) return;
+    recChunks = [];
+    try {
+      recorder = new MediaRecorder(recTap.stream, { mimeType: REC_MIME, audioBitsPerSecond: 96000 });
+    } catch (e) { recorder = null; refreshRec(); return; }
+    recStartedAt = Date.now();
+    recorder.ondataavailable = function (e) { if (e.data && e.data.size) recChunks.push(e.data); };
+    recorder.onstop = function () {
+      var seconds = Math.max(1, Math.round((Date.now() - recStartedAt) / 1000));
+      var blob = new Blob(recChunks, { type: 'audio/mp4' });
+      recChunks = [];
+      recorder = null;
+      if (blob.size) saveRecording(blob, seconds);
+      refreshRec();
+      /* Said on the button, because the button is the only thing that is
+         certainly in view: it is the thing that was just pressed. */
+      if (!el.rec.hidden && blob.size) {
+        el.recWord.textContent = 'SAVED';
+        setTimeout(refreshRec, 1600);
+      }
+    };
+    // A second at a time, rather than one allocation at the end of an hour.
+    recorder.start(1000);
+    refreshRec();
+  }
+
+  function stopRec() {
+    if (!recorder) return;
+    try { recorder.stop(); }
+    catch (e) { recorder = null; recChunks = []; refreshRec(); }
+  }
+
+  if (el.rec) {
+    el.rec.addEventListener('click', function () {
+      if (recorder) stopRec(); else startRec();
+    });
+    window.addEventListener('keydown', function (e) {
+      // Not while the drawer is up: the button is behind it.
+      if (e.key !== 'Shift' || shiftHeld || el.settings.open) return;
+      shiftHeld = true;
+      refreshRec();
+    });
+    window.addEventListener('keyup', function (e) {
+      if (e.key !== 'Shift') return;
+      shiftHeld = false;
+      refreshRec();
+    });
+    /* A window that loses focus with the key down never sees the keyup,
+       and would be left showing the button for ever. */
+    window.addEventListener('blur', function () {
+      shiftHeld = false;
+      refreshRec();
+    });
+  }
 
   // ---------- settings drawer ----------
   var draft = null;

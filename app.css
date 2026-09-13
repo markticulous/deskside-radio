@@ -167,6 +167,44 @@
 .play-btn[aria-pressed="true"] .ic-play { display: none; }
 .play-btn[aria-pressed="true"] .ic-stop { display: block; }
 
+/* ---- recording ----
+   Held back behind a Shift key, because it is not what the radio is for
+   and a record button sitting on the front of it all day would say
+   otherwise. The one styling that does not follow the theme: red means
+   recording on every piece of equipment ever made, and a theme's palette
+   has no business arguing with that.
+
+   REC and STOP are given the same width so the button does not change
+   size under the finger that is about to press it again. */
+.rec-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  flex: 0 0 auto; width: 88px; height: 30px; padding: 0;
+  font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11px; font-weight: 600; letter-spacing: .14em;
+  color: #ff6a54; background: rgba(150,22,10,.18);
+  border: 0; border-radius: 4px; cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255,106,84,.45);
+  transition: background .14s ease, color .14s ease, box-shadow .14s ease;
+}
+.rec-btn[hidden] { display: none; }
+.rec-btn:hover:not(:disabled) { background: rgba(190,30,14,.3); color: #ff8d7a; }
+.rec-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+/* The tally is on the button because that is the only thing on screen that
+   is certainly in view when the button is. */
+.rec-btn[aria-pressed="true"] {
+  color: #fff; background: #c21d0f;
+  box-shadow: inset 0 0 0 1px rgba(255,140,120,.65), 0 0 12px rgba(194,29,15,.5);
+}
+.rec-btn[aria-pressed="true"] .rec-dot { animation: rec-tally 1s steps(1) infinite; }
+@keyframes rec-tally {
+  0%, 50%      { opacity: 1; }
+  50.01%, 100% { opacity: .12; }
+}
+.rec-btn:disabled { opacity: .38; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) {
+  .rec-btn[aria-pressed="true"] .rec-dot { animation: none; }
+}
+
 /* ---- maker byline: brand lockup, options rendered in byline-preview.html ---- */
 .byline {
   display: inline-flex; align-items: center; gap: 4px;
