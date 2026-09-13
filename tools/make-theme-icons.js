@@ -2,8 +2,9 @@
    is actually running. Each drawing is that theme's own face, not a recolour
    of the dial: console is a rack panel with a VFD window, rams is the flat
    scale with its orange pointer, editorial is the colour block with the
-   name set in it. Dial keeps the existing artwork, which is already the
-   analogue cabinet.
+   name set in it, retro is the pixel screen with its cell meter, departures
+   is a flap and its fold seam, marconi is the ray fan over a gold arc.
+   Dial keeps the existing artwork, which is already the analogue cabinet.
 
    Two cuts per theme, same reasoning as make-icon-svg.js: below about 32px
    the fine work turns to mush, so the small cut throws it away and keeps
@@ -219,13 +220,205 @@ function editorialSvg(small) {
   );
 }
 
+/* ---------- E · retro 8-bit ----------
+   No curves anywhere, four colours, and the meter quantised into cells.
+   The small cut drops the dither and the scanlines: both are 1px features
+   that turn into grey mush the moment the icon is scaled down. */
+/* "Press Start 2P" must be quoted wherever it appears: an unquoted CSS
+   family name cannot have a component starting with a digit, so "2P"
+   invalidates the whole stack and the text falls back to serif. */
+const PS2P = "'Press Start 2P', monospace";
+const RETRO = {
+  void: '#0a0a0c', ink: '#fcfcfc', grey: '#7c7c7c', dark: '#3c3c3c',
+  red: '#f83800', gold: '#f8b800', green: '#b8f818', sky: '#3cbcfc'
+};
+
+function retroSvg(small) {
+  const C = RETRO;
+  const bez = small ? 12 : 10;          // white bezel, fatter when small
+
+  // The cell meter, the one instrument this theme owns.
+  const n = small ? 5 : 12;
+  const cw = small ? 30 : 15;
+  const gap = small ? 10 : 5;
+  const totalW = n * cw + (n - 1) * gap;
+  const sx = 128 - totalW / 2;
+  const sy = small ? 188 : 196;
+  const ch = small ? 34 : 22;
+  const cells = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const lit = t <= 0.78;
+    const fill = !lit ? C.dark : (t > 0.66 ? C.red : (t > 0.5 ? C.gold : C.green));
+    cells.push(`<rect x="${(sx + i * (cw + gap)).toFixed(1)}" y="${sy}" width="${cw}" height="${ch}" fill="${fill}"/>`);
+  }
+
+  return L(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Deskside Radio">',
+    small ? '' : L(
+      '  <defs>',
+      '    <pattern id="dither" width="4" height="4" patternUnits="userSpaceOnUse">',
+      '      <rect width="2" height="2" fill="#14141a"/>',
+      '      <rect x="2" y="2" width="2" height="2" fill="#14141a"/>',
+      '    </pattern>',
+      '    <pattern id="scan" width="3" height="3" patternUnits="userSpaceOnUse">',
+      '      <rect width="3" height="1" fill="#000000" fill-opacity=".34"/>',
+      '    </pattern>',
+      '  </defs>',
+      ''),
+    '  <!-- screen, then the hard pixel bezel: grey outer, white inner -->',
+    `  <rect x="0" y="0" width="256" height="256" fill="${C.grey}"/>`,
+    `  <rect x="${bez / 2}" y="${bez / 2}" width="${256 - bez}" height="${256 - bez}" fill="${C.void}"/>`,
+    `  <rect x="${bez}" y="${bez}" width="${256 - bez * 2}" height="${256 - bez * 2}" fill="none" stroke="${C.ink}" stroke-width="${small ? 10 : 6}"/>`,
+    small ? '' : `  <rect x="${bez + 3}" y="${bez + 3}" width="${256 - (bez + 3) * 2}" height="${256 - (bez + 3) * 2}" fill="url(#dither)"/>`,
+    '',
+    small
+      ? L('  <!-- one glyph and the meter: everything else is sub-pixel at 16px -->',
+          '  <text x="128" y="158" text-anchor="middle" fill="' + C.ink + '"' +
+          ` font-family="${PS2P}" font-size="132">D</text>`)
+      : L('  <!-- the name, set in the face the theme actually uses -->',
+          '  <text x="128" y="112" text-anchor="middle" fill="' + C.ink + '"' +
+          ` font-family="${PS2P}" font-size="42">DESK</text>`,
+          '  <text x="128" y="160" text-anchor="middle" fill="' + C.sky + '"' +
+          ` font-family="${PS2P}" font-size="42">SIDE</text>`),
+    '',
+    '  <!-- level, in cells -->',
+    '  ' + cells.join(''),
+    small ? '' : `  <rect x="${bez + 3}" y="${bez + 3}" width="${256 - (bez + 3) * 2}" height="${256 - (bez + 3) * 2}" fill="url(#scan)"/>`,
+    '</svg>',
+    ''
+  );
+}
+
+/* ---------- F · departures ----------
+   A flap and its fold seam. At 16px that is the whole idea: one tile, one
+   seam, one amber glyph. The large cut spells the name across four flaps
+   and puts the board's own meter under it. */
+const DEPARTURES = {
+  board: '#0b0b0c', tileTop: '#26282d', tileBot: '#15161a', seam: '#000000',
+  edge: '#33363c', amber: '#ffc400', mute: '#6f7176'
+};
+
+function departuresSvg(small) {
+  const C = DEPARTURES;
+
+  function flap(x, y, w, h, ch, fs) {
+    return L(
+      `  <rect x="${x}" y="${y}" width="${w}" height="${h / 2}" fill="${C.tileTop}"/>`,
+      `  <rect x="${x}" y="${y + h / 2}" width="${w}" height="${h / 2}" fill="${C.tileBot}"/>`,
+      `  <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${C.edge}" stroke-width="2"/>`,
+      ch ? `  <text x="${x + w / 2}" y="${y + h / 2 + fs * 0.36}" text-anchor="middle" fill="${C.amber}"` +
+           ` font-family="Saira Condensed, Arial Narrow, sans-serif" font-size="${fs}" font-weight="600">${ch}</text>` : '',
+      `  <rect x="${x}" y="${y + h / 2 - 1.5}" width="${w}" height="3" fill="${C.seam}"/>`
+    );
+  }
+
+  const segs = [];
+  if (!small) {
+    const n = 10, sw = 18, gap = 4;
+    const totalW = n * sw + (n - 1) * gap;
+    const sx = 128 - totalW / 2;
+    for (let i = 0; i < n; i++) {
+      segs.push(`<rect x="${sx + i * (sw + gap)}" y="204" width="${sw}" height="16" fill="${i < 7 ? C.amber : '#1b1c20'}"/>`);
+    }
+  }
+
+  return L(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Deskside Radio">',
+    '',
+    '  <!-- board -->',
+    `  <rect x="0" y="0" width="256" height="256" fill="${C.board}"/>`,
+    '',
+    small
+      ? L('  <!-- one flap, filling the frame -->', flap(22, 34, 212, 188, 'D', 150))
+      : L('  <!-- the name across four flaps -->',
+          [0, 1, 2, 3].map(function (i) {
+            return flap(18 + i * 56, 58, 50, 104, 'DESK'[i], 62);
+          }).join('\n'),
+          '',
+          '  <!-- the meter, built from the same flaps -->',
+          '  ' + segs.join('')),
+    `  <rect x="1" y="1" width="254" height="254" fill="none" stroke="${C.edge}" stroke-width="2"/>`,
+    '</svg>',
+    ''
+  );
+}
+
+/* ---------- G · marconi ----------
+   Lacquer, gold, and the ray fan every 1930s cabinet wore. The rays are
+   drawn from an inner radius outward rather than masked, which gives the
+   same ring without asking a 16px render to resolve a gradient mask. */
+const MARCONI = {
+  lacquer: '#0f0c09', deep: '#1d1811', gold: '#c9a227', goldHi: '#f0d98a',
+  goldLo: '#6d5a2c', mute: '#9a875c'
+};
+
+function marconiSvg(small) {
+  const C = MARCONI;
+  const cx = 128, cy = small ? 122 : 138;
+  const n = small ? 10 : 34;
+  const r0 = small ? 48 : 34, r1 = small ? 122 : 112;
+  const w = small ? 15 : 4;
+
+  const rays = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * 360;
+    rays.push(`<rect x="${cx - w / 2}" y="${cy - r1}" width="${w}" height="${r1 - r0}" fill="${C.gold}"` +
+              ` fill-opacity="${small ? 0.62 : 0.34}" transform="rotate(${a.toFixed(1)} ${cx} ${cy})"/>`);
+  }
+
+  // The dial arc, and the pointer sitting on it.
+  const ar = small ? 86 : 78;
+  const ay = small ? 206 : 214;
+  const arc = `M ${cx - ar} ${ay} A ${ar} ${ar} 0 0 1 ${cx + ar} ${ay}`;
+
+  return L(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Deskside Radio">',
+    '  <defs>',
+    '    <radialGradient id="lac" cx=".5" cy=".08" r=".95">',
+    `      <stop offset="0" stop-color="${C.deep}"/>`,
+    `      <stop offset="1" stop-color="${C.lacquer}"/>`,
+    '    </radialGradient>',
+    '    <linearGradient id="leaf" x1="0" y1="0" x2="0" y2="1">',
+    '      <stop offset="0" stop-color="#f8eac0"/>',
+    `      <stop offset=".55" stop-color="${C.gold}"/>`,
+    '      <stop offset="1" stop-color="#8a6d1c"/>',
+    '    </linearGradient>',
+    '  </defs>',
+    '',
+    '  <!-- lacquer -->',
+    '  <rect x="0" y="0" width="256" height="256" fill="url(#lac)"/>',
+    '',
+    '  <!-- rays -->',
+    '  ' + rays.join(''),
+    '',
+    small
+      ? ''
+      : L('  <!-- the name, in the theme\'s own serif -->',
+          '  <text x="128" y="152" text-anchor="middle" fill="url(#leaf)"' +
+          ' font-family="Cinzel, Cormorant Garamond, serif"' +
+          ' font-size="40" font-weight="700" letter-spacing="3">DESKSIDE</text>'),
+    '',
+    '  <!-- dial arc and pointer -->',
+    `  <path d="${arc}" fill="none" stroke="${C.gold}" stroke-width="${small ? 11 : 4}"/>`,
+    `  <line x1="${cx}" y1="${ay}" x2="${(cx + ar * 0.74 * Math.cos(-Math.PI / 3.1)).toFixed(1)}" y2="${(ay + ar * 0.74 * Math.sin(-Math.PI / 3.1)).toFixed(1)}"` +
+    ` stroke="${C.goldHi}" stroke-width="${small ? 9 : 5}" stroke-linecap="round"/>`,
+    `  <circle cx="${cx}" cy="${ay}" r="${small ? 12 : 8}" fill="${C.goldHi}"/>`,
+    '',
+    `  <rect x="${small ? 4 : 3}" y="${small ? 4 : 3}" width="${256 - (small ? 8 : 6)}" height="${256 - (small ? 8 : 6)}" fill="none" stroke="${C.goldLo}" stroke-width="${small ? 8 : 4}"/>`,
+    '</svg>',
+    ''
+  );
+}
+
 /* ---------- write ----------
    Dial reuses the artwork already in the repo; the other three are drawn
    above. The wrapper loads the app's webfonts with display=block, or the
    renderer catches the fallback face mid-swap. */
 const FONTS = 'https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800' +
   '&family=IBM+Plex+Mono:wght@400;600&family=Barlow+Condensed:wght@500;600;700' +
-  '&family=Archivo+Narrow:wght@400;500;600;700&family=Syne:wght@700;800&family=Figtree:wght@400;500;600&display=block';
+  '&family=Archivo+Narrow:wght@400;500;600;700&family=Syne:wght@700;800&family=Figtree:wght@400;500;600' +
+  '&family=Press+Start+2P&family=Saira+Condensed:wght@400;500;600;700&family=Cinzel:wght@600;700&display=block';
 
 function wrapper(svg) {
   return L(
@@ -246,7 +439,10 @@ const CUTS = {
   },
   console: { small: consoleSvg(true), wordmark: consoleSvg(false) },
   rams: { small: ramsSvg(true), wordmark: ramsSvg(false) },
-  editorial: { small: editorialSvg(true), wordmark: editorialSvg(false) }
+  editorial: { small: editorialSvg(true), wordmark: editorialSvg(false) },
+  retro: { small: retroSvg(true), wordmark: retroSvg(false) },
+  departures: { small: departuresSvg(true), wordmark: departuresSvg(false) },
+  marconi: { small: marconiSvg(true), wordmark: marconiSvg(false) }
 };
 
 Object.keys(CUTS).forEach(function (theme) {
