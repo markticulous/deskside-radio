@@ -101,6 +101,31 @@
     return bandFromName(result.name || '') || bandFromName(result.tags || '', true);
   }
 
+  /* A .pls or .m3u is a pointer to a stream, not a stream. Both are plain
+     text and both put the address on a line of its own, so one reader covers
+     them: File1= and friends in a .pls, and in an .m3u the first line that is
+     not a # comment. ASX and XSPF are XML and are not handled here; they fall
+     through and fail the way they always did.
+
+     The lowest-numbered File entry wins rather than the first one seen, since
+     a .pls is not obliged to list them in order. */
+  function parsePlaylist(text) {
+    var lines = String(text == null ? '' : text).split(/\r?\n/);
+    var bestNum = Infinity, best = '', firstUrl = '';
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line || line.charAt(0) === '#') continue;
+      var m = /^File(\d+)\s*=\s*(\S+)$/i.exec(line);
+      if (m && /^https?:\/\//i.test(m[2])) {
+        var n = parseInt(m[1], 10);
+        if (n < bestNum) { bestNum = n; best = m[2]; }
+      } else if (!firstUrl && /^https?:\/\/\S+$/i.test(line)) {
+        firstUrl = line;
+      }
+    }
+    return best || firstUrl || '';
+  }
+
   function normalizeStation(result, index) {
     if (!result) return null;
     var resolved = String(result.url_resolved || '').trim();
@@ -318,7 +343,7 @@
   return {
     PALETTE: PALETTE, pickColour: pickColour,
     geocodeUrl: geocodeUrl, searchUrl: searchUrl,
-    streamKind: streamKind, bandFromName: bandFromName, callSignFrom: callSignFrom, bandFrom: bandFrom, normalizeStation: normalizeStation, dedupe: dedupe,
+    streamKind: streamKind, parsePlaylist: parsePlaylist, bandFromName: bandFromName, callSignFrom: callSignFrom, bandFrom: bandFrom, normalizeStation: normalizeStation, dedupe: dedupe,
     haversineKm: haversineKm, rankByPlace: rankByPlace,
     placeStation: placeStation, dominantColour: dominantColour, logoColour: logoColour,
     hopelessReason: hopelessReason,

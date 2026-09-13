@@ -380,8 +380,35 @@
     el.play.setAttribute('aria-pressed', state.intendedPlaying ? 'true' : 'false');
   }
 
+  /* A playlist file is read once, the stream address inside it replaces the
+     station's own, and the change is saved, so this happens on the first play
+     after somebody pastes a .pls and never again. Reading it needs the host to
+     allow the request; when it does not, the station is tuned unchanged and
+     fails as it did before, which is no worse than not trying. */
+  var playlistTried = {};
+
+  function resolvePlaylistThenTune(st, volume) {
+    var original = st.url;
+    playlistTried[original] = true;
+    setStatus('connecting', 'Reading playlist');
+    fetch(original, { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.text() : ''; })
+      .then(function (text) {
+        var real = Directory.parsePlaylist(text);
+        if (real) { st.url = real; save(); }
+        tune(st, volume);
+      })
+      .catch(function () { tune(st, volume); });
+  }
+
   function tune(st, volume) {
     if (!st) return;
+    if (Directory.streamKind(st.url) === 'playlist' && !playlistTried[st.url]) {
+      state.currentStationId = st.id;
+      renderStation(st);
+      resolvePlaylistThenTune(st, volume);
+      return;
+    }
     clearTimeout(retryTimer); retryTimer = null;
     state.currentStationId = st.id;
     useElement(elementFor(st));
