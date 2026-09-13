@@ -14,6 +14,7 @@ WHAT IS IN THIS FOLDER
 
   index.html                   The radio itself. Everything is in here.
   Create Desktop Shortcut.cmd  Makes a proper Desktop shortcut (Windows).
+  Start With Windows.cmd       Opens the radio when you sign in (Windows).
   favicon-*.ico                One icon per theme, used by the shortcut.
   README.txt                   This file.
 
@@ -83,13 +84,49 @@ The next launch reads it once and keeps its own settings from then on.
 This is also how you set up a second machine.
 
 
-OTHER PLATFORMS
----------------
+STARTING WHEN YOU SIGN IN
+-------------------------
 
-On macOS and Linux, double-click or open index.html in Chrome, Edge or
-Safari. Everything works except the Desktop shortcut script, which is
-Windows-only. On macOS the app can hand you a .webloc file instead, from
-the shortcut button next to Settings.
+Windows: double-click "Start With Windows.cmd". It puts the same
+shortcut in your Startup folder, and tells you where it put it. Run it
+again with the word off to stop it:
+
+  "Start With Windows.cmd" off
+
+Nothing is written to the registry and nothing runs in the background.
+It is one file in a folder you can open yourself: press Win+R and enter
+shell:startup.
+
+For the radio to be playing when you sit down rather than just open,
+turn on "Play on launch" in Settings and choose a station, or set up a
+schedule.
+
+macOS: use the shortcut button next to Settings to save a .webloc file
+somewhere you will keep it, then open System Settings, General, Login
+Items, and add that file under "Open at Login". It opens in your normal
+browser, so it will ask for one click before it plays -- the trick the
+Windows shortcut uses to skip that click is a Chrome command line, and
+there is no equivalent to hand a login item.
+
+
+OTHER PLATFORMS AND OTHER BROWSERS
+----------------------------------
+
+Chrome and Edge behave identically: Edge is built on the same engine,
+the shortcut script uses it when Chrome is absent, and everything in
+this readme was checked on both. If you are on a work machine with only
+Edge, nothing is missing.
+
+On macOS and Linux, open index.html in Chrome, Edge or Safari. The two
+Windows scripts are Windows-only; on macOS the app can hand you a
+.webloc file instead, from the shortcut button next to Settings.
+
+Safari plays everything here, and handles HLS stations better than most.
+Two things differ. Safari will not let a page opened from a file on disk
+remember anything, so your stations and settings will not survive a
+reload -- put the folder on a web server, or use Chrome or Edge, if that
+matters to you. And the window does not size or place itself, because
+that belongs to the shortcut and the shortcut is a Chrome one.
 
 
 WHAT IT DOES
