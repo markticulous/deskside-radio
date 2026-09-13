@@ -74,6 +74,27 @@
     return '';
   }
 
+  /* North American call signs are three or four letters starting with C,
+     K, W or X, sometimes carrying a -FM or -AM suffix. radio-browser has
+     no field for them, but its own names carry them in capitals often
+     enough to read: "CFRB News/Talk 1010", "CFNY 102.1 The Edge".
+
+     Only the name is searched. Tags are lowercase free text, where a
+     four-letter entry like "kids" or "kpop" would match the same shape and
+     be wrong every time.
+
+     Network acronyms are the same shape and are not call signs: CBC Radio
+     1 Toronto is CBLA-FM, not CBC. A brand can be too — KISS 92.5 is
+     CKIS-FM — but that one cannot be told apart by shape, so it is left
+     to the caller, which drops any sign the name already opens with. */
+  var NOT_A_CALL_SIGN = /^(CBC|CTV|CBS|CNN)$/;
+
+  function callSignFrom(result) {
+    var m = /\b([CKWX][A-Z]{2,3}(?:-(?:FM|AM|TV))?)\b/.exec(cleanName(result && result.name));
+    if (!m) return '';
+    return NOT_A_CALL_SIGN.test(m[1].replace(/-(?:FM|AM|TV)$/, '')) ? '' : m[1];
+  }
+
   // The name is the reliable source; the tags are a second chance.
   function bandFrom(result) {
     if (!result) return '';
@@ -102,6 +123,7 @@
       id: 'rb_' + (result.stationuuid || Math.random().toString(36).slice(2, 10)),
       name: name,
       band: bandFrom(result),
+      callSign: callSignFrom(result),
       tag: bits.join(' · '),
       url: url,
       colour: pickColour(index || 0),
@@ -296,7 +318,7 @@
   return {
     PALETTE: PALETTE, pickColour: pickColour,
     geocodeUrl: geocodeUrl, searchUrl: searchUrl,
-    streamKind: streamKind, bandFromName: bandFromName, bandFrom: bandFrom, normalizeStation: normalizeStation, dedupe: dedupe,
+    streamKind: streamKind, bandFromName: bandFromName, callSignFrom: callSignFrom, bandFrom: bandFrom, normalizeStation: normalizeStation, dedupe: dedupe,
     haversineKm: haversineKm, rankByPlace: rankByPlace,
     placeStation: placeStation, dominantColour: dominantColour, logoColour: logoColour,
     hopelessReason: hopelessReason,

@@ -1540,10 +1540,18 @@
     list.forEach(function (s) {
       var li = document.createElement('li');
       li.className = 'result' + (s.playable ? '' : ' is-unplayable');
+      /* Call sign, then what band it is on, then the rest. The name
+         almost always opens with the call sign when the directory has
+         one, so repeating it there would only say what is already on the
+         line above; it earns its place when it is buried instead. The
+         band slot always says something, because "no frequency" is itself
+         the useful fact about an internet-only station. Distance is still
+         what ranks the list, it is just not worth a column. */
       var meta = [];
-      if (s.band) meta.push(s.band);
+      var opens = String(s.name || '').trim().split(/[^A-Za-z0-9-]+/)[0].toUpperCase();
+      if (s.callSign && s.callSign !== opens) meta.push(s.callSign);
+      meta.push(s.band || 'Internet stream');
       if (s.tag) meta.push(s.tag);
-      if (typeof s.distanceKm === 'number') meta.push(s.distanceKm + ' km away');
       if (!s.playable) meta.push('playlist file, may not play');
       li.appendChild(span('result-name', s.name || 'Unnamed station'));
       li.appendChild(span('result-meta', meta.join(' \u00b7 ')));
