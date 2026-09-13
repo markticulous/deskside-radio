@@ -292,7 +292,7 @@ function retroSvg(small) {
    and puts the board's own meter under it. */
 const DEPARTURES = {
   board: '#0b0b0c', tileTop: '#26282d', tileBot: '#15161a', seam: '#000000',
-  edge: '#33363c', amber: '#ffc400', mute: '#6f7176'
+  edge: '#33363c', ink: '#d7f04e', lime: '#a9c23a', mute: '#6f7176'
 };
 
 function departuresSvg(small) {
@@ -303,7 +303,7 @@ function departuresSvg(small) {
       `  <rect x="${x}" y="${y}" width="${w}" height="${h / 2}" fill="${C.tileTop}"/>`,
       `  <rect x="${x}" y="${y + h / 2}" width="${w}" height="${h / 2}" fill="${C.tileBot}"/>`,
       `  <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${C.edge}" stroke-width="2"/>`,
-      ch ? `  <text x="${x + w / 2}" y="${y + h / 2 + fs * 0.36}" text-anchor="middle" fill="${C.amber}"` +
+      ch ? `  <text x="${x + w / 2}" y="${y + h / 2 + fs * 0.36}" text-anchor="middle" fill="${C.ink}"` +
            ` font-family="IBM Plex Mono, monospace" font-size="${fs}" font-weight="700">${ch}</text>` : '',
       `  <rect x="${x}" y="${y + h / 2 - 1.5}" width="${w}" height="3" fill="${C.seam}"/>`
     );
@@ -315,7 +315,7 @@ function departuresSvg(small) {
     const totalW = n * sw + (n - 1) * gap;
     const sx = 128 - totalW / 2;
     for (let i = 0; i < n; i++) {
-      segs.push(`<rect x="${sx + i * (sw + gap)}" y="204" width="${sw}" height="16" fill="${i < 7 ? C.amber : '#1b1c20'}"/>`);
+      segs.push(`<rect x="${sx + i * (sw + gap)}" y="204" width="${sw}" height="16" fill="${i < 7 ? C.lime : '#1b1c20'}"/>`);
     }
   }
 

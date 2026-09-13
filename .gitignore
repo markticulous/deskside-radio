@@ -11,3 +11,7 @@ desktop.ini
 
 # A machine's own exported settings, used to seed a fresh launcher profile.
 deskside-radio-settings.json
+# Throwaway copy of index.html with a seeded localStorage, used for
+# headless checks. It is written into the repo root because it has to
+# load the app from its own directory, and it is never a change.
+_probe.html
