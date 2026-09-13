@@ -5,7 +5,7 @@
   var KEY = 'radio.v1';
   var THEMES = ['dial', 'console', 'rams', 'editorial'];
   // Bump on release, and publish the same number in version.json.
-  var APP_VERSION = '1.0.0';
+  var APP_VERSION = '1.1.0';
 
   var DEFAULTS = {
     stations: [
@@ -50,7 +50,15 @@
     try {
       var raw = localStorage.getItem(KEY);
       if (!raw) return clone(DEFAULTS);
-      var s = JSON.parse(raw);
+      return normalise(JSON.parse(raw));
+    } catch (e) { return clone(DEFAULTS); }
+  }
+
+  /* Everything a stored settings object needs before the app can trust it:
+     defaults filled in, old shapes migrated. A settings file seeded from
+     disk goes through here too, so it gets the same treatment. */
+  function normalise(s) {
+    try {
       var merged = Object.assign(clone(DEFAULTS), s);
       merged.schedule = Object.assign({ weekday: [], weekend: [] }, s.schedule || {});
       if (THEMES.indexOf(merged.theme) === -1) merged.theme = DEFAULTS.theme;
@@ -125,58 +133,108 @@
   var userStopping = false;
   var startedThisTune = false;
   var userGestured = false;
+  var probeCtx = null;
   var everSustained = {};
 
   /* Only ever with a real gesture, and only before playback begins.
      Wrapping a MediaElementAudioSourceNode around an element that is
      already playing, or resuming a context that has been buffering while
-     suspended, makes the stream stutter and rewind several seconds. */
+     suspended, makes the stream stutter and rewind several seconds.
+     The one other way in is probeAutoplay() below, which reaches
+     buildGraph() only once a context has been seen running. */
   function ensureGraph() {
+    // A gesture landing mid-probe adopts the probe's context rather than
+    // opening a second one; its resume() promise then completes the probe.
+    if (probeCtx) { probeCtx.resume(); return; }
     if (!userGestured) return;
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
-    try {
-      var c = new AC();
-      var src = c.createMediaElementSource(corsEl);
-      var an = c.createAnalyser();
-      an.fftSize = 2048;
-      var g = c.createGain();
-      // Tone sits after the analyser, so the meter keeps reading the broadcast
-      // rather than whatever shelf the listener has dialled in.
-      var lowShelf = c.createBiquadFilter();
-      lowShelf.type = 'lowshelf'; lowShelf.frequency.value = 200;
-      var highShelf = c.createBiquadFilter();
-      highShelf.type = 'highshelf'; highShelf.frequency.value = 3200;
-      // No limiter: the fader cannot exceed unity, so there is nothing to
-      // catch. A compressor here only squashed the top of the travel, and
-      // Chromium's adds makeup gain even far below its threshold.
-      src.connect(an); an.connect(lowShelf); lowShelf.connect(highShelf);
-      highShelf.connect(g); g.connect(c.destination);
-      /* An interruption of the Web Audio render thread does not drop samples,
-         it delays them, so a live stream comes back several seconds behind and
-         the listener hears what they just heard. Nothing can seek a live HLS
-         stream forward to the edge, so re-tune once the thread is back. */
-      c.addEventListener('statechange', function () {
-        if (c.state !== 'running') { graphInterrupted = true; return; }
-        if (!graphInterrupted) return;
-        graphInterrupted = false;
-        if (!state.intendedPlaying) return;
-        var back = currentStation();
-        if (!back) return;
-        setStatus('connecting', 'Re-syncing to live');
-        attempts = 0;
-        tune(back, state.volume);
-      });
-      ctx = c; analyser = an; gainNode = g; bassNode = lowShelf; trebleNode = highShelf;
-      timeData = new Float32Array(an.fftSize);
-      freqData = new Uint8Array(an.frequencyBinCount);
-      corsEl.volume = 1;
-      gainNode.gain.value = Signal.volumeToGain(state.volume);
-      applyTone();
-      if (ctx.state === 'suspended') ctx.resume();
-    } catch (e) { ctx = null; analyser = null; gainNode = null; bassNode = null; trebleNode = null; }
+    try { buildGraph(new AC()); }
+    catch (e) { ctx = null; analyser = null; gainNode = null; bassNode = null; trebleNode = null; }
   }
+
+  /* Wraps the element. This is the point of no return: a
+     MediaElementAudioSourceNode reroutes the element's output for good, so
+     a context that gets this far must be one that is going to run. */
+  function buildGraph(c) {
+    var src = c.createMediaElementSource(corsEl);
+    var an = c.createAnalyser();
+    an.fftSize = 2048;
+    var g = c.createGain();
+    // Tone sits after the analyser, so the meter keeps reading the broadcast
+    // rather than whatever shelf the listener has dialled in.
+    var lowShelf = c.createBiquadFilter();
+    lowShelf.type = 'lowshelf'; lowShelf.frequency.value = 200;
+    var highShelf = c.createBiquadFilter();
+    highShelf.type = 'highshelf'; highShelf.frequency.value = 3200;
+    // No limiter: the fader cannot exceed unity, so there is nothing to
+    // catch. A compressor here only squashed the top of the travel, and
+    // Chromium's adds makeup gain even far below its threshold.
+    src.connect(an); an.connect(lowShelf); lowShelf.connect(highShelf);
+    highShelf.connect(g); g.connect(c.destination);
+    /* An interruption of the Web Audio render thread does not drop samples,
+       it delays them, so a live stream comes back several seconds behind and
+       the listener hears what they just heard. Nothing can seek a live HLS
+       stream forward to the edge, so re-tune once the thread is back. */
+    c.addEventListener('statechange', function () {
+      if (c.state !== 'running') { graphInterrupted = true; return; }
+      if (!graphInterrupted) return;
+      graphInterrupted = false;
+      if (!state.intendedPlaying) return;
+      var back = currentStation();
+      if (!back) return;
+      setStatus('connecting', 'Re-syncing to live');
+      attempts = 0;
+      tune(back, state.volume);
+    });
+    ctx = c; analyser = an; gainNode = g; bassNode = lowShelf; trebleNode = highShelf;
+    timeData = new Float32Array(an.fftSize);
+    freqData = new Uint8Array(an.frequencyBinCount);
+    corsEl.volume = 1;
+    gainNode.gain.value = Signal.volumeToGain(state.volume);
+    applyTone();
+    if (ctx.state === 'suspended') ctx.resume();
+  }
+  /* Play on launch, with no click anywhere. The launcher shortcut starts the
+     browser with --autoplay-policy=no-user-gesture-required, and under that
+     flag a context reaches 'running' on its own; without it resume() simply
+     never settles, so the wait is bounded and the context is thrown away.
+     This runs before the first tune(), so the element is not yet playing and
+     buildGraph() cannot catch it mid-stream. */
+  function probeAutoplay(done) {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC || ctx || userGestured) return done();
+    try { probeCtx = new AC(); } catch (e) { probeCtx = null; return done(); }
+
+    var c = probeCtx, settled = false, timer = null;
+    function finish(ok) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      c.removeEventListener('statechange', onState);
+      probeCtx = null;
+      if (ok) {
+        userGestured = true;
+        try { buildGraph(c); }
+        catch (e) { ctx = null; analyser = null; gainNode = null; bassNode = null; trebleNode = null; }
+      } else {
+        try { c.close(); } catch (e) { /* already gone */ }
+      }
+      done();
+    }
+    function onState() {
+      if (c.state === 'running') finish(true);
+      else if (c.state === 'closed') finish(false);
+    }
+
+    c.addEventListener('statechange', onState);
+    if (c.state === 'running') return finish(true);
+    timer = setTimeout(function () { finish(false); }, 400);
+    var p = c.resume();
+    if (p && p.then) p.then(function () { if (c.state === 'running') finish(true); }, function () { finish(false); });
+  }
+
   function markGesture() {
     userGestured = true;
     ensureGraph();
@@ -443,9 +501,11 @@
   function showOverlay() {
     var st = currentStation();
     var lead = launching ? "Starts " : "Resumes ";
-    el.startSub.textContent = st
+    // Windows has a way out of this panel for good; say so while it is up.
+    var way = isMac() ? "" : " To start it on its own, run Create Desktop Shortcut.cmd in the app folder.";
+    el.startSub.textContent = (st
       ? lead + st.name + ". Browsers need one click before audio can play."
-      : "Browsers need one click before audio can play.";
+      : "Browsers need one click before audio can play.") + way;
     awaitingTap = true;
     clearTimeout(retryTimer); retryTimer = null;
     el.overlay.hidden = false;
@@ -1068,7 +1128,7 @@
                down when the card is open. */
             '<span class="card-mark" aria-hidden="true">' +
               '<svg viewBox="0 0 24 24" fill="currentColor">' +
-                '<path d="M18.3 10.8 Q20 12 18.3 13.2 L11.2 18.9 Q6.4 22.6 6.4 16.5 L6.4 7.5 Q6.4 1.4 11.2 5.1 Z"/>' +
+                '<path d="M18.3 10.8 Q20 12 18.3 13.2 L11.2 18.9 Q8.3 22.2 6 16.5 Q4.2 12 6 7.5 Q8.3 1.8 11.2 5.1 Z"/>' +
               '</svg>' +
             '</span>' +
             '<span class="card-name' + (name ? '' : ' is-blank') + '">' + escapeHtml(name || 'Unnamed station') + '</span>' +
@@ -1695,18 +1755,25 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
   });
+  /* One reading of an export file, shared by the Import button and the seed
+     that a fresh profile picks up off disk. Throws on anything that is not
+     one of ours, which is what both callers want to hear about. */
+  function importSettingsInto(target, data) {
+    if (!data || !Array.isArray(data.stations)) throw new Error('no stations');
+    target.stations = data.stations;
+    target.schedule = Object.assign({ weekday: [], weekend: [] }, data.schedule || {});
+    if (THEMES.indexOf(data.theme) !== -1) target.theme = data.theme;
+    target.autoplay = !!data.autoplay;
+    target.autoplayStationId = data.autoplayStationId || null;
+    return target;
+  }
+
   $('importFile').addEventListener('change', function () {
     var f = this.files[0]; if (!f) return;
     var r = new FileReader();
     r.onload = function () {
       try {
-        var data = JSON.parse(r.result);
-        if (!Array.isArray(data.stations)) throw new Error('no stations');
-        draft.stations = data.stations;
-        draft.schedule = Object.assign({ weekday: [], weekend: [] }, data.schedule || {});
-        if (THEMES.indexOf(data.theme) !== -1) draft.theme = data.theme;
-        draft.autoplay = !!data.autoplay;
-        draft.autoplayStationId = data.autoplayStationId || null;
+        importSettingsInto(draft, JSON.parse(r.result));
         renderDrawer();
         refreshSaveBtn();
         $('saveMsg').textContent = 'Imported. Press Save to keep it.'; $('saveMsg').className = 'save-msg good';
@@ -1723,41 +1790,91 @@
     if (!document.hidden) { tick(); startTicking(); }
   });
 
-  applyLook();
-  TunerUI.init(el.tuner);
-  renderPresets();
-  setVolume(state.volume, true);
-  applyTone();
-  el.schedToggle.setAttribute('aria-pressed', state.schedulerEnabled);
-  el.schedLabel.textContent = state.schedulerEnabled ? 'Schedule on' : 'Schedule off';
-  applySlotNow(state.schedulerEnabled ? Scheduler.activeSlot(state.schedule, new Date()) : null);
-  var boot = resolveTarget();
-  if (boot.station) {
-    state.currentStationId = boot.station.id;
-    renderStation(boot.station);
-    // The sliders showed the tone left in place rather than this station's.
-    loadTone(boot.station);
+  /* A launcher-made shortcut opens the radio in its own browser profile,
+     which starts with empty storage: no stations, no schedule, default
+     theme. So on a first run only, look for an export file sitting beside
+     index.html and take the settings from that. It has to be XHR — Chrome
+     refuses fetch() on file: URLs outright, while XHR honours
+     --allow-file-access-from-files, which the launcher passes. A page
+     opened the ordinary way is simply refused, and boots on defaults. */
+  function seedSettings(done) {
+    var req;
+    try { req = new XMLHttpRequest(); } catch (e) { return done(); }
+    var finished = false;
+    function go() { if (!finished) { finished = true; done(); } }
+    req.onload = function () {
+      try {
+        // file:// reports status 0 on success, so judge it by the body.
+        if (req.responseText) {
+          var seeded = normalise(importSettingsInto(clone(DEFAULTS), JSON.parse(req.responseText)));
+          if (!seeded.stations.length) throw new Error('no stations');
+          state = seeded;
+          if (!station(state.currentStationId)) state.currentStationId = state.stations[0].id;
+          save();
+        }
+      } catch (e) { /* not one of ours: carry on with defaults */ }
+      go();
+    };
+    req.onerror = go;
+    req.ontimeout = go;
+    req.timeout = 800;
+    try {
+      req.open('GET', 'deskside-radio-settings.json', true);
+      req.send();
+    } catch (e) { go(); }
   }
-  tick();
-  startTicking();
-  $('appVersion').textContent = 'v' + APP_VERSION;
-  if (updateAvailable()) $('appVersion').classList.add('is-stale');
-  // Not on the critical path: let the radio come up first.
-  setTimeout(function () { checkVersion(false); }, 3000);
-  el.tuner.classList.add('is-quiet');
-  meterQuiet = true;
-  requestAnimationFrame(meterLoop);
 
-  /* Play on launch. The graph needs a click before it can be built, so
-     this plays on the bare element and the first click anywhere attaches
-     the meter. If the browser refuses to start audio without a gesture,
-     tune() catches that and puts up the tap panel instead. */
-  var launch = Scheduler.bootTarget(state, new Date());
-  if (launch && station(launch.stationId)) {
-    state.currentStationId = launch.stationId;
-    renderStation(station(launch.stationId));
-    launching = true;
-    startPlayback();
-  } else if (state.intendedPlaying && boot.station) showOverlay();
-  else setStatus('idle', 'Idle');
+  function boot() {
+    applyLook();
+    TunerUI.init(el.tuner);
+    renderPresets();
+    setVolume(state.volume, true);
+    applyTone();
+    el.schedToggle.setAttribute('aria-pressed', state.schedulerEnabled);
+    el.schedLabel.textContent = state.schedulerEnabled ? 'Schedule on' : 'Schedule off';
+    applySlotNow(state.schedulerEnabled ? Scheduler.activeSlot(state.schedule, new Date()) : null);
+    var onDisplay = resolveTarget();
+    if (onDisplay.station) {
+      state.currentStationId = onDisplay.station.id;
+      renderStation(onDisplay.station);
+      // The sliders showed the tone left in place rather than this station's.
+      loadTone(onDisplay.station);
+    }
+    tick();
+    startTicking();
+    $('appVersion').textContent = 'v' + APP_VERSION;
+    if (updateAvailable()) $('appVersion').classList.add('is-stale');
+    // Not on the critical path: let the radio come up first.
+    setTimeout(function () { checkVersion(false); }, 3000);
+    el.tuner.classList.add('is-quiet');
+    meterQuiet = true;
+    requestAnimationFrame(meterLoop);
+
+    /* Play on launch. probeAutoplay() finds out whether this browser will
+       start audio unasked — the launcher shortcut sees to that — and builds
+       the graph first when it will, so the meter and tone come up with the
+       sound rather than waiting for a click. Either way playback is attempted
+       and only a refusal (NotAllowedError in tune()) raises the tap panel.
+       That includes the case of a session left playing, which used to put the
+       panel up pre-emptively without ever asking the browser. */
+    var launch = Scheduler.bootTarget(state, new Date());
+    var launchStation = launch && station(launch.stationId) ? launch : null;
+    var resumeLast = !launchStation && state.intendedPlaying && !!onDisplay.station;
+
+    if (launchStation) {
+      state.currentStationId = launchStation.stationId;
+      renderStation(station(launchStation.stationId));
+      launching = true;
+    } else if (!resumeLast) {
+      setStatus('idle', 'Idle');
+    }
+    if (launchStation || resumeLast) probeAutoplay(startPlayback);
+  }
+
+  /* Nothing stored means either a first run or a fresh profile, and the
+     second is what the launcher makes. Look for a settings file before
+     drawing anything, so the radio comes up already itself. */
+  var stored = null;
+  try { stored = localStorage.getItem(KEY); } catch (e) { /* storage unavailable */ }
+  if (stored === null) seedSettings(boot); else boot();
 })();
