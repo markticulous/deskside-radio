@@ -68,7 +68,7 @@
   background: var(--presets-thumb, rgba(128,128,128,.45));
   border-radius: 4px;
 }
-.controls    { grid-area: controls; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.controls    { grid-area: controls; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; --rec-gap: 20px; }
 
 .brand        { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .clock        { margin-left: auto; font-variant-numeric: tabular-nums; }
@@ -176,33 +176,52 @@
 
    REC and STOP are given the same width so the button does not change
    size under the finger that is about to press it again. */
-.rec-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  flex: 0 0 auto; width: 88px; height: 30px; padding: 0;
+.tuner .rec-btn {
+  /* Collapsed is the resting state, so the button does not animate itself
+     open on the first paint. .is-up is what opens it. */
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  flex: 0 0 auto; width: 0; height: 26px; padding: 0;
   font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
   font-size: 11px; font-weight: 600; letter-spacing: .14em;
+  white-space: nowrap; overflow: hidden;
   color: #ff6a54; background: rgba(150,22,10,.18);
   border: 0; border-radius: 4px; cursor: pointer;
   box-shadow: inset 0 0 0 1px rgba(255,106,84,.45);
-  transition: background .14s ease, color .14s ease, box-shadow .14s ease;
+  opacity: 0; pointer-events: none;
+  /* The negative margin cancels the row's own gap while the button is
+     shut, or the controls beside it would sit twenty pixels further along
+     than they should with nothing in between. Each theme that changes that
+     gap says so in --rec-gap. */
+  margin-right: calc(0px - var(--rec-gap, 20px));
+  transition:
+    width .2s cubic-bezier(.2, .8, .2, 1),
+    margin-right .2s cubic-bezier(.2, .8, .2, 1),
+    opacity .16s ease,
+    background .14s ease, color .14s ease, box-shadow .14s ease;
 }
-.rec-btn[hidden] { display: none; }
-.rec-btn:hover:not(:disabled) { background: rgba(190,30,14,.3); color: #ff8d7a; }
-.rec-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.tuner .rec-btn.is-up {
+  width: 66px; opacity: 1; pointer-events: auto; margin-right: 0;
+}
+.tuner .rec-btn[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .tuner .rec-btn { transition: opacity .16s ease, background .14s ease, color .14s ease; }
+}
+.tuner .rec-btn:hover:not(:disabled) { background: rgba(190,30,14,.3); color: #ff8d7a; }
+.tuner .rec-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 /* The tally is on the button because that is the only thing on screen that
    is certainly in view when the button is. */
-.rec-btn[aria-pressed="true"] {
+.tuner .rec-btn[aria-pressed="true"] {
   color: #fff; background: #c21d0f;
   box-shadow: inset 0 0 0 1px rgba(255,140,120,.65), 0 0 12px rgba(194,29,15,.5);
 }
-.rec-btn[aria-pressed="true"] .rec-dot { animation: rec-tally 1s steps(1) infinite; }
+.tuner .rec-btn[aria-pressed="true"] .rec-dot { animation: rec-tally 1s steps(1) infinite; }
 @keyframes rec-tally {
   0%, 50%      { opacity: 1; }
   50.01%, 100% { opacity: .12; }
 }
-.rec-btn:disabled { opacity: .38; cursor: not-allowed; }
+.tuner .rec-btn:disabled { opacity: .38; cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) {
-  .rec-btn[aria-pressed="true"] .rec-dot { animation: none; }
+  .tuner .rec-btn[aria-pressed="true"] .rec-dot { animation: none; }
 }
 
 /* ---- maker byline: brand lockup, options rendered in byline-preview.html ---- */
@@ -966,11 +985,15 @@
 
 [data-theme="editorial"] .controls {
   padding: 24px 28px 28px; align-self: end;
-  display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
-  gap: 14px 18px; align-items: center;
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px 18px; align-items: center; --rec-gap: 18px;
 }
 [data-theme="editorial"] .play-btn { grid-column: 1; grid-row: 1 / span 2; }
-[data-theme="editorial"] .volume { grid-column: 2 / span 2; }
+/* A column of its own, beside the transport and spanning both rows. Left
+   to place itself it took the first free cell, which is where the volume
+   fader lives, and pushed the whole row apart. */
+[data-theme="editorial"] .rec-btn { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+[data-theme="editorial"] .volume { grid-column: 3 / span 2; }
 [data-theme="editorial"] .play-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
   /* Fixed width: Play and Stop are different widths in this face, and a button
@@ -1087,7 +1110,7 @@
 [data-theme="retro"] .preset-add { color: var(--dark); box-shadow: inset 0 0 0 2px var(--dark); margin-top: 8px; opacity: 1; }
 [data-theme="retro"] .preset-add:hover { color: var(--grey); }
 
-[data-theme="retro"] .controls { gap: 18px; padding-top: 18px; box-shadow: inset 0 2px 0 var(--dark); }
+[data-theme="retro"] .controls { gap: 18px; --rec-gap: 18px; padding-top: 18px; box-shadow: inset 0 2px 0 var(--dark); }
 [data-theme="retro"] .play-btn {
   width: auto; height: auto; border-radius: 0; padding: 14px 18px; gap: 10px;
   font-size: 9px; text-transform: uppercase; color: var(--ink); background: var(--red);
@@ -1702,7 +1725,7 @@
 
 /* ---- the controls ---- */
 [data-theme="tivoli"] .controls {
-  padding-top: 14px; gap: 26px; align-items: flex-start;
+  padding-top: 14px; gap: 26px; --rec-gap: 26px; align-items: flex-start;
   box-shadow: inset 0 1px 0 rgba(255,220,180,.14);
 }
 /* A machined push-button, the kind that is a disc of aluminium with a
@@ -1722,6 +1745,10 @@
   transition: transform .07s ease, box-shadow .07s ease;
 }
 [data-theme="tivoli"] .play-btn { margin-top: 2px; }
+/* The control row is topped rather than centred here, so that the knob
+   labels line up; the record button is dropped by hand until its middle
+   is level with the transport's. */
+[data-theme="tivoli"] .rec-btn { margin-top: 14px; }
 [data-theme="tivoli"] .play-btn svg { width: 17px; height: 17px; filter: drop-shadow(0 1px 0 rgba(255,255,255,.55)); }
 [data-theme="tivoli"] .play-btn:hover { color: #2f3433; }
 [data-theme="tivoli"] .play-btn:active,
@@ -1859,7 +1886,7 @@
     margin-left: calc((var(--grille) + 18px) * -1);
     margin-right: calc((var(--knob) + 18px) * -1);
   }
-  [data-theme="tivoli"] .controls { gap: 18px; }
+  [data-theme="tivoli"] .controls { gap: 18px; --rec-gap: 18px; }
 }
 
 /* ================================================================== */

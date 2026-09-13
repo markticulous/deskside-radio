@@ -21,6 +21,11 @@
   .intro h1 { font-family: "Syne", sans-serif; font-weight: 800; font-size: clamp(32px, 5vw, 54px); letter-spacing: -.03em; line-height: 1; margin: 0 0 14px; text-wrap: balance; }
   .intro p { margin: 0; max-width: 64ch; color: var(--pg-mute); font-size: 16px; }
   .intro p + p { margin-top: 8px; }
+  .intro-aside {
+    margin-top: 16px; padding-left: 14px;
+    border-left: 3px solid var(--pg-accent);
+  }
+  .intro-aside code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .92em; }
   .intro strong { color: var(--pg-ink); font-weight: 600; }
   .intro a { color: var(--pg-accent); }
 
@@ -41,6 +46,7 @@
     <p>Every theme the app ships, drawn here by the app's own stylesheet and the same instrument code, so this page cannot go out of date without the app going with it. Same controls in each: now-playing display, presets, play and stop, volume, scheduler state, settings. Only the visual language changes, and the presets and buttons are live, so click around.</p>
     <p>Dial scales are drawn to the real broadcast bands, so the needle sits at 1010 kHz or 92.5 MHz where a receiver would put it. The meters here run on a simulated signal; in the app they read the actual stream, which is why the Model One speaker moves without a station being tuned.</p>
     <p><strong>Analogue dial is the default</strong>, and the rest are one click away in Settings, Theme. Byline options live on <a href="byline-preview.html">the byline page</a>.</p>
+    <p class="intro-aside"><strong>Hold either Shift key</strong> in the radio itself and a red REC button slides out beside play, in whichever theme you are wearing; recordings land in your downloads as <code>DSRadio-&lt;yymmddhhmmss&gt;-&lt;seconds&gt;.m4a</code>, stamped with the moment you pressed it. It is not on these mock-ups, which have no audio behind them to record.</p>
   </header>
 
   <section class="face">
