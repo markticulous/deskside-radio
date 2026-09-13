@@ -962,6 +962,7 @@
 
 /* Only the editorial play button carries a text label */
 [data-theme="dial"] .btn-text, [data-theme="console"] .btn-text, [data-theme="rams"] .btn-text,
+[data-theme="tivoli"] .btn-text,
 [data-theme="retro"] .btn-text, [data-theme="departures"] .btn-text,
 [data-theme="marconi"] .btn-text { display: none; }
 
@@ -1564,14 +1565,19 @@
   /* Dark, with a lit edge either side. A pale ring on pale cloth is
      invisible; a wave running through cloth is a shadow with the weave
      catching the light along its crest. */
-  /* The border is drawn thick because the ring is scaled up from almost
-     nothing, and a transform scales the stroke with everything else: nine
-     pixels at a tenth of size is one. It thins as the ring widens, which
-     is what a wave losing amplitude does anyway. */
-  border-radius: 50%; border: 9px solid rgba(44,25,10,.62);
-  box-shadow:
-    inset 0 0 0 2px rgba(255,252,240,.62),
-    0 0 0 2px rgba(255,252,240,.5);
+  /* Painted as a soft band rather than stroked as a ring. A border has an
+     edge, and nothing travelling through cloth has one: the crest catches
+     the light, the trough behind it darkens, and both fade into the weave.
+     The band is a share of the ring's own radius, so it widens as the wave
+     spreads and thins out with it. */
+  border-radius: 50%; border: 0;
+  background: radial-gradient(circle at 50% 50%,
+    transparent 0 44%,
+    rgba(255,252,240,.18) 58%,
+    rgba(255,252,240,.62) 71%,
+    rgba(54,30,12,.68) 83%,
+    rgba(54,30,12,.24) 93%,
+    transparent 100%);
   pointer-events: none; opacity: 0;
   animation: tivoli-ripple 1.45s linear infinite;
 }
@@ -1584,8 +1590,11 @@
 [data-theme="tivoli"] .meter-scale { animation-delay: -.96s; }
 @keyframes tivoli-ripple {
   0%   { transform: translate(-50%, -50%) scale(.12); opacity: 0; }
-  12%  { opacity: calc(.40 + var(--vu, 0) * .6); }
-  68%  { opacity: calc(.22 + var(--vu, 0) * .5); }
+  /* Higher than it looks like it should be. A feathered band has no edge
+     to catch the eye, so what a hard ring carried at a third of opacity a
+     soft one needs most of to read at all against the weave. */
+  12%  { opacity: calc(.62 + var(--vu, 0) * .38); }
+  68%  { opacity: calc(.34 + var(--vu, 0) * .48); }
   /* Quiet programme moves the middle of the cone and no more; it takes
      something loud to run a wave all the way out to the surround. */
   100% { transform: translate(-50%, -50%) scale(calc(.30 + var(--vu, 0) * 1)); opacity: 0; }
