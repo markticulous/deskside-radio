@@ -1081,7 +1081,7 @@
   var THEME_CARDS = [
     { key: 'dial', label: 'Analogue dial', note: 'Walnut and brass, lit glass scale' },
     { key: 'console', label: 'Broadcast console', note: 'Rack panel, amber readouts, LED meter' },
-    { key: 'rams', label: 'Rams minimal', note: 'Off-white and one orange marker' },
+    { key: 'rams', label: 'Rams minimal', note: 'Homage to the work of German industrial designer Dieter Rams' },
     { key: 'editorial', label: 'Editorial', note: 'Big type, a colour for each station' },
     { key: 'retro', label: 'Retro 8-bit', note: 'Four colours on an 8-pixel grid' },
     { key: 'departures', label: 'Departures board', note: 'Split-flap, one letter per flap' },
