@@ -509,17 +509,83 @@
   display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; row-gap: 6px;
   color: var(--amber);
 }
+/* The glass. A vacuum fluorescent display is a sealed tube: fine anode
+   grid wires run across it in one direction and the phosphor rows in the
+   other, and both are visible as a faint mesh whether anything is lit or
+   not. */
 [data-theme="console"] .display::before {
   content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px);
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 1px, transparent 1px 5px);
+}
+/* The sheen off the front glass, brightest at the top left corner where
+   the room light falls on it. */
+[data-theme="console"] .display::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(158deg, rgba(255,255,255,.055) 0 22%, transparent 46%);
 }
 [data-theme="console"] .display-band { color: var(--amber-dim); font-size: 13px; }
 [data-theme="console"] .display-name {
   margin: 4px 0 0;
   font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
   font-weight: 600; font-size: clamp(52px, 7.5vw, 96px); line-height: .9; letter-spacing: .01em; text-transform: uppercase;
-  text-shadow: 0 0 18px rgba(255,176,0,.45), 0 0 2px rgba(255,176,0,.8);
+  /* Phosphor, in four layers: a near-white core where the segment is
+     driven hardest, then amber, then two wide falls of it into the glass.
+     A single shadow gives a sticker with a halo; the stack is what reads
+     as something actually glowing behind glass. */
+  text-shadow:
+    0 0 1px rgba(255,232,186,.95),
+    0 0 3px rgba(255,190,70,.9),
+    0 0 12px rgba(255,176,0,.5),
+    0 0 34px rgba(255,150,0,.3),
+    0 0 72px rgba(255,130,0,.16);
   white-space: nowrap; overflow: hidden;
+  /* Its own stacking context, so the unlit field below sits behind the
+     glyphs and not behind the whole display. */
+  position: relative; isolation: isolate;
+}
+/* The giveaway detail. The phosphor is printed on the glass whether it is
+   driven or not, so an undriven dot field sits faintly across the whole
+   character band -- which is why a real display never looks like type on
+   black. Lit segments simply light dots that were already there. */
+[data-theme="console"] .display-name::before {
+  content: ""; position: absolute; inset: -6px 0; z-index: -1; pointer-events: none;
+  background-image: radial-gradient(circle at center, rgba(255,176,0,.105) 0 1.1px, transparent 1.45px);
+  background-size: 6px 7px;
+}
+/* A VFD is driven off a heated filament on AC, and the brightness ripples
+   with it -- never steady, never obviously pulsing either. The keyframes
+   are deliberately unevenly spaced so it does not fall into an audible
+   rhythm. */
+[data-theme="console"] .display-name { animation: vfd-ripple 6.5s ease-in-out infinite; }
+@keyframes vfd-ripple {
+  0%   { filter: brightness(1); }
+  17%  { filter: brightness(1.045); }
+  31%  { filter: brightness(.985); }
+  58%  { filter: brightness(1.03); }
+  76%  { filter: brightness(.995); }
+  100% { filter: brightness(1); }
+}
+/* The sheen that crosses the glass now and then. It blends rather than
+   being painted on, so it lifts the lit segments and leaves the unlit
+   field where it was -- which is how a highlight on a real display
+   behaves, there being nothing there to catch it. */
+[data-theme="console"] .display-name::after {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(100deg,
+    transparent 38%, rgba(255,245,220,.42) 50%, transparent 62%);
+  background-size: 260% 100%; background-repeat: no-repeat;
+  mix-blend-mode: overlay;
+  animation: vfd-sheen 9s ease-in-out infinite;
+}
+@keyframes vfd-sheen {
+  0%, 8%    { background-position: 135% 0; }
+  46%, 100% { background-position: -35% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="console"] .display-name,
+  [data-theme="console"] .display-name::after { animation: none; }
 }
 [data-theme="console"] .display-tag { margin: 8px 0 0; font-size: 13px; color: #a67a12; letter-spacing: .02em; }
 [data-theme="console"] .display-status { margin-top: 12px; color: var(--mute); }
@@ -964,6 +1030,9 @@
 [data-theme="departures"] .tuner {
   --board: #0b0b0c; --tile: #1b1c20; --tile-hi: #26282d; --seam: #08090b;
   --ink: #f5f3ec; --amber: #ffc400; --mute: #6f7176; --line: #2a2c31;
+  /* The flaps print in the yellow-green of a board lit from behind, a
+     shade off the amber the rest of the theme uses for its accents. */
+  --flap-ink: #d7f04e;
   --gap: 20px; --pad: 28px;
   --by-mono: "IBM Plex Mono", monospace;
   --by-fg: #6f7176; --by-line: #2a2c31; --by-plate: #111214;
@@ -1011,7 +1080,7 @@
   padding: 10px var(--pitch);
   font-family: "IBM Plex Mono", monospace;
   font-size: clamp(30px, 4.4vw, 52px); font-weight: 700; line-height: 1.1;
-  letter-spacing: .05em; text-transform: uppercase; color: var(--amber);
+  letter-spacing: .05em; text-transform: uppercase; color: var(--flap-ink);
   white-space: nowrap; overflow: hidden;
   background:
     repeating-linear-gradient(90deg,
