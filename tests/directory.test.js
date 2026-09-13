@@ -124,6 +124,19 @@ test('pickColour cycles the palette so a new station never repeats the last one'
 
 // ---------- place-aware ranking ----------
 
+test('callSignFrom reads the sign out of the name, not the tags', () => {
+  // Shapes taken from live radio-browser results for Toronto.
+  assert.equal(D.callSignFrom({ name: 'CFRB News/Talk 1010 (Toronto, ON)' }), 'CFRB');
+  assert.equal(D.callSignFrom({ name: 'CFNY 102.1 "The Edge" Toronto, ON (MP3)' }), 'CFNY');
+  assert.equal(D.callSignFrom({ name: 'CBLA-FM 99.1' }), 'CBLA-FM');
+  // A network acronym is the same shape and is not a call sign.
+  assert.equal(D.callSignFrom({ name: 'CBC Radio 1 Toronto' }), '');
+  // Tags are never searched: "kids" would match the shape and be wrong.
+  assert.equal(D.callSignFrom({ name: '680 News Toronto', tags: 'kids,news' }), '');
+  assert.equal(D.callSignFrom({ name: '' }), '');
+  assert.equal(D.callSignFrom(null), '');
+});
+
 test('searchUrl can narrow by country without demanding coordinates', () => {
   const u = new URL(D.searchUrl({ name: '1010', countryCode: 'CA' }));
   assert.equal(u.searchParams.get('countrycode'), 'CA');
