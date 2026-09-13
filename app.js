@@ -299,6 +299,7 @@
     el.led.classList.toggle('live', s === 'live');
     el.tuner.classList.toggle('is-playing', s === 'live');
     el.tuner.classList.toggle('is-reconnecting', s === 'reconnecting');
+    el.tuner.classList.toggle('is-connecting', s === 'connecting');
     /* Two ways to end up without a meter: a stream that blocks the
        analysed path, or play on launch starting before any click, which
        is what the Web Audio graph waits for. Say which. */
@@ -326,6 +327,8 @@
     audio.src = st.url;
     audio.load();
     liveSince = 0; lastTime = -1; stuckSince = 0; startedThisTune = false;
+    // Let the meters fall away rather than freeze on the old station's level.
+    meterRelease = true;
     setStatus(attempts ? 'reconnecting' : 'connecting', attempts ? 'Reconnecting \u00b7 try ' + attempts : 'Connecting');
     var p = audio.play();
     if (p && p.catch) p.catch(function (err) {
@@ -434,6 +437,11 @@
 
   // ---------- metering ----------
   var level = 0, lastTs = 0, meterQuiet = false, quietSince = 0;
+  /* Set when tune() is called, cleared the moment audio arrives. Holding
+     the needle through a rebuffer is right; holding it through a station
+     change is not, because the old station's level is then being shown
+     against the new station's name. */
+  var meterRelease = false;
   function meterLoop(ts) {
     requestAnimationFrame(meterLoop);
     var dt = lastTs ? Math.min(ts - lastTs, 250) : 16;
@@ -444,9 +452,9 @@
     /* A second of rebuffering is not the same as stopping. Hold the needle
        where it is through a short interruption rather than dropping it to
        nothing and back, which reads as the meter breaking. */
-    if (lit) quietSince = 0;
+    if (lit) { quietSince = 0; meterRelease = false; }
     else if (!quietSince) quietSince = ts;
-    var holding = !lit && state.intendedPlaying && ts - quietSince < 2000;
+    var holding = !lit && !meterRelease && state.intendedPlaying && ts - quietSince < 2000;
     if (lit) {
       analyser.getFloatTimeDomainData(timeData);
       var sum = 0;
