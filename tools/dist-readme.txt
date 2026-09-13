@@ -139,6 +139,47 @@ Backup
   Settings, Service exports everything to one file and imports it back.
 
 
+STREAM TYPES
+------------
+
+Paste any of these into a station's stream URL. The radio works out what
+to do with it.
+
+MP3 and AAC streams
+  The ordinary kind, and what most Icecast and Shoutcast stations hand
+  out. Everything works: sound, the meter, and the tone controls.
+
+Playlist files (.pls and .m3u)
+  Plenty of stations publish one of these as their "Listen" link. It is
+  not a stream; it is a short text file with the real address inside it.
+  The radio reads the file the first time you play that station, keeps
+  the address it finds, and goes straight to it from then on. If the
+  station's server refuses the request the file cannot be read, and the
+  station will not play; open the file in a text editor and use the
+  address from inside it instead.
+
+HLS streams (.m3u8)
+  These play, but they carry a longer delay by design, and stopping and
+  starting one rewinds you ten to twenty seconds. The player is handed
+  whole pre-recorded chunks and has to begin at the start of the newest
+  one. There is no way around it from here. CBC Radio 1 is one of these.
+
+.asx and .xspf
+  Not handled. They are Windows Media and XML playlist formats. Open one
+  in a text editor and use the stream address inside it.
+
+Anything else
+  If a link will not play, try it in a browser tab on its own. If the tab
+  cannot play it either, neither can the radio.
+
+A note on joining live
+  A station sends a second or so of audio it has already broadcast the
+  moment you connect, so the player has something to start on. The radio
+  skips past it and joins at the live edge, which is why stopping and
+  starting no longer repeats the last second. HLS stations are the
+  exception, for the reason above.
+
+
 YOUR DATA
 ---------
 

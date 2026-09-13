@@ -124,6 +124,26 @@ test('pickColour cycles the palette so a new station never repeats the last one'
 
 // ---------- place-aware ranking ----------
 
+test('parsePlaylist pulls the stream out of a .pls or an .m3u', () => {
+  const pls = ['[playlist]', 'numberofentries=2',
+    'File2=https://example.com/second.mp3', 'Title2=Second',
+    'File1=https://example.com/first.mp3', 'Title1=First', 'Version=2'].join('\n');
+  // The lowest-numbered entry wins, not the first one encountered.
+  assert.equal(D.parsePlaylist(pls), 'https://example.com/first.mp3');
+
+  const m3u = ['#EXTM3U', '#EXTINF:-1,Some Station',
+    'https://example.com/stream.aac', 'https://example.com/backup.aac'].join('\r\n');
+  assert.equal(D.parsePlaylist(m3u), 'https://example.com/stream.aac');
+
+  // Nothing usable in it, and nothing at all.
+  assert.equal(D.parsePlaylist('[playlist]\nnumberofentries=0'), '');
+  assert.equal(D.parsePlaylist('#EXTM3U\n# only comments'), '');
+  assert.equal(D.parsePlaylist(''), '');
+  assert.equal(D.parsePlaylist(null), '');
+  // A relative entry is not a stream address we can use.
+  assert.equal(D.parsePlaylist('File1=/relative/path.mp3'), '');
+});
+
 test('callSignFrom reads the sign out of the name, not the tags', () => {
   // Shapes taken from live radio-browser results for Toronto.
   assert.equal(D.callSignFrom({ name: 'CFRB News/Talk 1010 (Toronto, ON)' }), 'CFRB');
