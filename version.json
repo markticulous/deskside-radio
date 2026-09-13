@@ -1,6 +1,6 @@
 {
-  "version": "1.2.1",
+  "version": "1.2.2",
   "released": "2026-09-13",
-  "notes": "Streams now join at the live edge, so stopping and starting no longer repeats the last second. Playlist links (.pls and .m3u) work. The shortcut window sizes itself to the radio. The broadcast console gets a proper VFD readout and real mounting screws.",
+  "notes": "The broadcast console readout is set in a real 14-segment face. Station names that will not fit now scroll instead of being shrunk, in every theme, and preset buttons no longer twitch on a name a few pixels too long. The analogue VU meter is lit from behind.",
   "url": "https://github.com/Markticulous/deskside-radio/releases/latest"
 }

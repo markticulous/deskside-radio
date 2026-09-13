@@ -5,7 +5,7 @@
   var KEY = 'radio.v1';
   var THEMES = ['dial', 'console', 'rams', 'editorial', 'retro', 'departures', 'marconi'];
   // Bump on release, and publish the same number in version.json.
-  var APP_VERSION = '1.2.1';
+  var APP_VERSION = '1.2.2';
 
   var DEFAULTS = {
     stations: [
