@@ -304,7 +304,7 @@ function departuresSvg(small) {
       `  <rect x="${x}" y="${y + h / 2}" width="${w}" height="${h / 2}" fill="${C.tileBot}"/>`,
       `  <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${C.edge}" stroke-width="2"/>`,
       ch ? `  <text x="${x + w / 2}" y="${y + h / 2 + fs * 0.36}" text-anchor="middle" fill="${C.amber}"` +
-           ` font-family="Saira Condensed, Arial Narrow, sans-serif" font-size="${fs}" font-weight="600">${ch}</text>` : '',
+           ` font-family="Chivo Mono, monospace" font-size="${fs}" font-weight="700">${ch}</text>` : '',
       `  <rect x="${x}" y="${y + h / 2 - 1.5}" width="${w}" height="3" fill="${C.seam}"/>`
     );
   }
@@ -414,7 +414,8 @@ function marconiSvg(small) {
 const FONTS = 'https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800' +
   '&family=IBM+Plex+Mono:wght@400;600&family=Barlow+Condensed:wght@500;600;700' +
   '&family=Archivo+Narrow:wght@400;500;600;700&family=Syne:wght@700;800&family=Figtree:wght@400;500;600' +
-  '&family=Press+Start+2P&family=Saira+Condensed:wght@400;500;600;700&family=Cinzel:wght@600;700&display=block';
+  '&family=Press+Start+2P&family=Saira+Condensed:wght@400;500;600;700&family=Cinzel:wght@600;700' +
+  '&family=Chivo+Mono:wght@600;700&display=block';
 
 function wrapper(svg) {
   return L(

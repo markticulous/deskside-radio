@@ -936,17 +936,29 @@
    split between one flap and the next. The glyphs ride on top rather than
    being boxed one per tile, which no proportional face would line up with. */
 [data-theme="departures"] .display-name {
-  /* Shrink to the name plus a couple of blank flaps. A full-width grid of
-     empty tiles is what a real board does, but on screen it reads as dead
-     space rather than as slack. */
+  /* One flap per character, by construction. A monospace face makes 1ch
+     the advance of every glyph, so a cell pitch of 1ch plus the tracking
+     lands each character in its own flap at any size — which a
+     proportional face cannot do, its M being three times its I. There is
+     no free split-flap typeface; real boards get the look from physical
+     tiles and a near-monospaced alphabet, which is what this is.
+
+     The gradient is positioned from the padding edge, the same origin the
+     text starts from, so the two stay locked as the name refits. The
+     padding is whole pitches: one blank flap leading, two trailing. */
+  --pitch: calc(1ch + .05em);
   display: inline-block; max-width: 100%;
-  margin: 10px 0 0; padding: 10px 92px 10px 12px;
-  font-size: clamp(36px, 5.4vw, 64px); font-weight: 600; line-height: 1.1;
-  letter-spacing: .04em; text-transform: uppercase; color: var(--amber);
+  margin: 10px 0 0;
+  padding: 10px calc(var(--pitch) * 2) 10px var(--pitch);
+  font-family: "Chivo Mono", "IBM Plex Mono", monospace;
+  font-size: clamp(30px, 4.4vw, 52px); font-weight: 700; line-height: 1.1;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--amber);
   white-space: nowrap; overflow: hidden;
   background:
-    repeating-linear-gradient(90deg, transparent 0 37px, var(--seam) 37px 40px),
-    linear-gradient(var(--tile-hi) 0 50%, #15161a 50% 100%);
+    repeating-linear-gradient(90deg,
+      transparent 0 calc(var(--pitch) - 2px), var(--seam) calc(var(--pitch) - 2px) var(--pitch)),
+    linear-gradient(var(--tile-hi) 0 calc(50% - 1px), #08090b calc(50% - 1px) calc(50% + 1px),
+      #15161a calc(50% + 1px) 100%);
   box-shadow: inset 0 0 0 1px #33363c;
 }
 [data-theme="departures"] .display-name::after { content: ""; }
@@ -1599,15 +1611,18 @@ body.app .tuner { width: min(1100px, 100%); }
 .theme-thumb[data-theme="departures"] .tt-cap { color: #6f7176; font: 600 7px/1 "Saira Condensed", sans-serif; letter-spacing: .16em; text-transform: uppercase; }
 .theme-thumb[data-theme="departures"] .tt-freq { color: #ffc400; }
 .theme-thumb[data-theme="departures"] .tt-glass {
+  --pitch: calc(1ch + .06em);
   border-radius: 0;
+  font: 700 13px/1 "Chivo Mono", monospace; letter-spacing: .06em;
   background:
-    repeating-linear-gradient(90deg, transparent 0 13px, #08090b 13px 15px),
+    repeating-linear-gradient(90deg,
+      transparent 0 calc(var(--pitch) - 2px), #08090b calc(var(--pitch) - 2px) var(--pitch)),
     linear-gradient(#26282d 0 50%, #15161a 50% 100%);
   box-shadow: inset 0 0 0 1px #33363c;
 }
 .theme-thumb[data-theme="departures"] .tt-glass::before {
-  content: "CDSK"; position: absolute; left: 3px; top: 50%; transform: translateY(-50%);
-  font: 600 15px/1 "Saira Condensed", sans-serif; letter-spacing: .06em; color: #ffc400;
+  content: "CDSK"; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  font: inherit; letter-spacing: inherit; color: #ffc400;
 }
 .theme-thumb[data-theme="departures"] .tt-keys i { background: #1b1c20; border-radius: 0; box-shadow: inset 0 0 0 1px #2a2c31; }
 .theme-thumb[data-theme="departures"] .tt-keys i:first-child { background: #ffc400; box-shadow: none; }
