@@ -99,7 +99,8 @@
     tuner: $('tuner'), clock: $('clock'),
     schedToggle: $('schedToggle'), schedLabel: $('schedLabel'), schedNext: $('schedNext'),
     band: $('band'), name: $('name'), tag: $('tag'), led: $('led'), status: $('status'),
-    presets: $('presets'), play: $('play'), volume: $('volume'), volumeOut: $('volumeOut'),
+    presets: $('presets'), play: $('play'), live: $('liveBtn'),
+    volume: $('volume'), volumeOut: $('volumeOut'),
     bass: $('bass'), bassOut: $('bassOut'), treble: $('treble'), trebleOut: $('trebleOut'),
     overlay: $('startOverlay'), startSub: $('startSub'), settings: $('settings'),
     blind: document.querySelector('.meter-blind')
@@ -132,6 +133,7 @@
   var graphInterrupted = false;
   var userStopping = false;
   var startedThisTune = false;
+  var syncedThisTune = false;
   var userGestured = false;
   var probeCtx = null;
   var everSustained = {};
@@ -273,6 +275,12 @@
   function onStarted() { startedThisTune = true; }
   function onPlaying() {
     attempts = 0;
+    /* Once per tune, and a beat after the audio starts so the buffer has
+       something to aim at. Without the guard every rebuffer would seek. */
+    if (!syncedThisTune) {
+      syncedThisTune = true;
+      setTimeout(function () { if (status === 'live') { seekToLive(); renderLiveBtn(); } }, 400);
+    }
     launching = false;
     liveSince = Date.now();
     var st = currentStation();
@@ -281,6 +289,62 @@
     updateMediaSession();
   }
   wire(corsEl);
+
+  /* ---------- live edge ----------
+     A stream hands over a second or so of already-broadcast audio the moment
+     you connect, so the player has something to start on. On music nobody
+     notices; on speech it is a word repeating, which is what stopping and
+     starting quickly makes obvious.
+
+     The cure is to move the playhead to the newest audio the element is
+     holding, keeping a margin in hand so the buffer does not run dry. This
+     costs no network: the audio is already here, it is only being played
+     from the wrong end.
+
+     HLS reports an empty seekable range and ignores the assignment outright,
+     which is why the control hides itself rather than sitting there inert. */
+  var LIVE_MARGIN = 1.5;   // seconds kept in hand against jitter
+  /* Measured: a healthy stream settles about 2.3s ahead of the playhead,
+     which is the browser's own buffer and not something to chase. The
+     control lights only past 4s, which means real drift -- the machine
+     slept, or the audio graph was interrupted and the clock fell behind.
+     Set any nearer and it would sit lit through ordinary playback, gain
+     three quarters of a second, and light again. */
+  var LIVE_SLACK = 4;
+
+  function canSeekLive() {
+    return !!(audio.seekable && audio.seekable.length && audio.buffered && audio.buffered.length);
+  }
+
+  function liveGap() {
+    if (!audio.buffered || !audio.buffered.length) return 0;
+    return Math.max(0, audio.buffered.end(audio.buffered.length - 1) - audio.currentTime);
+  }
+
+  function seekToLive() {
+    if (!canSeekLive()) return false;
+    var edge = audio.buffered.end(audio.buffered.length - 1) - LIVE_MARGIN;
+    if (edge <= audio.currentTime + 0.25) return false;
+    try { audio.currentTime = edge; } catch (e) { return false; }
+    return true;
+  }
+
+  function renderLiveBtn() {
+    var btn = el.live;
+    if (!btn) return;
+    var usable = status === 'live' && !audio.paused && canSeekLive();
+    btn.hidden = !usable;
+    btn.classList.toggle('is-behind', usable && liveGap() > LIVE_SLACK);
+  }
+
+  /* Pressable whenever the stream can be seeked at all, not only when it is
+     far behind: there is usually a little to gain, and a control that is
+     visible but refuses the press is worse than one that does something
+     small. The lit state is emphasis, not permission. */
+  el.live.addEventListener('click', function () {
+    seekToLive();
+    renderLiveBtn();
+  });
 
   function elementFor(st) {
     if (!noCors[st.url]) return corsEl;
@@ -327,6 +391,7 @@
     audio.src = st.url;
     audio.load();
     liveSince = 0; lastTime = -1; stuckSince = 0; startedThisTune = false;
+    syncedThisTune = false;
     // Let the meters fall away rather than freeze on the old station's level.
     meterRelease = true;
     setStatus(attempts ? 'reconnecting' : 'connecting', attempts ? 'Reconnecting \u00b7 try ' + attempts : 'Connecting');
@@ -557,6 +622,7 @@
   function tick() {
     var now = new Date();
     el.clock.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes());
+    renderLiveBtn();
     var slot = state.schedulerEnabled ? Scheduler.activeSlot(state.schedule, now) : null;
     var key = slotKey(slot);
     if (key !== lastSlotKey) {
