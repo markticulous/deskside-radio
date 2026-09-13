@@ -74,6 +74,16 @@ test('validateSlots: valid list yields no errors', () => {
   assert.deepEqual(S.validateSlots([A, B], ['cfrb', 'kiss']), []);
 });
 
+test('validateSlots: slots that meet at an edge are not an overlap', () => {
+  // 07:00-10:00 followed by 10:00-17:00 is the ordinary case. The edge
+  // belongs to the later slot, so exactly one is ever active and neither
+  // is flagged. Widening overlaps() to >= would break both halves.
+  const midday = { start: '10:00', end: '17:00', stationId: 'kiss', volume: 50 };
+  assert.deepEqual(S.validateSlots([A, midday], ['cfrb', 'kiss']), []);
+  assert.equal(S.activeSlot({ weekday: [A, midday], weekend: [] }, at(FRI, 9, 59)), A);
+  assert.equal(S.activeSlot({ weekday: [A, midday], weekend: [] }, at(FRI, 10, 0)), midday);
+});
+
 test('validateSlots: flags overlap, zero length, unknown station, bad time', () => {
   const overlap = { start: '09:00', end: '11:00', stationId: 'kiss', volume: 50 };
   const zero = { start: '12:00', end: '12:00', stationId: 'kiss', volume: 50 };
