@@ -147,6 +147,23 @@ test('pickHlsVariant takes the highest bandwidth, first listed on a tie, and res
   assert.equal(D.pickHlsVariant(null, 'https://a.example/x.m3u8'), '');
 });
 
+test('listHlsVariants returns one rung per bitrate, best first, all on one path', () => {
+  const master = [
+    '#EXTM3U',
+    '#EXT-X-STREAM-INF:BANDWIDTH=48000', 'https://cdn/a/lo.m3u8',
+    '#EXT-X-STREAM-INF:BANDWIDTH=192000', 'https://cdn/a/hi.m3u8',
+    '#EXT-X-STREAM-INF:BANDWIDTH=48000', 'https://cdn/b/lo.m3u8',
+    '#EXT-X-STREAM-INF:BANDWIDTH=192000', 'https://cdn/b/hi.m3u8'
+  ].join('\n');
+  /* Both rungs come off path a, which is the one the master leads with.
+     Mixing the paths is what made the stream repeat itself, and stepping
+     down on to path b later would bring the fault back by the side door. */
+  assert.deepEqual(D.listHlsVariants(master, 'https://cdn/a/master.m3u8'),
+    ['https://cdn/a/hi.m3u8', 'https://cdn/a/lo.m3u8']);
+  assert.deepEqual(D.listHlsVariants('#EXTM3U\n#EXT-X-TARGETDURATION:10\n', 'https://cdn/x.m3u8'), []);
+  assert.deepEqual(D.listHlsVariants('', 'https://cdn/x.m3u8'), []);
+});
+
 test('parsePlaylist pulls the stream out of a .pls or an .m3u', () => {
   const pls = ['[playlist]', 'numberofentries=2',
     'File2=https://example.com/second.mp3', 'Title2=Second',
