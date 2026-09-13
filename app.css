@@ -1174,13 +1174,29 @@
 /* App page, start overlay, settings drawer                            */
 /* ================================================================== */
 
-[data-theme="dial"]      { --page-bg: #1a1009; --ui-bg: #f6efdc; --ui-fg: #2a1a10; --ui-mute: #7a6440; --ui-line: #d9c99a; --ui-field: #fffaf0; --ui-accent: #8d6a25; --ui-font: "Archivo", sans-serif; --ui-radius: 4px; }
-[data-theme="console"]   { --page-bg: #06070a; --ui-bg: #14161a; --ui-fg: #d7dadd; --ui-mute: #8a9096; --ui-line: #2a2e33; --ui-field: #0b0c0e; --ui-accent: #ffb000; --ui-font: "IBM Plex Mono", monospace; --ui-radius: 2px; }
-[data-theme="rams"]      { --page-bg: #e9e6df; --ui-bg: #ffffff; --ui-fg: #1d1d1b; --ui-mute: #7a7871; --ui-line: #d6d2c9; --ui-field: #f6f5f1; --ui-accent: #f0842a; --ui-font: "Archivo", sans-serif; --ui-radius: 6px; }
-[data-theme="editorial"] { --page-bg: #efeeea; --ui-bg: #ffffff; --ui-fg: #111; --ui-mute: #6e6e6a; --ui-line: #e3e3df; --ui-field: #f7f7f5; --ui-accent: #111; --ui-font: "Figtree", sans-serif; --ui-radius: 8px; }
-[data-theme="retro"]      { --page-bg: #050506; --ui-bg: #14141a; --ui-fg: #fcfcfc; --ui-mute: #7c7c7c; --ui-line: #3c3c3c; --ui-field: #0a0a0c; --ui-accent: #f83800; --ui-font: "Press Start 2P", monospace; --ui-radius: 0px; }
-[data-theme="departures"] { --page-bg: #050506; --ui-bg: #131417; --ui-fg: #f5f3ec; --ui-mute: #6f7176; --ui-line: #2a2c31; --ui-field: #0b0b0c; --ui-accent: #ffc400; --ui-font: "Saira Condensed", sans-serif; --ui-radius: 0px; }
-[data-theme="marconi"]    { --page-bg: #080604; --ui-bg: #14110b; --ui-fg: #f3e8cd; --ui-mute: #9a875c; --ui-line: #3a2f18; --ui-field: #0d0a06; --ui-accent: #c9a227; --ui-font: "Cinzel", serif; --ui-radius: 0px; }
+/* Settings wears one neutral light chrome whatever the tuner is wearing.
+   It is a place to work rather than a fifth instrument, and re-skinning it
+   per theme meant reading forms through a pixel face or a gold serif on
+   near-black for no gain. Only the page behind the tuner still follows the
+   theme, because that is the tuner's own surround. */
+:root {
+  --ui-bg: #ffffff;
+  --ui-fg: #1d1d1b;
+  --ui-mute: #7a7871;
+  --ui-line: #d6d2c9;
+  --ui-field: #f6f5f1;
+  --ui-accent: #f0842a;
+  --ui-font: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --ui-radius: 6px;
+}
+
+[data-theme="dial"]       { --page-bg: #1a1009; }
+[data-theme="console"]    { --page-bg: #06070a; }
+[data-theme="rams"]       { --page-bg: #e9e6df; }
+[data-theme="editorial"]  { --page-bg: #efeeea; }
+[data-theme="retro"]      { --page-bg: #050506; }
+[data-theme="departures"] { --page-bg: #050506; }
+[data-theme="marconi"]    { --page-bg: #080604; }
 
 body.app {
   margin: 0; min-height: 100vh; background: var(--page-bg);
@@ -1196,7 +1212,10 @@ body.app .tuner { width: min(1100px, 100%); }
   position: absolute; inset: 0; z-index: 5;
   display: grid; place-content: center; gap: 8px; text-align: center;
   background: rgba(0,0,0,.72); color: #fff; backdrop-filter: blur(4px);
-  font-family: var(--ui-font);
+  /* Inherited from .tuner, not the drawer's neutral face: this panel is
+     part of the instrument, and each theme already lights its title in
+     its own signal colour. */
+  font-family: inherit;
 }
 .tuner .start-overlay[hidden] { display: none; }
 .start-title { font-size: clamp(28px, 4vw, 44px); font-weight: 700; letter-spacing: -.01em; text-shadow: 0 2px 16px rgba(0,0,0,.55); }
