@@ -1123,6 +1123,48 @@
     }
   }
 
+  /* Same reasoning as a slot, with more to lose: the URL, the colour and
+     the station's own bass and treble go with it. The question names the
+     station, and says so when the schedule is still pointing at it. */
+  var pendingStationDelete = null;
+
+  function askDeleteStation(index) {
+    var st = draft.stations[index];
+    if (!st) return;
+    pendingStationDelete = index;
+    var name = String(st.name || '').trim() || 'This station';
+    var band = String(st.band || '').trim();
+    $('stationDeleteWhat').textContent = name + (band ? ' \u00b7 ' + band : '') + '.';
+
+    var used = 0;
+    ['weekday', 'weekend'].forEach(function (g) {
+      (draft.schedule[g] || []).forEach(function (sl) { if (sl.stationId === st.id) used += 1; });
+    });
+    var note = $('stationDeleteUsed');
+    note.hidden = !used;
+    note.textContent = used
+      ? 'The schedule points at it from ' + used + ' slot' + (used === 1 ? '' : 's') + ', which will need another station.'
+      : '';
+
+    $('confirmStation').showModal();
+  }
+
+  /* Click, not close: see the note on confirmDiscard. Submitting a nested
+     dialog's form closes it without firing close, so only the button press
+     is reliable. Matching the delete button alone means Esc and "Keep it"
+     do nothing, which is what they should do. */
+  $('confirmStation').addEventListener('click', function (e) {
+    if (!e.target.closest('button[value="delete"]')) return;
+    var index = pendingStationDelete;
+    pendingStationDelete = null;
+    if (index === null || index >= draft.stations.length) return;
+    draft.stations.splice(index, 1);
+    openStation = null;
+    renderStationRows(); renderSlotRows(); renderCounts(); renderAutoplay();
+    // A splice is not an input event, so the footer label has to be told.
+    refreshSaveBtn();
+  });
+
   function renderStationRows() {
     var box = $('stationRows');
     box.innerHTML = '';
@@ -1195,7 +1237,7 @@
       card.querySelector('.card-top').addEventListener('click', function (e) {
         var act = (e.target.closest('[data-act]') || {}).dataset;
         act = act ? act.act : 'toggle';
-        if (act === 'del') { draft.stations.splice(i, 1); openStation = null; }
+        if (act === 'del') { askDeleteStation(i); return; }
         else if (act === 'up' && i > 0) { moveStation(i, -1); return; }
         else if (act === 'down' && i < draft.stations.length - 1) { moveStation(i, 1); return; }
         else { openStation = st.id === openStation ? null : st.id; syncOpenCards(); return; }
@@ -1289,17 +1331,20 @@
     $('confirmSlot').showModal();
   }
 
-  $('confirmSlot').addEventListener('close', function () {
+  // Click, not close, for the same reason as the other two confirms.
+  $('confirmSlot').addEventListener('click', function (e) {
+    if (!e.target.closest('button[value="delete"]')) return;
     var target = pendingSlotDelete;
     pendingSlotDelete = null;
-    // Esc and "Keep it" both land here; only the delete button acts.
-    if (this.returnValue !== 'delete' || !target) return;
+    if (!target) return;
     var slots = draft.schedule[target.group] || [];
     if (target.index >= slots.length) return;
     slots.splice(target.index, 1);
     openSlot = null;
     renderSlotRows();
     renderCounts();
+    // A splice is not an input event, so the footer label has to be told.
+    refreshSaveBtn();
   });
 
   function renderSlotRows(errors) {
@@ -1697,6 +1742,32 @@
       focusStationField(i, 'band');
       break;
     }
+  });
+
+  /* The x and Esc both throw the draft away, so both have to ask when
+     there is one worth keeping. Save is not offered here: the footer
+     button is the way to save, and this question is about leaving. */
+  function closeDrawer() {
+    if (!draftIsDirty()) { el.settings.close(); return; }
+    $('confirmDiscard').showModal();
+  }
+  $('drawerClose').addEventListener('click', closeDrawer);
+
+  el.settings.addEventListener('cancel', function (e) {
+    if (!draftIsDirty()) return;
+    e.preventDefault();
+    $('confirmDiscard').showModal();
+  });
+
+  /* The click, not the close event. Measured in Chrome: submitting this
+     nested dialog's form sets returnValue and closes it synchronously
+     without ever firing close, so a close listener here never runs. The
+     drawer is then shut on a fresh task, because closing it while the top
+     layer is still unwinding is ignored — the same hop commitSettings()
+     already makes. Esc and "Keep editing" match nothing and do nothing. */
+  $('confirmDiscard').addEventListener('click', function (e) {
+    if (!e.target.closest('button[value="discard"]')) return;
+    setTimeout(function () { if (el.settings.open) el.settings.close(); }, 0);
   });
 
   el.settings.addEventListener('close', applyLook);

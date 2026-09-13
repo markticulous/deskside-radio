@@ -112,7 +112,7 @@
         <h2>Settings</h2>
         <span class="app-version">Deskside Radio&nbsp;&nbsp;<i class="ver-dot" aria-hidden="true"></i>&nbsp;&nbsp;<span id="appVersion">v1.0.0</span></span>
       </div>
-      <button type="submit" value="close" class="drawer-x" aria-label="Close">&times;</button>
+      <button type="button" id="drawerClose" class="drawer-x" aria-label="Close">&times;</button>
     </header>
 
     <div class="drawer-tabs" role="tablist" id="drawerTabs">
@@ -229,6 +229,29 @@
     <div class="confirm-actions">
       <button type="submit" value="fix" class="ghost">Let me add it</button>
       <button type="submit" value="save" class="primary">Save anyway</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="confirm" id="confirmStation">
+  <form method="dialog" class="confirm-box">
+    <h2>Delete this station?</h2>
+    <p id="stationDeleteWhat"></p>
+    <p id="stationDeleteUsed" class="hint" hidden></p>
+    <div class="confirm-actions">
+      <button type="submit" value="keep" class="ghost">Keep it</button>
+      <button type="submit" value="delete" class="primary danger">Delete station</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="confirm" id="confirmDiscard">
+  <form method="dialog" class="confirm-box">
+    <h2>You have unsaved changes</h2>
+    <p>Closing now throws away everything you have changed since Settings opened.</p>
+    <div class="confirm-actions">
+      <button type="submit" value="keep" class="ghost">Keep editing</button>
+      <button type="submit" value="discard" class="primary danger">Discard changes</button>
     </div>
   </form>
 </dialog>
