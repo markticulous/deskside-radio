@@ -124,6 +124,29 @@ test('pickColour cycles the palette so a new station never repeats the last one'
 
 // ---------- place-aware ranking ----------
 
+test('pickHlsVariant takes the highest bandwidth, first listed on a tie, and resolves a relative URI', () => {
+  const master = [
+    '#EXTM3U',
+    '#EXT-X-STREAM-INF:BANDWIDTH=48000,CODECS="mp4a.40.2"',
+    'https://a.example/hls/2041036/adaptive_48/chunklist.m3u8',
+    '#EXT-X-STREAM-INF:BANDWIDTH=192000,CODECS="mp4a.40.2"',
+    'adaptive_192/chunklist.m3u8',
+    '#EXT-X-STREAM-INF:BANDWIDTH=192000,CODECS="mp4a.40.2"',
+    'https://a.example/hls/2041036-b/adaptive_192/chunklist.m3u8',
+    ''
+  ].join('\n');
+  /* The tie is the whole point: the two entries are the same bitrate on
+     two CDN paths, and taking the first keeps the path the master leads
+     with rather than the one whose live window is seconds behind. */
+  assert.equal(D.pickHlsVariant(master, 'https://a.example/hls/2041036/master.m3u8'),
+    'https://a.example/hls/2041036/adaptive_192/chunklist.m3u8');
+  // A media playlist is not a master, so there is nothing to pick out of it.
+  assert.equal(D.pickHlsVariant('#EXTM3U\n#EXT-X-TARGETDURATION:11\n#EXTINF:9.984,\nmedia_1.aac\n',
+    'https://a.example/x.m3u8'), '');
+  assert.equal(D.pickHlsVariant('', 'https://a.example/x.m3u8'), '');
+  assert.equal(D.pickHlsVariant(null, 'https://a.example/x.m3u8'), '');
+});
+
 test('parsePlaylist pulls the stream out of a .pls or an .m3u', () => {
   const pls = ['[playlist]', 'numberofentries=2',
     'File2=https://example.com/second.mp3', 'Title2=Second',

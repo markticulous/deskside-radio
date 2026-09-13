@@ -401,6 +401,35 @@
       .catch(function () { tune(st, volume); });
   }
 
+  /* An HLS master is read once and one rendition out of it is what the
+     element is handed. Chrome plays HLS itself, and given the master it
+     starts on the lowest bitrate and steps up a few seconds in; CBC's
+     master lists every bitrate on two CDN paths that are packaged
+     separately, so the step-up lands on a live window about six seconds
+     behind the one it started on and those seconds play again. Measured
+     on the stream, not inferred from the spec.
+
+     The choice is kept in memory only. The master is the address the
+     station publishes and is what stays saved, and a rendition that has
+     stopped working should not outlive the session that picked it. If the
+     master cannot be read the master is tuned, which is what happened
+     before, so nothing is worse off for trying. */
+  var hlsVariant = {};
+  var hlsTried = {};
+
+  function resolveHlsThenTune(st, volume) {
+    var master = st.url;
+    hlsTried[master] = true;
+    fetch(master, { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.text() : ''; })
+      .then(function (text) {
+        var pick = Directory.pickHlsVariant(text, master);
+        if (pick) hlsVariant[master] = pick;
+        tune(st, volume);
+      })
+      .catch(function () { tune(st, volume); });
+  }
+
   function tune(st, volume) {
     if (!st) return;
     if (Directory.streamKind(st.url) === 'playlist' && !playlistTried[st.url]) {
@@ -409,13 +438,19 @@
       resolvePlaylistThenTune(st, volume);
       return;
     }
+    if (Directory.streamKind(st.url) === 'hls' && !hlsVariant[st.url] && !hlsTried[st.url]) {
+      state.currentStationId = st.id;
+      renderStation(st);
+      resolveHlsThenTune(st, volume);
+      return;
+    }
     clearTimeout(retryTimer); retryTimer = null;
     state.currentStationId = st.id;
     useElement(elementFor(st));
     loadTone(st);
     setVolume(typeof volume === 'number' ? volume : state.volume, true);
     renderStation(st);
-    audio.src = st.url;
+    audio.src = hlsVariant[st.url] || st.url;
     audio.load();
     liveSince = 0; lastTime = -1; stuckSince = 0; startedThisTune = false;
     syncedThisTune = false;
@@ -480,6 +515,15 @@
       noCors[st.url] = true;
       tune(st, state.volume);
       return;
+    }
+    /* A rendition chosen out of a master can stop working on its own --
+       a CDN path taken out of service, a bitrate withdrawn -- while the
+       master is still good and still lists others. Forgetting the choice
+       here means the next attempt reads the master again rather than
+       retrying a dead address until the page is reloaded. */
+    if (loadFailed && st && hlsVariant[st.url]) {
+      delete hlsVariant[st.url];
+      delete hlsTried[st.url];
     }
     attempts += 1;
 
