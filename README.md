@@ -31,7 +31,7 @@ chrome.exe --app="file:///.../index.html"
 
 The separate `--user-data-dir` is not optional: a browser reads these flags once, at startup, so one that is already running would take the page and quietly drop them.
 
-That separate profile is also why the radio opens with nothing in it the first time. To bring your stations, schedule and theme across, export them from **Settings → Data → Export settings** and leave the resulting `deskside-radio-settings.json` beside `index.html`. The first launch reads it once and then keeps its own settings from there. It doubles as a way to ship a machine a ready-made setup.
+That separate profile is also why the radio opens with nothing in it the first time. To bring your stations, schedule and theme across, export them from **Settings → Service → Export settings** and leave the resulting `deskside-radio-settings.json` beside `index.html`. The first launch reads it once and then keeps its own settings from there. It doubles as a way to ship a machine a ready-made setup.
 
 Two things to know: opening the page the ordinary way still works and still shows the tap panel, and double-clicking the shortcut while the radio is already open gives you a second window playing over the first.
 
@@ -48,7 +48,7 @@ Everything is kept in `localStorage` on the machine it runs on. Nothing is uploa
 
 ## Updates
 
-Once a day the app fetches [`version.json`](version.json) from this repo and says so in **Settings → Data** if a newer version has been published. It sends no identifiers, downloads nothing, and installs nothing. The switch beside it turns the check off for good.
+Once a day the app fetches [`version.json`](version.json) from this repo and says so in **Settings → Service** if a newer version has been published. It sends no identifiers, downloads nothing, and installs nothing. The switch beside it turns the check off for good.
 
 ## Building the single-file version
 
