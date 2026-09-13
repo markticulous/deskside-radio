@@ -662,7 +662,57 @@
     add.appendChild(span('preset-band', 'Name and stream URL'));
     add.addEventListener('click', function () { openSettings(); $('addStation').click(); });
     el.presets.appendChild(add);
+    measurePresetNames();
   }
+
+  /* Only a name that genuinely overruns its button gets to move. The class
+     is what the stylesheet keys on, so a name that fits carries nothing and
+     cannot animate. Re-measured on a resize and on a theme change, since
+     both change the column width and the face the name is set in. */
+  function measurePresetNames() {
+    requestAnimationFrame(function () {
+      var names = el.presets.querySelectorAll('.preset-name');
+      for (var i = 0; i < names.length; i++) {
+        var n = names[i];
+        var over = n.scrollWidth - n.clientWidth;
+        if (over > 1) {
+          n.classList.add('can-scroll');
+          n.style.setProperty('--marquee-by', '-' + over + 'px');
+          // Constant reading speed, whatever the overrun, with the pauses on top.
+          n.style.setProperty('--marquee-ms', (2600 + over * 28) + 'ms');
+        } else {
+          n.classList.remove('can-scroll');
+          n.style.removeProperty('--marquee-by');
+          n.style.removeProperty('--marquee-ms');
+        }
+      }
+      snapPresetRows();
+      fitWindow();
+    });
+  }
+
+  /* With no name wrapping, every row is the same height, so the scrolling
+     window can be snapped to a whole number of them. Each theme's own
+     --presets-max is kept as the intent and only rounded to the nearest row,
+     which is what stops a row being sliced through the middle. Our own value
+     is cleared first, or the second pass would round the rounded figure. */
+  function snapPresetRows() {
+    var first = el.presets.querySelector('.preset');
+    if (!first) return;
+    el.presets.style.removeProperty('--presets-max');
+    var cs = getComputedStyle(el.presets);
+    /* Themes that never declare one inherit the stylesheet's own default,
+       which computes to an empty string here rather than to 190px. */
+    var want = parseFloat(cs.getPropertyValue('--presets-max')) || 190;
+    var gap = parseFloat(cs.rowGap) || 0;
+    var rowH = first.offsetHeight;
+    if (!(want > 0) || !(rowH > 0)) return;
+    var rows = Math.max(1, Math.round((want + gap) / (rowH + gap)));
+    el.presets.style.setProperty('--presets-max', (rows * rowH + (rows - 1) * gap) + 'px');
+  }
+
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(measurePresetNames);
+  window.addEventListener('resize', measurePresetNames);
   function span(cls, text) { var s = document.createElement('span'); s.className = cls; s.textContent = text; return s; }
 
   /* ---------- window fitting ----------
@@ -719,6 +769,7 @@
     });
     // After the theme has painted, so the new height is the one measured.
     requestAnimationFrame(function () { fitWindow(); });
+    measurePresetNames();
   }
 
   var refitTimer;

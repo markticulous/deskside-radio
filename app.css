@@ -96,8 +96,45 @@
 .display-status { display: inline-flex; align-items: center; gap: 8px; }
 .status-led     { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 
-.preset        { display: grid; text-align: left; }
+.preset        { display: grid; text-align: left; min-width: 0; }
 .preset-add    { opacity: .55; }
+
+/* One line, always. Rows of presets are only a predictable height if no
+   name is allowed to wrap, and a predictable height is what stops the
+   scrolling list slicing a row through the middle.
+
+   A name too long to fit is then scrolled instead of just cut: constantly
+   on the station that is playing, and on hover for the rest, after enough
+   of a delay that running the pointer across the bank does not set the
+   whole row moving. The distance and duration are measured per button and
+   arrive as custom properties, so the speed is the same on a name that
+   overruns by 10px and one that overruns by 200. Names that fit are never
+   given the can-scroll class and never move. */
+.preset-name {
+  /* min-width:0 or the grid item refuses to shrink below its content, and
+     nothing ever overflows for the ellipsis to replace. */
+  min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: text-indent .25s ease;
+}
+@keyframes preset-marquee {
+  0%, 14%   { text-indent: 0; }
+  62%, 76%  { text-indent: var(--marquee-by, 0); }
+  100%      { text-indent: 0; }
+}
+.preset:hover .preset-name.can-scroll,
+.preset.is-active .preset-name.can-scroll {
+  text-overflow: clip;
+  animation: preset-marquee var(--marquee-ms, 6s) ease-in-out infinite;
+}
+/* Hover waits; the playing station does not, and wins when both apply. */
+.preset:hover .preset-name.can-scroll { animation-delay: .55s; }
+.preset.is-active .preset-name.can-scroll { animation-delay: .9s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .preset:hover .preset-name.can-scroll,
+  .preset.is-active .preset-name.can-scroll { animation: none; text-overflow: ellipsis; }
+}
 
 .fader         { display: flex; align-items: center; gap: 9px; }
 .fader input   { flex: 1; min-width: 0; }
