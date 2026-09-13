@@ -406,20 +406,91 @@
     return inkTop >= -0.5 && inkBottom <= box + 0.5;
   }
 
-  // Grow to --fit-max where a theme sets one, otherwise never exceed the CSS size.
+  /* ---- one line that will not fit: tighten it, or move it ----
+     A line that overruns by less than a character is not worth moving for.
+     The travel is a twitch rather than a scroll, it never stops, and the
+     eye reads it as a fault. Tightening the tracking by a fraction of a
+     pixel per gap absorbs that much and nobody sees it. Past what tracking
+     can absorb, it scrolls, on the same measurement either way.
+
+     Both sides of this are shared with the preset buttons, which had the
+     same twitch on a name a few pixels too wide. */
+  var MAX_SQUEEZE_EM = 0.03;
+  /* And below a character of travel, moving is worse than not moving. The
+     eye reads a few pixels of drift as a fault rather than as a scroll, and
+     slowing it down only makes it stranger: what it shows is one more
+     letter, and what it costs is a button that never sits still. Somewhere
+     with an ellipsis can afford to stand still and lose that letter, so it
+     does. A readout that clips instead of eliding cannot -- a sheared glyph
+     reads as breakage -- so it moves however short the distance. */
+  var MIN_SCROLL_EM = 0.9;
+
+  function clearFit(el) {
+    if (!el) return;
+    el.classList.remove('can-scroll');
+    el.style.letterSpacing = '';
+    el.style.animationTimingFunction = '';
+    el.style.removeProperty('--marquee-by');
+    el.style.removeProperty('--marquee-ms');
+  }
+
+  function startScroll(el, by, steps) {
+    el.classList.add('can-scroll');
+    el.style.setProperty('--marquee-by', '-' + by.toFixed(2) + 'px');
+    // Constant reading speed, whatever the overrun, with the pauses on top.
+    el.style.setProperty('--marquee-ms', Math.round(2600 + by * 28) + 'ms');
+    if (steps) el.style.animationTimingFunction = 'steps(' + steps + ', end)';
+  }
+
+  /* Call with the tracking and any previous scroll already cleared, or the
+     measurement is of the last fit rather than this one. */
+  function fitLine(el) {
+    if (!el || !el.clientWidth) return;
+    var over = el.scrollWidth - el.clientWidth;
+    if (over <= 1) return;
+
+    /* A split-flap name has to stay on its cells, so it moves a whole flap
+       at a time and steps rather than slides -- which is what a board does
+       anyway. Tracking is what sets the cell pitch here, so it cannot be
+       borrowed against. */
+    var flaps = el.getElementsByClassName('flap-ch');
+    if (flaps.length) {
+      var pitch = flaps[0].getBoundingClientRect().width;
+      var n = pitch > 0 ? Math.ceil(over / pitch) : 1;
+      startScroll(el, pitch > 0 ? n * pitch : over, n);
+      return;
+    }
+
+    var cs = getComputedStyle(el);
+    var px = parseFloat(cs.fontSize) || 16;
+    var gaps = Math.max(1, el.textContent.trim().length - 1);
+    var squeeze = over / gaps;
+    if (squeeze <= MAX_SQUEEZE_EM * px) {
+      el.style.letterSpacing = ((parseFloat(cs.letterSpacing) || 0) - squeeze).toFixed(3) + 'px';
+      return;
+    }
+    if (over < MIN_SCROLL_EM * px && cs.textOverflow === 'ellipsis') return;
+    startScroll(el, over);
+  }
+
+  /* Grow to --fit-max where a theme sets one -- editorial, the only theme
+     that hands the name a fixed box and wraps inside it. Everywhere else
+     the name is a readout on a piece of hardware, and hardware does not
+     resize its characters to suit the message: it keeps the size it has
+     and moves the message past. */
   function fitName(nameEl) {
     if (!nameEl || !nameEl.textContent.trim()) return;
     nameEl.style.fontSize = '';
+    clearFit(nameEl);
     var cs = getComputedStyle(nameEl);
     var cap = parseFloat(cs.getPropertyValue('--fit-max'));
-    var boxed = cap > 0;
-    var hi = boxed ? cap : parseFloat(cs.fontSize);
-    if (!(hi > 0) || !nameEl.clientWidth) return;
-    var lo = 11;
-    if (fitsAt(nameEl, hi, boxed)) return;
+    if (!(cap > 0)) { fitLine(nameEl); return; }
+    if (!nameEl.clientWidth) return;
+    var hi = cap, lo = 11;
+    if (fitsAt(nameEl, hi, true)) return;
     for (var i = 0; i < 16; i++) {
       var mid = (lo + hi) / 2;
-      if (fitsAt(nameEl, mid, boxed)) lo = mid; else hi = mid;
+      if (fitsAt(nameEl, mid, true)) lo = mid; else hi = mid;
     }
     nameEl.style.fontSize = lo.toFixed(2) + 'px';
   }
@@ -440,8 +511,14 @@
     } else {
       root.addEventListener('resize', refit);
     }
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(refit);
-    requestAnimationFrame(refit);
+    /* Same reason as the preset buttons: fonts.ready settles once, and a
+       theme switch starts a load after it. */
+    if (document.fonts) {
+      if (document.fonts.ready) document.fonts.ready.then(refit);
+      if (document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', refit);
+    }
+    // And settled over the first second, for the same reason.
+    [0, 120, 400, 1200].forEach(function (ms) { setTimeout(refit, ms); });
   }
 
   // Build the instruments inside one tuner element.
@@ -459,6 +536,7 @@
   root.TunerUI = {
     init: init, buildScale: buildScale, buildVuFace: buildVuFace, buildMeterScale: buildMeterScale,
     setNeedle: setNeedle, setLevel: setLevel, drawBars: drawBars, clearScope: clearScope,
-    setName: setName, fitName: fitName, watchName: watchName
+    setName: setName, fitName: fitName, watchName: watchName,
+    clearFit: clearFit, fitLine: fitLine
   };
 })(window);
