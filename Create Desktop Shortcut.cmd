@@ -14,7 +14,7 @@ rem are read once at startup, so a browser that is already running would
 rem otherwise hand over the page and drop the flags.
 rem
 rem Because the profile is its own, it starts with no settings. Export yours
-rem from Settings - Data, leave deskside-radio-settings.json beside
+rem from Settings - Service, leave deskside-radio-settings.json beside
 rem index.html, and the first launch reads it.
 rem
 rem Run it with a theme name to get that theme's icon:
@@ -107,7 +107,7 @@ if defined BROWSER (
   echo.
   echo   Turn on "Play on launch" in Settings and the radio starts by itself.
   echo   That profile starts empty: to bring your stations across, export them
-  echo   from Settings - Data and leave the file beside index.html.
+  echo   from Settings - Service and leave the file beside index.html.
 ) else (
   echo   No Chrome or Edge found, so the shortcut opens index.html in your
   echo   default browser. It will still ask for one click before playing.
