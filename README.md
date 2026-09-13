@@ -35,6 +35,16 @@ That separate profile is also why the radio opens with nothing in it the first t
 
 Two things to know: opening the page the ordinary way still works and still shows the tap panel, and double-clicking the shortcut while the radio is already open gives you a second window playing over the first.
 
+### Starting when you sign in
+
+`Start With Windows.cmd` writes the same shortcut into the Startup folder, and `Start With Windows.cmd off` removes it. Nothing touches the registry and nothing runs as a service; it is one `.lnk` in a folder the user can open with `shell:startup`. The browser detection in it is a deliberate copy of the one in `Create Desktop Shortcut.cmd` rather than shared with it — these are files people double-click, often one without ever having run the other, so each has to stand alone.
+
+macOS has no equivalent script here. A `.webloc` saved from the shortcut button can be added under **System Settings → General → Login Items**, but it opens in the default browser, so the autoplay-policy lift the Windows shortcut relies on is not available and the first play needs a click.
+
+### Browsers
+
+Chrome and Edge are the same engine and behave identically; the launcher falls back to Edge, and the HLS handling above was verified on both. Safari plays everything, including HLS natively, with two differences: it refuses `localStorage` for pages opened over `file://`, so nothing persists unless the folder is served over HTTP; and it never sizes or moves its own window, because `windowIsOurs()` now requires a Chromium user agent as well as a thin window frame. That guard was added deliberately — a Safari window with its toolbar hidden has a frame thin enough to pass the old test, and moving somebody's ordinary browser window about is a rude way to be wrong.
+
 ### Window size and position
 
 Chrome does not remember where an `--app` window was: one moved to `420,260` at `760x520` and closed reopens at `10,10` at a size of Chrome's choosing, which was measured rather than assumed. So the app keeps its own box in `state.windowBox`, read off the heartbeat that is already running — dragging a window fires no event of any kind — and again on `pagehide`, and restores it on the next launch, clamped to the screen actually in front of the user.

@@ -2392,8 +2392,11 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .theme-thumb[data-theme="marconi"] .tt-keys i { background: #171309; border-radius: 0; box-shadow: inset 0 0 0 1px #4a3d1e; }
 .theme-thumb[data-theme="marconi"] .tt-keys i:first-child { background: linear-gradient(#f0d98a, #c9a227); box-shadow: none; }
 
-/* Model One: the driver at one end, the knob at the other, the plate
-   between them -- the whole point of the object in three shapes. */
+/* Model One: the driver, the plate and the knob, in the proportions the
+   theme actually uses -- the driver a little under a quarter of the front
+   and the knob a little under a sixth. The detail is what makes them read
+   at this size: cloth weave and a wave leaving the cone on one, a knurled
+   rim and an index mark on the other. */
 .theme-thumb[data-theme="tivoli"] {
   --tint: #ff9d2e;
   background:
@@ -2402,26 +2405,45 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   box-shadow: 0 0 0 1px var(--ui-line), inset 0 1px 0 rgba(255,222,186,.26);
 }
 .theme-thumb[data-theme="tivoli"]::before {
-  content: ""; position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
-  width: 46px; height: 46px; border-radius: 50%;
+  content: ""; position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
+  width: 52px; height: 52px; border-radius: 50%;
   background:
-    repeating-linear-gradient(90deg, rgba(255,248,232,.2) 0 1px, rgba(38,22,10,.22) 1px 2px, transparent 2px 3px),
-    repeating-linear-gradient(0deg, rgba(255,248,232,.16) 0 1px, rgba(38,22,10,.26) 1px 2px, transparent 2px 3px),
-    radial-gradient(circle at 50% 50%, rgba(30,18,8,.28) 0 10%, transparent 32%),
-    radial-gradient(circle at 36% 30%, #d6c8a8, #c3b596 58%, #8e8267);
-  box-shadow: 0 0 0 2px #4b240f, inset 0 4px 9px rgba(0,0,0,.3);
+    /* the wave, caught partway out across the cone */
+    radial-gradient(circle at 50% 50%, transparent 0 24%, rgba(255,252,240,.34) 32%, rgba(54,30,12,.36) 41%, transparent 50%),
+    repeating-linear-gradient(90deg, rgba(255,248,232,.22) 0 1px, rgba(38,22,10,.24) 1px 2px, transparent 2px 3px),
+    repeating-linear-gradient(0deg, rgba(255,248,232,.18) 0 1px, rgba(38,22,10,.28) 1px 2px, transparent 2px 3px),
+    radial-gradient(circle at 50% 50%, rgba(30,18,8,.3) 0 8%, transparent 26%),
+    radial-gradient(circle at 36% 30%, #d8cbab, #c3b596 58%, #8b7f63);
+  box-shadow:
+    0 0 0 2px #4b240f, 0 0 0 3px rgba(255,214,170,.14),
+    inset 0 4px 10px rgba(0,0,0,.32), inset 0 -3px 8px rgba(0,0,0,.22);
 }
+/* The knob: brushed face, knurled rim, and the index cut into it, which is
+   the shape the eye actually recognises. */
 .theme-thumb[data-theme="tivoli"]::after {
-  content: ""; position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
-  width: 28px; height: 28px; border-radius: 50%;
+  content: ""; position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+  width: 34px; height: 34px; border-radius: 50%;
   background:
-    radial-gradient(circle at 34% 26%, rgba(255,255,255,.7), rgba(255,255,255,0) 48%),
+    linear-gradient(#4a4f4e, #4a4f4e) 50% 8% / 2px 5px no-repeat,
+    radial-gradient(circle at 34% 26%, rgba(255,255,255,.72), rgba(255,255,255,0) 46%),
+    radial-gradient(circle, transparent 0 58%, rgba(0,0,0,.32) 60%, rgba(255,255,255,.45) 63%, transparent 65%),
     conic-gradient(from 205deg, #fdfdfc, #c2c6c5 12%, #8d9291 24%, #eef0ef 40%, #b9bdbc 56%, #7e8382 70%, #f2f4f3 86%, #fdfdfc);
-  box-shadow: 0 2px 4px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.75);
+  box-shadow: 0 2px 5px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.75);
 }
-.theme-thumb[data-theme="tivoli"] .tt { padding: 9px 46px 9px 62px; gap: 4px; }
+/* The knurl, cut to the rim. A background layer cannot be clipped to a
+   ring, so it borrows a pseudo-element that can be masked; .tt-cap is not
+   positioned, so this lands on the thumbnail like the knob it sits on. */
+.theme-thumb[data-theme="tivoli"] .tt-cap::after {
+  content: ""; position: absolute; right: 7px; top: 50%; margin-top: -17px;
+  width: 34px; height: 34px; border-radius: 50%; pointer-events: none;
+  background: repeating-conic-gradient(from 0deg,
+    rgba(255,255,255,.66) 0deg 2.4deg, rgba(0,0,0,.46) 2.4deg 4.8deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 63%, #000 66% 96%, transparent 99%);
+          mask: radial-gradient(circle, transparent 0 63%, #000 66% 96%, transparent 99%);
+}
+.theme-thumb[data-theme="tivoli"] .tt { padding: 8px 48px 8px 64px; gap: 3px; }
 .theme-thumb[data-theme="tivoli"] .tt-cap {
-  color: #e8cdb1; font-weight: 400; letter-spacing: .12em; font-size: 7px;
+  color: #e8cdb1; font-weight: 400; letter-spacing: .1em; font-size: 6.5px;
 }
 .theme-thumb[data-theme="tivoli"] .tt-glass {
   border-radius: 2px;
@@ -2430,18 +2452,27 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 }
 /* The slide rule, printed on the plate. */
 .theme-thumb[data-theme="tivoli"] .tt-glass::before {
-  content: ""; position: absolute; left: 5px; right: 5px; bottom: 6px; height: 5px;
+  content: ""; position: absolute; left: 4px; right: 4px; bottom: 4px; height: 4px;
   border-bottom: 1px solid #b9b1a0;
-  background: repeating-linear-gradient(90deg, #c3bbaa 0 1px, transparent 1px 4px) bottom / 100% 4px no-repeat;
+  background: repeating-linear-gradient(90deg, #c3bbaa 0 1px, transparent 1px 4px) bottom / 100% 3px no-repeat;
 }
 .theme-thumb[data-theme="tivoli"] .tt-glass::after {
-  content: ""; position: absolute; left: 42%; bottom: 4px; width: 1px; height: 11px; background: #c1402f;
+  content: ""; position: absolute; left: 42%; bottom: 3px; width: 1px; height: 9px; background: #c1402f;
 }
+/* The control row is a transport and two tone knobs, all machined, which
+   is what is actually under the plate. */
+.theme-thumb[data-theme="tivoli"] .tt-keys { gap: 5px; justify-content: flex-start; align-items: center; }
 .theme-thumb[data-theme="tivoli"] .tt-keys i {
-  border-radius: 1px; background: linear-gradient(#f7f4ed, #e3ded1);
-  box-shadow: inset 0 1px 0 #fffefb, 0 0 0 1px rgba(52,24,10,.35);
+  flex: 0 0 auto; width: 11px; height: 11px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 26%, rgba(255,255,255,.8), rgba(255,255,255,0) 50%),
+    conic-gradient(from 205deg, #fbfbfa, #c6cac9 14%, #909594 28%, #eef0ef 46%, #a9aead 66%, #f2f4f3 86%, #fbfbfa);
+  box-shadow: 0 1px 2px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.7);
 }
-.theme-thumb[data-theme="tivoli"] .tt-keys i:first-child { background: linear-gradient(#ffb257, #ff9d2e); box-shadow: none; }
+.theme-thumb[data-theme="tivoli"] .tt-keys i:first-child {
+  width: 13px; height: 13px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.75);
+}
 
 
 .confirm { border: 0; padding: 0; background: transparent; max-width: none; max-height: none; position: fixed; inset: 0; width: auto; height: auto; }

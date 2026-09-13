@@ -950,7 +950,14 @@
      chrome above the page is the giveaway -- 37px for an app window against
      94px for a tab -- so that is what gates it. In a tab resizeTo is ignored
      anyway, but this keeps it from being called at all. */
+  /* Sizing and moving the window is for the window the launcher opens, and
+     for nothing else. A thin frame is the test -- an --app window has no
+     tab strip and no address bar -- but a Safari window with its toolbar
+     hidden is thin too, and moving somebody's ordinary browser window
+     about would be a rude way to be wrong. The launcher only ever opens
+     Chrome or Edge, so a browser that is neither is left alone. */
   function windowIsOurs() {
+    if (!/Chrome\/|Chromium\/|Edg\//.test(navigator.userAgent)) return false;
     var frame = window.outerHeight - window.innerHeight;
     return frame > 0 && frame < 60;
   }
@@ -1407,7 +1414,7 @@
     { key: 'retro', label: 'Retro 8-bit', note: 'Interface style of 80s home game consoles' },
     { key: 'departures', label: 'Departures board', note: 'Split-flap boards in airports and railway stations' },
     { key: 'marconi', label: 'Marconi deco', note: 'Art deco radio cabinets of the 1930s' },
-    { key: 'tivoli', label: 'Model One', note: 'The one-knob tabletop radio of the late 1990s' }
+    { key: 'tivoli', label: 'Model One', note: 'The Tivoli Model One, the one-knob tabletop radio of 2000' }
   ];
   function renderThemeCards() {
     var box = $('themeCards');
