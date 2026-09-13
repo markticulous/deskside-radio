@@ -416,6 +416,8 @@
      before, so nothing is worse off for trying. */
   var hlsVariant = {};
   var hlsTried = {};
+  var hlsLadder = {};
+  var hlsStep = {};
 
   function resolveHlsThenTune(st, volume) {
     var master = st.url;
@@ -423,8 +425,12 @@
     fetch(master, { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.text() : ''; })
       .then(function (text) {
-        var pick = Directory.pickHlsVariant(text, master);
-        if (pick) hlsVariant[master] = pick;
+        var ladder = Directory.listHlsVariants(text, master);
+        if (ladder.length) {
+          hlsLadder[master] = ladder;
+          hlsStep[master] = 0;
+          hlsVariant[master] = ladder[0];
+        }
         tune(st, volume);
       })
       .catch(function () { tune(st, volume); });
@@ -516,14 +522,24 @@
       tune(st, state.volume);
       return;
     }
-    /* A rendition chosen out of a master can stop working on its own --
-       a CDN path taken out of service, a bitrate withdrawn -- while the
-       master is still good and still lists others. Forgetting the choice
-       here means the next attempt reads the master again rather than
-       retrying a dead address until the page is reloaded. */
-    if (loadFailed && st && hlsVariant[st.url]) {
-      delete hlsVariant[st.url];
-      delete hlsTried[st.url];
+    /* Handed the master, the browser would have stepped down the bitrate
+       ladder by itself when the connection could not carry the top of it.
+       The master is the thing that caused the repeat, so it is not handed
+       over any more, and the stepping is done here instead: one rung per
+       failure, whatever the cause, because a connection too slow for the
+       top rung stalls on it rather than erroring on it. When the ladder
+       runs out the choice is forgotten and the master is read again, which
+       also covers the other case -- a rendition withdrawn or a CDN path
+       taken out of service while the master still lists others. */
+    if (st && hlsLadder[st.url]) {
+      var rung = (hlsStep[st.url] || 0) + 1;
+      if (rung < hlsLadder[st.url].length) {
+        hlsStep[st.url] = rung;
+        hlsVariant[st.url] = hlsLadder[st.url][rung];
+      } else {
+        delete hlsVariant[st.url]; delete hlsTried[st.url];
+        delete hlsLadder[st.url]; delete hlsStep[st.url];
+      }
     }
     attempts += 1;
 
@@ -567,6 +583,10 @@
       state.lastGood = { stationId: state.currentStationId, volume: state.volume, at: now };
       var sustained = currentStation();
       if (sustained) everSustained[sustained.url] = true;
+      /* The rung it settled on is carrying the stream, so the ladder is
+         wound back: a blip an hour from now starts at the top again rather
+         than inheriting a downgrade from whatever went wrong this morning. */
+      if (sustained && hlsLadder[sustained.url]) hlsStep[sustained.url] = 0;
       liveSince = 0; save();
     }
   }, 5000);

@@ -177,6 +177,10 @@ HLS streams (.m3u8)
   so there is nothing for it to switch to. It also means you get the
   full bitrate from the first second instead of the tenth.
 
+  If the connection cannot carry that entry, the radio steps down the
+  list a rung at a time as it retries, and goes back to the top once
+  the stream has held for ten seconds.
+
 .asx and .xspf
   Not handled. They are Windows Media and XML playlist formats. Open one
   in a text editor and use the stream address inside it.

@@ -126,8 +126,8 @@
     return best || firstUrl || '';
   }
 
-  /* The one rendition to hand the browser out of an HLS master playlist, or
-     '' when the text is not a master at all. Chrome plays HLS itself, and
+  /* The renditions to hand the browser out of an HLS master playlist, best
+     first, or an empty list when the text is not a master at all. Chrome plays HLS itself, and
      given the master it starts on the lowest bitrate and steps up once it
      has measured the connection. CBC's master lists every bitrate twice, on
      two CDN paths, and those are packaged separately: their live windows
@@ -138,9 +138,9 @@
      The highest bandwidth wins, and on a tie the one listed first, which
      keeps whichever path the master leads with. A URI relative to the
      master is resolved against it. */
-  function pickHlsVariant(text, masterUrl) {
+  function listHlsVariants(text, masterUrl) {
     var lines = String(text == null ? '' : text).split(/\r?\n/);
-    var best = '', bestBw = -1, pending = null;
+    var found = [], seen = {}, pending = null;
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i].trim();
       if (!line) continue;
@@ -150,13 +150,24 @@
         continue;
       }
       if (line.charAt(0) === '#' || pending === null) continue;
-      if (pending > bestBw) {
-        bestBw = pending;
-        try { best = new URL(line, masterUrl).href; } catch (e) { best = line; }
+      /* First occurrence of each bandwidth, and no other. A master that
+         lists the same ladder twice is listing two packagers, so keeping
+         first occurrences keeps every rung on the path the master leads
+         with -- which is what stops the step between two live windows. */
+      if (!seen[pending]) {
+        seen[pending] = true;
+        var href = line;
+        try { href = new URL(line, masterUrl).href; } catch (e) { /* as written */ }
+        found.push({ bw: pending, url: href });
       }
       pending = null;
     }
-    return best;
+    found.sort(function (a, b) { return b.bw - a.bw; });
+    return found.map(function (v) { return v.url; });
+  }
+
+  function pickHlsVariant(text, masterUrl) {
+    return listHlsVariants(text, masterUrl)[0] || '';
   }
 
   function normalizeStation(result, index) {
@@ -376,7 +387,8 @@
   return {
     PALETTE: PALETTE, pickColour: pickColour,
     geocodeUrl: geocodeUrl, searchUrl: searchUrl,
-    streamKind: streamKind, parsePlaylist: parsePlaylist, pickHlsVariant: pickHlsVariant,
+    streamKind: streamKind, parsePlaylist: parsePlaylist,
+    pickHlsVariant: pickHlsVariant, listHlsVariants: listHlsVariants,
     bandFromName: bandFromName, callSignFrom: callSignFrom, bandFrom: bandFrom, normalizeStation: normalizeStation, dedupe: dedupe,
     haversineKm: haversineKm, rankByPlace: rankByPlace,
     placeStation: placeStation, dominantColour: dominantColour, logoColour: logoColour,
