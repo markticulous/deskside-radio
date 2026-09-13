@@ -3,7 +3,7 @@
   'use strict';
 
   var KEY = 'radio.v1';
-  var THEMES = ['dial', 'console', 'rams', 'editorial', 'retro', 'departures', 'marconi'];
+  var THEMES = ['dial', 'console', 'rams', 'editorial', 'retro', 'departures', 'marconi', 'tivoli'];
   // Bump on release, and publish the same number in version.json.
   var APP_VERSION = '1.2.2';
 
@@ -578,7 +578,20 @@
     else audio.volume = gain;
     el.volume.value = v;
     el.volumeOut.value = v;
+    markFader(el.volume);
     if (!silent) save();
+  }
+
+  /* A range input says nothing in CSS about where it sits between its
+     ends, and a theme drawn as a knob has to turn something by exactly
+     that. One number per fader, 0 at the low end and 1 at the high. */
+  function markFader(input) {
+    var lo = +input.min, hi = +input.max;
+    var at = hi > lo ? (+input.value - lo) / (hi - lo) : 0;
+    // On the wrapper, not the input: a theme that draws the control as a
+    // knob builds it out of the wrapper's own pseudo-elements, and those
+    // can only read what the wrapper has.
+    (input.parentElement || input).style.setProperty('--turn', at.toFixed(4));
   }
 
   function showDb(v) { return (v > 0 ? '+' : '') + v; }
@@ -601,6 +614,7 @@
     if (trebleNode) trebleNode.gain.value = state.treble;
     el.bass.value = state.bass; el.bassOut.value = showDb(state.bass);
     el.treble.value = state.treble; el.trebleOut.value = showDb(state.treble);
+    markFader(el.bass); markFader(el.treble);
   }
 
   // ---------- overlay (autoplay gate) ----------
@@ -941,6 +955,7 @@
   });
   el.bass.addEventListener('input', function () { ensureGraph(); state.bass = +el.bass.value; rememberTone(); applyTone(); save(); });
   el.treble.addEventListener('input', function () { ensureGraph(); state.treble = +el.treble.value; rememberTone(); applyTone(); save(); });
+  el.volume.addEventListener('input', function () { markFader(el.volume); });
 
   /* Double-click a fader to send it back where it started. It slides there
      rather than jumping, so the eye can follow the handle and the ear hears
@@ -991,6 +1006,7 @@
       state.bass = Math.round(v * 10) / 10;
       el.bass.value = state.bass;
       el.bassOut.value = showDb(Math.round(state.bass));
+      markFader(el.bass);
       if (bassNode) bassNode.gain.value = state.bass;
     }, function () {
       state.bass = SLIDER_HOME.bass; rememberTone(); applyTone(); save();
@@ -1002,6 +1018,7 @@
       state.treble = Math.round(v * 10) / 10;
       el.treble.value = state.treble;
       el.trebleOut.value = showDb(Math.round(state.treble));
+      markFader(el.treble);
       if (trebleNode) trebleNode.gain.value = state.treble;
     }, function () {
       state.treble = SLIDER_HOME.treble; rememberTone(); applyTone(); save();
@@ -1118,7 +1135,7 @@
       /* The shortcut keeps the theme that was showing when it was made:
          each theme ships its own .ico, and a per-theme path also sidesteps
          the Windows icon cache, which keys on the file it was told about. */
-      var known = /^(dial|console|rams|editorial|retro|departures|marconi)$/.test(state.theme);
+      var known = /^(dial|console|rams|editorial|retro|departures|marconi|tivoli)$/.test(state.theme);
       var icon = windowsPathOf(appFolderUrl() + (known ? 'favicon-' + state.theme + '.ico' : 'favicon.ico'));
       // .url files want CRLF and the icon given as a full path.
       body = ['[InternetShortcut]', 'URL=' + here, 'IconFile=' + icon, 'IconIndex=0', ''].join('\r\n');
@@ -1209,7 +1226,8 @@
     { key: 'editorial', label: 'Editorial', note: 'Type-led layouts from a printed magazine' },
     { key: 'retro', label: 'Retro 8-bit', note: 'Interface style of 80s home game consoles' },
     { key: 'departures', label: 'Departures board', note: 'Split-flap boards in airports and railway stations' },
-    { key: 'marconi', label: 'Marconi deco', note: 'Art deco radio cabinets of the 1930s' }
+    { key: 'marconi', label: 'Marconi deco', note: 'Art deco radio cabinets of the 1930s' },
+    { key: 'tivoli', label: 'Model One', note: 'The one-knob tabletop radio of the late 1990s' }
   ];
   function renderThemeCards() {
     var box = $('themeCards');

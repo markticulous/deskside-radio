@@ -68,7 +68,7 @@ fs.mkdirSync(OUT, { recursive: true });
 fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
 
 ['favicon-dial.ico', 'favicon-console.ico', 'favicon-rams.ico', 'favicon-editorial.ico',
- 'favicon-retro.ico', 'favicon-departures.ico', 'favicon-marconi.ico',
+ 'favicon-retro.ico', 'favicon-departures.ico', 'favicon-marconi.ico', 'favicon-tivoli.ico',
  'Create Desktop Shortcut.cmd'].forEach(function (f) {
   fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
 });
