@@ -950,7 +950,7 @@
   display: inline-block; max-width: 100%;
   margin: 10px 0 0;
   padding: 10px calc(var(--pitch) * 2) 10px var(--pitch);
-  font-family: "Chivo Mono", "IBM Plex Mono", monospace;
+  font-family: "IBM Plex Mono", monospace;
   font-size: clamp(30px, 4.4vw, 52px); font-weight: 700; line-height: 1.1;
   letter-spacing: .05em; text-transform: uppercase; color: var(--amber);
   white-space: nowrap; overflow: hidden;
@@ -1613,7 +1613,7 @@ body.app .tuner { width: min(1100px, 100%); }
 .theme-thumb[data-theme="departures"] .tt-glass {
   --pitch: calc(1ch + .06em);
   border-radius: 0;
-  font: 700 13px/1 "Chivo Mono", monospace; letter-spacing: .06em;
+  font: 700 13px/1 "IBM Plex Mono", monospace; letter-spacing: .06em;
   background:
     repeating-linear-gradient(90deg,
       transparent 0 calc(var(--pitch) - 2px), #08090b calc(var(--pitch) - 2px) var(--pitch)),
