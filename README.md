@@ -39,12 +39,35 @@ Two things to know: opening the page the ordinary way still works and still show
 
 - **Stations.** Any stream URL with a name, frequency, colour and tagline. A built-in finder looks up stations near a city through [radio-browser](https://www.radio-browser.info/), which is public and key-free.
 - **Schedule.** Weekday and weekend time slots, each choosing a station and optionally forcing volume, bass, treble or theme when it starts. A slot hands over at its end time: `07:00` to `10:00` runs from `07:00:00` and stops at `10:00:00`, so an adjacent slot starting at `10:00` picks it up cleanly. Overlapping slots are refused on save.
-- **Themes.** Analogue dial, broadcast console, Rams minimal, editorial. Each has its own desktop icon.
+- **Themes.** Analogue dial, broadcast console, Rams minimal, editorial, retro 8-bit, departures board, Marconi deco. Each has its own desktop icon.
 - **Watchdog.** A frozen media clock plus a starved buffer means the stream died; it reconnects with exponential backoff rather than sitting silent.
 - **Memory.** Theme, station, volume and per-station tone come back exactly as you left them — unless a schedule slot covering that moment says otherwise, in which case the schedule wins.
 - **Play on launch.** Starts a station the moment the app opens, with no click at all when it is opened through the shortcut above.
 
 Everything is kept in `localStorage` on the machine it runs on. Nothing is uploaded.
+
+## Stream types
+
+A station's URL goes straight onto an `<audio>` element, so what the browser can play, the app can play. `Directory.streamKind()` in `radio-directory.js` classifies a URL and the rest follows from that.
+
+| Kind | Detected by | What happens |
+|---|---|---|
+| MP3, AAC (Icecast, Shoutcast) | anything not matched below | Plays. Meter and tone controls work when the host sends permissive CORS headers. |
+| `.pls`, `.m3u` | extension | Fetched once, parsed by `Directory.parsePlaylist()`, and the stream address inside it replaces `station.url` and is saved. Later plays go straight to the stream. |
+| `.m3u8` (HLS) | extension | Plays on desktop browsers with native HLS. Higher latency, and `seekable` is empty, so the live-edge seek below cannot help it. |
+| `.asx`, `.xspf` | not handled | XML playlists. They reach the audio element unchanged and fail there, as they always did. |
+
+`parsePlaylist` reads both formats with one pass: it takes the lowest-numbered `FileN=` entry in a `.pls` (which is not obliged to list them in order) and otherwise the first non-comment line that is an absolute `http(s)` URL. Relative entries are rejected — there is no base to resolve them against that is worth trusting. Reading the file at all needs the host to allow the request; when it refuses, the station is tuned unchanged rather than being left unplayable in a new way.
+
+### Joining at the live edge
+
+A station hands over a second or so of already-broadcast audio the moment you connect, so the element has something to decode. Without help that is what you hear on every restart, and on speech it is unmistakable — stop and start `NewsTalk 1010` and the last sentence begins again.
+
+`tune()` therefore seeks forward on the first `playing` event of each tune, to `buffered.end - LIVE_MARGIN` (1.5s). It retries every 60ms for up to eight tries, because `seekable` and `buffered` are not both populated at the instant `playing` fires. The first attempt is deferred by `setTimeout(..., 0)` so it runs after `setStatus('live')`, not before it.
+
+This is generic: it applies to every station, with no per-station configuration, and it is a no-op for anything that cannot honour it. HLS reports an empty `seekable`, so it declines and keeps its 10–20s rewind. There is no fix for that without an HLS library, which would mean a dependency and a build step.
+
+There is no drift correction. It was written and then removed: playing at 0.5x for nine seconds did not widen `buffered.end - currentTime` by a hundredth of a second. The browser holds about 2.3s and throttles the download to maintain it, so there is never enough buffer ahead to correct into.
 
 ## Updates
 
