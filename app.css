@@ -521,7 +521,11 @@
 [data-theme="console"] .display-tag { margin: 8px 0 0; font-size: 13px; color: #a67a12; letter-spacing: .02em; }
 [data-theme="console"] .display-status { margin-top: 12px; color: var(--mute); }
 [data-theme="console"] .status-led { border-radius: 1px; }
-[data-theme="console"] .status-led.live { background: var(--red); box-shadow: 0 0 8px var(--red); animation: blink 1.6s steps(1) infinite; }
+/* Steady, like the lamp over a studio door. Blinking in a control room
+   means attention -- a fault, a cued source, talkback -- so the app keeps
+   it for reconnecting, where it belongs. Blinking both left the blink
+   saying nothing. */
+[data-theme="console"] .status-led.live { background: var(--red); box-shadow: 0 0 8px var(--red); }
 @keyframes blink { 50% { opacity: .35; } }
 
 [data-theme="console"] .meter { display: block; margin-top: 18px; padding: 0 12px; }
@@ -568,12 +572,22 @@
 [data-theme="console"] .preset-add { border-style: dashed; opacity: .6; }
 
 [data-theme="console"] .controls { padding-top: 14px; border-top: 1px solid var(--line); }
+/* A console start button is green and a stop button is red, so the colour
+   and the glyph say the same thing: green with the triangle starts it, red
+   with the square stops it. Pressed stays down while it is running, the
+   way a latching ON button does. */
 [data-theme="console"] .play-btn {
-  width: 72px; height: 48px; display: grid; place-items: center; color: #1a0503;
-  background: linear-gradient(#ff6a52, #d92a12); border-radius: 3px;
-  box-shadow: 0 4px 0 #6d1408, 0 6px 10px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.35);
+  width: 72px; height: 48px; display: grid; place-items: center; color: #04170b;
+  background: linear-gradient(#6df79b, #16a34a); border-radius: 3px;
+  box-shadow: 0 4px 0 #0b5c2c, 0 6px 10px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.35);
 }
-[data-theme="console"] .play-btn[aria-pressed="true"] { transform: translateY(3px); box-shadow: 0 1px 0 #6d1408, 0 2px 4px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.35); background: linear-gradient(#ff3b1f, #b8200c); }
+[data-theme="console"] .play-btn:hover { background: linear-gradient(#88ffb0, #1cb956); }
+[data-theme="console"] .play-btn[aria-pressed="true"] {
+  transform: translateY(3px); color: #1a0503;
+  background: linear-gradient(#ff3b1f, #b8200c);
+  box-shadow: 0 1px 0 #6d1408, 0 2px 4px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.35);
+}
+[data-theme="console"] .play-btn[aria-pressed="true"]:hover { background: linear-gradient(#ff5537, #cc2410); }
 [data-theme="console"] .fader { gap: 14px; }
 [data-theme="console"] .fader label { color: #8a9096; }
 [data-theme="console"] .fader output { color: var(--amber); font-weight: 600; font-size: 18px; }
@@ -999,6 +1013,23 @@
   box-shadow: inset 0 0 0 1px #33363c;
 }
 [data-theme="departures"] .display-name::after { content: ""; }
+/* Each character is its own flap, so each can turn on its own. The
+   perspective is what makes the turn read as a panel falling rather than
+   the letter squashing. */
+[data-theme="departures"] .display-name { perspective: 420px; }
+[data-theme="departures"] .flap-ch {
+  display: inline-block; white-space: pre;
+  transform-origin: 50% 50%; backface-visibility: hidden;
+}
+[data-theme="departures"] .flap-ch.is-flapping { animation: flap-turn .12s linear infinite; }
+/* Past 90 degrees the panel would be seen from behind, so it is swapped
+   for the next one at the halfway point and comes up from the other side. */
+@keyframes flap-turn {
+  0%   { transform: rotateX(0deg); }
+  49%  { transform: rotateX(-88deg); }
+  51%  { transform: rotateX(88deg); }
+  100% { transform: rotateX(0deg); }
+}
 [data-theme="departures"] .display-tag { margin: 12px 0 0; font-size: 15px; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
 [data-theme="departures"] .display-status { margin-top: 12px; font-size: 14px; letter-spacing: .18em; text-transform: uppercase; color: var(--mute); }
 [data-theme="departures"] .status-led { width: 8px; height: 8px; border-radius: 0; background: var(--line); }
