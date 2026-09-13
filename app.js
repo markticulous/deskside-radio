@@ -1074,18 +1074,18 @@
     for (var t = 0; t < tabs.length; t++) tabs[t].classList.toggle('is-active', tabs[t].dataset.group === slotGroup);
   }
 
-  /* A line under each thumbnail, because a picture 78px tall cannot say what
-     a theme is and several of the names assume you already know. The note
-     describes what you are looking at rather than naming the movement it
-     came from. */
+  /* A line under each thumbnail naming what the theme is borrowed from. The
+     picture already shows the colours and the hardware, so repeating them
+     in words says nothing; what it cannot show is where the thing came
+     from, which is the part that makes the name make sense. */
   var THEME_CARDS = [
-    { key: 'dial', label: 'Analogue dial', note: 'Walnut and brass, lit glass scale' },
-    { key: 'console', label: 'Broadcast console', note: 'Rack panel, amber readouts, LED meter' },
+    { key: 'dial', label: 'Analogue dial', note: 'Wood-cabinet radios of the 1950s living room' },
+    { key: 'console', label: 'Broadcast console', note: 'The on-air mixing desk of a radio control room' },
     { key: 'rams', label: 'Rams minimal', note: 'Homage to the work of German industrial designer Dieter Rams' },
-    { key: 'editorial', label: 'Editorial', note: 'Big type, a colour for each station' },
-    { key: 'retro', label: 'Retro 8-bit', note: 'Four colours on an 8-pixel grid' },
-    { key: 'departures', label: 'Departures board', note: 'Split-flap, one letter per flap' },
-    { key: 'marconi', label: 'Marconi deco', note: 'Black lacquer, gold and a sunburst' }
+    { key: 'editorial', label: 'Editorial', note: 'Type-led layouts from a printed magazine' },
+    { key: 'retro', label: 'Retro 8-bit', note: 'Home game consoles of the 1980s' },
+    { key: 'departures', label: 'Departures board', note: 'Split-flap boards in airports and railway stations' },
+    { key: 'marconi', label: 'Marconi deco', note: 'Art deco radio cabinets of the 1930s' }
   ];
   function renderThemeCards() {
     var box = $('themeCards');
