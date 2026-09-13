@@ -3,6 +3,17 @@
    [data-theme="..."] so the same sheet works whether the attribute sits on
    <html> (the app) or on each .tuner (the preview page). */
 
+/* The one face not on Google Fonts, so it is carried here. A 14-segment
+   alphanumeric, which is what the console readout actually is; everything
+   else in the app is set in a typeface. The build folds it into the page
+   as a data URI, so the download stays a single file.
+   Public domain. See fonts/VFD-Nova-LICENCE.txt. */
+@font-face {
+  font-family: "VFD Nova";
+  src: url("fonts/VfdNova-Regular.otf") format("opentype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+
 /* ------------------------------------------------------------------ */
 /* Base structure (theme-agnostic)                                     */
 /* ------------------------------------------------------------------ */
@@ -16,6 +27,11 @@
   position: relative;
   display: grid;
   grid-template-rows: auto 1fr auto auto;
+  /* minmax(0, 1fr), not the default auto: an auto track is floored at the
+     min-content of what is in it, and a nowrap station name has no small
+     min-content, so a long one pushed the whole panel wider than its own
+     width instead of overflowing the readout and being scrolled. */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "bar" "display" "presets" "controls";
   gap: var(--gap);
   padding: var(--pad);
@@ -213,6 +229,26 @@
 
 .meter-face svg { width: 100%; height: auto; display: block; }
 .name-line { display: block; width: max-content; max-width: none; white-space: nowrap; }
+/* A name too long for the readout scrolls rather than being set smaller:
+   the display has the character size it has, and shrinking the type to fit
+   the message is the one thing no piece of hardware does. Same measurement
+   and same movement as the preset buttons. Editorial is the exception --
+   it is handed a box and wraps inside it, so it never overflows and never
+   gets the class. */
+.display-name.can-scroll {
+  text-overflow: clip;
+  animation: name-marquee var(--marquee-ms, 6s) ease-in-out infinite;
+  /* Long enough that a station change is read before anything moves. */
+  animation-delay: .9s;
+}
+@keyframes name-marquee {
+  0%, 12%   { text-indent: 0; }
+  58%, 74%  { text-indent: var(--marquee-by, 0); }
+  100%      { text-indent: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .display-name.can-scroll { animation: none; text-overflow: ellipsis; }
+}
 .scope { display: none; }
 .meter-caption { display: none; }
 /* On stop the level decays with the meter ballistics rather than cutting,
@@ -528,8 +564,10 @@
 [data-theme="console"] .display-band { color: var(--amber-dim); font-size: 13px; }
 [data-theme="console"] .display-name {
   margin: 4px 0 0;
-  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
-  font-weight: 600; font-size: clamp(52px, 7.5vw, 96px); line-height: .9; letter-spacing: .01em; text-transform: uppercase;
+  /* The segments are drawn at one weight; asking for a bold the face does
+     not have gets a synthetic one, which smears them. */
+  font-family: "VFD Nova", "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-weight: 400; font-size: clamp(46px, 6.4vw, 82px); line-height: 1.02; letter-spacing: .02em; text-transform: uppercase;
   /* Phosphor, in four layers: a near-white core where the segment is
      driven hardest, then amber, then two wide falls of it into the glass.
      A single shadow gives a sticker with a halo; the stack is what reads
@@ -553,39 +591,6 @@
   content: ""; position: absolute; inset: -6px 0; z-index: -1; pointer-events: none;
   background-image: radial-gradient(circle at center, rgba(255,176,0,.105) 0 1.1px, transparent 1.45px);
   background-size: 6px 7px;
-}
-/* A VFD is driven off a heated filament on AC, and the brightness ripples
-   with it -- never steady, never obviously pulsing either. The keyframes
-   are deliberately unevenly spaced so it does not fall into an audible
-   rhythm. */
-[data-theme="console"] .display-name { animation: vfd-ripple 6.5s ease-in-out infinite; }
-@keyframes vfd-ripple {
-  0%   { filter: brightness(1); }
-  17%  { filter: brightness(1.045); }
-  31%  { filter: brightness(.985); }
-  58%  { filter: brightness(1.03); }
-  76%  { filter: brightness(.995); }
-  100% { filter: brightness(1); }
-}
-/* The sheen that crosses the glass now and then. It blends rather than
-   being painted on, so it lifts the lit segments and leaves the unlit
-   field where it was -- which is how a highlight on a real display
-   behaves, there being nothing there to catch it. */
-[data-theme="console"] .display-name::after {
-  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background: linear-gradient(100deg,
-    transparent 38%, rgba(255,245,220,.42) 50%, transparent 62%);
-  background-size: 260% 100%; background-repeat: no-repeat;
-  mix-blend-mode: overlay;
-  animation: vfd-sheen 9s ease-in-out infinite;
-}
-@keyframes vfd-sheen {
-  0%, 8%    { background-position: 135% 0; }
-  46%, 100% { background-position: -35% 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  [data-theme="console"] .display-name,
-  [data-theme="console"] .display-name::after { animation: none; }
 }
 [data-theme="console"] .display-tag { margin: 8px 0 0; font-size: 13px; color: #a67a12; letter-spacing: .02em; }
 [data-theme="console"] .display-status { margin-top: 12px; color: var(--mute); }

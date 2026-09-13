@@ -26,11 +26,21 @@ function dataUri(file, type) {
   return 'data:' + type + ';base64,' + fs.readFileSync(path.join(ROOT, file)).toString('base64');
 }
 
+/* The one webfont that is not fetched from Google travels with the sheet,
+   or the console theme would fall back to a typeface in the download and
+   nowhere else. */
+function styleSheet() {
+  const url = 'url("fonts/VfdNova-Regular.otf")';
+  const css = read('app.css');
+  if (css.indexOf(url) === -1) throw new Error('app.css no longer loads the VFD face');
+  return css.replace(url, 'url("' + dataUri('fonts/VfdNova-Regular.otf', 'font/otf') + '")');
+}
+
 let html = read('index.html');
 const before = html.length;
 
 html = html.replace('<link rel="stylesheet" href="app.css">', function () {
-  return '<style>\n' + read('app.css') + '\n</style>';
+  return '<style>\n' + styleSheet() + '\n</style>';
 });
 
 const SCRIPTS = ['signal.js', 'radio-directory.js', 'scheduler.js', 'tuner-ui.js', 'app.js'];

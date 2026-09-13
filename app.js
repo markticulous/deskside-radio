@@ -769,26 +769,32 @@
      is what the stylesheet keys on, so a name that fits carries nothing and
      cannot animate. Re-measured on a resize and on a theme change, since
      both change the column width and the face the name is set in. */
-  function measurePresetNames() {
-    requestAnimationFrame(function () {
-      var names = el.presets.querySelectorAll('.preset-name');
-      for (var i = 0; i < names.length; i++) {
-        var n = names[i];
-        var over = n.scrollWidth - n.clientWidth;
-        if (over > 1) {
-          n.classList.add('can-scroll');
-          n.style.setProperty('--marquee-by', '-' + over + 'px');
-          // Constant reading speed, whatever the overrun, with the pauses on top.
-          n.style.setProperty('--marquee-ms', (2600 + over * 28) + 'ms');
-        } else {
-          n.classList.remove('can-scroll');
-          n.style.removeProperty('--marquee-by');
-          n.style.removeProperty('--marquee-ms');
-        }
-      }
+  /* Settle rather than measure once, the same as fitWindow. The first pass
+     is taken while the fallback face is still standing in; the webfont that
+     lands after it changes every width by a few pixels, and a button left
+     holding the first answer scrolls by exactly that much for ever, which
+     reads as a twitch rather than a scroll. Each later pass is a no-op when
+     nothing has moved. */
+  var MEASURE_PASSES = [0, 120, 400, 1200];
+
+  function measurePresetNames(pass) {
+    // Also used as an event handler, which would hand it an Event.
+    pass = typeof pass === 'number' ? pass : 0;
+    setTimeout(function () {
+      /* Height first, and the names after it. Snapping the list to whole
+         rows is what decides whether it scrolls, and a scrollbar inside it
+         takes a dozen pixels off every button. Measured the other way
+         round, a name that just fits is measured against a column that is
+         about to get narrower. */
       snapPresetRows();
       fitWindow();
-    });
+      var names = el.presets.querySelectorAll('.preset-name');
+      // Cleared for all of them first, so each is measured against the
+      // button rather than against its own previous fit.
+      for (var i = 0; i < names.length; i++) TunerUI.clearFit(names[i]);
+      for (var k = 0; k < names.length; k++) TunerUI.fitLine(names[k]);
+      if (pass + 1 < MEASURE_PASSES.length) measurePresetNames(pass + 1);
+    }, MEASURE_PASSES[pass]);
   }
 
   /* With no name wrapping, every row is the same height, so the scrolling
@@ -811,7 +817,33 @@
     el.presets.style.setProperty('--presets-max', (rows * rowH + (rows - 1) * gap) + 'px');
   }
 
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(measurePresetNames);
+  /* Anything that changes how wide a name renders has to re-run the
+     measurement, or a button keeps a scroll it no longer needs. That is
+     what the twitch on a slightly-too-long name actually was: measured
+     while the fallback face was still standing in, never measured again,
+     and left scrolling by the handful of pixels the two faces differ by.
+
+     fonts.ready settles once. A theme switch asks for a face that has not
+     been used yet, which starts a fresh load well after that, so the event
+     is what to listen to. The observer covers the other half: the buttons
+     change width when the window does, and when a station is added. */
+  if (document.fonts) {
+    if (document.fonts.ready) document.fonts.ready.then(measurePresetNames);
+    if (document.fonts.addEventListener) {
+      document.fonts.addEventListener('loadingdone', measurePresetNames);
+    }
+  }
+  if (window.ResizeObserver && el.presets) {
+    var lastPresetsW = 0;
+    new ResizeObserver(function () {
+      // Width only: measurePresetNames sets the height itself, and watching
+      // that would have it answering its own change for ever.
+      var w = el.presets.clientWidth;
+      if (w === lastPresetsW) return;
+      lastPresetsW = w;
+      measurePresetNames();
+    }).observe(el.presets);
+  }
   window.addEventListener('resize', measurePresetNames);
   function span(cls, text) { var s = document.createElement('span'); s.className = cls; s.textContent = text; return s; }
 

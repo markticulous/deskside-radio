@@ -1,0 +1,42 @@
+VFD Nova
+Nihar Mazumdar, 2023. Version 1.000.
+Public domain.
+
+
+WHERE THAT COMES FROM
+---------------------
+
+The designer published it at FontSpace, which is the source of record:
+
+  https://www.fontspace.com/vfd-nova-font-f99475
+  License: Public Domain
+
+The file here was downloaded from the 1001Fonts mirror of that upload,
+whose package carries an info.txt recording the same thing:
+
+  license: Public Domain
+  link: https://www.fontspace.com/vfd-nova-font-f99475
+
+The 1001Fonts listing page itself shows that site's generic labels,
+"Free for personal use" and "Maybe free for commercial use", which are
+weaker than either statement above. Their General Font Usage Terms say
+which wins: the author's own terms, shipped with the package, override
+the general ones. Here those terms are the public-domain designation the
+designer published and the package records.
+
+  https://www.1001fonts.com/licenses/general-font-usage-terms.html
+
+Public domain asks for nothing: no attribution, no notice, no
+restriction on redistribution. The credit in README.md and this file are
+kept because saying where something came from is worth doing anyway, and
+because the font's own name table carries a copyright line and no licence
+string, which is usual for a public-domain upload and would otherwise be
+the only thing a reader found.
+
+
+WHAT IT IS USED FOR
+-------------------
+
+One thing: the station name on the broadcast console theme, which is a
+14-segment alphanumeric readout and wants a 14-segment face. The build
+folds the file into the single-page distribution as a data URI.
