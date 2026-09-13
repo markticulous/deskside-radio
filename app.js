@@ -278,7 +278,20 @@
        something to aim at. Without the guard every rebuffer would seek. */
     if (!syncedThisTune) {
       syncedThisTune = true;
-      setTimeout(function () { if (status === 'live') seekToLive(); }, 400);
+      /* As early as it will take, rather than after a fixed wait. seekable
+         and buffered are not both ready the instant playing fires -- tried
+         at zero and the seek simply did not happen -- but a fixed delay long
+         enough to be safe means the replayed second is heard before it is
+         skipped. So it retries until one lands, and gives up rather than
+         chase a stream that will not seek at all, which is every HLS one. */
+      var tries = 0;
+      // On a later task, not inline: this runs before setStatus('live')
+      // below, so an inline first attempt reads the old status and stops.
+      setTimeout(function attempt() {
+        if (status !== 'live' || tries > 8) return;
+        tries += 1;
+        if (!seekToLive()) setTimeout(attempt, 60);
+      }, 0);
     }
     launching = false;
     liveSince = Date.now();
