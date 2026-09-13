@@ -81,6 +81,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "  $link.TargetPath = $env:BROWSER;" ^
   "  $link.Arguments = '--app=' + $q + $url + $q +" ^
   "    ' --autoplay-policy=no-user-gesture-required' +" ^
+  "    ' --window-size=1133,741' +" ^
   "    ' --user-data-dir=' + $q + $env:PROFILE + $q +" ^
   "    ' --allow-file-access-from-files --no-first-run --no-default-browser-check';" ^
   "} else {" ^
