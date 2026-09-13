@@ -184,6 +184,33 @@ Backup
   Settings, Service exports everything to one file and imports it back.
 
 
+RECORDING
+---------
+
+Hold either Shift key and a small red REC button appears beside play.
+Press it to start, press it again to stop. It stays visible while it is
+recording whether you are holding Shift or not, and the dot on it blinks
+so you can see at a glance that it is running.
+
+The file lands in your Downloads folder, named for when it started and
+how long it ran:
+
+  DSRadio-260913191404-7.m4a      started 2026-09-13 19:14:04, ran 7 s
+
+It is AAC in an .m4a file, about 96 kbps, which is roughly 45 MB an hour
+and opens by double-click on Windows, macOS, a phone or a car stereo.
+
+What is recorded is the broadcast, not what comes out of your speakers.
+Turning the volume down, or dialling in bass for the room, changes what
+you hear and not what lands in the file, so a recording made quietly is
+not a quiet recording.
+
+Two things it will not do. A station that cannot drive the meter cannot
+be recorded either -- it is the same permission, and the button says so
+rather than disappearing. And closing the window while it is still
+recording loses that recording: press stop first.
+
+
 STREAM TYPES
 ------------
 
