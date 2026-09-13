@@ -120,7 +120,13 @@
     var defs = svg('defs', {});
     defs.appendChild(gradient('linearGradient', uid + '-paper', { x1: 0, y1: 0, x2: 0, y2: 1 },
       [['vu-paper-a', '0'], ['vu-paper-b', '1']]));
-    defs.appendChild(gradient('radialGradient', uid + '-vig', { cx: '.5', cy: '.86', r: '.82' },
+    /* The lamp behind the card. A meter of this vintage is lit from inside
+       the case, so the card does not merely take light, it gives some off:
+       a warm pool behind the middle of the scale, falling away to the rim. Themes that want an unlit movement leave the stops alone and
+       get nothing. */
+    defs.appendChild(gradient('radialGradient', uid + '-lamp', { cx: '.5', cy: '.58', r: '.98' },
+      [['vu-lamp-a', '0'], ['vu-lamp-b', '1']]));
+    defs.appendChild(gradient('radialGradient', uid + '-vig', { cx: '.5', cy: '.86', r: '1' },
       [['vu-vig-a', '.5'], ['vu-vig-b', '1']]));
     defs.appendChild(gradient('linearGradient', uid + '-gloss', { x1: 0, y1: 0, x2: 0, y2: 1 },
       [['vu-gloss-a', '0'], ['vu-gloss-b', '.52']]));
@@ -134,6 +140,7 @@
     face.appendChild(defs);
 
     face.appendChild(svg('rect', { class: 'vu-face', x: 2, y: 2, width: 196, height: 116, rx: 6, fill: 'url(#' + uid + '-paper)' }));
+    face.appendChild(svg('rect', { class: 'vu-lamp', x: 2, y: 2, width: 196, height: 116, rx: 6, fill: 'url(#' + uid + '-lamp)' }));
     face.appendChild(svg('rect', { class: 'vu-vignette', x: 2, y: 2, width: 196, height: 116, rx: 6, fill: 'url(#' + uid + '-vig)' }));
     face.appendChild(svg('path', { class: 'vu-arc', d: 'M' + p0.x + ' ' + p0.y + ' A' + VU_R + ' ' + VU_R + ' 0 0 1 ' + p1.x + ' ' + p1.y }));
     face.appendChild(svg('path', { class: 'vu-red', d: 'M' + pz.x + ' ' + pz.y + ' A' + VU_R + ' ' + VU_R + ' 0 0 1 ' + p1.x + ' ' + p1.y }));

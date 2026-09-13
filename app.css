@@ -384,15 +384,28 @@
 [data-theme="dial"] .needle { background: var(--red); border-radius: 1px; box-shadow: 0 0 9px rgba(193,64,47,.8); }
 
 [data-theme="dial"] .meter { grid-area: meter; display: block; width: 210px; align-self: start; position: relative; }
+/* The spill. On the face itself rather than the whole meter, so the blind
+   notice is not given a halo of its own. */
+[data-theme="dial"] .meter-face { filter: drop-shadow(0 0 12px rgba(255, 196, 96, .45)) drop-shadow(0 2px 3px rgba(0,0,0,.4)); }
 [data-theme="dial"] .meter-bar, [data-theme="dial"] .meter-scale { display: none; }
 /* Fills come from the gradients the builder puts in <defs>, so these rules
    set only the stop colours; a `fill` here would override the gradient. */
 [data-theme="dial"] .vu-face { stroke: #8d6a25; stroke-width: 1.5; }
-[data-theme="dial"] .vu-paper-a { stop-color: #fdf8e7; }
-[data-theme="dial"] .vu-paper-b { stop-color: #e4d0a1; }
+[data-theme="dial"] .vu-paper-a { stop-color: #fffdf3; }
+[data-theme="dial"] .vu-paper-b { stop-color: #e8cf97; }
+/* Lit rather than merely pale: a warm pool from the lamp at the top of the
+   case, a card graded to nearly white under it, and enough spill for the
+   cabinet round the movement to catch some. The vignette is deepened to
+   match -- a brighter middle with the same edges reads as a flat card
+   photographed well, not as a lamp. */
+[data-theme="dial"] .vu-lamp-a { stop-color: #fff2cb; stop-opacity: .9; }
+[data-theme="dial"] .vu-lamp-b { stop-color: #ffca6b; stop-opacity: 0; }
 [data-theme="dial"] .vu-vig-a { stop-color: #3a2a12; stop-opacity: 0; }
-[data-theme="dial"] .vu-vig-b { stop-color: #3a2a12; stop-opacity: .3; }
-[data-theme="dial"] .vu-gloss-a { stop-color: #fffdf4; stop-opacity: .5; }
+[data-theme="dial"] .vu-vig-b { stop-color: #4a3112; stop-opacity: .26; }
+/* Kept light. With the lamp behind the card as well, the old sheen took
+   the top of the face to a flat grey, which reads as glare on a dead
+   meter rather than as a lit one. */
+[data-theme="dial"] .vu-gloss-a { stop-color: #fffdf4; stop-opacity: .28; }
 [data-theme="dial"] .vu-gloss-b { stop-color: #fffdf4; stop-opacity: 0; }
 [data-theme="dial"] .vu-pin-a { stop-color: #6d5c46; }
 [data-theme="dial"] .vu-pin-b { stop-color: #170d06; }
@@ -1693,6 +1706,9 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .theme-card input:checked ~ .theme-label .theme-name { color: var(--ui-fg); font-weight: 600; }
 .theme-card input:checked ~ .theme-label .theme-note { color: var(--ui-mute); }
 
+/* Off unless a theme lights it. */
+.vu-lamp-a, .vu-lamp-b { stop-color: #fff; stop-opacity: 0; }
+
 .tt { position: absolute; inset: 0; padding: 7px; display: grid; grid-template-rows: auto 1fr auto; gap: 5px; }
 .tt-cap { font-size: 8px; line-height: 1; letter-spacing: .06em; display: flex; gap: 4px; }
 .tt-cap b { font-weight: inherit; }
@@ -1706,7 +1722,13 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   background: repeating-linear-gradient(88deg, #4a2c19 0 4px, #3a2214 4px 8px);
   box-shadow: 0 0 0 1px var(--ui-line), inset 0 0 0 2px #8d6a25;
 }
-.theme-thumb[data-theme="dial"] .tt-cap { color: #d8bd7a; font-weight: 700; }
+/* On the glass, top left, where the app puts it -- above it on the walnut
+   is a caption for the thumbnail rather than a picture of the radio. */
+.theme-thumb[data-theme="dial"] .tt { grid-template-rows: 1fr auto; }
+.theme-thumb[data-theme="dial"] .tt-cap {
+  position: absolute; left: 12px; top: 12px; z-index: 1;
+  color: #7c5f26; font-weight: 700;
+}
 .theme-thumb[data-theme="dial"] .tt-glass {
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 16' preserveAspectRatio='none'%3E%3Cpath d='M2.5 13.5 A11.5 11.5 0 0 1 21.5 13.5' fill='none' stroke='%236b5324' stroke-width='1.1'/%3E%3Cpath d='M6.5 7.6 L7.6 8.9 M12 5.6 L12 7.3 M17.5 7.6 L16.4 8.9' stroke='%236b5324' stroke-width='.9'/%3E%3Cline x1='12' y1='14' x2='16.8' y2='7.4' stroke='%23c1402f' stroke-width='1.1'/%3E%3Ccircle cx='12' cy='14' r='1.2' fill='%233a2a12'/%3E%3C/svg%3E") right 5px top 2px / 26px 17px no-repeat, linear-gradient(#f3e8c6, #ddc99a);
 }
