@@ -307,18 +307,37 @@
 }
 [data-theme="dial"] .needle { background: var(--red); border-radius: 1px; box-shadow: 0 0 9px rgba(193,64,47,.8); }
 
-[data-theme="dial"] .meter { grid-area: meter; display: block; width: 210px; align-self: start; }
+[data-theme="dial"] .meter { grid-area: meter; display: block; width: 210px; align-self: start; position: relative; }
 [data-theme="dial"] .meter-bar, [data-theme="dial"] .meter-scale { display: none; }
-[data-theme="dial"] .vu-face { fill: #f8efd3; stroke: #8d6a25; stroke-width: 1.5; }
+/* Fills come from the gradients the builder puts in <defs>, so these rules
+   set only the stop colours; a `fill` here would override the gradient. */
+[data-theme="dial"] .vu-face { stroke: #8d6a25; stroke-width: 1.5; }
+[data-theme="dial"] .vu-paper-a { stop-color: #fdf8e7; }
+[data-theme="dial"] .vu-paper-b { stop-color: #e4d0a1; }
+[data-theme="dial"] .vu-vig-a { stop-color: #3a2a12; stop-opacity: 0; }
+[data-theme="dial"] .vu-vig-b { stop-color: #3a2a12; stop-opacity: .3; }
+[data-theme="dial"] .vu-gloss-a { stop-color: #fffdf4; stop-opacity: .5; }
+[data-theme="dial"] .vu-gloss-b { stop-color: #fffdf4; stop-opacity: 0; }
+[data-theme="dial"] .vu-pin-a { stop-color: #6d5c46; }
+[data-theme="dial"] .vu-pin-b { stop-color: #170d06; }
+[data-theme="dial"] .vu-pin-gloss { fill: #e2d4ba; opacity: .45; }
 [data-theme="dial"] .vu-arc  { fill: none; stroke: #3a2a12; stroke-width: 1.6; }
 [data-theme="dial"] .vu-red  { fill: none; stroke: var(--red); stroke-width: 4; }
 [data-theme="dial"] .vu-tick { stroke: #3a2a12; stroke-width: 1; }
 [data-theme="dial"] .vu-tick.is-major { stroke-width: 1.8; }
 [data-theme="dial"] .vu-label { font: 600 10px "Archivo", sans-serif; fill: #3a2a12; }
 [data-theme="dial"] .vu-mark  { font: 600 9px "Archivo", sans-serif; fill: #7a6134; letter-spacing: .18em; }
-[data-theme="dial"] .vu-needle { stroke: var(--red); stroke-width: 1.8; stroke-linecap: round; }
-[data-theme="dial"] .vu-pin { fill: #2a1a10; }
-[data-theme="dial"] .meter-blind { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #8a6f3c; text-align: center; margin-top: 4px; }
+[data-theme="dial"] .vu-needle { fill: var(--red); }
+[data-theme="dial"] .vu-pin { stroke: #0e0805; stroke-width: .6; }
+/* The blind notice sits in the empty sweep above the arc, where it only
+   ever shows with the face dimmed behind it. Percentages, so it holds its
+   place when the meter narrows on a small screen. */
+[data-theme="dial"] .meter-blind {
+  position: absolute; left: 8%; right: 8%; top: 6%; margin-top: 0;
+  font-size: 8.5px; line-height: 1.35; letter-spacing: .08em;
+  text-transform: uppercase; color: #f2e2b6; text-align: center;
+  text-shadow: 0 1px 2px rgba(30,16,6,.55);
+}
 
 /* Preset keys: lit means selected. Unselected keys sit dark and flush. */
 [data-theme="dial"] .presets { gap: 14px; }
@@ -769,6 +788,8 @@
   [data-theme="editorial"] .preset, [data-theme="editorial"] .controls, [data-theme="editorial"] .tuner-bar { padding-left: 20px; padding-right: 20px; }
   [data-theme="dial"] .display { grid-template-columns: minmax(0, 1fr); grid-template-areas: "band" "name" "tag" "status" "meter" "dial"; }
   [data-theme="dial"] .meter { width: 150px; margin-top: 14px; }
+  /* Two lines is all the sweep above the arc holds at this width. */
+  [data-theme="dial"] .meter-blind { font-size: 7px; letter-spacing: .05em; left: 5%; right: 5%; }
   .tuner { --pad: 18px; }
 }
 
@@ -913,7 +934,7 @@ body.app .tuner { width: min(1100px, 100%); }
   text-align: left; cursor: pointer;
 }
 .card-mark {
-  width: 13px; height: 13px; flex: none; color: var(--c);
+  width: 14px; height: 14px; flex: none; color: var(--c);
   transition: transform .2s cubic-bezier(.33, 1, .68, 1);
 }
 .card-mark svg { display: block; width: 100%; height: 100%; }

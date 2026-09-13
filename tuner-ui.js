@@ -5,9 +5,9 @@
   var S = root.Signal;
   var SVG = 'http://www.w3.org/2000/svg';
 
-  var VU_R = 76;          // arc radius
-  var VU_LABEL_R = 60;    // where the printed numbers sit
-  var VU_NEEDLE_R = 70;
+  var VU_R = 82;          // arc radius
+  var VU_LABEL_R = 65;    // where the printed numbers sit
+  var VU_NEEDLE_R = 76;
 
   function svg(tag, attrs) {
     var e = document.createElementNS(SVG, tag);
@@ -94,21 +94,53 @@
   }
 
   // ---- VU face, drawn from the same geometry the needle uses ----
+  /* Gradient stops carry classes, not colours, so the themes keep owning
+     the palette. The ids carry a counter because the preview page puts
+     four faces on the screen at once and duplicate ids would collide. */
+  var faceSeq = 0;
+  function gradient(tag, id, attrs, stops) {
+    attrs.id = id;
+    var g = svg(tag, attrs);
+    stops.forEach(function (st) { g.appendChild(svg('stop', { class: st[0], offset: st[1] })); });
+    return g;
+  }
+
   function buildVuFace(host) {
     var marks = S.vuMarks();
     var pivot = S.VU_PIVOT;
     var p0 = S.vuPoint(S.vuAngle(0), VU_R), p1 = S.vuPoint(S.vuAngle(1), VU_R);
     var zero = marks.filter(function (m) { return m.vu === 0; })[0];
     var pz = S.vuPoint(zero.angle, VU_R);
+    var uid = 'vu' + (++faceSeq);
 
     var face = svg('svg', { viewBox: '0 0 200 120', 'aria-hidden': 'true' });
-    face.appendChild(svg('rect', { class: 'vu-face', x: 2, y: 2, width: 196, height: 116, rx: 6 }));
+
+    /* Lit from above: card stock graded light to warm, a darkened rim, a
+       sheen across the glass, and a real cast shadow under the needle. */
+    var defs = svg('defs', {});
+    defs.appendChild(gradient('linearGradient', uid + '-paper', { x1: 0, y1: 0, x2: 0, y2: 1 },
+      [['vu-paper-a', '0'], ['vu-paper-b', '1']]));
+    defs.appendChild(gradient('radialGradient', uid + '-vig', { cx: '.5', cy: '.86', r: '.82' },
+      [['vu-vig-a', '.5'], ['vu-vig-b', '1']]));
+    defs.appendChild(gradient('linearGradient', uid + '-gloss', { x1: 0, y1: 0, x2: 0, y2: 1 },
+      [['vu-gloss-a', '0'], ['vu-gloss-b', '.52']]));
+    defs.appendChild(gradient('radialGradient', uid + '-pin', { cx: '.36', cy: '.3', r: '.85' },
+      [['vu-pin-a', '0'], ['vu-pin-b', '1']]));
+    /* The filter sits on the arm, not the needle, so the light keeps coming
+       from one place instead of swinging round with the pointer. */
+    var cast = svg('filter', { id: uid + '-cast', x: '-40%', y: '-40%', width: '180%', height: '180%' });
+    cast.appendChild(svg('feDropShadow', { dx: '1.4', dy: '2.2', stdDeviation: '1.7', 'flood-color': '#3a2a12', 'flood-opacity': '.42' }));
+    defs.appendChild(cast);
+    face.appendChild(defs);
+
+    face.appendChild(svg('rect', { class: 'vu-face', x: 2, y: 2, width: 196, height: 116, rx: 6, fill: 'url(#' + uid + '-paper)' }));
+    face.appendChild(svg('rect', { class: 'vu-vignette', x: 2, y: 2, width: 196, height: 116, rx: 6, fill: 'url(#' + uid + '-vig)' }));
     face.appendChild(svg('path', { class: 'vu-arc', d: 'M' + p0.x + ' ' + p0.y + ' A' + VU_R + ' ' + VU_R + ' 0 0 1 ' + p1.x + ' ' + p1.y }));
     face.appendChild(svg('path', { class: 'vu-red', d: 'M' + pz.x + ' ' + pz.y + ' A' + VU_R + ' ' + VU_R + ' 0 0 1 ' + p1.x + ' ' + p1.y }));
 
     marks.forEach(function (m) {
       var outer = S.vuPoint(m.angle, VU_R);
-      var inner = S.vuPoint(m.angle, m.major ? VU_R - 11 : VU_R - 6);
+      var inner = S.vuPoint(m.angle, m.major ? VU_R - 12 : VU_R - 6.5);
       face.appendChild(svg('line', { class: m.major ? 'vu-tick is-major' : 'vu-tick', x1: outer.x, y1: outer.y, x2: inner.x, y2: inner.y }));
       if (m.label !== null) {
         var lp = S.vuPoint(m.angle, VU_LABEL_R);
@@ -122,11 +154,26 @@
     vu.textContent = 'VU';
     face.appendChild(vu);
 
+    /* Glass goes over the print but under the needle, which stays crisp.
+       It reuses the face rect: a shape of its own would cut a visible seam
+       wherever its edge fell while the sheen was still partly opaque. */
+    face.appendChild(svg('rect', { class: 'vu-gloss', x: 2, y: 2, width: 196, height: 116, rx: 6, fill: 'url(#' + uid + '-gloss)' }));
+
+    /* A tapered pointer reads as a machined arm; a straight stroke reads as
+       a line. It pivots as a path, which setLevel rotates the same way. */
     var tip = S.vuPoint(0, VU_NEEDLE_R);
-    var needle = svg('line', { class: 'vu-needle', x1: pivot.x, y1: pivot.y, x2: tip.x, y2: tip.y });
+    var arm = svg('g', { filter: 'url(#' + uid + '-cast)' });
+    var needle = svg('path', { class: 'vu-needle', d:
+      'M' + (pivot.x - 1.6) + ' ' + pivot.y +
+      ' L' + (pivot.x - 0.5) + ' ' + tip.y +
+      ' Q' + pivot.x + ' ' + (tip.y - 1.7) + ' ' + (pivot.x + 0.5) + ' ' + tip.y +
+      ' L' + (pivot.x + 1.6) + ' ' + pivot.y + ' Z' });
     needle.style.transformOrigin = pivot.x + 'px ' + pivot.y + 'px';
-    face.appendChild(needle);
-    face.appendChild(svg('circle', { class: 'vu-pin', cx: pivot.x, cy: pivot.y, r: 4 }));
+    arm.appendChild(needle);
+    face.appendChild(arm);
+
+    face.appendChild(svg('circle', { class: 'vu-pin', cx: pivot.x, cy: pivot.y, r: 5, fill: 'url(#' + uid + '-pin)' }));
+    face.appendChild(svg('circle', { class: 'vu-pin-gloss', cx: pivot.x - 1.5, cy: pivot.y - 1.7, r: 1.5 }));
 
     host.textContent = '';
     host.appendChild(face);
