@@ -1074,27 +1074,27 @@
 
 [data-theme="departures"] .tuner {
   --board: #0b0b0c; --tile: #1b1c20; --tile-hi: #26282d; --seam: #08090b;
-  --ink: #f5f3ec; --amber: #ffc400; --mute: #6f7176; --line: #2a2c31;
+  --ink: #f5f3ec; --lime: #a9c23a; --mute: #6f7176; --line: #2a2c31;
   /* The flaps print in the yellow-green of a board lit from behind, a
      shade off the amber the rest of the theme uses for its accents. */
   --flap-ink: #d7f04e;
   --gap: 20px; --pad: 28px;
   --by-mono: "IBM Plex Mono", monospace;
   --by-fg: #6f7176; --by-line: #2a2c31; --by-plate: #111214;
-  --by-emboss: rgba(255,255,255,.04); --by-accent: #ffc400; --by-on-accent: #0b0b0c;
+  --by-emboss: rgba(255,255,255,.04); --by-accent: var(--lime); --by-on-accent: #0b0b0c;
   font-family: "Saira Condensed", "Arial Narrow", sans-serif;
   color: var(--ink); background: var(--board);
   box-shadow: inset 0 0 0 1px var(--line), inset 0 0 90px rgba(0,0,0,.9);
 }
 [data-theme="departures"] .tuner-bar { padding-bottom: 16px; border-bottom: 1px solid var(--line); }
-[data-theme="departures"] .brand-mark { width: 9px; height: 9px; border-radius: 0; background: var(--amber); }
+[data-theme="departures"] .brand-mark { width: 9px; height: 9px; border-radius: 0; background: var(--lime); }
 [data-theme="departures"] .brand-name { font-size: 16px; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; }
-[data-theme="departures"] .clock { font-size: 17px; font-weight: 600; letter-spacing: .12em; color: var(--amber); }
+[data-theme="departures"] .clock { font-size: 17px; font-weight: 600; letter-spacing: .12em; color: var(--lime); }
 [data-theme="departures"] .sched-chip { gap: 9px; padding: 6px 12px; border-radius: 0; color: var(--mute);
   font-size: 12px; letter-spacing: .2em; text-transform: uppercase; box-shadow: inset 0 0 0 1px var(--line); }
-[data-theme="departures"] .sched-chip[aria-pressed="true"] { color: var(--amber); box-shadow: inset 0 0 0 1px #4a3c10; }
+[data-theme="departures"] .sched-chip[aria-pressed="true"] { color: var(--lime); box-shadow: inset 0 0 0 1px #4a3c10; }
 [data-theme="departures"] .sched-led { width: 7px; height: 7px; border-radius: 0; background: var(--line); }
-[data-theme="departures"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--amber); }
+[data-theme="departures"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--lime); }
 [data-theme="departures"] .sched-next { font-size: 12px; letter-spacing: .12em; color: var(--mute); opacity: 1; }
 [data-theme="departures"] .icon-btn { width: 32px; height: 32px; border-radius: 0; color: var(--mute); box-shadow: inset 0 0 0 1px var(--line); }
 [data-theme="departures"] .icon-btn:hover { color: var(--ink); }
@@ -1155,7 +1155,7 @@
 [data-theme="departures"] .display-tag { margin: 12px 0 0; font-size: 15px; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
 [data-theme="departures"] .display-status { margin-top: 12px; font-size: 14px; letter-spacing: .18em; text-transform: uppercase; color: var(--mute); }
 [data-theme="departures"] .status-led { width: 8px; height: 8px; border-radius: 0; background: var(--line); }
-[data-theme="departures"] .status-led.live { background: var(--amber); }
+[data-theme="departures"] .status-led.live { background: var(--lime); }
 [data-theme="departures"] .dial { display: none; }
 
 [data-theme="departures"] .meter { display: block; margin-top: 20px; }
@@ -1167,7 +1167,7 @@
           mask: repeating-linear-gradient(90deg, #000 0 15px, transparent 15px 17px);
 }
 [data-theme="departures"] .meter-bar::before {
-  content: ""; position: absolute; inset: 0; background: var(--amber);
+  content: ""; position: absolute; inset: 0; background: var(--lime);
   clip-path: inset(0 calc(100% - var(--vu, 0) * 100%) 0 0);
 }
 [data-theme="departures"] .meter-blind { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--mute); margin-top: 8px; }
@@ -1181,16 +1181,16 @@
   border-bottom: 1px solid #17181c;
 }
 [data-theme="departures"] .preset:hover { background: #121316; }
-[data-theme="departures"] .preset.is-active { color: var(--amber); }
+[data-theme="departures"] .preset.is-active { color: var(--lime); }
 [data-theme="departures"] .preset-n {
   grid-area: n; width: 26px; height: 22px; display: grid; place-items: center;
   font-size: 13px; font-weight: 600; color: var(--mute); background: var(--tile);
   box-shadow: inset 0 0 0 1px var(--line);
 }
-[data-theme="departures"] .preset.is-active .preset-n { color: var(--board); background: var(--amber); box-shadow: none; }
+[data-theme="departures"] .preset.is-active .preset-n { color: var(--board); background: var(--lime); box-shadow: none; }
 [data-theme="departures"] .preset-name { grid-area: name; font-size: 19px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
 [data-theme="departures"] .preset-band { grid-area: band; font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: var(--mute); }
-[data-theme="departures"] .preset.is-active .preset-band { color: var(--amber); }
+[data-theme="departures"] .preset.is-active .preset-band { color: var(--lime); }
 [data-theme="departures"] .preset-add { opacity: 1; color: var(--mute); border-bottom: 1px dashed var(--line); }
 [data-theme="departures"] .preset-add:hover { color: var(--ink); }
 
@@ -1198,16 +1198,16 @@
 [data-theme="departures"] .play-btn {
   width: auto; height: auto; border-radius: 0; padding: 12px 22px; gap: 10px;
   font-size: 15px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase;
-  color: var(--board); background: var(--amber);
+  color: var(--board); background: var(--lime);
 }
-[data-theme="departures"] .play-btn:hover { background: #ffd23f; }
+[data-theme="departures"] .play-btn:hover { background: #bcd64d; }
 [data-theme="departures"] .fader label { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--mute); }
-[data-theme="departures"] .fader output { font-size: 16px; font-weight: 600; color: var(--amber); }
+[data-theme="departures"] .fader output { font-size: 16px; font-weight: 600; color: var(--lime); }
 [data-theme="departures"] .fader input { -webkit-appearance: none; appearance: none; height: 4px; background: var(--tile); box-shadow: inset 0 0 0 1px var(--line); }
 [data-theme="departures"] .fader input::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 10px; height: 22px; border-radius: 0; background: var(--amber); cursor: grab;
+  -webkit-appearance: none; width: 10px; height: 22px; border-radius: 0; background: var(--lime); cursor: grab;
 }
-[data-theme="departures"] .fader input::-moz-range-thumb { width: 10px; height: 22px; border: 0; border-radius: 0; background: var(--amber); }
+[data-theme="departures"] .fader input::-moz-range-thumb { width: 10px; height: 22px; border: 0; border-radius: 0; background: var(--lime); }
 
 /* ================================================================== */
 /* G · MARCONI — black lacquer, gold, the sunburst over the speaker     */
@@ -2185,7 +2185,33 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   box-shadow: 0 0 0 1px var(--ui-line); transition: box-shadow .18s ease, transform .18s ease;
 }
 .theme-card:hover .theme-thumb { transform: translateY(-1px); }
-.theme-card input:checked + .theme-thumb { box-shadow: 0 0 0 2px var(--tint, var(--ui-fg)); }
+/* Picked, not merely outlined. A two-pixel ring in the theme's own accent
+   was easy to miss on a wall of miniatures that are themselves colourful,
+   so the chosen one gets a thicker ring with a gap of page inside it so
+   the ring reads as a ring, a lift off the grid, and a tick in the corner
+   that no unselected card has. */
+.theme-card input:checked + .theme-thumb {
+  box-shadow:
+    0 0 0 2px var(--ui-bg),
+    0 0 0 5px var(--tint, var(--ui-fg)),
+    0 5px 16px -5px color-mix(in srgb, var(--tint, var(--ui-fg)) 60%, transparent);
+  transform: translateY(-2px);
+}
+.theme-card input:checked + .theme-thumb::before {
+  content: ""; position: absolute; right: 6px; top: 6px; width: 19px; height: 19px;
+  border-radius: 50%; background: var(--tint, var(--ui-fg));
+  box-shadow: 0 1px 3px rgba(0,0,0,.5); z-index: 3;
+}
+/* Two borders of an empty box, turned: a glyph would be set in whatever
+   face the thumbnail is using, and half of them have no tick worth
+   having. */
+.theme-card input:checked + .theme-thumb::after {
+  content: ""; position: absolute; right: 12px; top: 9px;
+  width: 5px; height: 9px; z-index: 4;
+  border: solid var(--tint-ink, #16140d);
+  border-width: 0 2px 2px 0;
+  transform: rotate(43deg);
+}
 .theme-card input:focus-visible + .theme-thumb { box-shadow: 0 0 0 2px var(--ui-accent), 0 0 0 5px color-mix(in srgb, var(--ui-accent) 30%, transparent); }
 /* Name and note sit together in their own box, so the gap between them is
    tight while the thumbnail keeps its own breathing room above. */
@@ -2280,7 +2306,7 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 
 /* Editorial: colour block, oversized name, and the bar bank the real
    visualiser draws, mirrored about its centre line. */
-.theme-thumb[data-theme="editorial"] { --tint: #e11d74; background: #fbfbfa; }
+.theme-thumb[data-theme="editorial"] { --tint: #e11d74; --tint-ink: #fff; background: #fbfbfa; }
 .theme-thumb[data-theme="editorial"] .tt { grid-template-columns: 1.35fr 1fr; grid-template-rows: 1fr; padding: 0; gap: 0; }
 .theme-thumb[data-theme="editorial"] .tt-cap { display: none; }
 .theme-thumb[data-theme="editorial"] .tt-glass { border-radius: 0; background: #e11d74; }
@@ -2299,7 +2325,7 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 
 /* Retro 8-bit: the HUD in miniature — a dithered field, a pixel call sign
    and the meter quantised into cells. */
-.theme-thumb[data-theme="retro"] { --tint: #f83800; background: #0a0a0c; box-shadow: inset 0 0 0 2px #fcfcfc; }
+.theme-thumb[data-theme="retro"] { --tint: #f83800; --tint-ink: #fff; background: #0a0a0c; box-shadow: inset 0 0 0 2px #fcfcfc; }
 .theme-thumb[data-theme="retro"]::before {
   content: ""; position: absolute; inset: 0;
   background-image: repeating-conic-gradient(#141419 0 25%, transparent 0 50%);
@@ -2323,9 +2349,9 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .theme-thumb[data-theme="retro"] .tt-keys i:first-child { background: #f83800; }
 
 /* Departures: flap tiles with their fold seam, and one amber row. */
-.theme-thumb[data-theme="departures"] { --tint: #ffc400; background: #0b0b0c; box-shadow: inset 0 0 0 1px #2a2c31; }
+.theme-thumb[data-theme="departures"] { --tint: #a9c23a; background: #0b0b0c; box-shadow: inset 0 0 0 1px #2a2c31; }
 .theme-thumb[data-theme="departures"] .tt-cap { color: #6f7176; font: 600 7px/1 "Saira Condensed", sans-serif; letter-spacing: .16em; text-transform: uppercase; }
-.theme-thumb[data-theme="departures"] .tt-freq { color: #ffc400; }
+.theme-thumb[data-theme="departures"] .tt-freq { color: #d7f04e; }
 .theme-thumb[data-theme="departures"] .tt-glass {
   --pitch: calc(1ch + .06em);
   border-radius: 0;
@@ -2338,10 +2364,10 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 }
 .theme-thumb[data-theme="departures"] .tt-glass::before {
   content: "CDSK"; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-  font: inherit; letter-spacing: inherit; color: #ffc400;
+  font: inherit; letter-spacing: inherit; color: #d7f04e;
 }
 .theme-thumb[data-theme="departures"] .tt-keys i { background: #1b1c20; border-radius: 0; box-shadow: inset 0 0 0 1px #2a2c31; }
-.theme-thumb[data-theme="departures"] .tt-keys i:first-child { background: #ffc400; box-shadow: none; }
+.theme-thumb[data-theme="departures"] .tt-keys i:first-child { background: #a9c23a; box-shadow: none; }
 
 /* Marconi: lacquer, a ray fan over the speaker, gold serif call sign. */
 .theme-thumb[data-theme="marconi"] { --tint: #c9a227; background: radial-gradient(120% 90% at 50% 0%, #1d1811, #0f0c09 66%); box-shadow: inset 0 0 0 1px #6d5a2c; }
