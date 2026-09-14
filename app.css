@@ -231,9 +231,14 @@
    around the text only while it is actually moving: a name that merely
    overflows keeps its ellipsis, and text-overflow has no effect on a
    child element, so the wrapper cannot be there the rest of the time. */
+/* A preset's name is read in passing, so it goes out slowly and comes
+   back quickly: 60% of the cycle spent travelling, against 48% before,
+   with the time taken from the return rather than from either pause. The
+   pauses are what make it readable at all -- one at each end, long enough
+   to take in the start of the name and then the end of it. */
 @keyframes preset-marquee {
   0%, 14%   { transform: translateX(0); }
-  62%, 76%  { transform: translateX(var(--marquee-by, 0)); }
+  74%, 86%  { transform: translateX(var(--marquee-by, 0)); }
   100%      { transform: translateX(0); }
 }
 .preset-name .scroll-run { display: inline-block; white-space: nowrap; will-change: transform; }
@@ -410,9 +415,17 @@
   animation-delay: .9s;
   will-change: transform;
 }
+/* The outward leg is 46% of the cycle and stays there -- tuner-ui reads
+   that share as TRAVEL_SHARE to pace a split-flap name one flap at a
+   time, so moving it would change how fast the board turns over.
+
+   What changed is the way back: 18% of the cycle rather than 26%, which
+   reads as the line returning to its mark rather than scrolling
+   backwards. The eight points it gives up go to the pause at the far
+   end, where the end of a long name sits still and can be read. */
 @keyframes name-marquee {
   0%, 12%   { transform: translateX(0); }
-  58%, 74%  { transform: translateX(var(--marquee-by, 0)); }
+  58%, 82%  { transform: translateX(var(--marquee-by, 0)); }
   100%      { transform: translateX(0); }
 }
 @media (prefers-reduced-motion: reduce) {
