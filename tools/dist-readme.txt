@@ -190,7 +190,9 @@ RECORDING
 Hold either Shift key and a small red REC button appears beside play.
 Press it to start, press it again to stop. It stays visible while it is
 recording whether you are holding Shift or not, and the dot on it blinks
-so you can see at a glance that it is running.
+so you can see at a glance that it is running. When you stop it, it turns
+green and reads SAVED for a few seconds before it goes, so you know the
+file was written.
 
 The file lands in your Downloads folder, named for when it started and
 how long it ran:
