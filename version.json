@@ -1,6 +1,6 @@
 {
-  "version": "1.2.4",
+  "version": "1.2.5",
   "released": "2026-09-13",
-  "notes": "Recording: hold Shift for a record button, and the file lands in your downloads. On air is one green in every theme. Fixes the theme thumbnails, which were being painted over by the selection tick.",
+  "notes": "Settings are no longer read off disk with the browser's file access opened up: that flag is gone from both launcher scripts, and the export is a .js file which a fresh profile can load without it. Re-run the shortcut script to rewrite an older shortcut. Stored settings are checked for shape before they are trusted, so a bad one can no longer shut the Settings drawer. The meter stopped telling the whole page about itself sixty times a second, which halves what the app costs while playing, and Tivoli's speaker stops rippling when nothing is on. The download is 279 KB rather than 466. Editorial keeps its tone sliders when the record button is showing.",
   "url": "https://github.com/Markticulous/deskside-radio/releases/latest"
 }
