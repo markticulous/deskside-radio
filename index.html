@@ -9,8 +9,26 @@
 <link rel="icon" href="favicon-dial.ico" sizes="16x16 24x24 32x32 48x48 64x64 128x128 256x256">
 <link rel="icon" href="icon-small.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-256.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=Cinzel:wght@600;700&family=Cormorant+Garamond:ital,wght@1,500&family=IBM+Plex+Mono:wght@400;600;700&family=Jost:wght@300;400;500&family=Oswald:wght@500&family=Poiret+One&family=Press+Start+2P&family=Saira+Condensed:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;500;600;700&family=Syne:wght@700;800&family=Figtree:wght@400;500;600&display=swap">
+<!-- The typefaces are fetched without holding up the first paint.
+     A stylesheet in the head blocks rendering AND parsing, and the five
+     scripts below are parser-blocking in turn, so a slow or unreachable
+     Google meant a blank window for as long as it took to answer -- with
+     no timeout, on a page that otherwise needs nothing from the network
+     to draw itself. media="print" makes it a sheet this device does not
+     match, which the browser fetches at low priority and does not wait
+     for; onload promotes it to the real thing.
+
+     The cost is an honest one: the radio is drawn in the fallback stacks
+     for a moment and reflows when the faces land. It already did that --
+     display=swap has always meant the text appears before the webfont --
+     and the measuring passes are keyed off document.fonts, which fires
+     either way. What changes is that the fallback frame is now sometimes
+     visible rather than always hidden behind a white window. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=Cinzel:wght@600;700&family=Cormorant+Garamond:ital,wght@1,500&family=IBM+Plex+Mono:wght@400;600;700&family=Jost:wght@300;400;500&family=Oswald:wght@500&family=Poiret+One&family=Press+Start+2P&family=Saira+Condensed:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;500;600;700&family=Syne:wght@700;800&family=Figtree:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=Cinzel:wght@600;700&family=Cormorant+Garamond:ital,wght@1,500&family=IBM+Plex+Mono:wght@400;600;700&family=Jost:wght@300;400;500&family=Oswald:wght@500&family=Poiret+One&family=Press+Start+2P&family=Saira+Condensed:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;500;600;700&family=Syne:wght@700;800&family=Figtree:wght@400;500;600&display=swap"></noscript>
 </head>
 <body class="app">
 

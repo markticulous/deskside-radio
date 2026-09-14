@@ -207,6 +207,17 @@ Meters
   streams refuse the access it needs, and the app says so rather than
   showing a meter that is guessing.
 
+  VU means Volume Unit, and a VU meter measures the level of the
+  programme, not how loudly you are listening to it. The needle
+  therefore does not follow the volume fader - that is deliberate, and
+  it is what the meters on a broadcast console or a tape deck do. Turn
+  the volume down and the needle keeps swinging, because the station is
+  still as loud as it was. The meters that do follow a volume knob are
+  the power meters on a hi-fi receiver, which is a different instrument.
+
+  For the same reason the meter ignores the bass and treble controls:
+  it is reading the station, not the room.
+
 It keeps playing
   Streams drop. The radio watches for silence and dropped connections
   and reconnects on its own, backing off from two seconds to thirty, and

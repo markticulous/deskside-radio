@@ -217,25 +217,41 @@
      nothing ever overflows for the ellipsis to replace. */
   min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  transition: text-indent .25s ease;
 }
+/* The travel is a transform, not an indent.
+
+   text-indent is a layout property: animating it laid the line out again
+   sixty times a second and repainted it about a hundred and fifty, for as
+   long as the name was on screen -- which, for a station whose name does
+   not fit, is all day, playing or stopped. Measured at 5.4% of a core
+   with one long name and nothing playing.
+
+   A transform on the run of text does the same thing on the compositor
+   and costs the main thread nothing. The runner is .scroll-run, wrapped
+   around the text only while it is actually moving: a name that merely
+   overflows keeps its ellipsis, and text-overflow has no effect on a
+   child element, so the wrapper cannot be there the rest of the time. */
 @keyframes preset-marquee {
-  0%, 14%   { text-indent: 0; }
-  62%, 76%  { text-indent: var(--marquee-by, 0); }
-  100%      { text-indent: 0; }
+  0%, 14%   { transform: translateX(0); }
+  62%, 76%  { transform: translateX(var(--marquee-by, 0)); }
+  100%      { transform: translateX(0); }
 }
+.preset-name .scroll-run { display: inline-block; white-space: nowrap; will-change: transform; }
 .preset:hover .preset-name.can-scroll,
-.preset.is-active .preset-name.can-scroll {
-  text-overflow: clip;
+.preset.is-active .preset-name.can-scroll { text-overflow: clip; }
+.preset:hover .preset-name.can-scroll .scroll-run,
+.preset.is-active .preset-name.can-scroll .scroll-run {
   animation: preset-marquee var(--marquee-ms, 6s) ease-in-out infinite;
 }
 /* Hover waits; the playing station does not, and wins when both apply. */
-.preset:hover .preset-name.can-scroll { animation-delay: .55s; }
-.preset.is-active .preset-name.can-scroll { animation-delay: .9s; }
+.preset:hover .preset-name.can-scroll .scroll-run { animation-delay: .55s; }
+.preset.is-active .preset-name.can-scroll .scroll-run { animation-delay: .9s; }
 
 @media (prefers-reduced-motion: reduce) {
+  .preset:hover .preset-name.can-scroll .scroll-run,
+  .preset.is-active .preset-name.can-scroll .scroll-run { animation: none; }
   .preset:hover .preset-name.can-scroll,
-  .preset.is-active .preset-name.can-scroll { animation: none; text-overflow: ellipsis; }
+  .preset.is-active .preset-name.can-scroll { text-overflow: ellipsis; }
 }
 
 .fader         { display: flex; align-items: center; gap: 9px; }
@@ -383,19 +399,25 @@
    and same movement as the preset buttons. Editorial is the exception --
    it is handed a box and wraps inside it, so it never overflows and never
    gets the class. */
-.display-name.can-scroll {
-  text-overflow: clip;
+/* The readout scrolls by moving its line, for the reason given above the
+   preset keyframes. setName already puts every line in a .name-line, and
+   that span is display:block with width:max-content, so it is the right
+   thing to move and needs no wrapper of its own. */
+.display-name.can-scroll { text-overflow: clip; }
+.display-name.can-scroll .name-line {
   animation: name-marquee var(--marquee-ms, 6s) ease-in-out infinite;
   /* Long enough that a station change is read before anything moves. */
   animation-delay: .9s;
+  will-change: transform;
 }
 @keyframes name-marquee {
-  0%, 12%   { text-indent: 0; }
-  58%, 74%  { text-indent: var(--marquee-by, 0); }
-  100%      { text-indent: 0; }
+  0%, 12%   { transform: translateX(0); }
+  58%, 74%  { transform: translateX(var(--marquee-by, 0)); }
+  100%      { transform: translateX(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .display-name.can-scroll { animation: none; text-overflow: ellipsis; }
+  .display-name.can-scroll .name-line { animation: none; }
+  .display-name.can-scroll { text-overflow: ellipsis; }
 }
 .scope { display: none; }
 /* Read once per theme by setLevel. A theme whose meter is drawn some
@@ -414,6 +436,11 @@
    vanishing, so it stays visible at -20. The bar fills have nothing to
    show at rest and simply go out. */
 .tuner.is-quiet .meter-bar::before { opacity: 0; }
+/* The cover fades with what it covers: left alone it would sit over a
+   bar that had already gone out, which shows as nothing but costs a
+   layer. */
+.meter-bar::after { transition: opacity .4s ease-in; }
+.tuner.is-quiet .meter-bar::after { opacity: 0; }
 .meter-blind { display: none; }
 .tuner.is-blind .meter-face, .tuner.is-blind .meter-bar, .tuner.is-blind .scope { opacity: .4; }
 .tuner.is-blind .meter-blind { display: block; }
@@ -775,10 +802,27 @@
   -webkit-mask: repeating-linear-gradient(90deg, #000 0 9px, transparent 9px 12px);
   mask: repeating-linear-gradient(90deg, #000 0 9px, transparent 9px 12px);
 }
+/* The lit part of a bar meter, done with a cover rather than a clip.
+
+   clip-path with a value in it is repainted and re-rastered every frame:
+   Console measured 18.5ms of paint and 11ms of raster per second, all of
+   it for a rectangle changing width. A transform is the compositor's job
+   and costs neither.
+
+   The obvious version of this is wrong. Scaling the gradient itself
+   squashes it, so the amber and red bands would slide down towards the
+   left as the level fell instead of staying at their marks. Instead the
+   gradient is painted once at full width and a piece of the track's own
+   colour is drawn over the top of it, anchored at the right and scaled
+   from nothing at full level to the whole bar at silence. What moves is
+   an opaque rectangle; the colours underneath never move at all. */
 [data-theme="console"] .meter-bar::before {
   content: ""; position: absolute; inset: 0;
   background: linear-gradient(90deg, var(--green) 0 65.22%, var(--amber) 65.22% 86.96%, var(--red) 86.96%);
-  clip-path: inset(0 calc(100% - var(--vu, 0) * 100%) 0 0);
+}
+[data-theme="console"] .meter-bar::after {
+  content: ""; position: absolute; inset: 0; background: #1b1e22;
+  transform-origin: right center; transform: scaleX(calc(1 - var(--vu, 0)));
 }
 [data-theme="console"] .meter-scale { position: relative; height: 14px; margin-top: 5px; }
 [data-theme="console"] .meter-scale span {
@@ -951,6 +995,10 @@
 }
 [data-theme="rams"] .meter-face, [data-theme="rams"] .meter-scale { display: none; }
 [data-theme="rams"] .meter-bar { position: relative; height: 4px; background: var(--body-2); }
+/* Left on the clip, like the board. Rendering the two side by side, this
+   one did not come back identical and I could not account for the
+   difference; its bar is four pixels tall, so what a cover would save is
+   not worth shipping a change I cannot explain. */
 [data-theme="rams"] .meter-bar::before {
   content: ""; position: absolute; inset: 0;
   background: linear-gradient(90deg, var(--ink) 0 86.96%, var(--orange) 86.96%);
@@ -1223,7 +1271,10 @@
 [data-theme="retro"] .meter-bar::before {
   content: ""; position: absolute; inset: 0;
   background: linear-gradient(90deg, var(--green) 0 62%, var(--gold) 62% 84%, var(--red) 84%);
-  clip-path: inset(0 calc(100% - var(--vu, 0) * 100%) 0 0);
+}
+[data-theme="retro"] .meter-bar::after {
+  content: ""; position: absolute; inset: 0; background: var(--dark);
+  transform-origin: right center; transform: scaleX(calc(1 - var(--vu, 0)));
 }
 [data-theme="retro"] .meter-blind { font-size: 8px; line-height: 1.9; color: var(--grey); margin-top: 10px; text-transform: uppercase; }
 
@@ -1359,6 +1410,14 @@
   -webkit-mask: repeating-linear-gradient(90deg, #000 0 15px, transparent 15px 17px);
           mask: repeating-linear-gradient(90deg, #000 0 15px, transparent 15px 17px);
 }
+/* The one bar still drawn with a clip rather than a cover. This board
+   carries a hairline border as an inset shadow, and an inset shadow paints
+   beneath its own element's children -- so a cover at inset 0 rubs the
+   border out as it travels, and a cover inset by a pixel leaves a lit
+   outline around every unlit segment instead. Both were rendered and both
+   were visibly wrong, which is worth more than the couple of milliseconds
+   a frame the cover would have saved here. The other three bars have no
+   such border and use the cover. */
 [data-theme="departures"] .meter-bar::before {
   content: ""; position: absolute; inset: 0; background: var(--lime);
   clip-path: inset(0 calc(100% - var(--vu, 0) * 100%) 0 0);

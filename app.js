@@ -233,10 +233,16 @@
     /* The recorder taps in beside the tone controls rather than after
        them, so a recording is a copy of what was broadcast: turning the
        volume down, or dialling in bass for the room, changes what comes
-       out of the speakers and not what lands in the file. */
+       out of the speakers and not what lands in the file.
+
+       Built here but not connected here. A MediaStreamAudioDestination is
+       rendered for as long as it is attached, whether or not anything is
+       reading it, so leaving it wired up meant the graph resampling into a
+       stream nobody listened to for the entire life of the app. It is
+       connected when recording starts and disconnected when it stops; the
+       button's own test is that the node exists, which it always does. */
     try {
       recTap = c.createMediaStreamDestination();
-      an.connect(recTap);
     } catch (e) { recTap = null; }
     /* An interruption of the Web Audio render thread does not drop samples,
        it delays them, so a live stream comes back several seconds behind and
@@ -425,6 +431,8 @@
   function setStatus(s, text) {
     var was = status;
     status = s;
+    // Connecting, live, reconnecting: all of them have a needle to move.
+    if (s !== 'stopped' && s !== 'idle') startMeter();
     /* Coming out of a handover: the level was taken to nothing before the
        change, so the station that replaced it is brought up rather than
        dropped in at full. Waiting for 'live' rather than ramping from the
@@ -567,6 +575,7 @@
 
   function startPlayback() {
     state.intendedPlaying = true;
+    startMeter();
     // Whatever a handover left behind, a deliberate press starts at full.
     clearInterval(fadeTimer); fadeTimer = null;
     fadeMul = 1; applyGain();
@@ -587,6 +596,16 @@
     audio.load();
     attempts = 0;
     setStatus('stopped', 'Stopped');
+    /* The graph keeps pulling quanta through seven nodes and holds the
+       output device open for as long as the context is running, which on
+       a stopped radio is work with no sound at the end of it. The element
+       has no src by this point, so none of the rewind caveats around
+       suspending mid-stream apply, and ensureGraph resumes it on the way
+       back in. The heartbeat's own resume is guarded by intendedPlaying,
+       which is already false here, so it will not undo this. */
+    if (ctx && ctx.state === 'running' && ctx.suspend) {
+      try { ctx.suspend(); } catch (e) { /* not fatal, only wasteful */ }
+    }
     save();
     setTimeout(function () { userStopping = false; }, 0);
   }
@@ -696,8 +715,25 @@
      change is not, because the old station's level is then being shown
      against the new station's name. */
   var meterRelease = false;
-  function meterLoop(ts) {
+  /* The loop runs while there is something to draw and stops when there
+     is not. It used to re-arm unconditionally, so a stopped radio asked
+     for sixty frames a second all day to write the same zero into the
+     same property -- cheap per frame, but it is what kept the window out
+     of the browser's idle state for as long as the app was open.
+
+     Stopping is safe only once the needle has come to rest, which is what
+     `quiet` already means: it is false for the whole of the fall. So the
+     last frame of the decay is drawn, and then nothing. */
+  var meterRunning = false;
+
+  function startMeter() {
+    if (meterRunning) return;
+    meterRunning = true;
+    lastTs = 0;
     requestAnimationFrame(meterLoop);
+  }
+
+  function meterLoop(ts) {
     var dt = lastTs ? Math.min(ts - lastTs, 250) : 16;
     lastTs = ts;
     var target = 0;
@@ -732,6 +768,12 @@
       if (quiet) TunerUI.clearScope(el.tuner);
     }
     if (!lit && !quiet && !holding) TunerUI.drawBars(el.tuner, null);
+
+    /* Nothing playing, nothing held, and the needle on its stop: there is
+       no next frame worth asking for. Anything that could change that
+       calls startMeter. */
+    if (quiet && !lit && !holding) { meterRunning = false; return; }
+    requestAnimationFrame(meterLoop);
   }
 
   /* A multiplier on top of whatever the fader says, for the handover fade.
@@ -1497,10 +1539,18 @@
 
   function startRec() {
     if (recBlockedReason()) return;
+    // Attached only while it is being read. See buildGraph.
+    try { if (analyser) analyser.connect(recTap); }
+    catch (e) { return; }
     recChunks = [];
     try {
       recorder = new MediaRecorder(recTap.stream, { mimeType: REC_MIME, audioBitsPerSecond: 96000 });
-    } catch (e) { recorder = null; refreshRec(); return; }
+    } catch (e) {
+      recorder = null;
+      try { if (analyser) analyser.disconnect(recTap); } catch (e2) { /* never attached */ }
+      refreshRec();
+      return;
+    }
     recStartedAt = Date.now();
     recorder.ondataavailable = function (e) { if (e.data && e.data.size) recChunks.push(e.data); };
     recorder.onstop = function () {
@@ -1508,6 +1558,7 @@
       var blob = new Blob(recChunks, { type: 'audio/mp4' });
       recChunks = [];
       recorder = null;
+      try { if (analyser) analyser.disconnect(recTap); } catch (e) { /* already gone */ }
       if (blob.size) {
         saveRecording(blob, seconds);
         /* The button stays up through this whether Shift is held or not,
@@ -2850,7 +2901,7 @@
     setTimeout(function () { checkVersion(false); }, 3000);
     el.tuner.classList.add('is-quiet');
     meterQuiet = true;
-    requestAnimationFrame(meterLoop);
+    startMeter();
 
     /* Play on launch. probeAutoplay() finds out whether this browser will
        start audio unasked — the launcher shortcut sees to that — and builds
