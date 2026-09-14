@@ -694,8 +694,12 @@
       var sum = 0;
       for (var i = 0; i < timeData.length; i++) sum += timeData[i] * timeData[i];
       target = Signal.rmsToVu(Math.sqrt(sum / timeData.length));
-      analyser.getByteFrequencyData(freqData);
-      TunerUI.drawBars(el.tuner, freqData);
+      /* Filling this costs a 2048-point transform, and in every theme
+         but Editorial the canvas it feeds is display:none. */
+      if (TunerUI.scopeShowing(el.tuner)) {
+        analyser.getByteFrequencyData(freqData);
+        TunerUI.drawBars(el.tuner, freqData);
+      }
     }
     if (!holding) level = Signal.vuBallistics(level, target, dt);
     TunerUI.setLevel(el.tuner, level);
@@ -804,7 +808,12 @@
 
   function tick() {
     var now = new Date();
-    el.clock.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes());
+    /* Only when it has changed. Assigning the same text still replaces
+       the text node, which invalidates style, lays out, paints and asks
+       the compositor for a frame -- once a second, all day, to show the
+       same two digits it was already showing. */
+    var hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
+    if (el.clock.textContent !== hhmm) el.clock.textContent = hhmm;
     var slot = state.schedulerEnabled ? Scheduler.activeSlot(state.schedule, now) : null;
     var key = slotKey(slot);
     if (key !== lastSlotKey) {
@@ -849,19 +858,24 @@
     save();
   }
 
+  function setText(node, text) {
+    if (node.textContent !== text) node.textContent = text;
+  }
+
   function renderNext(now) {
-    el.schedNext.setAttribute('aria-hidden', state.schedulerEnabled ? 'false' : 'true');
+    var hide = state.schedulerEnabled ? 'false' : 'true';
+    if (el.schedNext.getAttribute('aria-hidden') !== hide) el.schedNext.setAttribute('aria-hidden', hide);
     // Leave the old text in place while the chip is off: it is clipped to
     // zero width by CSS, and keeping it is what gives the slide something
     // to collapse.
     if (!state.schedulerEnabled) { return; }
     var n = Scheduler.nextChange(state.schedule, now);
-    if (!n) { el.schedNext.textContent = 'No slots yet'; return; }
+    if (!n) { setText(el.schedNext, 'No slots yet'); return; }
     var st = n.slot ? station(n.slot.stationId) : null;
     var when = pad(n.at.getHours()) + ':' + pad(n.at.getMinutes());
     var sameDay = n.at.toDateString() === now.toDateString();
     var day = sameDay ? '' : ' ' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][n.at.getDay()];
-    el.schedNext.textContent = (st ? st.name : 'Free play') + ' at ' + when + day;
+    setText(el.schedNext, (st ? st.name : 'Free play') + ' at ' + when + day);
   }
 
   el.schedToggle.addEventListener('click', function () {
@@ -1164,6 +1178,9 @@
   function applyLook() {
     document.documentElement.setAttribute('data-theme', state.theme);
     requestAnimationFrame(function () {
+      // The meter is drawn differently by every theme, and setLevel works
+      // that out once rather than each frame -- so tell it to look again.
+      TunerUI.refreshMeter(el.tuner);
       var st = currentStation();
       if (!st) return;
       TunerUI.setNeedle(el.tuner, st.band);
@@ -1209,8 +1226,17 @@
     clearTimeout(volumeSaveTimer);
     volumeSaveTimer = setTimeout(save, 250);
   });
-  el.bass.addEventListener('input', function () { ensureGraph(); state.bass = +el.bass.value; rememberTone(); applyTone(); save(); });
-  el.treble.addEventListener('input', function () { ensureGraph(); state.treble = +el.treble.value; rememberTone(); applyTone(); save(); });
+  /* The sound follows the slider, the writing to storage waits for it to
+     settle -- the same bargain the volume fader has always struck, which
+     the tone controls were not in on. A drag was one stringify and one
+     localStorage write per event. */
+  var toneSaveTimer;
+  function saveToneSoon() {
+    clearTimeout(toneSaveTimer);
+    toneSaveTimer = setTimeout(save, 250);
+  }
+  el.bass.addEventListener('input', function () { ensureGraph(); state.bass = +el.bass.value; rememberTone(); applyTone(); saveToneSoon(); });
+  el.treble.addEventListener('input', function () { ensureGraph(); state.treble = +el.treble.value; rememberTone(); applyTone(); saveToneSoon(); });
   el.volume.addEventListener('input', function () { markFader(el.volume); });
 
   /* Double-click a fader to send it back where it started. It slides there
