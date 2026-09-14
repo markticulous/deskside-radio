@@ -222,19 +222,19 @@
 
       <section class="pane" id="paneService" role="tabpanel" aria-labelledby="tabService" hidden>
         <div class="pane-block">
-          <h3>Backup</h3>
-          <p class="hint">A settings file holds the stations, the schedule, the theme and the sound settings. Nothing else leaves this machine.</p>
-          <div class="btn-row">
-            <button type="button" class="ghost" id="exportBtn">Export settings</button>
-            <label class="ghost file-btn">Import settings <input type="file" id="importFile" accept="application/json" hidden></label>
-          </div>
-        </div>
-        <div class="pane-block">
           <h3>Read me</h3>
           <p class="hint">The full manual for this thing: what every control does, why the shortcut exists, which streams work, and what to try when one will not play.</p>
           <div class="btn-row">
             <a class="ghost" id="readmeLink" href="#" target="_blank" rel="noopener">Open the read me</a>
             <span class="miss-note" id="readmeMissing" hidden>Read me file not found</span>
+          </div>
+        </div>
+        <div class="pane-block">
+          <h3>Backup</h3>
+          <p class="hint">A settings file holds the stations, the schedule, the theme and the sound settings. Nothing else leaves this machine.</p>
+          <div class="btn-row">
+            <button type="button" class="ghost" id="exportBtn">Export settings</button>
+            <label class="ghost file-btn">Import settings <input type="file" id="importFile" accept="application/json" hidden></label>
           </div>
         </div>
         <div class="pane-block">

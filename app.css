@@ -126,10 +126,32 @@
 @media (prefers-reduced-motion: reduce) {
   .sched-chip.is-counting .sched-bar { animation: none; transform: scaleX(1); }
 }
-.sched-next   { opacity: .7; max-width: 30ch; overflow: hidden; white-space: nowrap; transition: max-width .2s ease, opacity .16s ease; }
+/* The width is written by renderNext, because a width that comes from the
+   text cannot be transitioned -- the box simply becomes the size of
+   whatever is in it, between one frame and the next. --next-w is that
+   text measured, and the box is held at it explicitly.
+
+   It has to be width and not max-width. A max-width eases only one way:
+   when the new text is shorter, the content shrinks the instant it is
+   set and the box -- the smaller of content and cap -- snaps to it while
+   the cap eases down from above, invisibly. An explicit width stays where
+   it was until --next-w changes and then moves in either direction, with
+   overflow: hidden covering whatever does not fit meanwhile. The 30ch
+   ceiling the property always had is now a static max-width beside it.
+
+   This animates a layout property and means a reflow a frame while it
+   runs, which is normally worth avoiding. It runs for a third of a second
+   when a slot changes hands, which is minutes or hours apart, and there
+   is no compositor-only way to make a flex item resize and take its
+   neighbours with it. Reduced motion zeroes the duration, further down. */
+.sched-next {
+  opacity: .7; width: var(--next-w, 30ch); max-width: 30ch;
+  overflow: hidden; white-space: nowrap;
+  transition: width .3s cubic-bezier(.2, .8, .2, 1), opacity .16s ease;
+}
 /* Turning the schedule off slides the next-up text away instead of
    dropping it, so the chip changes width in one short move. */
-.sched-chip[aria-pressed="false"] .sched-next { max-width: 0; opacity: 0; }
+.sched-chip[aria-pressed="false"] .sched-next { width: 0; opacity: 0; }
 .icon-btn     { display: inline-grid; place-items: center; width: 40px; height: 40px; }
 .shortcut-btn { width: 30px; height: 30px; opacity: .55; transition: opacity .16s ease; }
 .shortcut-btn:hover { opacity: 1; }
@@ -2390,6 +2412,7 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .ghost, .file-btn {
   font: inherit; font-size: 13px; padding: 8px 14px; border: 1px dashed var(--ui-line); background: none; color: var(--ui-fg);
   border-radius: var(--ui-radius); cursor: pointer; justify-self: start; display: inline-block;
+  text-decoration: none;   /* one of these is an <a>, and reads as a button like the rest */
 }
 .ghost:hover, .file-btn:hover { border-style: solid; }
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
