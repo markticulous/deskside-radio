@@ -339,13 +339,15 @@
 <dialog class="confirm" id="shortcutHelp">
   <form method="dialog" class="confirm-box">
     <h2>Shortcut downloaded</h2>
-    <p>Your browser will not save a shortcut file under its own name &mdash; it renames it, because a shortcut can point anywhere. Two ways to finish:</p>
+    <p>Windows makes this harder than it needs to be, so the easy way is first.</p>
     <ol class="help-steps">
-      <li><strong>Rename it.</strong> In your Downloads folder, rename <code>Deskside Radio.download</code> to <code>Deskside&nbsp;Radio.url</code>, then drag it to your Desktop.</li>
-      <li><strong>Or run the helper</strong> in the app folder, which makes the shortcut and puts it on the Desktop for you:
+      <li><strong>Run the helper instead.</strong> Double-click <code>Win&nbsp;-&nbsp;Create&nbsp;Desktop&nbsp;Shortcut.cmd</code> in the app folder, or paste this:
         <span class="help-path"><code id="shortcutCmd"></code></span>
+        It writes the shortcut straight to the Desktop, already named, already carrying the icon, and without any of the trouble below. You can delete the file that was just downloaded.
       </li>
+      <li><strong>Or finish the downloaded one by hand.</strong> Your browser will not save a shortcut under its own name &mdash; a shortcut can point anywhere, so it arrives as <code>Deskside Radio.download</code>. Rename it to <code>Deskside&nbsp;Radio.url</code> and drag it to the Desktop. Then <strong>right-click it &rarr; Properties &rarr; tick <em>Unblock</em> &rarr; OK</strong>, or opening it brings up a security warning every time.</li>
     </ol>
+    <p class="hint">That warning is not about this file in particular. Anything a browser downloads is tagged with where it came from, and a page opened from your own disk has no address the tagger understands, so it is filed under <em>restricted</em> &mdash; the most suspicious setting there is. Unblocking removes the tag. The helper never adds one, because it builds the shortcut on the spot rather than downloading it.</p>
     <figure class="help-icon">
       <img id="shortcutIcon" width="48" height="48" alt="">
       <figcaption>Either way the Desktop icon looks like this &mdash; the <span id="shortcutTheme"></span> theme you have on now.</figcaption>

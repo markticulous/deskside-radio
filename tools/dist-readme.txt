@@ -43,6 +43,20 @@ GETTING STARTED (WINDOWS)
 
 2. Double-click "Win - Create Desktop Shortcut.cmd".
 
+   Use this rather than the shortcut button inside the radio. The button
+   works, but a browser will not save a .url under its own name, so the
+   file arrives called "Deskside Radio.download" and has to be renamed -
+   and anything a browser downloads is tagged with where it came from.
+   A page opened from your own disk has no address the tagger
+   understands, so the file gets marked "restricted" and Windows asks
+   "Do you want to open this file?" every single time.
+
+   If you have already done it that way: right-click the file,
+   Properties, tick Unblock, OK. That clears the mark for good.
+
+   The helper has neither problem: it builds the shortcut on the spot
+   instead of downloading it.
+
    It puts "Deskside Radio" on your Desktop and tells you what it did.
    Windows may warn you about running a downloaded file; the script is
    plain text, so you can open it in Notepad and read it first.
