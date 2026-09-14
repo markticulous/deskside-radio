@@ -1,6 +1,6 @@
 {
-  "version": "1.2.3",
+  "version": "1.2.4",
   "released": "2026-09-13",
-  "notes": "CBC Radio 1 no longer replays the last few seconds shortly after it starts. A new Model One theme, a window that opens where you left it without flickering, and a script to start the radio when you sign in to Windows.",
+  "notes": "Recording: hold Shift for a record button, and the file lands in your downloads. On air is one green in every theme. Fixes the theme thumbnails, which were being painted over by the selection tick.",
   "url": "https://github.com/Markticulous/deskside-radio/releases/latest"
 }
