@@ -2217,7 +2217,7 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   background: radial-gradient(circle at 50% 50%, currentColor 0 .7px, transparent 1.35px);
 }
 .drawer-x { font: inherit; font-size: 22px; line-height: 1; background: none; border: 0; color: var(--ui-mute); cursor: pointer; width: 36px; height: 36px; }
-.hint { margin: 0; color: var(--ui-mute); font-size: 13px; max-width: 70ch; }
+.hint { margin: 0; color: var(--ui-mute); font-size: 13px; max-width: 75ch; }
 
 /* ---- tab strip ----
    Every tab is the same 44px box whether or not it carries a count, and a
@@ -2259,7 +2259,9 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .card.is-open { border-color: var(--ui-fg); border-left-color: var(--c, var(--ui-fg)); }
 .card-top {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
-  padding: 10px 10px 10px 12px; cursor: pointer; width: 100%;
+  /* Trimmed top and bottom: a drawer full of these is a list to scan, and
+     the rows were carrying more height than the text in them needed. */
+  padding: 7px 10px 7px 12px; cursor: pointer; width: 100%;
   font: inherit; text-align: left; border: 0; background: none; color: var(--ui-fg);
 }
 .card-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none; }
@@ -2272,8 +2274,8 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 }
 .card-pill.is-empty { color: #c0392b; background: color-mix(in srgb, #c0392b 12%, transparent); }
 .card-acts { display: flex; gap: 3px; flex: none; margin-left: auto; }
-.card-body { padding: 2px 12px 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; border-top: 1px solid var(--ui-line); }
-.card-body { padding-top: 12px; }
+.card-body { padding: 2px 12px 11px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; border-top: 1px solid var(--ui-line); }
+.card-body { padding-top: 10px; }
 .card:not(.is-open) .card-body { display: none; }
 .card .err { margin: 0; font-size: 12px; color: #d33; display: none; }
 
@@ -2436,6 +2438,12 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 /* One button that says Close until there is something to save. The width
    is fixed so the label can change without the footer shifting. */
 .primary { font: inherit; font-weight: 600; padding: 10px 22px; min-width: 104px; text-align: center; border: 0; border-radius: var(--ui-radius); background: var(--ui-fg); color: var(--ui-bg); cursor: pointer; }
+/* Said beside the control it applies to rather than in place of it, so
+   the row does not change shape depending on what is on the disk. */
+.miss-note { font-size: 12px; color: #c0392b; align-self: center; }
+.ghost.is-off {
+  opacity: .45; pointer-events: none; cursor: default; border-style: dotted;
+}
 .ghost.danger { color: #c0392b; border-color: #c0392b; }
 .ghost.danger:hover { background: #c0392b; color: #fff; border-style: solid; }
 .primary.danger { background: #c0392b; color: #fff; }

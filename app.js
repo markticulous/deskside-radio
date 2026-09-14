@@ -157,6 +157,7 @@
     bass: $('bass'), bassOut: $('bassOut'), treble: $('treble'), trebleOut: $('trebleOut'),
     overlay: $('startOverlay'), startSub: $('startSub'), settings: $('settings'),
     rec: $('rec'), recWord: document.querySelector('.rec-word'),
+    readmeLink: $('readmeLink'), readmeMissing: $('readmeMissing'),
     blind: document.querySelector('.meter-blind')
   };
 
@@ -1685,8 +1686,70 @@
     if (!el.settings.open) el.settings.showModal();
     // Offsets only exist once the dialog is laid out.
     showPane('stations', false);
+    findReadme();
   }
   $('openSettings').addEventListener('click', openSettings);
+
+  /* ---------- the read me ----------
+     Which file it is depends on where this copy came from: the download
+     ships README.txt, the repository has README.md. Rather than guess,
+     ask for each in turn and link the first one that answers.
+
+     Asking is the awkward part. A page opened from a disk may not read
+     its own folder -- fetch is refused outright on file: URLs and XHR
+     needs the flag the launcher deliberately stopped passing -- so
+     neither can say whether a file is there. A preload link can: it is
+     fetched the way a script is, which a page has always been allowed to
+     do for its own folder, and it reports load or error without running
+     a line of it. Both were measured; a plain script tag works too, but
+     it executes the readme and leaves a syntax error in the console.
+
+     If nothing answers, the link is left dead with the reason beside it,
+     because a link that opens a browser error page is worse than one
+     that says up front it has nowhere to go. */
+  var README_NAMES = ['README.txt', 'README.md'];
+
+  function fileExists(name, done) {
+    var link = document.createElement('link');
+    var settled = false;
+    function finish(ok) {
+      if (settled) return;
+      settled = true;
+      link.remove();
+      done(ok);
+    }
+    link.rel = 'preload';
+    link.as = 'script';
+    link.onload = function () { finish(true); };
+    link.onerror = function () { finish(false); };
+    // A browser that ignores preload entirely would otherwise never answer.
+    setTimeout(function () { finish(false); }, 3000);
+    link.href = name;
+    document.head.appendChild(link);
+  }
+
+  var readmeChecked = false;
+  function findReadme() {
+    if (readmeChecked) return;
+    readmeChecked = true;
+    var i = 0;
+    function next() {
+      if (i >= README_NAMES.length) {
+        el.readmeLink.classList.add('is-off');
+        el.readmeLink.removeAttribute('href');
+        el.readmeLink.setAttribute('aria-disabled', 'true');
+        el.readmeMissing.hidden = false;
+        return;
+      }
+      var name = README_NAMES[i++];
+      fileExists(name, function (ok) {
+        if (!ok) return next();
+        el.readmeLink.href = name;
+        el.readmeMissing.hidden = true;
+      });
+    }
+    next();
+  }
 
   /* ---------- desktop shortcut ----------
      A page cannot write to the desktop; nothing in the browser is allowed
