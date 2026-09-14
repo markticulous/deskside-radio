@@ -47,7 +47,7 @@ if not exist "%ICON%" (
 )
 if not exist "%ICON%" (
   set "THEME=default"
-  set "ICON=%APPDIR%favicon.ico"
+  set "ICON=%APPDIR%favicon-dial.ico"
 )
 
 rem Chrome first, then Edge, which every Windows 11 machine has. App Paths is

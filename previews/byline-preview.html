@@ -3,6 +3,31 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;600&family=Oswald:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;500;600;700&family=Syne:wght@700;800&family=Figtree:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="../app.css">
 <style>
+/* The four treatments this page exists to show. They live here rather than
+   in app.css because the app wears none of them: it has only ever used the
+   plate, and the app's stylesheet is loaded on every launch. */
+.byline[data-byline="seal"] { gap: 7px; }
+.byline[data-byline="seal"] .byline-mark {
+  display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%;
+  font-size: 9px; font-weight: 800; letter-spacing: 0;
+  color: var(--by-on-accent, #fff); background: var(--by-accent, currentColor);
+}
+.byline[data-byline="seal"] .byline-by { display: none; }
+.byline[data-byline="rule"] { padding-left: 10px; position: relative; letter-spacing: .1em; }
+.byline[data-byline="rule"]::before {
+  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 1px; height: 12px; background: var(--by-line, currentColor); opacity: .75;
+}
+.byline[data-byline="callsign"] { font-family: var(--by-mono, ui-monospace, monospace); letter-spacing: .06em; gap: 3px; }
+.byline[data-byline="callsign"]::before { content: "["; opacity: .5; }
+.byline[data-byline="callsign"]::after  { content: "]"; opacity: .5; }
+.byline[data-byline="tag"] {
+  padding: 4px 9px; border-radius: 999px; letter-spacing: .1em;
+  background: var(--by-accent, currentColor); color: var(--by-on-accent, #fff);
+}
+.byline[data-byline="tag"] .byline-by,
+.byline[data-byline="tag"] .byline-suffix { opacity: .72; }
+
   :root { --pg-bg: #efeee9; --pg-ink: #1a1a18; --pg-mute: #6b6a64; --pg-rule: #d8d6cf; --pg-accent: #b5461c; }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) { --pg-bg: #151513; --pg-ink: #ecebe6; --pg-mute: #9a9891; --pg-rule: #2c2c29; --pg-accent: #e8783f; }

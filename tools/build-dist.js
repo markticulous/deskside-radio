@@ -10,13 +10,23 @@
 
    The webfont link is left pointing at Google. Offline the app falls back
    to the stacks named beside each face, which is the same behaviour the
-   split version has on a plane. */
+   split version has on a plane.
+
+   Comments and indentation are taken out on the way in. The source keeps
+   them -- they are the better half of it -- but they are read in the
+   repository, not in a single 240 KB file that every launch parses. See
+   tools/strip.js, which is deliberately not a minifier: nothing is
+   renamed and nothing is rewritten, so what ships is still the same code,
+   just without the margins. */
 const fs = require('fs');
 const path = require('path');
+const strip = require('./strip.js');
 
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'dist');
 const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
+const bytes = (s) => Buffer.byteLength(s, 'utf8');
+let saved = 0;
 
 /* A closing tag inside a string would end the block early — app.js has none
    today, but a build that can be broken by a future string is not a build. */
@@ -28,12 +38,16 @@ function dataUri(file, type) {
 
 /* The one webfont that is not fetched from Google travels with the sheet,
    or the console theme would fall back to a typeface in the download and
-   nowhere else. */
+   nowhere else. WOFF rather than the OTF it was made from: identical
+   glyphs, a tenth of the bytes, and base64 charges a third on top of
+   whatever it wraps. */
 function styleSheet() {
-  const url = 'url("fonts/VfdNova-Regular.otf")';
+  const url = 'url("fonts/VfdNova-Regular.woff")';
   const css = read('app.css');
   if (css.indexOf(url) === -1) throw new Error('app.css no longer loads the VFD face');
-  return css.replace(url, 'url("' + dataUri('fonts/VfdNova-Regular.otf', 'font/otf') + '")');
+  const lean = strip.stripCss(css);
+  saved += bytes(css) - bytes(lean);
+  return lean.replace(url, 'url("' + dataUri('fonts/VfdNova-Regular.woff', 'font/woff') + '")');
 }
 
 let html = read('index.html');
@@ -47,12 +61,14 @@ const SCRIPTS = ['signal.js', 'radio-directory.js', 'scheduler.js', 'tuner-ui.js
 SCRIPTS.forEach(function (src) {
   const tag = '<script src="' + src + '"></script>';
   if (html.indexOf(tag) === -1) throw new Error('index.html no longer loads ' + src);
-  html = html.replace(tag, '<script>\n' + inlineSafe(read(src)) + '\n</script>');
+  const code = read(src);
+  const lean = strip.stripJs(code);
+  saved += bytes(code) - bytes(lean);
+  html = html.replace(tag, '<script>\n' + inlineSafe(lean) + '\n</script>');
 });
 
-/* The tab icon becomes the dial .ico, which ships anyway for the shortcut.
-   The other two are small enough to carry in the page. */
-html = html.replace('<link rel="icon" href="favicon.ico"', '<link rel="icon" href="favicon-dial.ico"');
+/* The two small icons are carried in the page; the .ico is already beside
+   it for the shortcut, so it stays a file. */
 html = html.replace('href="icon-small.svg"', 'href="' + dataUri('icon-small.svg', 'image/svg+xml') + '"');
 html = html.replace('href="icon-256.png"', 'href="' + dataUri('icon-256.png', 'image/png') + '"');
 
@@ -78,6 +94,12 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
    has just unzipped this. Plain .txt so it opens on a double-click. */
 fs.copyFileSync(path.join(ROOT, 'tools', 'dist-readme.txt'), path.join(OUT, 'README.txt'));
 
+/* And the licence, which the MIT terms ask to travel with every copy. It
+   used to be left behind in the repository, which was an oversight when
+   the source carried its own header comment and is plainly one now that
+   the build takes the comments out. */
+fs.copyFileSync(path.join(ROOT, 'LICENSE'), path.join(OUT, 'LICENSE.txt'));
+
 const files = fs.readdirSync(OUT);
 const total = files.reduce(function (n, f) { return n + fs.statSync(path.join(OUT, f)).size; }, 0);
 console.log('dist/  ' + files.length + ' files, ' + (total / 1024).toFixed(0) + ' KB');
@@ -86,3 +108,4 @@ files.forEach(function (f) {
 });
 console.log('index.html went from ' + (before / 1024).toFixed(1) + ' KB to ' +
   (fs.statSync(path.join(OUT, 'index.html')).size / 1024).toFixed(1) + ' KB with everything folded in');
+console.log('  (' + (saved / 1024).toFixed(1) + ' KB of comments and indentation left behind)');

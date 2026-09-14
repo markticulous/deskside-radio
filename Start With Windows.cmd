@@ -78,7 +78,7 @@ if not exist "%ICON%" (
 )
 if not exist "%ICON%" (
   set "THEME=default"
-  set "ICON=%APPDIR%favicon.ico"
+  set "ICON=%APPDIR%favicon-dial.ico"
 )
 
 set "BROWSER="
