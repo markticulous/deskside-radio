@@ -86,6 +86,36 @@ The next launch reads it once and keeps its own settings from then on.
 This is also how you set up a second machine.
 
 
+PICKING THE BROWSER, AND OTHER PLATFORMS
+----------------------------------------
+
+Create Desktop Shortcut.cmd takes Chrome or Edge, whichever it finds
+first. Three more scripts are here for when that is not the one you
+want:
+
+  Win - Create Desktop Shortcut (Edge).cmd
+      Makes "Deskside Radio (Edge)", pinned to Edge.
+
+  Win - Create Desktop Shortcut (Firefox).cmd
+      Makes "Deskside Radio (Firefox)". Firefox has no app-window mode,
+      so this opens an ordinary window with a tab strip; press F11 for
+      fullscreen. Autoplay there is a preference rather than a flag, so
+      the script writes it into the profile it creates.
+
+  Linux - Create Desktop Shortcut.sh
+      Writes a .desktop entry. Add --autostart to start it at login,
+      or --off to remove both. If it will not run:
+          chmod +x "Linux - Create Desktop Shortcut.sh"
+
+Each shortcut has a browser profile of its own, so stations and settings
+do not carry across between them. Export from Settings - Service to move
+a setup from one to another.
+
+On a Mac the shortcut is a .fileloc file. Drag it from Downloads to the
+Desktop. If Finder refuses to open it, drag the address out of your
+browser's address bar onto the Desktop instead - that always works.
+
+
 STARTING WHEN YOU SIGN IN
 -------------------------
 

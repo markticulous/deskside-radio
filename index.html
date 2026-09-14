@@ -28,6 +28,10 @@
     </div>
     <time class="clock" id="clock">--:--</time>
     <button class="sched-chip" id="schedToggle" aria-pressed="true" title="Turn the schedule on or off">
+      <!-- A hairline along the bottom edge that runs out through the last
+           minute before a handover, so the change is something you watch
+           arrive rather than something that happens to you. -->
+      <span class="sched-bar" id="schedBar" aria-hidden="true"></span>
       <span class="sched-led"></span>
       <span class="sched-label" id="schedLabel">Schedule on</span>
       <span class="sched-next" id="schedNext"></span>
@@ -184,6 +188,14 @@
         </div>
         <div class="cards" id="slotRows"></div>
         <button type="button" class="ghost" id="addSlot">+ Add time slot</button>
+        <label class="row end-row">
+          <span class="row-label">When the last slot of the day ends</span>
+          <select class="in" id="dayEnd">
+            <option value="play">Keep playing (free play)</option>
+            <option value="off">Turn the radio off</option>
+          </select>
+        </label>
+        <p class="hint">Set for each day group on its own, so weekdays can end at bedtime and the weekend can carry on.</p>
       </section>
 
       <section class="pane" id="paneLook" role="tabpanel" aria-labelledby="tabLook" hidden>
@@ -278,6 +290,28 @@
     <div class="confirm-actions">
       <button type="submit" value="cancel" class="ghost">Cancel</button>
       <button type="submit" value="reset" class="primary danger">Reset everything</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- macOS. The downloaded file is the convenience; dragging the address
+     bar is the thing that cannot fail, so it is offered plainly rather
+     than buried. -->
+<dialog class="confirm" id="macHelp">
+  <form method="dialog" class="confirm-box">
+    <h2>Shortcut downloaded</h2>
+    <p>Drag <code>Deskside&nbsp;Radio.fileloc</code> out of your Downloads to the Desktop. Double-clicking it opens the radio.</p>
+    <p class="hint">Earlier versions wrote this as a <code>.webloc</code>, which Finder refuses for a file on your own disk &mdash; <em>&ldquo;the document content is not readable or is in the wrong format&rdquo;</em>. If one of those is on your Desktop, throw it away and make this one instead.</p>
+    <ol class="help-steps">
+      <li><strong>If Finder still will not open it,</strong> drag the address itself out of your browser's address bar onto the Desktop. Safari and Chrome both make a working shortcut that way.</li>
+      <li><strong>To have it play on its own,</strong> turn on <em>Play on launch</em> in Settings and pick a station. Safari asks for one click before any page may play sound; Chrome on macOS will start by itself.</li>
+    </ol>
+    <figure class="help-icon">
+      <img id="macIcon" width="48" height="48" alt="">
+      <figcaption>macOS shortcuts carry no custom icon, so the Desktop shows a plain document. The radio itself keeps the <span id="macTheme"></span> theme.</figcaption>
+    </figure>
+    <div class="confirm-actions">
+      <button type="submit" value="ok" class="primary">Got it</button>
     </div>
   </form>
 </dialog>

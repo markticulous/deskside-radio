@@ -70,9 +70,17 @@ test('rmsToVu: silence rests the needle at zero', () => {
 });
 
 test('rmsToVu: 0 VU sits where the face prints it', () => {
-  // 0 VU is referenced to -18 dBFS, and the face runs -20 VU to +3 VU.
-  const zeroVuRms = Math.pow(10, -18 / 20);
+  // 0 VU is referenced to -15 dBFS, and the face runs -20 VU to +3 VU.
+  const zeroVuRms = Math.pow(10, -15 / 20);
   near(S.rmsToVu(zeroVuRms), 20 / 23, 0.005);
+});
+
+test('rmsToVu: a real stream sits in the middle of the face, not on the stop', () => {
+  /* Both stations measured for this run a median around -18 dBFS. That
+     has to land somewhere a needle can move either side of; when it read
+     87% of full travel the meter looked broken. */
+  const typical = S.rmsToVu(Math.pow(10, -18 / 20));
+  assert.ok(typical > 0.6 && typical < 0.8, 'typical program at ' + typical);
 });
 
 test('rmsToVu: full scale pins the needle at the top of the red', () => {
@@ -81,10 +89,19 @@ test('rmsToVu: full scale pins the needle at the top of the red', () => {
 });
 
 test('rmsToVu: quiet program sits low but off the stop, and rises with level', () => {
-  const quiet = S.rmsToVu(Math.pow(10, -35 / 20));
-  const loud = S.rmsToVu(Math.pow(10, -22 / 20));
-  assert.ok(quiet > 0 && quiet < 0.3, 'quiet=' + quiet);
+  /* -28 dBFS is a quiet passage of real programme; the quietest moment
+     measured on either test station was about -24.5. Anything below -20
+     VU rests on the left stop, which is what the printed face says and
+     what a real movement does -- so the level checked here is one the
+     meter is actually expected to show, not silence. */
+  const quiet = S.rmsToVu(Math.pow(10, -28 / 20));
+  const loud = S.rmsToVu(Math.pow(10, -18 / 20));
+  assert.ok(quiet > 0 && quiet < 0.45, 'quiet=' + quiet);
   assert.ok(loud > quiet && loud < 1, 'loud=' + loud);
+});
+
+test('rmsToVu: near-silence rests on the stop rather than hovering', () => {
+  assert.equal(S.rmsToVu(Math.pow(10, -40 / 20)), 0);
 });
 
 test('vuBallistics: needle moves toward the target, never past it', () => {

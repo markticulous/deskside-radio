@@ -489,11 +489,31 @@
     el.style.removeProperty('--marquee-ms');
   }
 
+  /* The travel is 46% of the cycle -- 12% to 58% of the keyframes -- and
+     the rest is the pause at each end. Both speeds below are quoted for
+     the travel and converted here, so changing the keyframes does not
+     quietly change the pace. */
+  var TRAVEL_SHARE = 0.46;
+  var STEP_MS = 230;           // one flap, on a board
+
   function startScroll(el, by, steps) {
     el.classList.add('can-scroll');
     el.style.setProperty('--marquee-by', '-' + by.toFixed(2) + 'px');
-    // Constant reading speed, whatever the overrun, with the pauses on top.
-    el.style.setProperty('--marquee-ms', Math.round(2600 + by * 28) + 'ms');
+
+    /* A stepped scroll is paced per step; a sliding one per pixel.
+
+       Per pixel, a stepped name took 21 seconds to cross -- one flap every
+       470ms, which does not read as a board turning over, it reads as a
+       board that has stopped working. A flap every 230ms is brisk enough
+       to be a mechanism and slow enough to read.
+
+       The sliding pace is left exactly as it was. It was not what was
+       reported and it does not have the same problem: a slide has no
+       cadence to get wrong, only a speed, and that one reads fine. */
+    var total = steps
+      ? Math.round(steps * STEP_MS / TRAVEL_SHARE)
+      : Math.round(2600 + by * 28);
+    el.style.setProperty('--marquee-ms', total + 'ms');
     if (steps) el.style.animationTimingFunction = 'steps(' + steps + ', end)';
   }
 

@@ -38,6 +38,24 @@ The export is a `.js` file rather than a `.json` one for the reason above: a pag
 
 Two things to know: opening the page the ordinary way still works and still shows the tap panel, and double-clicking the shortcut while the radio is already open gives you a second window playing over the first.
 
+### Picking the browser, and other platforms
+
+`Create Desktop Shortcut.cmd` takes Chrome or Edge, whichever it finds first. Three more scripts exist for when that is not the one you want:
+
+| Script | Makes | Notes |
+|---|---|---|
+| `Win - Create Desktop Shortcut (Edge).cmd` | *Deskside Radio (Edge)* | Pinned to Edge, with a profile of its own |
+| `Win - Create Desktop Shortcut (Firefox).cmd` | *Deskside Radio (Firefox)* | See below |
+| `Linux - Create Desktop Shortcut.sh` | a `.desktop` entry | `--autostart` also starts it at login, `--off` removes both |
+
+Each has its own browser profile, so stations and settings do not carry between them; the settings export is how you move a setup across.
+
+**Firefox is the odd one.** It has no `--app`, having dropped site-specific browsers, so the radio opens in an ordinary window with a tab strip above it — F11 for fullscreen if that bothers you. Autoplay is not a command-line flag there either, it is a preference, so the script writes a `user.js` into the profile it creates setting `media.autoplay.default` to 0. That is why the profile is made by the script rather than left to Firefox.
+
+**Linux** has no equivalent of the Windows startup folder, but every desktop environment worth the name reads `~/.config/autostart`, which is the same file format as the launcher with two lines added. `--autostart` writes it, with an eight-second delay so the radio is not reconnecting before the network is up. The script writes two files in your home directory and nothing else: no root, no package, no service.
+
+**macOS** gets a `.fileloc` rather than a `.webloc`. Both are property lists holding a URL and Finder opens both, but they are not interchangeable — `.webloc` is for a web address and `.fileloc` for something on this disk, which is what this is. Handed a `file://` URL inside a `.webloc`, Finder says *"the document content is not readable or is in the wrong format"*. If dragging the file still does not work, drag the address out of your browser's address bar onto the Desktop instead; Safari and Chrome both make a working shortcut that way.
+
 ### Starting when you sign in
 
 `Start With Windows.cmd` writes the same shortcut into the Startup folder, and `Start With Windows.cmd off` removes it. Nothing touches the registry and nothing runs as a service; it is one `.lnk` in a folder the user can open with `shell:startup`. The browser detection in it is a deliberate copy of the one in `Create Desktop Shortcut.cmd` rather than shared with it — these are files people double-click, often one without ever having run the other, so each has to stand alone.
