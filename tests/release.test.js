@@ -20,7 +20,7 @@ test('version.json matches the version the app reports', () => {
 });
 
 test('the launcher passes every flag the zero-click start depends on', () => {
-  const cmd = read('Win - Create Desktop Shortcut.cmd');
+  const cmd = read('Win - Create Desktop Shortcut (Chrome).cmd');
   [
     '--app=',                                  // its own window, no browser furniture
     '--autoplay-policy=no-user-gesture-required',
@@ -76,7 +76,7 @@ test('the launcher grants no file access, in either script', () => {
      script on the page read anything the user can, for as long as the
      shortcut exists. The seed is a script tag now and needs no flag, so
      the only thing left to do about it is make sure it stays gone. */
-  ['Win - Create Desktop Shortcut.cmd', 'Win - Start With Windows.cmd'].forEach(function (f) {
+  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start With Windows.cmd'].forEach(function (f) {
     assert.equal(read(f).indexOf('--allow-file-access-from-files'), -1,
       f + ' passes --allow-file-access-from-files again');
   });
@@ -87,7 +87,7 @@ test('both launchers name powershell and reg by their full paths', () => {
      directory, and a default Windows looks there before it looks along
      PATH. A bare `powershell` is therefore whatever sits next to the
      script, which on a shared or synced folder is not necessarily ours. */
-  ['Win - Create Desktop Shortcut.cmd', 'Win - Start With Windows.cmd'].forEach(function (f) {
+  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start With Windows.cmd'].forEach(function (f) {
     const cmd = read(f);
     assert.ok(/%SystemRoot%\\System32\\WindowsPowerShell\\v1\.0\\powershell\.exe/.test(cmd),
       f + ' no longer calls powershell by its full path');
@@ -100,7 +100,7 @@ test('both launchers name powershell and reg by their full paths', () => {
 test('the launcher builds its quotes with [char]34, never a literal one', () => {
   /* cmd holds each PowerShell line inside "..." — a literal double quote in
      the body ends that string early and the shortcut comes out malformed. */
-  const powershell = read('Win - Create Desktop Shortcut.cmd')
+  const powershell = read('Win - Create Desktop Shortcut (Chrome).cmd')
     .split('\n')
     .filter(function (ln) { return /^\s{2}"/.test(ln); });
   assert.ok(powershell.length > 5, 'expected the inline PowerShell block');
@@ -113,7 +113,7 @@ test('the launcher builds its quotes with [char]34, never a literal one', () => 
 });
 
 test('the launcher still falls back when no browser is found', () => {
-  const cmd = read('Win - Create Desktop Shortcut.cmd');
+  const cmd = read('Win - Create Desktop Shortcut (Chrome).cmd');
   assert.ok(/if \(\$env:BROWSER\)/.test(cmd), 'no branch on a missing browser');
   assert.ok(/\$link\.TargetPath = \$env:TARGET;/.test(cmd),
     'the fallback should still point the shortcut at index.html');

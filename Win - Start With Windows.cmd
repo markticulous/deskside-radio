@@ -2,7 +2,7 @@
 setlocal
 rem Deskside Radio - start it automatically when you sign in.
 rem
-rem This puts the same shortcut "Win - Create Desktop Shortcut.cmd" makes into the
+rem This puts the same shortcut "Win - Create Desktop Shortcut (Chrome).cmd" makes into the
 rem Startup folder, which Windows opens on sign-in. Nothing is written to the
 rem registry and nothing runs as a service: it is one .lnk file in a folder
 rem you can open yourself with Win+R, shell:startup.
@@ -14,7 +14,7 @@ rem   "Win - Start With Windows.cmd" console   turn it on, with the console icon
 rem   "Win - Start With Windows.cmd" off       turn it off
 rem
 rem The browser detection below is deliberately a copy of the one in
-rem "Win - Create Desktop Shortcut.cmd" rather than shared with it. These are files
+rem "Win - Create Desktop Shortcut (Chrome).cmd" rather than shared with it. These are files
 rem people double-click, sometimes one without ever running the other, so
 rem each one has to work on its own.
 rem

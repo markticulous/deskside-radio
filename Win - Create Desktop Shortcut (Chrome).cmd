@@ -2,6 +2,13 @@
 setlocal
 rem Deskside Radio - put a shortcut on the Desktop.
 rem
+rem This is the one to use unless you have a reason not to. "(Chrome)" is
+rem what it prefers, not all it will take: it uses Chrome if Chrome is
+rem installed and Edge if it is not, because both accept the same flags.
+rem The Edge and Firefox scripts beside it are for pinning to one browser
+rem on purpose. The shortcut this makes is called plainly "Deskside Radio";
+rem the others add their browser's name so they can sit beside it.
+rem
 rem A web page cannot do this itself: Chrome will not save a .url file under
 rem its own name and renames it to .download, because such a file can point
 rem anywhere. So the shortcut is made here instead, as a real .lnk.
@@ -14,12 +21,12 @@ rem are read once at startup, so a browser that is already running would
 rem otherwise hand over the page and drop the flags.
 rem
 rem Because the profile is its own, it starts with no settings. Export yours
-rem from Settings - Service, leave deskside-radio-settings.json beside
+rem from Settings - Service, leave deskside-radio-settings.js beside
 rem index.html, and the first launch reads it.
 rem
 rem Run it with a theme name to get that theme's icon:
 rem
-rem   "Win - Create Desktop Shortcut.cmd" console
+rem   "Win - Create Desktop Shortcut (Chrome).cmd" console
 rem
 rem The app's shortcut panel shows the line to use. With no argument, or one
 rem whose icon is missing, it falls back to the analogue dial icon.
