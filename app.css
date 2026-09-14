@@ -1027,8 +1027,13 @@
 [data-theme="editorial"] .controls {
   padding: 24px 28px 28px; align-self: end;
   display: grid; grid-template-columns: auto auto minmax(0, 1fr) minmax(0, 1fr);
-  gap: 14px 18px; align-items: center; --rec-gap: 18px;
+  gap: 14px; align-items: center; --rec-gap: 14px;
 }
+/* This column of the tuner is 479px wide, and with the record button up
+   there are four things in it. Everything here is a few pixels given back
+   to the two tone sliders, which are the last in the queue for them. */
+[data-theme="editorial"] .rec-btn.is-up { width: 60px; }
+[data-theme="editorial"] .rec-btn.is-up ~ .tone { gap: 6px; }
 [data-theme="editorial"] .play-btn { grid-column: 1; grid-row: 1 / span 2; }
 /* A column of its own, beside the transport and spanning both rows. Left
    to place itself it took the first free cell, which is where the volume
@@ -1036,11 +1041,13 @@
 [data-theme="editorial"] .rec-btn { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
 [data-theme="editorial"] .volume { grid-column: 3 / span 2; }
 [data-theme="editorial"] .play-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
   /* Fixed width: Play and Stop are different widths in this face, and a button
-     that resizes as you press it reads as a glitch. */
-  min-width: 124px;
-  padding: 14px 22px; border-radius: 999px; background: var(--ink); color: #fff;
+     that resizes as you press it reads as a glitch. Narrower than it looks
+     like it wants to be, because this row has four things in it once the
+     record button is up and the tone sliders are the ones that suffer. */
+  min-width: 108px;
+  padding: 14px 17px; border-radius: 999px; background: var(--ink); color: #fff;
   font-weight: 600; font-size: 14px; transition: transform .15s;
 }
 [data-theme="editorial"] .play-btn:hover { transform: scale(1.03); }
@@ -1048,6 +1055,38 @@
 [data-theme="editorial"] .play-btn .btn-text::after { content: "Play"; }
 [data-theme="editorial"] .play-btn[aria-pressed="true"] .btn-text::after { content: "Stop"; }
 [data-theme="editorial"] .fader label { font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--mute); }
+/* BASS and TREBLE pull back to B and T while the record button is up.
+   Without it the two sliders were six pixels and none: this column of the
+   tuner is 479px wide, and the record button takes a quarter of what is
+   left after the transport.
+
+   The word does not shrink, it hands over. The box closes on it while the
+   word fades and the initial fades in on top, so it reads as the label
+   folding up rather than being cut in half -- clipping "TREBLE" to one
+   character's width lands in the middle of the R.
+
+   The full text stays in the element, so the accessible name the input
+   announces is still Bass and still Treble; only the drawing changes. The
+   letter comes from the markup rather than from CSS, because a label's
+   abbreviation is part of what the label says. */
+[data-theme="editorial"] .fader label {
+  position: relative; overflow: hidden; white-space: nowrap; max-width: 8ch;
+  transition: max-width .2s cubic-bezier(.2, .8, .2, 1), color .12s ease;
+}
+[data-theme="editorial"] .fader label[data-short]::after {
+  content: attr(data-short);
+  position: absolute; left: 0; top: 0;
+  color: var(--mute); opacity: 0;
+  transition: opacity .12s ease;
+}
+[data-theme="editorial"] .rec-btn.is-up ~ .tone label {
+  max-width: 1.4ch; color: transparent;
+}
+[data-theme="editorial"] .rec-btn.is-up ~ .tone label::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="editorial"] .fader label,
+  [data-theme="editorial"] .fader label[data-short]::after { transition: none; }
+}
 [data-theme="editorial"] .fader output { font-weight: 600; }
 [data-theme="editorial"] .fader input { accent-color: var(--c); height: 6px; }
 
