@@ -45,17 +45,6 @@
     return Math.max(-12, Math.min(12, Math.round(v)));
   }
 
-  // ---------- state ----------
-  var state = load();
-
-  function load() {
-    try {
-      var raw = localStorage.getItem(KEY);
-      if (!raw) return clone(DEFAULTS);
-      return normalise(JSON.parse(raw));
-    } catch (e) { return clone(DEFAULTS); }
-  }
-
   /* Storage is not a private place. On file:// every local page the
      browser has ever opened shares one origin, and therefore shares this
      key; an export file is a file like any other. So what comes back is
@@ -84,6 +73,24 @@
   function cleanSlots(list) {
     return (Array.isArray(list) ? list : [])
       .filter(function (sl) { return sl && typeof sl === 'object'; });
+  }
+
+  /* Above the line below, and it matters. var hoists the name and not the
+     value, so CAP declared after this point is undefined while load() is
+     running -- cleanStation then throws, normalise catches it and hands
+     back the defaults, and the settings the user actually had are quietly
+     dropped and written over on the way out. Caught in a headless run
+     where a seeded theme kept coming back as the default one. */
+
+  // ---------- state ----------
+  var state = load();
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return clone(DEFAULTS);
+      return normalise(JSON.parse(raw));
+    } catch (e) { return clone(DEFAULTS); }
   }
 
   /* Everything a stored settings object needs before the app can trust it:

@@ -30,6 +30,20 @@ test('the launcher passes every flag the zero-click start depends on', () => {
   });
 });
 
+test('the settings sanitisers are defined above the first thing that uses them', () => {
+  /* var hoists the name and not the value. CAP sitting below `var state =
+     load()` made every stored setting unreadable at boot: cleanStation
+     threw on an undefined CAP, normalise caught it and returned the
+     defaults, and the real settings were then written over on unload.
+     Nothing about that is visible in a diff, so it is pinned here. */
+  const src = read('app.js');
+  const cap = src.indexOf('var CAP = {');
+  const load = src.indexOf('var state = load();');
+  assert.ok(cap !== -1 && load !== -1, 'expected both declarations');
+  assert.ok(cap < load,
+    'var CAP is declared after the load() that needs it, so stored settings are dropped at boot');
+});
+
 test('the launcher grants no file access, in either script', () => {
   /* This flag used to be passed so that the settings seed could be read
      off disk. It is not a permission to read one file: it lets every
