@@ -364,6 +364,14 @@
 }
 .scope { display: none; }
 .meter-caption { display: none; }
+/* Read once per theme by setLevel. A theme whose meter is drawn some
+   other way -- an SVG needle, a canvas -- sets this to 0 and the level
+   is then not written into the DOM at all. Default 1: forgetting it
+   costs a little work, turning it off wrongly would cost a meter. */
+.meter { --vu-live: 1; }
+[data-theme="dial"] .meter,
+[data-theme="marconi"] .meter,
+[data-theme="editorial"] .meter { --vu-live: 0; }
 /* On stop the level decays with the meter ballistics rather than cutting,
    and the indicators only disappear once they have reached rest. */
 .vu-needle { transition: opacity .4s ease-in; }
@@ -1698,6 +1706,14 @@
 [data-theme="tivoli"] .meter-scale > * { display: none; }
 [data-theme="tivoli"] .meter-bar { animation-delay: -.48s; }
 [data-theme="tivoli"] .meter-scale { animation-delay: -.96s; }
+/* A speaker at rest is not moving. Without this the three rings went
+   round at sixty frames a second all day whether or not anything was
+   playing -- the only theme that never let the window go idle. .is-quiet
+   is set once the meter has fallen to rest, so the wave finishes its
+   travel rather than stopping dead. */
+[data-theme="tivoli"] .tuner.is-quiet .meter-face,
+[data-theme="tivoli"] .tuner.is-quiet .meter-bar,
+[data-theme="tivoli"] .tuner.is-quiet .meter-scale { animation: none; opacity: 0; }
 @keyframes tivoli-ripple {
   0%   { transform: translate(-50%, -50%) scale(.12); opacity: 0; }
   /* Higher than it looks like it should be. A feathered band has no edge

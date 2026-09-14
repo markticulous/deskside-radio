@@ -197,11 +197,67 @@
     });
   }
 
+  /* What the level has to touch, worked out once per theme instead of
+     sixty times a second. setLevel is the hottest thing in the app -- it
+     runs every frame for as long as the radio is on -- so everything in
+     it that can be hoisted out of the frame has been.
+
+     --vu is written on the meter rather than on the tuner. A custom
+     property inherits, so setting it at the root asked the browser to
+     recompute the style of everything underneath: 127 elements a frame,
+     measured, which was over half of all the work the page was doing
+     while playing. Written on the meter it is around nine.
+
+     And in three themes it is not written at all. Dial and Marconi move
+     an SVG needle, Editorial draws a canvas; none of them read --vu from
+     CSS, so the whole recalculation was for a value nobody looked at.
+     A theme says so with --vu-live: 0 beside the rules that would have
+     read it. The default is 1, so a new theme that forgets gets a meter
+     that works rather than one that does not. */
+  var vu = { tuner: null, meter: null, needles: null, live: true, last: '', scope: null };
+
+  function vuTargets(tunerEl) {
+    if (vu.meter && vu.tuner === tunerEl) return vu;
+    vu.tuner = tunerEl;
+    vu.meter = tunerEl.querySelector('.meter') || tunerEl;
+    vu.needles = tunerEl.querySelectorAll('.vu-needle');
+    vu.scope = tunerEl.querySelector('.scope');
+    vu.last = '';
+    vu.live = true;
+    try {
+      vu.live = getComputedStyle(vu.meter).getPropertyValue('--vu-live').trim() !== '0';
+    } catch (e) { /* unreadable: write it, which is the safe way to be wrong */ }
+    return vu;
+  }
+
+  /* The theme decides all of the above, and changing it changes none of
+     the elements, so nothing else would have told us to look again. */
+  function refreshMeter(tunerEl) {
+    vu.meter = null;
+    vuTargets(tunerEl);
+  }
+
+  /* Whether the frequency bars are on screen at all. Every theme but
+     Editorial has the canvas at display:none, where it is 0 wide for as
+     long as that theme is showing -- so the analyser's FFT was being run
+     sixty times a second to fill a buffer that was thrown away. */
+  function scopeShowing(tunerEl) {
+    var t = vuTargets(tunerEl);
+    return !!(t.scope && t.scope.clientWidth);
+  }
+
   // Deflect every meter in the tuner to the same level (0..1).
   function setLevel(tunerEl, level) {
-    tunerEl.style.setProperty('--vu', level.toFixed(4));
-    var needles = tunerEl.querySelectorAll('.vu-needle');
-    for (var i = 0; i < needles.length; i++) needles[i].style.transform = 'rotate(' + S.vuAngle(level) + 'deg)';
+    var t = vuTargets(tunerEl);
+    if (t.live) {
+      var s = level.toFixed(4);
+      // Writing the same string again still counts as a mutation.
+      if (s !== t.last) { t.last = s; t.meter.style.setProperty('--vu', s); }
+    }
+    var needles = t.needles;
+    if (!needles.length) return;
+    var turn = 'rotate(' + S.vuAngle(level) + 'deg)';
+    for (var i = 0; i < needles.length; i++) needles[i].style.transform = turn;
   }
 
   /* ---- level bars ----
@@ -535,12 +591,14 @@
     var meterScales = tunerEl.querySelectorAll('.meter-scale');
     for (var j = 0; j < meterScales.length; j++) buildMeterScale(meterScales[j]);
     watchName(tunerEl.querySelector('.display-name'));
+    refreshMeter(tunerEl);
     setLevel(tunerEl, 0);
   }
 
   root.TunerUI = {
     init: init, buildScale: buildScale, buildVuFace: buildVuFace, buildMeterScale: buildMeterScale,
-    setNeedle: setNeedle, setLevel: setLevel, drawBars: drawBars, clearScope: clearScope,
+    setNeedle: setNeedle, setLevel: setLevel, refreshMeter: refreshMeter,
+    scopeShowing: scopeShowing, drawBars: drawBars, clearScope: clearScope,
     setName: setName, fitName: fitName, watchName: watchName,
     clearFit: clearFit, fitLine: fitLine
   };
