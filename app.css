@@ -111,6 +111,27 @@
 
 .display-status { display: inline-flex; align-items: center; gap: 8px; }
 .status-led     { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+/* On air is one colour in every theme. Each cabinet used to light it in
+   its own accent -- red here, gold there, white on the editorial block --
+   which made the single most important thing on the front the one thing
+   you had to learn to read again on every change of theme. A light green
+   carries on all of these grounds, dark cabinets included.
+
+   The themes keep their own shape for it: the console's is a square, the
+   board's is a flap, the deco set turns it on its corner. Only the colour
+   is shared. The hairline of black does nothing on a dark front and keeps
+   the dot from dissolving into a pale one.
+
+   Scoped to the theme attribute, not left bare: four of the cabinets set
+   their unlit lamp colour on .status-led with an attribute selector of
+   their own, further down the sheet, and a bare .status-led.live ties
+   with those on specificity and loses on order. */
+:root { --live: #2ee56a; }
+[data-theme] .status-led.live {
+  background: var(--live);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--live) 70%, transparent),
+              0 0 0 1px rgba(0,0,0,.18);
+}
 
 .preset        { display: grid; text-align: left; min-width: 0; }
 .preset-add    { opacity: .55; }
@@ -427,7 +448,6 @@
 }
 [data-theme="dial"] .display-tag   { grid-area: tag; margin: 6px 0 0; font: italic 500 20px/1.3 "Cormorant Garamond", Georgia, serif; opacity: .8; }
 [data-theme="dial"] .display-status{ grid-area: status; margin-top: 10px; font-size: 14px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; color: #6a4a22; }
-[data-theme="dial"] .status-led.live { background: var(--red); box-shadow: 0 0 6px var(--red); }
 
 [data-theme="dial"] .dial { grid-area: dial; display: grid; gap: 26px; margin-top: 26px; padding: 0 16px 0 62px; }
 [data-theme="dial"] .scale { color: #3a2a12; border-bottom: 1px solid #3a2a12; }
@@ -676,7 +696,6 @@
    means attention -- a fault, a cued source, talkback -- so the app keeps
    it for reconnecting, where it belongs. Blinking both left the blink
    saying nothing. */
-[data-theme="console"] .status-led.live { background: var(--red); box-shadow: 0 0 8px var(--red); }
 @keyframes blink { 50% { opacity: .35; } }
 
 [data-theme="console"] .meter { display: block; margin-top: 18px; padding: 0 12px; }
@@ -832,7 +851,6 @@
 [data-theme="rams"] .display-name { margin: 2px 0 0; font-size: clamp(34px, 4.2vw, 52px); font-weight: 600; letter-spacing: -.02em; line-height: 1.05; white-space: nowrap; overflow: hidden; }
 [data-theme="rams"] .display-tag { margin: 6px 0 0; }
 [data-theme="rams"] .display-status { margin-top: 8px; }
-[data-theme="rams"] .status-led.live { background: var(--green); }
 
 [data-theme="rams"] .dial {
   display: block; margin-top: 34px; padding: 0 14px 0 54px;
@@ -964,7 +982,6 @@
 [data-theme="editorial"] .display-name .name-line:last-child { margin-bottom: 0.14em; }
 [data-theme="editorial"] .display-tag { margin: 0; font-size: 17px; font-weight: 500; opacity: .9; max-width: 34ch; }
 [data-theme="editorial"] .display-status { align-self: flex-start; margin-top: 10px; padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,.16); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-[data-theme="editorial"] .status-led.live { background: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,.25); }
 [data-theme="editorial"] .meter { display: block; margin-top: 2px; }
 [data-theme="editorial"] .meter-face,
 [data-theme="editorial"] .meter-scale,
@@ -1081,7 +1098,7 @@
 [data-theme="retro"] .display-tag { margin: 14px 0 0; font-size: 8px; line-height: 2; color: var(--grey); text-transform: uppercase; }
 [data-theme="retro"] .display-status { margin-top: 16px; font-size: 8px; color: var(--grey); }
 [data-theme="retro"] .status-led { width: 8px; height: 8px; border-radius: 0; background: var(--dark); }
-[data-theme="retro"] .status-led.live { background: var(--red); animation: blink 1.6s steps(1) infinite; }
+[data-theme="retro"] .status-led.live { animation: blink 1.6s steps(1) infinite; }
 /* No slide-rule here: an 8-bit HUD picks from a list, it does not sweep. */
 [data-theme="retro"] .dial { display: none; }
 
@@ -1223,7 +1240,6 @@
 [data-theme="departures"] .display-tag { margin: 12px 0 0; font-size: 15px; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
 [data-theme="departures"] .display-status { margin-top: 12px; font-size: 14px; letter-spacing: .18em; text-transform: uppercase; color: var(--mute); }
 [data-theme="departures"] .status-led { width: 8px; height: 8px; border-radius: 0; background: var(--line); }
-[data-theme="departures"] .status-led.live { background: var(--lime); }
 [data-theme="departures"] .dial { display: none; }
 
 [data-theme="departures"] .meter { display: block; margin-top: 20px; }
@@ -1330,7 +1346,6 @@
 [data-theme="marconi"] .display-tag { margin: 10px 0 0; font-size: 15px; letter-spacing: .16em; color: var(--mute); }
 [data-theme="marconi"] .display-status { margin-top: 12px; justify-content: center; font-size: 11px; letter-spacing: .28em; text-transform: uppercase; color: var(--mute); }
 [data-theme="marconi"] .status-led { width: 7px; height: 7px; background: #4a3d1e; transform: rotate(45deg); }
-[data-theme="marconi"] .status-led.live { background: var(--gold-hi); box-shadow: 0 0 9px rgba(240,217,138,.85); }
 
 /* A gold slide-rule, hairline ticks, one lit pointer. */
 [data-theme="marconi"] .dial { display: grid; gap: 18px; margin: 22px auto 0; max-width: 520px; padding-left: 54px; }
@@ -1561,7 +1576,6 @@
 /* The tuning lamp, which on the real set is the only lit thing on the
    front and is amber whatever else is going on. */
 [data-theme="tivoli"] .status-led { width: 7px; height: 7px; border-radius: 50%; background: #cfc7b6; }
-[data-theme="tivoli"] .status-led.live { background: var(--pilot); box-shadow: 0 0 8px rgba(255,157,46,.85); }
 
 /* ---- the slide rule ---- */
 /* Printed on the plate, not lit: on a set of this age the dial is ink on
