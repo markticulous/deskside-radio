@@ -85,7 +85,7 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
 
 ['favicon-dial.ico', 'favicon-console.ico', 'favicon-rams.ico', 'favicon-editorial.ico',
  'favicon-retro.ico', 'favicon-departures.ico', 'favicon-marconi.ico', 'favicon-tivoli.ico',
- 'Create Desktop Shortcut.cmd', 'Start With Windows.cmd',
+ 'Win - Create Desktop Shortcut.cmd', 'Win - Start With Windows.cmd',
  /* The per-browser launchers, and Linux. Named for the platform they are
     for, because a folder of double-clickable scripts is the one place a
     filename has to say what it does before anyone opens it. */

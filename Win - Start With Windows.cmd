@@ -1,33 +1,32 @@
 @echo off
 setlocal
-rem Deskside Radio - put a shortcut on the Desktop.
+rem Deskside Radio - start it automatically when you sign in.
 rem
-rem A web page cannot do this itself: Chrome will not save a .url file under
-rem its own name and renames it to .download, because such a file can point
-rem anywhere. So the shortcut is made here instead, as a real .lnk.
+rem This puts the same shortcut "Win - Create Desktop Shortcut.cmd" makes into the
+rem Startup folder, which Windows opens on sign-in. Nothing is written to the
+rem registry and nothing runs as a service: it is one .lnk file in a folder
+rem you can open yourself with Win+R, shell:startup.
 rem
-rem The shortcut does more than open the page. It starts Chrome, or Edge if
-rem Chrome is not installed, as a window of its own with the autoplay policy
-rem lifted, so "Play on launch" actually plays on launch instead of asking
-rem for a click. That needs a browser profile of its own: command-line flags
-rem are read once at startup, so a browser that is already running would
-rem otherwise hand over the page and drop the flags.
+rem Run it again to see whether it is on, or run it with "off" to remove it:
 rem
-rem Because the profile is its own, it starts with no settings. Export yours
-rem from Settings - Service, leave deskside-radio-settings.json beside
-rem index.html, and the first launch reads it.
+rem   "Win - Start With Windows.cmd"           turn it on, with the dial icon
+rem   "Win - Start With Windows.cmd" console   turn it on, with the console icon
+rem   "Win - Start With Windows.cmd" off       turn it off
 rem
-rem Run it with a theme name to get that theme's icon:
+rem The browser detection below is deliberately a copy of the one in
+rem "Win - Create Desktop Shortcut.cmd" rather than shared with it. These are files
+rem people double-click, sometimes one without ever running the other, so
+rem each one has to work on its own.
 rem
-rem   "Create Desktop Shortcut.cmd" console
-rem
-rem The app's shortcut panel shows the line to use. With no argument, or one
-rem whose icon is missing, it falls back to the analogue dial icon.
+rem For the radio to be playing when you arrive, turn on "Play on launch" in
+rem Settings and pick a station, or set up a schedule.
 
-title Deskside Radio - Desktop shortcut
+title Deskside Radio - start with Windows
 
 set "APPDIR=%~dp0"
 set "TARGET=%APPDIR%index.html"
+set "STARTUP=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
+set "LINK=%STARTUP%\Deskside Radio.lnk"
 
 if not exist "%TARGET%" (
   echo.
@@ -38,7 +37,39 @@ if not exist "%TARGET%" (
   exit /b 1
 )
 
-set "THEME=%~1"
+if not exist "%STARTUP%" (
+  echo.
+  echo   Could not find your Startup folder:
+  echo   "%STARTUP%"
+  echo.
+  pause
+  exit /b 1
+)
+
+rem ---- off ----------------------------------------------------------------
+set "MODE=%~1"
+if /i "%MODE%"=="off" goto :remove
+if /i "%MODE%"=="remove" goto :remove
+if /i "%MODE%"=="/off" goto :remove
+goto :install
+
+:remove
+if exist "%LINK%" (
+  del "%LINK%"
+  echo.
+  echo   Deskside Radio will no longer start when you sign in.
+  echo   Removed: "%LINK%"
+) else (
+  echo.
+  echo   It was not set to start with Windows, so there was nothing to remove.
+)
+echo.
+pause
+exit /b 0
+
+rem ---- on -----------------------------------------------------------------
+:install
+set "THEME=%MODE%"
 if not defined THEME set "THEME=dial"
 set "ICON=%APPDIR%favicon-%THEME%.ico"
 if not exist "%ICON%" (
@@ -50,9 +81,6 @@ if not exist "%ICON%" (
   set "ICON=%APPDIR%favicon-dial.ico"
 )
 
-rem Chrome first, then Edge, which every Windows 11 machine has. App Paths is
-rem the registry's own answer to "where is this browser", so it catches the
-rem installs that are not in either Program Files.
 set "BROWSER="
 set "BROWSERNAME="
 if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "BROWSER=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
@@ -78,8 +106,7 @@ rem Windows cmd looks there before it looks along PATH -- so a powershell.bat
 rem dropped in beside this script would be what ran. %SystemRoot% cannot
 rem contain a space, so it needs no quoting of its own.
 %SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$desktop = [Environment]::GetFolderPath('Desktop');" ^
-  "$path = Join-Path $desktop 'Deskside Radio.lnk';" ^
+  "$path = Join-Path $env:STARTUP 'Deskside Radio.lnk';" ^
   "$link = (New-Object -ComObject WScript.Shell).CreateShortcut($path);" ^
   "$q = [char]34;" ^
   "if ($env:BROWSER) {" ^
@@ -97,11 +124,11 @@ rem contain a space, so it needs no quoting of its own.
   "$link.WorkingDirectory = $env:APPDIR;" ^
   "$link.Description = 'Deskside Radio';" ^
   "$link.Save();" ^
-  "Write-Host ''; Write-Host ('  Shortcut created: ' + $path)"
+  "Write-Host ''; Write-Host ('  Set to start with Windows: ' + $path)"
 
 if errorlevel 1 (
   echo.
-  echo   Something went wrong creating the shortcut.
+  echo   Something went wrong writing to the Startup folder.
   echo.
   pause
   exit /b 1
@@ -110,16 +137,14 @@ if errorlevel 1 (
 echo   Icon: %THEME%
 if defined BROWSER (
   echo   Opens with: %BROWSERNAME%
-  echo   Its own profile: "%PROFILE%"
-  echo.
-  echo   Turn on "Play on launch" in Settings and the radio starts by itself.
-  echo   That profile starts empty: to bring your stations across, export them
-  echo   from Settings - Service and leave deskside-radio-settings.js beside
-  echo   index.html. It is read once, the first time that profile opens.
 ) else (
-  echo   No Chrome or Edge found, so the shortcut opens index.html in your
-  echo   default browser. It will still ask for one click before playing.
+  echo   No Chrome or Edge found, so it will open in your default browser.
 )
-
+echo.
+echo   It will open the next time you sign in. To have it playing by then,
+echo   turn on "Play on launch" in Settings and choose a station.
+echo.
+echo   To stop it starting: run this script again with off
+echo     "Win - Start With Windows.cmd" off
 echo.
 pause

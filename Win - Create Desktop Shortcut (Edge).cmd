@@ -2,9 +2,9 @@
 setlocal
 rem Deskside Radio - desktop shortcut that opens in Microsoft Edge.
 rem
-rem The same shortcut "Create Desktop Shortcut.cmd" makes, but pinned to Edge
-rem rather than to whichever of Chrome or Edge was found first. Useful on a
-rem work machine where Edge is the browser that is allowed.
+rem The same shortcut "Win - Create Desktop Shortcut.cmd" makes, but
+rem pinned to Edge rather than to whichever of Chrome or Edge was found
+rem first. Useful on a work machine where Edge is the browser allowed.
 rem
 rem   "Win - Create Desktop Shortcut (Edge).cmd"           dial icon
 rem   "Win - Create Desktop Shortcut (Edge).cmd" console   console icon
@@ -44,8 +44,8 @@ if not defined BROWSER for /f "skip=2 tokens=2,*" %%A in ('%SystemRoot%\System32
 if not defined BROWSER (
   echo.
   echo   Microsoft Edge was not found on this machine.
-  echo   Use "Create Desktop Shortcut.cmd" instead - it takes Chrome or Edge,
-  echo   whichever is there.
+  echo   Use "Win - Create Desktop Shortcut.cmd" instead - it takes
+  echo   Chrome or Edge, whichever is there.
   echo.
   pause
   exit /b 1
