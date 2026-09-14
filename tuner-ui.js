@@ -521,6 +521,10 @@
      the rest is the pause at each end. Both speeds below are quoted for
      the travel and converted here, so changing the keyframes does not
      quietly change the pace. */
+  /* The outward share of name-marquee's cycle, 12% to 58%. Only the
+     stepped path needs it, and the stepped path is only ever a display
+     name, so this tracks that one keyframe block and not preset-marquee,
+     which spends a different share of its cycle travelling. */
   var TRAVEL_SHARE = 0.46;
   var STEP_MS = 230;           // one flap, on a board
 
