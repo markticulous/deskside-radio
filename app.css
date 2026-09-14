@@ -110,7 +110,14 @@
 }
 
 .display-status { display: inline-flex; align-items: center; gap: 8px; }
-.status-led     { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+/* Two hairlines, one of each. On a cream plate the dark one draws the
+   edge; on a black panel the light one does; on the blue block and the
+   cherry both are doing a little. Each is invisible where it is not
+   needed, so one lamp reads on every ground the app has. */
+.status-led     {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--lamp-off);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.22);
+}
 /* On air is one colour in every theme. Each cabinet used to light it in
    its own accent -- red here, gold there, white on the editorial block --
    which made the single most important thing on the front the one thing
@@ -126,7 +133,12 @@
    their unlit lamp colour on .status-led with an attribute selector of
    their own, further down the sheet, and a bare .status-led.live ties
    with those on specificity and loses on order. */
-:root { --live: #2ee56a; }
+/* Off is one grey for the same reason on air is one green: a lamp that
+   is out should look the same everywhere, so the only thing that changes
+   when it lights is that it has lit. A mid neutral rather than each
+   theme's own near-black, because a lamp that disappears into the panel
+   it sits on is not saying anything about being off. */
+:root { --live: #2ee56a; --lamp-off: #6b7075; }
 [data-theme] .status-led.live {
   background: var(--live);
   box-shadow: 0 0 7px color-mix(in srgb, var(--live) 70%, transparent),
@@ -1097,7 +1109,7 @@
 }
 [data-theme="retro"] .display-tag { margin: 14px 0 0; font-size: 8px; line-height: 2; color: var(--grey); text-transform: uppercase; }
 [data-theme="retro"] .display-status { margin-top: 16px; font-size: 8px; color: var(--grey); }
-[data-theme="retro"] .status-led { width: 8px; height: 8px; border-radius: 0; background: var(--dark); }
+[data-theme="retro"] .status-led { width: 8px; height: 8px; border-radius: 0; }
 [data-theme="retro"] .status-led.live { animation: blink 1.6s steps(1) infinite; }
 /* No slide-rule here: an 8-bit HUD picks from a list, it does not sweep. */
 [data-theme="retro"] .dial { display: none; }
@@ -1239,7 +1251,7 @@
 }
 [data-theme="departures"] .display-tag { margin: 12px 0 0; font-size: 15px; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
 [data-theme="departures"] .display-status { margin-top: 12px; font-size: 14px; letter-spacing: .18em; text-transform: uppercase; color: var(--mute); }
-[data-theme="departures"] .status-led { width: 8px; height: 8px; border-radius: 0; background: var(--line); }
+[data-theme="departures"] .status-led { width: 8px; height: 8px; border-radius: 0; }
 [data-theme="departures"] .dial { display: none; }
 
 [data-theme="departures"] .meter { display: block; margin-top: 20px; }
@@ -1345,7 +1357,7 @@
 }
 [data-theme="marconi"] .display-tag { margin: 10px 0 0; font-size: 15px; letter-spacing: .16em; color: var(--mute); }
 [data-theme="marconi"] .display-status { margin-top: 12px; justify-content: center; font-size: 11px; letter-spacing: .28em; text-transform: uppercase; color: var(--mute); }
-[data-theme="marconi"] .status-led { width: 7px; height: 7px; background: #4a3d1e; transform: rotate(45deg); }
+[data-theme="marconi"] .status-led { width: 7px; height: 7px; transform: rotate(45deg); }
 
 /* A gold slide-rule, hairline ticks, one lit pointer. */
 [data-theme="marconi"] .dial { display: grid; gap: 18px; margin: 22px auto 0; max-width: 520px; padding-left: 54px; }
@@ -1575,7 +1587,7 @@
 }
 /* The tuning lamp, which on the real set is the only lit thing on the
    front and is amber whatever else is going on. */
-[data-theme="tivoli"] .status-led { width: 7px; height: 7px; border-radius: 50%; background: #cfc7b6; }
+[data-theme="tivoli"] .status-led { width: 7px; height: 7px; border-radius: 50%; }
 
 /* ---- the slide rule ---- */
 /* Printed on the plate, not lit: on a set of this age the dial is ink on
