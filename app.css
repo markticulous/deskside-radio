@@ -2771,3 +2771,80 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   .finder-fields { grid-template-columns: minmax(0, 1fr); }
   .controls .tone { min-width: 92px; }
 }
+/* ================================================================== */
+/* Phones                                                              */
+/* ================================================================== */
+
+/* One width to answer: a portrait phone, 360 to 440 css pixels, which is
+   every current iPhone and every Galaxy. Tablets from 768 up already get
+   the desk layout and need nothing.
+
+   Horizontal scrolling is not a risk here -- .tuner clips -- so the work
+   is the other half of it: what clipping hides, and what wraps into a
+   mess when the row it is in was drawn for a desk. */
+@media (max-width: 560px) {
+  .tuner { --pad: 16px; --gap: 14px; min-height: 0; }
+
+  /* The byline is a maker's mark rather than information, so it is the
+     first thing to give up its place when the row has to choose. */
+  .byline { display: none; }
+  .tuner-bar { gap: 10px 12px; }
+  .clock { margin-left: 0; }
+
+  /* Minimums drawn for a desk: at 390 they force the control row on to
+     three lines and push the last number off the edge, where the cabinet
+     clips it and the reading is simply gone. */
+  .volume { min-width: 108px; flex: 1 1 100%; }
+  .tone { min-width: 84px; }
+  .fader { gap: 7px; }
+  .fader output { min-width: 2.5ch; }
+
+  /* A number every hundred kilohertz does not fit across a phone and
+     arrives as a smear of digits. The ticks and the needle still say
+     where on the band you are, which is what the scale is for. */
+  .scale-labels { display: none; }
+  .dial { gap: 4px; }
+
+  /* Two rows of presets in a scrolling window is a poor trade on a screen
+     that scrolls anyway: let the list stand at its full height, one station
+     to a row. Scoped to the theme attribute because several cabinets set
+     their own columns and would otherwise keep two of them, which is how a
+     station ends up called CBC Radio 1 T... on a phone. */
+  [data-theme] .presets {
+    max-height: none;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Model One is drawn as an object, with the driver and the knob pinned to
+   the cabinet and the plate given what is left. At 390 what is left is a
+   hundred pixels, and the plate collapses to a column of single words
+   with the knob sitting across it.
+
+   So the object is re-arranged rather than shrunk: the driver moves to
+   the top, above the plate rather than beside it, and the knob comes off
+   the cabinet and stands in the control row with the other two. It still
+   reads as the radio -- speaker, plate, knobs -- in the order a tall
+   screen can hold them. */
+@media (max-width: 560px) {
+  [data-theme="tivoli"] .tuner {
+    --grille: 128px; --knob: 76px; --gap: 12px;
+    padding: calc(var(--grille) + 30px) 16px 18px;
+  }
+  [data-theme="tivoli"] .meter {
+    left: 50%; top: 16px;
+    transform: translateX(-50%) scale(calc(1 + var(--vu, 0) * .015));
+  }
+  [data-theme="tivoli"] .tuner-bar { margin-left: 0; margin-right: 0; }
+  [data-theme="tivoli"] .controls { gap: 18px; --rec-gap: 18px; justify-content: center; }
+  /* Back into the row: position stays relative, because the knob is built
+     from this element's own pseudo-elements and they need it to measure
+     from. */
+  [data-theme="tivoli"] .fader.volume {
+    --dia: 76px;
+    position: relative; right: auto; top: auto; transform: none;
+    width: var(--dia); padding-top: var(--dia); flex: 0 0 auto;
+  }
+  [data-theme="tivoli"] .fader.volume label { letter-spacing: .18em; }
+  [data-theme="tivoli"] .rec-btn { margin-top: 0; align-self: center; }
+}
