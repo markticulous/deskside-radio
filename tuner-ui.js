@@ -480,13 +480,41 @@
      same twitch on a name a few pixels too wide. */
   var MAX_SQUEEZE_EM = 0.04;
 
+  /* The thing that actually moves. A display name is already built as one
+     or more .name-line blocks, which are the right shape for it. Anything
+     else -- a preset button, whose text is bare -- gets a wrapper, and
+     only while it is scrolling: text-overflow: ellipsis does not apply to
+     a child element, so a permanent wrapper would cost every overflowing
+     name its ellipsis. */
+  function runnersOf(el) {
+    var lines = el.getElementsByClassName('name-line');
+    if (lines.length) return Array.prototype.slice.call(lines);
+    var run = el.querySelector(':scope > .scroll-run');
+    if (!run) {
+      run = document.createElement('span');
+      run.className = 'scroll-run';
+      while (el.firstChild) run.appendChild(el.firstChild);
+      el.appendChild(run);
+    }
+    return [run];
+  }
+
+  function unwrapRun(el) {
+    var run = el.querySelector(':scope > .scroll-run');
+    if (!run) return;
+    while (run.firstChild) el.insertBefore(run.firstChild, run);
+    run.remove();
+  }
+
   function clearFit(el) {
     if (!el) return;
     el.classList.remove('can-scroll');
     el.style.letterSpacing = '';
-    el.style.animationTimingFunction = '';
     el.style.removeProperty('--marquee-by');
     el.style.removeProperty('--marquee-ms');
+    var lines = el.getElementsByClassName('name-line');
+    for (var i = 0; i < lines.length; i++) lines[i].style.animationTimingFunction = '';
+    unwrapRun(el);
   }
 
   /* The travel is 46% of the cycle -- 12% to 58% of the keyframes -- and
@@ -514,7 +542,13 @@
       ? Math.round(steps * STEP_MS / TRAVEL_SHARE)
       : Math.round(2600 + by * 28);
     el.style.setProperty('--marquee-ms', total + 'ms');
-    if (steps) el.style.animationTimingFunction = 'steps(' + steps + ', end)';
+
+    /* The timing function belongs on whatever carries the animation, which
+       is the runner and not the box around it. */
+    var runners = runnersOf(el);
+    for (var i = 0; i < runners.length; i++) {
+      runners[i].style.animationTimingFunction = steps ? 'steps(' + steps + ', end)' : '';
+    }
   }
 
   /* Call with the tracking and any previous scroll already cleared, or the

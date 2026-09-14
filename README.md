@@ -97,6 +97,16 @@ The constraint worth knowing: recording taps the Web Audio graph, and that graph
 
 Verified in a real window with a real audio device, which is the only place this can be verified: headless Chrome has no audio output, so the context never renders and the recorder emits zero-byte chunks. Seven seconds gave five chunks and 87,804 bytes.
 
+## What the meter is reading
+
+VU stands for Volume Unit, and a VU meter measures **programme level** — the level of the material itself. It is deliberately not a monitor-volume indicator: on a broadcast console the control-room knob does not move the meters, because the engineer needs to know what is going down the line regardless of how loudly they happen to be listening. A tape deck's meters ignore the output knob for the same reason.
+
+So the needle here does not follow the volume fader, and that is the correct behaviour rather than an oversight. The analyser sits before both the tone shelves and the volume gain, so the meter shows the station as broadcast: turning the fader down, or dialling in bass for the room, changes what reaches the speakers and not what the meter reads. It is the same tap the recorder uses, for the same reason.
+
+The instrument that *does* follow the volume knob is a power meter — the pair of watts meters on a 1970s receiver. That is a different instrument, and this is not it.
+
+0 VU is referenced to -15 dBFS. That is a measured number, not a chosen one: twelve seconds each of two real stations gave medians of -18.2 and -17.9 dBFS, and with 0 VU printed at 20/23 of the way up the face, a reference of -18 parked the needle at 87% of its travel and looked pinned. At -15 the same material reads about -3 VU, with peaks touching 0 and the red left for transients that genuinely are loud.
+
 ## Stream types
 
 A station's URL goes straight onto an `<audio>` element, so what the browser can play, the app can play. `Directory.streamKind()` in `radio-directory.js` classifies a URL and the rest follows from that.
