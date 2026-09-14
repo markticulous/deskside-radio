@@ -1,0 +1,19 @@
+# Line endings, decided here rather than by whatever each machine defaults to.
+#
+# The shell script is the one that matters: a .sh checked out with CRLF has
+# a carriage return on the end of its shebang, and Linux then looks for an
+# interpreter called "bash\r" and reports "bad interpreter: No such file or
+# directory". It has to be LF wherever it is cloned.
+#
+# The .cmd files are the mirror image: cmd.exe wants CRLF, and a batch file
+# with LF endings can break on labels and multi-line blocks.
+
+* text=auto
+
+*.sh   text eol=lf
+*.cmd  text eol=crlf
+
+*.ico  binary
+*.png  binary
+*.otf  binary
+*.woff binary
