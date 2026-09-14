@@ -46,7 +46,7 @@
     <p>Every theme the app ships, drawn here by the app's own stylesheet and the same instrument code, so this page cannot go out of date without the app going with it. Same controls in each: now-playing display, presets, play and stop, volume, scheduler state, settings. Only the visual language changes, and the presets and buttons are live, so click around.</p>
     <p>Dial scales are drawn to the real broadcast bands, so the needle sits at 1010 kHz or 92.5 MHz where a receiver would put it. The meters here run on a simulated signal; in the app they read the actual stream, which is why the Model One speaker moves without a station being tuned.</p>
     <p><strong>Analogue dial is the default</strong>, and the rest are one click away in Settings, Theme. Byline options live on <a href="byline-preview.html">the byline page</a>.</p>
-    <p class="intro-aside"><strong>Hold either Shift key</strong> in the radio itself and a red REC button slides out beside play, in whichever theme you are wearing; recordings land in your downloads as <code>DSRadio-&lt;yymmddhhmmss&gt;-&lt;seconds&gt;.m4a</code>, stamped with the moment you pressed it. It is not on these mock-ups, which have no audio behind them to record.</p>
+    <p class="intro-aside"><strong>Hold either Shift key</strong> and a red REC button slides out beside play on every mock-up below, as it does in the radio. Press it here and it only works the light &mdash; there is no stream behind these to record. In the app it writes <code>DSRadio-&lt;yymmddhhmmss&gt;-&lt;seconds&gt;.m4a</code> to your downloads, stamped with the moment you pressed it.</p>
   </header>
 
   <section class="face">
@@ -188,6 +188,10 @@
         <svg class="ic-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="5.5" y="5.5" width="13" height="13" rx="1"/></svg>
         <span class="btn-text"></span>
       </button>
+      <button class="rec-btn" data-rec aria-pressed="false" title="Record">
+        <span class="rec-dot" aria-hidden="true"></span>
+        <span class="rec-word">REC</span>
+      </button>
       <div class="fader volume">
         <label>Volume</label>
         <input type="range" min="0" max="100" value="60" data-vol>
@@ -261,6 +265,16 @@
       q('.status-led').classList.toggle('live', rig.playing);
       q('[data-status]').textContent = rig.playing ? rig.station.status : 'Stopped';
     });
+    /* The record button is shown here doing what it does in the app, but
+       there is no stream behind these mock-ups to record, so pressing it
+       only works the light. The radio itself writes the file. */
+    var recBtn = q('[data-rec]');
+    recBtn.addEventListener('click', function () {
+      var on = this.getAttribute('aria-pressed') !== 'true';
+      this.setAttribute('aria-pressed', on ? 'true' : 'false');
+      this.querySelector('.rec-word').textContent = on ? 'STOP' : 'REC';
+    });
+
     q('[data-sched]').addEventListener('click', function () {
       var on = this.getAttribute('aria-pressed') !== 'true';
       this.setAttribute('aria-pressed', on);
@@ -286,6 +300,17 @@
   }
 
   document.querySelectorAll('.slot').forEach(mount);
+
+  /* Shift reveals it, exactly as in the radio. One that is already running
+     stays out, so the button that would stop it cannot go away. */
+  function showRec(up) {
+    document.querySelectorAll('.rec-btn').forEach(function (b) {
+      b.classList.toggle('is-up', up || b.getAttribute('aria-pressed') === 'true');
+    });
+  }
+  window.addEventListener('keydown', function (e) { if (e.key === 'Shift') showRec(true); });
+  window.addEventListener('keyup', function (e) { if (e.key === 'Shift') showRec(false); });
+  window.addEventListener('blur', function () { showRec(false); });
 
   setInterval(function () {
     var t = clockText();
