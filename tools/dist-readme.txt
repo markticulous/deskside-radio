@@ -11,22 +11,57 @@ your machine are the stations you play and, on each launch, a request to
 Google Fonts for the typefaces. Both are listed under YOUR DATA below.
 
 
+IN A HURRY
+----------
+
+  1. Double-click "Win - Create Desktop Shortcut (Chrome).cmd".
+  2. Open the "Deskside Radio" shortcut it puts on your Desktop.
+  3. Press play.
+
+That is the whole of it. Everything below is detail you can come back
+for. On a Mac or on Linux, see CHOOSING A BROWSER further down.
+
+
+WHAT IS IN THIS README
+----------------------
+
+  WHAT IS IN THIS FOLDER       every file, and what it is for
+  GETTING STARTED (WINDOWS)    the three steps above, spelled out
+  WHY USE THE SHORTCUT         why not just open index.html
+  A NOTE ON THAT SEPARATE WINDOW   why it starts with no stations
+  CHOOSING A BROWSER           Chrome, Edge, Firefox, Mac, Linux
+  STARTING WHEN YOU SIGN IN    having it open by itself
+  WHAT IT DOES                 stations, schedule, themes, the meter
+  RECORDING                    hold Shift for a record button
+  STREAM TYPES                 what plays, and what cannot
+  YOUR DATA                    what is stored and what leaves
+  IF SOMETHING GOES WRONG      the usual handful of problems
+
+
 WHAT IS IN THIS FOLDER
 ----------------------
 
-  index.html                                   The radio itself.
-                                               Everything is in here.
+  index.html
+      The radio itself. Everything is in here.
 
-  Win - Create Desktop Shortcut.cmd            Makes a Desktop shortcut.
-  Win - Create Desktop Shortcut (Edge).cmd     The same, pinned to Edge.
-  Win - Create Desktop Shortcut (Firefox).cmd  The same, pinned to Firefox.
-  Win - Start With Windows.cmd                 Opens the radio at sign-in.
-  Linux - Create Desktop Shortcut.sh           Both of those, for Linux.
+  Win - Create Desktop Shortcut (Chrome).cmd
+      Makes the Desktop shortcut. Start here.
 
-  favicon-*.ico                                One icon per theme, used by
-                                               the shortcut.
-  README.txt                                   This file.
-  LICENSE.txt                                  The MIT licence.
+  Win - Create Desktop Shortcut (Edge).cmd
+  Win - Create Desktop Shortcut (Firefox).cmd
+      The same, pinned to one browser on purpose.
+
+  Win - Start With Windows.cmd
+      Opens the radio when you sign in.
+
+  Linux - Create Desktop Shortcut.sh
+      Both of those, for Linux. Add --autostart for sign-in.
+
+  favicon-*.ico
+      One icon per theme, used by the shortcut.
+
+  README.txt      This file.
+  LICENSE.txt     The MIT licence.
 
 Anything starting "Win - " is for Windows and anything starting
 "Linux - " is for Linux; on a Mac you make the shortcut from inside the
@@ -41,7 +76,7 @@ GETTING STARTED (WINDOWS)
 
 1. Unzip this folder somewhere you will keep it.
 
-2. Double-click "Win - Create Desktop Shortcut.cmd".
+2. Double-click "Win - Create Desktop Shortcut (Chrome).cmd".
 
    Use this rather than the shortcut button inside the radio. The button
    works, but a browser will not save a .url under its own name, so the
@@ -93,7 +128,7 @@ tomorrow.
 To give the shortcut a different theme's icon, run the script with that
 theme's name:
 
-  "Win - Create Desktop Shortcut.cmd" console
+  "Win - Create Desktop Shortcut (Chrome).cmd" console
 
 Settings shows you the exact line to use for whichever theme you are on.
 
@@ -112,12 +147,15 @@ The next launch reads it once and keeps its own settings from then on.
 This is also how you set up a second machine.
 
 
-PICKING THE BROWSER, AND OTHER PLATFORMS
-----------------------------------------
+CHOOSING A BROWSER
+------------------
 
-Win - Create Desktop Shortcut.cmd takes Chrome or Edge, whichever it finds
-first. Three more scripts are here for when that is not the one you
-want:
+Chrome and Edge behave identically here - Edge is built on the same
+engine, and everything in this readme was checked on both. If you are on
+a work machine with only Edge, nothing is missing.
+
+The Chrome script takes whichever of the two it finds, so most people
+need nothing else. The rest are for pinning to one browser on purpose:
 
   Win - Create Desktop Shortcut (Edge).cmd
       Makes "Deskside Radio (Edge)", pinned to Edge.
@@ -137,9 +175,18 @@ Each shortcut has a browser profile of its own, so stations and settings
 do not carry across between them. Export from Settings - Service to move
 a setup from one to another.
 
-On a Mac the shortcut is a .fileloc file. Drag it from Downloads to the
-Desktop. If Finder refuses to open it, drag the address out of your
-browser's address bar onto the Desktop instead - that always works.
+On a Mac, open index.html in Chrome, Edge or Safari. There is no script
+for it; the shortcut button next to Settings hands you a .fileloc file
+instead, which you drag from Downloads to the Desktop. If Finder refuses
+to open it, drag the address out of your browser's address bar onto the
+Desktop - that always works.
+
+Safari plays everything here and handles HLS stations better than most,
+with two differences. It will not let a page opened from a file on disk
+remember anything, so stations and settings do not survive a reload; put
+the folder on a web server, or use Chrome or Edge, if that matters. And
+the window will not size or place itself, because that is the shortcut's
+doing and the shortcut is a Chrome one.
 
 
 STARTING WHEN YOU SIGN IN
@@ -165,26 +212,6 @@ Items, and add that file under "Open at Login". It opens in your normal
 browser, so it will ask for one click before it plays -- the trick the
 Windows shortcut uses to skip that click is a Chrome command line, and
 there is no equivalent to hand a login item.
-
-
-OTHER PLATFORMS AND OTHER BROWSERS
-----------------------------------
-
-Chrome and Edge behave identically: Edge is built on the same engine,
-the shortcut script uses it when Chrome is absent, and everything in
-this readme was checked on both. If you are on a work machine with only
-Edge, nothing is missing.
-
-On macOS and Linux, open index.html in Chrome, Edge or Safari. The two
-Windows scripts are Windows-only; on macOS the app can hand you a
-.fileloc file instead, from the shortcut button next to Settings.
-
-Safari plays everything here, and handles HLS stations better than most.
-Two things differ. Safari will not let a page opened from a file on disk
-remember anything, so your stations and settings will not survive a
-reload -- put the folder on a web server, or use Chrome or Edge, if that
-matters to you. And the window does not size or place itself, because
-that belongs to the shortcut and the shortcut is a Chrome one.
 
 
 WHAT IT DOES

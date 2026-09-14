@@ -861,7 +861,7 @@
     var st = currentStation();
     var lead = launching ? "Starts " : "Resumes ";
     // Windows has a way out of this panel for good; say so while it is up.
-    var way = isMac() ? "" : " To start it on its own, run Win - Create Desktop Shortcut.cmd in the app folder.";
+    var way = isMac() ? "" : " To start it on its own, run Win - Create Desktop Shortcut (Chrome).cmd in the app folder.";
     el.startSub.textContent = (st
       ? lead + st.name + ". Browsers need one click before audio can play."
       : "Browsers need one click before audio can play.") + way;
@@ -955,11 +955,26 @@
     if (key !== lastSlotKey) {
       var first = lastSlotKey === undefined;
       lastSlotKey = key;
+
+      /* The countdown is over because the thing it was counting to has
+         happened, so it is taken down without restoring the level. That
+         distinction is the whole of disarmHandover's argument, and
+         getting it wrong here is what made the fade-in inaudible: the
+         handover left the level at nothing, and then updateHandover ran
+         later in this same tick, found the next change an hour away, and
+         restored it over 300ms -- while the new station was still
+         connecting. By the time it had anything to play, the level was
+         already back at full. Nothing was audibly faded in.
+
+         Put back by whoever knows the new station is really playing: the
+         live transition in setStatus for a slot that tuned something, and
+         the branch below for a day that simply ended. */
+      if (!first) disarmHandover(false);
+
       /* The last slot of the day has just ended and nothing has taken
          over. Whether that means carry on or stop is the day group's own
          setting -- weekdays can end at bedtime while the weekend runs on. */
       if (!slot && !first && state.intendedPlaying) {
-        disarmHandover(false);
         var ends = state.scheduleEnds || {};
         if (ends[Scheduler.dayGroup(now)] === 'off') stopPlayback();
         else if (fadeMul !== 1) fadeGain(1, RETURN_FADE_MS);
@@ -1770,7 +1785,7 @@
     $('shortcutTheme').textContent = named;
     // Quoted: the folder has a space in it more often than not, and an
     // unquoted path runs whatever the first word happens to name.
-    $('shortcutCmd').textContent = '"' + windowsPathOf(appFolderUrl()) + 'Win - Create Desktop Shortcut.cmd" ' + theme;
+    $('shortcutCmd').textContent = '"' + windowsPathOf(appFolderUrl()) + 'Win - Create Desktop Shortcut (Chrome).cmd" ' + theme;
     $('shortcutHelp').showModal();
   });
 
