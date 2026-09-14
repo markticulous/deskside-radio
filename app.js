@@ -1024,6 +1024,29 @@
     if (node.textContent !== text) node.textContent = text;
   }
 
+  /* The next-up text, and the width the chip should become to hold it.
+
+     Measured rather than left to the layout: width is what the CSS
+     animates, and it has to be handed a length to animate to.
+
+     Measured with a Range over the text, not with scrollWidth. scrollWidth
+     is the larger of the content and the box, and the box is now held at
+     an explicit width -- so once that width was wider than the new text,
+     scrollWidth simply read the box back, --next-w never changed, and the
+     chip sat at 30ch for every station. A Range's rect is the run of
+     glyphs themselves, letter-spacing included, whatever box they are in.
+     Only read when the text actually changed, a few times an hour. */
+  function setNextUp(text) {
+    var n = el.schedNext;
+    if (n.textContent === text) return;
+    n.textContent = text;
+    var range = document.createRange();
+    range.selectNodeContents(n);
+    var w = range.getBoundingClientRect().width;
+    range.detach();
+    n.style.setProperty('--next-w', Math.ceil(w) + 'px');
+  }
+
   function renderNext(now) {
     var hide = state.schedulerEnabled ? 'false' : 'true';
     if (el.schedNext.getAttribute('aria-hidden') !== hide) el.schedNext.setAttribute('aria-hidden', hide);
@@ -1032,12 +1055,12 @@
     // to collapse.
     if (!state.schedulerEnabled) { return; }
     var n = Scheduler.nextChange(state.schedule, now);
-    if (!n) { setText(el.schedNext, 'No slots yet'); return; }
+    if (!n) { setNextUp('No slots yet'); return; }
     var st = n.slot ? station(n.slot.stationId) : null;
     var when = pad(n.at.getHours()) + ':' + pad(n.at.getMinutes());
     var sameDay = n.at.toDateString() === now.toDateString();
     var day = sameDay ? '' : ' ' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][n.at.getDay()];
-    setText(el.schedNext, (st ? st.name : 'Free play') + ' at ' + when + day);
+    setNextUp((st ? st.name : 'Free play') + ' at ' + when + day);
   }
 
   el.schedToggle.addEventListener('click', function () {
