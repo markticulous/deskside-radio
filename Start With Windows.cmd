@@ -40,7 +40,7 @@ if not exist "%TARGET%" (
 if not exist "%STARTUP%" (
   echo.
   echo   Could not find your Startup folder:
-  echo   %STARTUP%
+  echo   "%STARTUP%"
   echo.
   pause
   exit /b 1
@@ -58,7 +58,7 @@ if exist "%LINK%" (
   del "%LINK%"
   echo.
   echo   Deskside Radio will no longer start when you sign in.
-  echo   Removed: %LINK%
+  echo   Removed: "%LINK%"
 ) else (
   echo.
   echo   It was not set to start with Windows, so there was nothing to remove.
@@ -86,12 +86,12 @@ set "BROWSERNAME="
 if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "BROWSER=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
 if not defined BROWSER if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" set "BROWSER=%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"
 if not defined BROWSER if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" set "BROWSER=%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
-if not defined BROWSER for /f "skip=2 tokens=2,*" %%A in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe" /ve 2^>nul') do if exist "%%B" set "BROWSER=%%B"
+if not defined BROWSER for /f "skip=2 tokens=2,*" %%A in ('%SystemRoot%\System32\reg.exe query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe" /ve 2^>nul') do if exist "%%B" set "BROWSER=%%B"
 if defined BROWSER set "BROWSERNAME=Google Chrome"
 
 if not defined BROWSER if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" set "BROWSER=%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"
 if not defined BROWSER if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" set "BROWSER=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
-if not defined BROWSER for /f "skip=2 tokens=2,*" %%A in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe" /ve 2^>nul') do if exist "%%B" set "BROWSER=%%B"
+if not defined BROWSER for /f "skip=2 tokens=2,*" %%A in ('%SystemRoot%\System32\reg.exe query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe" /ve 2^>nul') do if exist "%%B" set "BROWSER=%%B"
 if not defined BROWSERNAME if defined BROWSER set "BROWSERNAME=Microsoft Edge"
 
 set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile"
@@ -99,7 +99,13 @@ set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile"
 rem Every value reaches PowerShell as an environment variable, and every
 rem quote inside the argument string is built with [char]34. A literal " in
 rem here would end the -Command line cmd is holding open.
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+rem
+rem PowerShell and reg are named by their full paths. A double-clicked .cmd
+rem runs with the app folder as the current directory, and on a default
+rem Windows cmd looks there before it looks along PATH -- so a powershell.bat
+rem dropped in beside this script would be what ran. %SystemRoot% cannot
+rem contain a space, so it needs no quoting of its own.
+%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
   "$path = Join-Path $env:STARTUP 'Deskside Radio.lnk';" ^
   "$link = (New-Object -ComObject WScript.Shell).CreateShortcut($path);" ^
   "$q = [char]34;" ^
@@ -110,7 +116,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "    ' --autoplay-policy=no-user-gesture-required' +" ^
   "    ' --window-size=1133,741' +" ^
   "    ' --user-data-dir=' + $q + $env:PROFILE + $q +" ^
-  "    ' --allow-file-access-from-files --no-first-run --no-default-browser-check';" ^
+  "    ' --no-first-run --no-default-browser-check';" ^
   "} else {" ^
   "  $link.TargetPath = $env:TARGET;" ^
   "}" ^

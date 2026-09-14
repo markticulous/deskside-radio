@@ -24,10 +24,36 @@ test('the launcher passes every flag the zero-click start depends on', () => {
   [
     '--app=',                                  // its own window, no browser furniture
     '--autoplay-policy=no-user-gesture-required',
-    '--user-data-dir=',                        // without this the flags are dropped
-    '--allow-file-access-from-files'           // lets the settings seed be read
+    '--user-data-dir='                         // without this the flags are dropped
   ].forEach(function (flag) {
     assert.ok(cmd.indexOf(flag) !== -1, 'launcher no longer passes ' + flag);
+  });
+});
+
+test('the launcher grants no file access, in either script', () => {
+  /* This flag used to be passed so that the settings seed could be read
+     off disk. It is not a permission to read one file: it lets every
+     script on the page read anything the user can, for as long as the
+     shortcut exists. The seed is a script tag now and needs no flag, so
+     the only thing left to do about it is make sure it stays gone. */
+  ['Create Desktop Shortcut.cmd', 'Start With Windows.cmd'].forEach(function (f) {
+    assert.equal(read(f).indexOf('--allow-file-access-from-files'), -1,
+      f + ' passes --allow-file-access-from-files again');
+  });
+});
+
+test('both launchers name powershell and reg by their full paths', () => {
+  /* A double-clicked .cmd runs with the app folder as its current
+     directory, and a default Windows looks there before it looks along
+     PATH. A bare `powershell` is therefore whatever sits next to the
+     script, which on a shared or synced folder is not necessarily ours. */
+  ['Create Desktop Shortcut.cmd', 'Start With Windows.cmd'].forEach(function (f) {
+    const cmd = read(f);
+    assert.ok(/%SystemRoot%\\System32\\WindowsPowerShell\\v1\.0\\powershell\.exe/.test(cmd),
+      f + ' no longer calls powershell by its full path');
+    assert.equal(/(^|[^\\])\breg query/.test(cmd), false, f + ' calls reg by a bare name');
+    assert.ok(cmd.indexOf('%SystemRoot%\\System32\\reg.exe query') !== -1,
+      f + ' no longer calls reg by its full path');
   });
 });
 

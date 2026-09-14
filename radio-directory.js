@@ -46,7 +46,8 @@
      rather than a stream, so it genuinely has nothing to play. */
   function streamKind(url, hlsFlag) {
     if (hlsFlag) return 'hls';
-    var path = String(url || '').split('?')[0].toLowerCase();
+    // Query and fragment both, or live.mp3#x.m3u8 reads as a playlist.
+    var path = String(url || '').split(/[?#]/)[0].toLowerCase();
     if (/\.m3u8$/.test(path)) return 'hls';
     if (/\.(pls|m3u|asx|xspf)$/.test(path)) return 'playlist';
     return 'direct';
@@ -156,9 +157,17 @@
          with -- which is what stops the step between two live windows. */
       if (!seen[pending]) {
         seen[pending] = true;
-        var href = line;
-        try { href = new URL(line, masterUrl).href; } catch (e) { /* as written */ }
-        found.push({ bw: pending, url: href });
+        /* http(s) only, which is the rule parsePlaylist already keeps. A
+           master is written by whoever runs the station, and a rung
+           reading file:/// would be handed to the audio element as it
+           stands. A rung that cannot be read is dropped rather than
+           passed through unresolved. */
+        var href = '';
+        try {
+          var u = new URL(line, masterUrl);
+          if (u.protocol === 'http:' || u.protocol === 'https:') href = u.href;
+        } catch (e) { /* unparseable */ }
+        if (href) found.push({ bw: pending, url: href });
       }
       pending = null;
     }
@@ -212,7 +221,11 @@
     var seen = {}, out = [];
     (list || []).forEach(function (s) {
       if (!s) return;
-      var key = s.url.replace(/^https?:/i, '').replace(/\/+$/, '');
+      /* Trimmed by hand and capped first: /\/+$/ on a URL that is all
+         slashes backtracks quadratically -- 40,000 of them took 850ms
+         here -- and these strings come from the directory, not from us. */
+      var key = String(s.url || '').slice(0, 2048).replace(/^https?:/i, '');
+      while (key.charAt(key.length - 1) === '/') key = key.slice(0, -1);
       if (seen[key]) return;
       seen[key] = true;
       out.push(s);

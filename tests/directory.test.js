@@ -359,3 +359,44 @@ test('normalizeStation uses the tags when the name has no frequency', () => {
   const s = D.normalizeStation({ name: 'CBC Radio 1 Toronto', url: 'https://a/b', tags: 'news,99.1 fm' });
   assert.equal(s.band, '99.1 FM');
 });
+
+// ---------- what arrives from elsewhere ----------
+
+test('streamKind is not fooled by a fragment', () => {
+  /* A fragment is not part of the path, so a plain stream with .m3u8
+     after a # used to be read as a playlist and fetched as text. */
+  assert.equal(D.streamKind('https://x.example/live.mp3#x.m3u8', 0), 'direct');
+  assert.equal(D.streamKind('https://x.example/live.m3u8#a', 0), 'hls');
+  assert.equal(D.streamKind('https://x.example/live.mp3?a=b#c.pls', 0), 'direct');
+});
+
+test('listHlsVariants keeps only http and https rungs', () => {
+  /* A master is written by whoever runs the station, and whatever comes
+     back on these lines is handed to the audio element. */
+  const master = 'https://cdn.example/live/master.m3u8';
+  const text = [
+    '#EXTM3U',
+    '#EXT-X-STREAM-INF:BANDWIDTH=256000', 'file:///C:/Windows/Media/tada.wav',
+    '#EXT-X-STREAM-INF:BANDWIDTH=128000', 'javascript:alert(1)',
+    '#EXT-X-STREAM-INF:BANDWIDTH=96000', 'data:audio/mpeg;base64,AAAA',
+    '#EXT-X-STREAM-INF:BANDWIDTH=64000', 'low/index.m3u8'
+  ].join('\n');
+  assert.deepEqual(D.listHlsVariants(text, master),
+    ['https://cdn.example/live/low/index.m3u8']);
+});
+
+test('dedupe does not backtrack on a URL that is all slashes', () => {
+  const started = Date.now();
+  D.dedupe([{ url: 'https:' + '/'.repeat(40000) + 'x' }, { url: 'https://b.example/' }]);
+  const ms = Date.now() - started;
+  assert.ok(ms < 250, `dedupe took ${ms}ms on a 40k-slash URL`);
+});
+
+test('dedupe still treats a trailing slash as the same station', () => {
+  const out = D.dedupe([
+    { url: 'https://a.example/live/' },
+    { url: 'http://a.example/live' },
+    { url: 'https://b.example/live' }
+  ]);
+  assert.equal(out.length, 2);
+});

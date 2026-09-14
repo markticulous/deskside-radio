@@ -1,6 +1,6 @@
 # Deskside Radio
 
-A desktop internet radio that looks like a radio. Open `index.html` in a browser and it plays — no install, no build step, no account, no server. Stations, a day schedule, four visual themes, and a watchdog that reconnects a dropped stream on its own.
+A desktop internet radio that looks like a radio. Open `index.html` in a browser and it plays — no install, no build step, no account, no server. Stations, a day schedule, eight visual themes, and a watchdog that reconnects a dropped stream on its own.
 
 The four themes are laid out side by side in [previews/preview.html](previews/preview.html) — open it in a browser.
 
@@ -26,12 +26,15 @@ The shortcut that script writes gets around it. Rather than handing the page to 
 chrome.exe --app="file:///.../index.html"
            --autoplay-policy=no-user-gesture-required
            --user-data-dir="%LOCALAPPDATA%\DesksideRadio\profile"
-           --allow-file-access-from-files
 ```
+
+There used to be a fourth flag, `--allow-file-access-from-files`, so that the settings seed below could be read off disk. It is gone, and deliberately. That flag is not permission to read one file: it lifts the same-origin rule for every `file://` page in that profile, so any script running in the page — one that got there through a bug, or a local page opened in the same profile — could read and list anything the signed-in user can, and post it anywhere. It bought a convenience that runs once per profile. The seed is loaded as a script now, which a page has always been allowed to do, and the flag is gone from both launcher scripts. **If you made a shortcut before v1.2.5, run the script again to rewrite it without the flag.**
 
 The separate `--user-data-dir` is not optional: a browser reads these flags once, at startup, so one that is already running would take the page and quietly drop them.
 
-That separate profile is also why the radio opens with nothing in it the first time. To bring your stations, schedule and theme across, export them from **Settings → Service → Export settings** and leave the resulting `deskside-radio-settings.json` beside `index.html`. The first launch reads it once and then keeps its own settings from there. It doubles as a way to ship a machine a ready-made setup.
+That separate profile is also why the radio opens with nothing in it the first time. To bring your stations, schedule and theme across, export them from **Settings → Service → Export settings** and leave the resulting `deskside-radio-settings.js` beside `index.html`. The first launch reads it once and then keeps its own settings from there. It doubles as a way to ship a machine a ready-made setup.
+
+The export is a `.js` file rather than a `.json` one for the reason above: a page can load its own script without being granted the run of the disk. Inside it is the same JSON with `window.DESKSIDE_SEED =` in front, and **Import settings** still reads either shape, so older exports keep working.
 
 Two things to know: opening the page the ordinary way still works and still shows the tap panel, and double-clicking the shortcut while the radio is already open gives you a second window playing over the first.
 
