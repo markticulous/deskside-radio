@@ -38,6 +38,20 @@ The export is a `.js` file rather than a `.json` one for the reason above: a pag
 
 Two things to know: opening the page the ordinary way still works and still shows the tap panel, and double-clicking the shortcut while the radio is already open gives you a second window playing over the first.
 
+### Why the helper, and not the button in the top bar
+
+The radio can hand you a shortcut file &mdash; the icon in the top bar does exactly that &mdash; but on Windows that route has two pieces of grit in it, and the helper script has neither.
+
+A browser will not save a `.url` under its own name, because such a file can point anywhere, so it arrives as `Deskside Radio.download` and has to be renamed. And everything a browser downloads is tagged with a *Mark of the Web*: an alternate data stream recording where the file came from. A page opened from your own disk has no address that the tagger recognises, so the file is marked `ZoneId=4` &mdash; **restricted**, the most suspicious zone Windows has &mdash; and every attempt to open it raises *"Do you want to open this file?"*.
+
+Neither is anything to do with the contents of the shortcut, which is four lines of plain text. To clear the mark: right-click the file, **Properties**, tick **Unblock**, **OK**. Or in PowerShell:
+
+```powershell
+Unblock-File "$env:USERPROFILE\Desktop\Deskside Radio.url"
+```
+
+`Win - Create Desktop Shortcut.cmd` sidesteps both: it builds the `.lnk` on the spot rather than downloading it, so there is nothing to rename and no mark to clear.
+
 ### Picking the browser, and other platforms
 
 `Win - Create Desktop Shortcut.cmd` takes Chrome or Edge, whichever it finds first. Three more scripts exist for when that is not the one you want:
