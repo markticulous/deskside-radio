@@ -22,8 +22,13 @@
   function round(n, places) { var f = Math.pow(10, places); return Math.round(n * f) / f; }
   function clamp(n, lo, hi) { return n < lo ? lo : n > hi ? hi : n; }
 
+  /* The digit counts are a bound, not a fussy reading of the bands. An
+     unbounded \d+ followed by an optional group backtracks quadratically
+     when the text is all digits and no am/fm ever arrives: 40,000 of them
+     took 830ms here, and a station name is whatever a settings file says
+     it is. Four digits and two decimals hold every band there is. */
   function parseBand(text) {
-    var m = /(\d+(?:\.\d+)?)\s*(am|fm)\b/i.exec(text || '');
+    var m = /(\d{1,4}(?:\.\d{1,2})?)\s*(am|fm)\b/i.exec(text || '');
     if (!m) return null;
     return { kind: m[2].toLowerCase(), value: parseFloat(m[1]) };
   }

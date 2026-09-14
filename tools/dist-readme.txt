@@ -5,8 +5,10 @@ A radio for the corner of your computer desktop. It plays internet
 streams from stations you choose, on a schedule if you want one, and it
 looks like a radio rather than a browser tab.
 
-It is a single web page. There is nothing to install, no account, no
-server, and nothing is sent anywhere.
+It is a single web page. There is nothing to install, no account and no
+server. Nothing about you is sent anywhere; the two things that do leave
+your machine are the stations you play and, on each launch, a request to
+Google Fonts for the typefaces. Both are listed under YOUR DATA below.
 
 
 WHAT IS IN THIS FOLDER
@@ -78,7 +80,7 @@ stations of yours in it. To carry your setup across:
 
   1. Open the radio the ordinary way and set it up how you like.
   2. Settings, Service, Export settings.
-  3. Leave the downloaded deskside-radio-settings.json beside index.html.
+  3. Leave the downloaded deskside-radio-settings.js beside index.html.
 
 The next launch reads it once and keeps its own settings from then on.
 This is also how you set up a second machine.
@@ -274,6 +276,11 @@ YOUR DATA
 
 Everything lives in your browser's storage on this machine. No account,
 no sign-in, nothing uploaded, no analytics.
+
+The page asks Google Fonts for its typefaces each time it opens, which
+tells Google an anonymous request came from your address, the same as any
+web page using a hosted font. Playing a station tells that station the
+same. Nothing else leaves the machine.
 
 Once a day the app checks a single file on GitHub to see whether a newer
 version has been published, and says so in Settings if there is one. It

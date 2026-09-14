@@ -235,3 +235,21 @@ test('migrateVolume never goes backwards and stays in range', () => {
     prev = out;
   }
 });
+
+/* A station name is whatever a settings file says it is, and an unbounded
+   \d+ in front of an optional group backtracks quadratically when the
+   digits never reach an am or an fm. Four digits and two decimals cover
+   every band that exists; the bound is what keeps the boot off a cliff. */
+test('parseBand does not backtrack on a long run of digits', () => {
+  const started = Date.now();
+  assert.equal(S.parseBand('9'.repeat(40000)), null);
+  const ms = Date.now() - started;
+  assert.ok(ms < 250, `parseBand took ${ms}ms on 40k digits`);
+});
+
+test('parseBand still reads every band shape it needs to', () => {
+  assert.deepEqual(S.parseBand('1700 AM'), { kind: 'am', value: 1700 });
+  assert.deepEqual(S.parseBand('530 am'), { kind: 'am', value: 530 });
+  assert.deepEqual(S.parseBand('107.9 FM'), { kind: 'fm', value: 107.9 });
+  assert.deepEqual(S.parseBand('88.1 fm'), { kind: 'fm', value: 88.1 });
+});

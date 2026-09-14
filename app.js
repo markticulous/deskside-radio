@@ -56,6 +56,36 @@
     } catch (e) { return clone(DEFAULTS); }
   }
 
+  /* Storage is not a private place. On file:// every local page the
+     browser has ever opened shares one origin, and therefore shares this
+     key; an export file is a file like any other. So what comes back is
+     checked rather than trusted -- not against tampering, which anyone
+     with the disk has better ways to do, but against a shape the code
+     below cannot survive. A schedule stored as a number rather than a
+     list used to throw inside the Settings drawer, and Reset is inside
+     the Settings drawer, so the app could be put into a state it could
+     not be talked out of. */
+  var CAP = { name: 200, band: 32, tag: 400, url: 2048 };
+  function capped(v, max) { return typeof v === 'string' ? v.slice(0, max) : ''; }
+
+  function cleanStation(st, i) {
+    if (!st || typeof st !== 'object') return null;
+    st.name = capped(st.name, CAP.name);
+    st.band = capped(st.band, CAP.band);
+    st.tag = capped(st.tag, CAP.tag);
+    st.url = capped(st.url, CAP.url);
+    /* A hex triplet, not the free-form CSS it would otherwise be. The
+       colour is read back through a background: shorthand, where a
+       url(...) is a fetch to wherever the settings file chose. */
+    if (!/^#[0-9a-f]{6}$/i.test(st.color)) st.color = Directory.pickColour(i);
+    return st;
+  }
+
+  function cleanSlots(list) {
+    return (Array.isArray(list) ? list : [])
+      .filter(function (sl) { return sl && typeof sl === 'object'; });
+  }
+
   /* Everything a stored settings object needs before the app can trust it:
      defaults filled in, old shapes migrated. A settings file seeded from
      disk goes through here too, so it gets the same treatment. */
@@ -63,6 +93,11 @@
     try {
       var merged = Object.assign(clone(DEFAULTS), s);
       merged.schedule = Object.assign({ weekday: [], weekend: [] }, s.schedule || {});
+      merged.schedule.weekday = cleanSlots(merged.schedule.weekday);
+      merged.schedule.weekend = cleanSlots(merged.schedule.weekend);
+      if (!Array.isArray(merged.stations)) merged.stations = clone(DEFAULTS.stations);
+      merged.stations = merged.stations.map(cleanStation).filter(Boolean);
+      if (!merged.stations.length) merged.stations = clone(DEFAULTS.stations);
       if (THEMES.indexOf(merged.theme) === -1) merged.theme = DEFAULTS.theme;
       /* Bass and treble used to be one pair of numbers for the whole app.
          They now belong to the station, so seed every station that has none
@@ -401,12 +436,28 @@
      fails as it did before, which is no worse than not trying. */
   var playlistTried = {};
 
+  /* A playlist is a short text file, and nothing obliges the server to
+     agree: an endless body would have text() buffering until the tab
+     died, and the address is the station's rather than ours. Ten seconds
+     and a megabyte are both far past any real one. */
+  var PLAYLIST_MAX = 1048576;
+  function fetchText(url) {
+    var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    var opts = { cache: 'no-store' };
+    if (ctl) opts.signal = ctl.signal;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 10000);
+    function done(v) { clearTimeout(timer); return v; }
+    return fetch(url, opts)
+      .then(function (r) { return r.ok ? r.text() : ''; })
+      .then(function (text) { return done(text.length > PLAYLIST_MAX ? '' : text); },
+            function (e) { done(); throw e; });
+  }
+
   function resolvePlaylistThenTune(st, volume) {
     var original = st.url;
     playlistTried[original] = true;
     setStatus('connecting', 'Reading playlist');
-    fetch(original, { cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.text() : ''; })
+    fetchText(original)
       .then(function (text) {
         var real = Directory.parsePlaylist(text);
         if (real) { st.url = real; save(); }
@@ -436,8 +487,7 @@
   function resolveHlsThenTune(st, volume) {
     var master = st.url;
     hlsTried[master] = true;
-    fetch(master, { cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.text() : ''; })
+    fetchText(master)
       .then(function (text) {
         var ladder = Directory.listHlsVariants(text, master);
         if (ladder.length) {
@@ -1501,13 +1551,20 @@
        showing right now — the same file the .url above points at, so what
        is previewed here is literally what lands on the Desktop. */
     var theme = known ? state.theme : 'dial';
-    var named = label[state.theme] || 'Deskside Radio';
+    /* Declared before it is read. It used to be the other way round, and
+       since var hoists the name but not the value, every press of the
+       button threw here -- after the download, before showModal, so the
+       file arrived and the panel that explains it never did. */
     var label = { dial: 'Analogue dial', console: 'Broadcast console', rams: 'Rams minimal', editorial: 'Editorial',
-                  retro: 'Retro 8-bit', departures: 'Departures board', marconi: 'Marconi deco' };
+                  retro: 'Retro 8-bit', departures: 'Departures board', marconi: 'Marconi deco',
+                  tivoli: 'Tivoli Model One' };
+    var named = label[state.theme] || 'Deskside Radio';
     $('shortcutIcon').src = known ? 'favicon-' + theme + '.ico' : 'favicon.ico';
     $('shortcutIcon').alt = named + ' icon';
     $('shortcutTheme').textContent = named;
-    $('shortcutCmd').textContent = windowsPathOf(appFolderUrl()) + 'Create Desktop Shortcut.cmd ' + theme;
+    // Quoted: the folder has a space in it more often than not, and an
+    // unquoted path runs whatever the first word happens to name.
+    $('shortcutCmd').textContent = '"' + windowsPathOf(appFolderUrl()) + 'Create Desktop Shortcut.cmd" ' + theme;
     $('shortcutHelp').showModal();
   });
 
@@ -2478,10 +2535,17 @@
   });
 
   $('exportBtn').addEventListener('click', function () {
-    var blob = new Blob([JSON.stringify({ stations: state.stations, schedule: state.schedule, theme: state.theme, volume: state.volume, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId }, null, 2)], { type: 'application/json' });
+    /* Written as a script that assigns a global, rather than as bare
+       JSON. Left beside index.html it then seeds a fresh profile on its
+       first run, and a page has always been allowed to load its own
+       scripts -- where reading the same bytes as data would need the
+       browser opened with the run of the disk. Import reads it either
+       way, so an older .json export still works. */
+    var body = 'window.DESKSIDE_SEED = ' + JSON.stringify({ stations: state.stations, schedule: state.schedule, theme: state.theme, volume: state.volume, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId }, null, 2) + ';\n';
+    var blob = new Blob([body], { type: 'text/javascript' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'deskside-radio-settings.json';
+    a.download = 'deskside-radio-settings.js';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
   });
@@ -2490,12 +2554,22 @@
      one of ours, which is what both callers want to hear about. */
   function importSettingsInto(target, data) {
     if (!data || !Array.isArray(data.stations)) throw new Error('no stations');
-    target.stations = data.stations;
-    target.schedule = Object.assign({ weekday: [], weekend: [] }, data.schedule || {});
+    target.stations = data.stations.map(cleanStation).filter(Boolean);
+    if (!target.stations.length) throw new Error('no stations');
+    var sched = (data.schedule && typeof data.schedule === 'object') ? data.schedule : {};
+    target.schedule = { weekday: cleanSlots(sched.weekday), weekend: cleanSlots(sched.weekend) };
     if (THEMES.indexOf(data.theme) !== -1) target.theme = data.theme;
     target.autoplay = !!data.autoplay;
     target.autoplayStationId = data.autoplayStationId || null;
     return target;
+  }
+
+  /* An export is a script now, which read as text is the same JSON with
+     an assignment in front of it. Older exports are the JSON alone. */
+  function parseExport(text) {
+    return JSON.parse(String(text)
+      .replace(/^\s*(?:window\.)?DESKSIDE_SEED\s*=\s*/, '')
+      .replace(/;\s*$/, ''));
   }
 
   $('importFile').addEventListener('change', function () {
@@ -2503,7 +2577,7 @@
     var r = new FileReader();
     r.onload = function () {
       try {
-        importSettingsInto(draft, JSON.parse(r.result));
+        importSettingsInto(draft, parseExport(r.result));
         renderDrawer();
         refreshSaveBtn();
         $('saveMsg').textContent = 'Imported. Press Save to keep it.'; $('saveMsg').className = 'save-msg good';
@@ -2522,36 +2596,42 @@
 
   /* A launcher-made shortcut opens the radio in its own browser profile,
      which starts with empty storage: no stations, no schedule, default
-     theme. So on a first run only, look for an export file sitting beside
-     index.html and take the settings from that. It has to be XHR — Chrome
-     refuses fetch() on file: URLs outright, while XHR honours
-     --allow-file-access-from-files, which the launcher passes. A page
-     opened the ordinary way is simply refused, and boots on defaults. */
+     theme. So on a first run only, look for an export sitting beside
+     index.html and take the settings from that.
+
+     It is loaded as a script rather than read as data, which is why the
+     export writes one. Reading a file off disk from a file:// page needs
+     --allow-file-access-from-files, and that flag does not stop at the
+     one file it was wanted for: it turns every script on the page into a
+     reader of anything the user can open -- their browser history, their
+     keys, their documents -- for the life of the shortcut, in exchange
+     for a convenience that runs once per profile. A script tag needs no
+     flag, because a page has always been allowed to load its own
+     scripts. A missing file is the ordinary case and is not an error. */
   function seedSettings(done) {
-    var req;
-    try { req = new XMLHttpRequest(); } catch (e) { return done(); }
+    var tag = document.createElement('script');
     var finished = false;
-    function go() { if (!finished) { finished = true; done(); } }
-    req.onload = function () {
+    function go() {
+      if (finished) return;
+      finished = true;
+      tag.remove();
       try {
-        // file:// reports status 0 on success, so judge it by the body.
-        if (req.responseText) {
-          var seeded = normalise(importSettingsInto(clone(DEFAULTS), JSON.parse(req.responseText)));
-          if (!seeded.stations.length) throw new Error('no stations');
+        if (window.DESKSIDE_SEED) {
+          var seeded = normalise(importSettingsInto(clone(DEFAULTS), window.DESKSIDE_SEED));
           state = seeded;
           if (!station(state.currentStationId)) state.currentStationId = state.stations[0].id;
           save();
         }
       } catch (e) { /* not one of ours: carry on with defaults */ }
-      go();
-    };
-    req.onerror = go;
-    req.ontimeout = go;
-    req.timeout = 800;
-    try {
-      req.open('GET', 'deskside-radio-settings.json', true);
-      req.send();
-    } catch (e) { go(); }
+      try { delete window.DESKSIDE_SEED; } catch (e) { window.DESKSIDE_SEED = null; }
+      done();
+    }
+    tag.onload = go;
+    tag.onerror = go;
+    tag.src = 'deskside-radio-settings.js';
+    document.head.appendChild(tag);
+    // A file that is there but never settles must not hold the boot up.
+    setTimeout(go, 800);
   }
 
   function boot() {
