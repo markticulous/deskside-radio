@@ -13,7 +13,23 @@
     fm: { min: 88, max: 108, minor: 0.2, major: 2, labelFrom: 88, labelTo: 108 }
   };
 
-  var VU_REF_DBFS = -18;   // 0 VU sits here on the digital scale
+  /* 0 VU sits here on the digital scale.
+
+     Measured rather than chosen: twelve seconds of each of two real
+     stations, read off the needle. NewsTalk 1010 ran a median of -18.2
+     dBFS, KISS 92.5 a median of -17.9 -- both, in other words, sitting
+     almost exactly on the old -18 reference. That is a correctly
+     calibrated VU meter and it looked wrong: with 0 VU printed at 20/23
+     of the way up the face, program at 0 VU parks the needle at 87% of
+     its travel and it appears to be pinned, which is what it was reported
+     as.
+
+     At -15 the same two stations read a median of about -3 VU, peaks
+     touching 0 and the red kept for transients that genuinely are loud.
+     The needle then uses the middle of its face, which is what a meter is
+     for. Nothing about the scale itself moves; this is the gain in front
+     of it. */
+  var VU_REF_DBFS = -15;
   var VU_MIN = -20;        // leftmost mark printed on the face
   var VU_MAX = 3;          // rightmost mark, top of the red
   var RISE_MS = 150;

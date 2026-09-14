@@ -21,6 +21,11 @@
         url: 'https://rogers-hls.leanstream.co/rogers/tor925.stream/icy', color: '#e11d74', bass: 0, treble: 0 }
     ],
     schedule: { weekday: [], weekend: [] },
+    /* What each day group does once its last slot has ended and nothing
+       follows: 'play' leaves whatever is on playing, 'off' stops. Kept
+       beside the schedule rather than inside it, because the slots are a
+       list and this is a property of the day. */
+    scheduleEnds: { weekday: 'play', weekend: 'play' },
     schedulerEnabled: false,
     // Where the window was left. Filled in once there is one to remember.
     windowBox: null,
@@ -102,6 +107,11 @@
       merged.schedule = Object.assign({ weekday: [], weekend: [] }, s.schedule || {});
       merged.schedule.weekday = cleanSlots(merged.schedule.weekday);
       merged.schedule.weekend = cleanSlots(merged.schedule.weekend);
+      var ends = (s && s.scheduleEnds && typeof s.scheduleEnds === 'object') ? s.scheduleEnds : {};
+      merged.scheduleEnds = {
+        weekday: ends.weekday === 'off' ? 'off' : 'play',
+        weekend: ends.weekend === 'off' ? 'off' : 'play'
+      };
       if (!Array.isArray(merged.stations)) merged.stations = clone(DEFAULTS.stations);
       merged.stations = merged.stations.map(cleanStation).filter(Boolean);
       if (!merged.stations.length) merged.stations = clone(DEFAULTS.stations);
@@ -413,7 +423,14 @@
   }
 
   function setStatus(s, text) {
+    var was = status;
     status = s;
+    /* Coming out of a handover: the level was taken to nothing before the
+       change, so the station that replaced it is brought up rather than
+       dropped in at full. Waiting for 'live' rather than ramping from the
+       moment it was tuned means the rise is heard on the audio and not
+       spent on a connection. */
+    if (s === 'live' && was !== 'live' && fadeMul < 1) fadeGain(1, RETURN_FADE_MS);
     refreshRec();
     el.status.textContent = text;
     el.led.classList.toggle('live', s === 'live');
@@ -550,6 +567,9 @@
 
   function startPlayback() {
     state.intendedPlaying = true;
+    // Whatever a handover left behind, a deliberate press starts at full.
+    clearInterval(fadeTimer); fadeTimer = null;
+    fadeMul = 1; applyGain();
     attempts = 0;
     ensureGraph();
     var target = resolveTarget();
@@ -714,14 +734,39 @@
     if (!lit && !quiet && !holding) TunerUI.drawBars(el.tuner, null);
   }
 
-  function setVolume(v, silent) {
-    v = Math.max(0, Math.min(100, Math.round(v)));
-    state.volume = v;
-    var gain = Signal.volumeToGain(v);
+  /* A multiplier on top of whatever the fader says, for the handover fade.
+     It is deliberately not the fader's own value: the listener set that,
+     and a slot change must not quietly rewrite it. 1 is out of the way. */
+  var fadeMul = 1, fadeTimer = null;
+
+  function applyGain() {
+    var gain = Signal.volumeToGain(state.volume) * fadeMul;
     // The curve tops out at unity, so both paths can carry it unchanged and
     // the fader behaves the same whether or not the analyser tap is in use.
     if (gainNode && audio === corsEl) { corsEl.volume = 1; gainNode.gain.value = gain; }
     else audio.volume = gain;
+  }
+
+  /* Ramped on a timer rather than with the Web Audio scheduler, because
+     the no-CORS path has no scheduler: it is an element's volume property
+     and nothing else. One shape for both, and a fade nobody can hear the
+     seams of at 25 steps a second. */
+  function fadeGain(to, ms, done) {
+    clearInterval(fadeTimer);
+    var from = fadeMul, started = Date.now();
+    if (ms <= 0) { fadeMul = to; applyGain(); if (done) done(); return; }
+    fadeTimer = setInterval(function () {
+      var t = Math.min(1, (Date.now() - started) / ms);
+      fadeMul = from + (to - from) * t;
+      applyGain();
+      if (t >= 1) { clearInterval(fadeTimer); fadeTimer = null; if (done) done(); }
+    }, 40);
+  }
+
+  function setVolume(v, silent) {
+    v = Math.max(0, Math.min(100, Math.round(v)));
+    state.volume = v;
+    applyGain();
     el.volume.value = v;
     el.volumeOut.value = v;
     markFader(el.volume);
@@ -806,6 +851,55 @@
   var lastSlotKey;
   function slotKey(slot) { return slot ? slot.start + '|' + slot.end + '|' + slot.stationId + '|' + slot.volume : null; }
 
+  /* ---------- handover ----------
+     The last minute of a slot, shown on the chip as a line running out
+     along its bottom edge, and the last five seconds of it faded down so
+     the change of station is a segue rather than a cut.
+
+     The bar is armed once, for one particular changeover, and left to the
+     compositor for the rest of the minute -- the clock here ticks once a
+     second and would make a visibly steppy bar if it drove it. --count-ms
+     is whatever is actually left when the arming happens, so a tab that
+     was asleep for forty seconds picks up a twenty-second bar rather than
+     starting a fresh minute. */
+  var HANDOVER_FADE_MS = 5000;   // down, before the change
+  var RETURN_FADE_MS = 2000;     // up, once the next station is playing
+  var armedFor = null;
+
+  function disarmHandover(restore) {
+    if (armedFor === null) return;
+    armedFor = null;
+    el.schedToggle.classList.remove('is-counting', 'is-handing');
+    el.schedToggle.style.removeProperty('--count-ms');
+    // Only when the change never came: after one, the fade up does this.
+    if (restore && fadeMul !== 1) fadeGain(1, 300);
+  }
+
+  function updateHandover(now) {
+    if (!state.schedulerEnabled) { disarmHandover(true); return; }
+    var n = Scheduler.nextChange(state.schedule, now);
+    if (!n) { disarmHandover(true); return; }
+
+    var left = n.at.getTime() - now.getTime();
+    if (left > 60000 || left < 0) { disarmHandover(true); return; }
+
+    var stamp = n.at.getTime();
+    if (armedFor !== stamp) {
+      disarmHandover(false);
+      armedFor = stamp;
+      el.schedToggle.style.setProperty('--count-ms', Math.max(0, left) + 'ms');
+      // Read back, so the animation starts from this frame rather than
+      // resuming wherever the last one had got to.
+      void el.schedToggle.offsetWidth;
+      el.schedToggle.classList.add('is-counting');
+    }
+
+    if (left <= HANDOVER_FADE_MS && !el.schedToggle.classList.contains('is-handing')) {
+      el.schedToggle.classList.add('is-handing');
+      if (state.intendedPlaying && status === 'live') fadeGain(0, Math.max(300, left));
+    }
+  }
+
   function tick() {
     var now = new Date();
     /* Only when it has changed. Assigning the same text still replaces
@@ -819,6 +913,15 @@
     if (key !== lastSlotKey) {
       var first = lastSlotKey === undefined;
       lastSlotKey = key;
+      /* The last slot of the day has just ended and nothing has taken
+         over. Whether that means carry on or stop is the day group's own
+         setting -- weekdays can end at bedtime while the weekend runs on. */
+      if (!slot && !first && state.intendedPlaying) {
+        disarmHandover(false);
+        var ends = state.scheduleEnds || {};
+        if (ends[Scheduler.dayGroup(now)] === 'off') stopPlayback();
+        else if (fadeMul !== 1) fadeGain(1, RETURN_FADE_MS);
+      }
       if (slot && !first && state.intendedPlaying) {
         var st = station(slot.stationId);
         if (st) {
@@ -839,6 +942,7 @@
       }
     }
     renderNext(now);
+    updateHandover(now);
   }
 
   /* Everything is restored from the last session, but a slot that is
@@ -1498,7 +1602,8 @@
 
   function openSettings() {
     draft = clone({
-      stations: state.stations, schedule: state.schedule, theme: state.theme,
+      stations: state.stations, schedule: state.schedule,
+      scheduleEnds: state.scheduleEnds, theme: state.theme,
       autoplay: state.autoplay, autoplayStationId: state.autoplayStationId
     });
     slotGroup = 'weekday';
@@ -1550,17 +1655,27 @@
     var body, type, name;
 
     if (mac) {
+      /* .fileloc, not .webloc. Both are property lists with a URL in them
+         and Finder opens both, but they are not interchangeable: .webloc
+         is for web addresses and .fileloc is for something on this disk,
+         which is what this is. Handed a file:// URL inside a .webloc,
+         Finder reports "The document content is not readable or is in the
+         wrong format" -- it read the file and did not like what was in it.
+
+         The URL is escaped on the way in. A plist is XML, so a folder name
+         with an & in it produced a malformed document and exactly the same
+         message, for a different reason. */
       body = '<?xml version="1.0" encoding="UTF-8"?>\n' +
         '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n' +
-        '<plist version="1.0"><dict><key>URL</key><string>' + here + '</string></dict></plist>\n';
-      type = 'application/xml';
-      name = 'Deskside Radio.webloc';
+        '<plist version="1.0"><dict><key>URL</key><string>' + escapeHtml(here) + '</string></dict></plist>\n';
+      type = 'text/plain';
+      name = 'Deskside Radio.fileloc';
     } else {
       /* The shortcut keeps the theme that was showing when it was made:
          each theme ships its own .ico, and a per-theme path also sidesteps
          the Windows icon cache, which keys on the file it was told about. */
       var known = /^(dial|console|rams|editorial|retro|departures|marconi|tivoli)$/.test(state.theme);
-      var icon = windowsPathOf(appFolderUrl() + (known ? 'favicon-' + state.theme + '.ico' : 'favicon.ico'));
+      var icon = windowsPathOf(appFolderUrl() + 'favicon-' + (known ? state.theme : 'dial') + '.ico');
       // .url files want CRLF and the icon given as a full path.
       body = ['[InternetShortcut]', 'URL=' + here, 'IconFile=' + icon, 'IconIndex=0', ''].join('\r\n');
       type = 'text/plain';
@@ -1574,8 +1689,18 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
 
+    var label = { dial: 'Analogue dial', console: 'Broadcast console', rams: 'Rams minimal', editorial: 'Editorial',
+                  retro: 'Retro 8-bit', departures: 'Departures board', marconi: 'Marconi deco',
+                  tivoli: 'Tivoli Model One' };
+    var named = label[state.theme] || 'Deskside Radio';
+    var theme = known ? state.theme : 'dial';
+
     if (mac) {
       setStatus(status, 'Shortcut downloaded · drag it to your Desktop');
+      $('macIcon').src = 'favicon-' + theme + '.ico';
+      $('macIcon').alt = named + ' icon';
+      $('macTheme').textContent = named;
+      $('macHelp').showModal();
       return;
     }
     setStatus(status, 'Shortcut downloaded · see the panel');
@@ -1583,15 +1708,12 @@
     /* The panel shows the icon the shortcut will carry, which is the theme
        showing right now — the same file the .url above points at, so what
        is previewed here is literally what lands on the Desktop. */
-    var theme = known ? state.theme : 'dial';
-    /* Declared before it is read. It used to be the other way round, and
-       since var hoists the name but not the value, every press of the
-       button threw here -- after the download, before showModal, so the
-       file arrived and the panel that explains it never did. */
-    var label = { dial: 'Analogue dial', console: 'Broadcast console', rams: 'Rams minimal', editorial: 'Editorial',
-                  retro: 'Retro 8-bit', departures: 'Departures board', marconi: 'Marconi deco',
-                  tivoli: 'Tivoli Model One' };
-    var named = label[state.theme] || 'Deskside Radio';
+    /* theme, label and named are worked out above, before the macOS branch
+       returns, because that panel needs them too. They used to be declared
+       here and read one line above the declaration, and since var hoists
+       the name but not the value, every press of the button threw -- after
+       the download, before showModal, so the file arrived and the panel
+       explaining it never did. */
     $('shortcutIcon').src = 'favicon-' + theme + '.ico';
     $('shortcutIcon').alt = named + ' icon';
     $('shortcutTheme').textContent = named;
@@ -1623,7 +1745,8 @@
   function draftSnapshot() {
     if (!draft) return null;
     return JSON.stringify({
-      stations: draft.stations, schedule: draft.schedule, theme: draft.theme,
+      stations: draft.stations, schedule: draft.schedule,
+      scheduleEnds: draft.scheduleEnds, theme: draft.theme,
       autoplay: !!draft.autoplay, autoplayStationId: draft.autoplayStationId || null
     });
   }
@@ -2042,6 +2165,9 @@
   function renderSlotRows(errors) {
     var box = $('slotRows');
     box.innerHTML = '';
+    var ends = $('dayEnd');
+    if (ends) ends.value = (draft.scheduleEnds && draft.scheduleEnds[slotGroup]) === 'off' ? 'off' : 'play';
+
     var slots = draft.schedule[slotGroup];
     if (!slots.length) {
       var none = document.createElement('p');
@@ -2187,6 +2313,13 @@
       .filter(function (spec) { return applyOn(slot, spec); })
       .map(function (spec) { return '<span class="chip">' + spec.chip + '</span>'; }).join('');
   }
+
+  $('dayEnd').addEventListener('change', function () {
+    if (!draft) return;
+    if (!draft.scheduleEnds) draft.scheduleEnds = { weekday: 'play', weekend: 'play' };
+    draft.scheduleEnds[slotGroup] = this.value === 'off' ? 'off' : 'play';
+    refreshSaveBtn();
+  });
 
   $('addSlot').addEventListener('click', function () {
     var slots = draft.schedule[slotGroup];
@@ -2393,10 +2526,15 @@
     return draft.stations.filter(function (s) { return !String(s.band || '').trim(); });
   }
 
+  /* The full length of the Saved plate: up, held, and away again. The
+     drawer closes on the same number, so the two cannot drift apart. */
+  var SAVED_PLATE_MS = 1150;
+
   function commitSettings() {
     var msg = $('saveMsg');
     state.stations = draft.stations;
     state.schedule = draft.schedule;
+    state.scheduleEnds = draft.scheduleEnds;
     state.theme = draft.theme;
     state.autoplay = !!draft.autoplay;
     state.autoplayStationId = draft.autoplayStationId;
@@ -2409,8 +2547,24 @@
     // flipping the label back to Close under the cursor reads as a second,
     // different button. openSettings() resets it on the next visit.
     msg.textContent = 'Saved'; msg.className = 'save-msg good is-exit';
+
+    /* Schedules are built one after another -- that is the shape of the
+       task, an evening laid out slot by slot -- so saving from that tab
+       keeps the drawer open and the tab where it was. The cards all fold
+       shut, which is the thing a list of finished slots should look like
+       and also clears the way for the next one. Everywhere else, saving is
+       the end of the visit and the drawer goes.
+
+       The button flips to Close on its own, because refreshSaveBtn reads
+       the draft and the draft is now clean. */
+    if (pane === 'schedule') {
+      openSlot = null;
+      renderSlotRows();
+      refreshSaveBtn();
+      return;
+    }
     // Matches save-msg-cycle, so the drawer goes as the plate drops away.
-    setTimeout(function () { if (el.settings.open) el.settings.close(); }, 1400);
+    setTimeout(function () { if (el.settings.open) el.settings.close(); }, SAVED_PLATE_MS);
   }
 
   $('saveBtn').addEventListener('click', function () {
@@ -2574,7 +2728,7 @@
        scripts -- where reading the same bytes as data would need the
        browser opened with the run of the disk. Import reads it either
        way, so an older .json export still works. */
-    var body = 'window.DESKSIDE_SEED = ' + JSON.stringify({ stations: state.stations, schedule: state.schedule, theme: state.theme, volume: state.volume, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId }, null, 2) + ';\n';
+    var body = 'window.DESKSIDE_SEED = ' + JSON.stringify({ stations: state.stations, schedule: state.schedule, scheduleEnds: state.scheduleEnds, theme: state.theme, volume: state.volume, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId }, null, 2) + ';\n';
     var blob = new Blob([body], { type: 'text/javascript' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -2591,6 +2745,11 @@
     if (!target.stations.length) throw new Error('no stations');
     var sched = (data.schedule && typeof data.schedule === 'object') ? data.schedule : {};
     target.schedule = { weekday: cleanSlots(sched.weekday), weekend: cleanSlots(sched.weekend) };
+    var e = (data.scheduleEnds && typeof data.scheduleEnds === 'object') ? data.scheduleEnds : {};
+    target.scheduleEnds = {
+      weekday: e.weekday === 'off' ? 'off' : 'play',
+      weekend: e.weekend === 'off' ? 'off' : 'play'
+    };
     if (THEMES.indexOf(data.theme) !== -1) target.theme = data.theme;
     target.autoplay = !!data.autoplay;
     target.autoplayStationId = data.autoplayStationId || null;

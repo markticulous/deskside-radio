@@ -47,8 +47,32 @@
   padding: 0;
   cursor: pointer;
 }
+/* The keyboard's ring, and nowhere near as loud as the browser's.
+
+   The default was two pixels of currentColor sitting three pixels clear of
+   the control, which on a dark theme is a white band floating around it --
+   the thing that looked so wrong on the record button, on every button.
+   It also appeared on ordinary mouse clicks, because a browser's idea of
+   "this was a keyboard interaction" is a heuristic and every engine has a
+   different one.
+
+   So the ring is styled rather than suppressed. Tucked inside the edge it
+   reads as a groove in the control instead of a halo around it, and at a
+   third of the strength it stops competing with everything else on the
+   front. It is drawn from currentColor, which is the one colour guaranteed
+   to be legible against whatever that control is sitting on, in all eight
+   themes, without any of them having to say so.
+
+   Removing it altogether was the ask. That would leave anyone driving this
+   with a keyboard unable to see where they are, which is a different and
+   worse problem, so what has gone is the shouting. */
+:root { --focus-ring: color-mix(in srgb, currentColor 34%, transparent); }
 .tuner button:focus-visible,
-.tuner input:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.tuner input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -3px; }
+/* Faders are drawn as a track with a handle on it and have no inside to
+   put a groove in, so theirs sits just outside instead, at the same
+   strength. */
+.tuner .fader input:focus-visible { outline-offset: 2px; }
 
 .tuner-bar   { grid-area: bar; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .display     { grid-area: display; position: relative; }
@@ -72,7 +96,36 @@
 
 .brand        { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .clock        { margin-left: auto; font-variant-numeric: tabular-nums; }
-.sched-chip   { display: inline-flex; align-items: center; gap: 10px; }
+.sched-chip   { display: inline-flex; align-items: center; gap: 10px; position: relative; }
+/* The last minute, drawn as a hairline running out along the bottom edge
+   of the chip. Two pixels and the chip's own ink at a third strength: it
+   belongs to the button rather than sitting on top of it, and at a glance
+   it is a detail of the chip and not a new thing to attend to.
+
+   scaleX on a flat colour, so it is the compositor's work rather than the
+   main thread's. This runs for a minute at a time on an app that is
+   expected to be left open all day. */
+.sched-bar {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  border-radius: 2px;
+  background: currentColor; opacity: 0;
+  transform: scaleX(0); transform-origin: left center;
+  pointer-events: none;
+}
+.sched-chip.is-counting .sched-bar {
+  opacity: .38;
+  animation: sched-count var(--count-ms, 60000ms) linear forwards;
+}
+@keyframes sched-count {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+/* The last five seconds, where the sound is already on its way out: the
+   line goes with it rather than stopping dead at full length. */
+.sched-chip.is-handing .sched-bar { transition: opacity 5s linear; opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .sched-chip.is-counting .sched-bar { animation: none; transform: scaleX(1); }
+}
 .sched-next   { opacity: .7; max-width: 30ch; overflow: hidden; white-space: nowrap; transition: max-width .2s ease, opacity .16s ease; }
 /* Turning the schedule off slides the next-up text away instead of
    dropping it, so the chip changes width in one short move. */
@@ -1893,7 +1946,7 @@
 [data-theme="tivoli"] .fader input:active { cursor: grabbing; }
 [data-theme="tivoli"] .fader input::-webkit-slider-thumb { -webkit-appearance: none; width: 0; height: 0; }
 [data-theme="tivoli"] .fader input::-moz-range-thumb { width: 0; height: 0; border: 0; background: transparent; }
-[data-theme="tivoli"] .fader input:focus-visible { outline: 2px solid var(--pilot); outline-offset: 5px; }
+[data-theme="tivoli"] .fader input:focus-visible { outline: 2px solid color-mix(in srgb, var(--pilot) 42%, transparent); outline-offset: 2px; }
 [data-theme="tivoli"] .fader label {
   order: 2; margin-top: 9px;
   font-size: 9.5px; font-weight: 400; letter-spacing: .26em; text-transform: uppercase;
@@ -2243,7 +2296,7 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 }
 .switch input:checked + .switch-track { background: #2e9a5a; }
 .switch input:checked + .switch-track::after { left: 18px; }
-.switch input:focus-visible + .switch-track { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+.switch input:focus-visible + .switch-track { outline: 2px solid color-mix(in srgb, var(--ui-accent) 45%, transparent); outline-offset: 1px; }
 .autoplay-pick { flex: 1 1 160px; min-width: 0; }
 .autoplay[data-on="false"] .autoplay-pick { opacity: .5; }
 
@@ -2252,7 +2305,12 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   padding: 8px 10px; min-width: 0; width: 100%;
 }
 .in::placeholder { color: var(--ui-mute); opacity: .55; font-style: italic; }
-.in:focus-visible, .drawer select:focus-visible, .drawer button:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+.in:focus-visible, .drawer select:focus-visible, .drawer button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ui-accent) 45%, transparent); outline-offset: -2px;
+}
+/* Text fields are the exception: a groove inside one lands on top of what
+   is being typed, so theirs goes just outside. */
+.in:focus-visible { outline-offset: 1px; }
 .mini { font: inherit; width: 30px; height: 30px; border: 1px solid var(--ui-line); background: var(--ui-bg); color: var(--ui-fg); border-radius: calc(var(--ui-radius) - 1px); cursor: pointer; }
 .mini.danger:hover { color: #d33; border-color: #d33; }
 .ghost, .file-btn {
@@ -2375,7 +2433,7 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   border-width: 0 2px 2px 0;
   transform: rotate(43deg);
 }
-.theme-card input:focus-visible + .theme-thumb { box-shadow: 0 0 0 2px var(--ui-accent), 0 0 0 5px color-mix(in srgb, var(--ui-accent) 30%, transparent); }
+.theme-card input:focus-visible + .theme-thumb { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ui-accent) 55%, transparent); }
 /* Name and note sit together in their own box, so the gap between them is
    tight while the thumbnail keeps its own breathing room above. */
 .theme-label { display: grid; gap: 2px; }
@@ -2716,6 +2774,10 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   padding: 7px 11px; border-radius: 1px 7px 1px 7px; color: var(--ui-mute);
 }
 .save-msg:empty { display: none; }
+/* The one row in the drawer that is a setting rather than a card. */
+.end-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+.end-row .row-label { font-size: 13px; font-weight: 600; color: var(--ui-ink); }
+.end-row .in { flex: 0 1 auto; min-width: 200px; }
 .save-msg.bad {
   color: #a3271a; background: color-mix(in srgb, #d33 14%, var(--ui-bg));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, #d33 35%, transparent),
@@ -2735,7 +2797,12 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   /* Only this one word is set like a stamped plate; the other messages are
      sentences, and sentences in caps read as shouting. */
   letter-spacing: .12em; text-transform: uppercase;
-  animation: save-msg-cycle 1.4s ease-out both;
+  /* 1.15s: 184ms up, 690ms held, 276ms down. It was 1.4s, which is long
+     enough to notice yourself waiting for the drawer. The proportions are
+     unchanged -- the hold is still the bulk of it, because the word has to
+     be readable, not merely present. commitSettings closes the drawer on
+     the same number. */
+  animation: save-msg-cycle 1.15s ease-out both;
 }
 @keyframes save-msg-in { from { opacity: 0; transform: translateY(10px); } }
 @keyframes save-msg-cycle {
