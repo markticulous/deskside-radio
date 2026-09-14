@@ -8,10 +8,10 @@ The four themes are laid out side by side in [previews/preview.html](previews/pr
 
 Download the latest release, unzip it anywhere, and open `index.html`. That is the whole installation.
 
-To put it on the Desktop, double-click **Create Desktop Shortcut.cmd** in the same folder. It writes a proper Windows shortcut carrying the icon of whichever theme you name:
+To put it on the Desktop, double-click **Win - Create Desktop Shortcut.cmd** in the same folder. It writes a proper Windows shortcut carrying the icon of whichever theme you name:
 
 ```
-"Create Desktop Shortcut.cmd" console
+"Win - Create Desktop Shortcut.cmd" console
 ```
 
 With no argument it uses the analogue dial icon. The app's own shortcut button shows the exact line to run, because a web page is not allowed to write a shortcut file itself — Chrome renames `.url` downloads to `.download`, on the grounds that such a file can point anywhere.
@@ -40,7 +40,7 @@ Two things to know: opening the page the ordinary way still works and still show
 
 ### Picking the browser, and other platforms
 
-`Create Desktop Shortcut.cmd` takes Chrome or Edge, whichever it finds first. Three more scripts exist for when that is not the one you want:
+`Win - Create Desktop Shortcut.cmd` takes Chrome or Edge, whichever it finds first. Three more scripts exist for when that is not the one you want:
 
 | Script | Makes | Notes |
 |---|---|---|
@@ -58,7 +58,7 @@ Each has its own browser profile, so stations and settings do not carry between 
 
 ### Starting when you sign in
 
-`Start With Windows.cmd` writes the same shortcut into the Startup folder, and `Start With Windows.cmd off` removes it. Nothing touches the registry and nothing runs as a service; it is one `.lnk` in a folder the user can open with `shell:startup`. The browser detection in it is a deliberate copy of the one in `Create Desktop Shortcut.cmd` rather than shared with it — these are files people double-click, often one without ever having run the other, so each has to stand alone.
+`Win - Start With Windows.cmd` writes the same shortcut into the Startup folder, and `Win - Start With Windows.cmd off` removes it. Nothing touches the registry and nothing runs as a service; it is one `.lnk` in a folder the user can open with `shell:startup`. The browser detection in it is a deliberate copy of the one in `Win - Create Desktop Shortcut.cmd` rather than shared with it — these are files people double-click, often one without ever having run the other, so each has to stand alone.
 
 macOS has no equivalent script here. A `.webloc` saved from the shortcut button can be added under **System Settings → General → Login Items**, but it opens in the default browser, so the autoplay-policy lift the Windows shortcut relies on is not available and the first play needs a click.
 

@@ -14,11 +14,23 @@ Google Fonts for the typefaces. Both are listed under YOUR DATA below.
 WHAT IS IN THIS FOLDER
 ----------------------
 
-  index.html                   The radio itself. Everything is in here.
-  Create Desktop Shortcut.cmd  Makes a proper Desktop shortcut (Windows).
-  Start With Windows.cmd       Opens the radio when you sign in (Windows).
-  favicon-*.ico                One icon per theme, used by the shortcut.
-  README.txt                   This file.
+  index.html                                   The radio itself.
+                                               Everything is in here.
+
+  Win - Create Desktop Shortcut.cmd            Makes a Desktop shortcut.
+  Win - Create Desktop Shortcut (Edge).cmd     The same, pinned to Edge.
+  Win - Create Desktop Shortcut (Firefox).cmd  The same, pinned to Firefox.
+  Win - Start With Windows.cmd                 Opens the radio at sign-in.
+  Linux - Create Desktop Shortcut.sh           Both of those, for Linux.
+
+  favicon-*.ico                                One icon per theme, used by
+                                               the shortcut.
+  README.txt                                   This file.
+  LICENSE.txt                                  The MIT licence.
+
+Anything starting "Win - " is for Windows and anything starting
+"Linux - " is for Linux; on a Mac you make the shortcut from inside the
+radio instead, with the button in the top bar.
 
 Keep the files together in one folder. You can put that folder anywhere:
 Documents, OneDrive, a USB stick.
@@ -29,7 +41,7 @@ GETTING STARTED (WINDOWS)
 
 1. Unzip this folder somewhere you will keep it.
 
-2. Double-click "Create Desktop Shortcut.cmd".
+2. Double-click "Win - Create Desktop Shortcut.cmd".
 
    It puts "Deskside Radio" on your Desktop and tells you what it did.
    Windows may warn you about running a downloaded file; the script is
@@ -67,7 +79,7 @@ tomorrow.
 To give the shortcut a different theme's icon, run the script with that
 theme's name:
 
-  "Create Desktop Shortcut.cmd" console
+  "Win - Create Desktop Shortcut.cmd" console
 
 Settings shows you the exact line to use for whichever theme you are on.
 
@@ -89,7 +101,7 @@ This is also how you set up a second machine.
 PICKING THE BROWSER, AND OTHER PLATFORMS
 ----------------------------------------
 
-Create Desktop Shortcut.cmd takes Chrome or Edge, whichever it finds
+Win - Create Desktop Shortcut.cmd takes Chrome or Edge, whichever it finds
 first. Three more scripts are here for when that is not the one you
 want:
 
@@ -119,11 +131,11 @@ browser's address bar onto the Desktop instead - that always works.
 STARTING WHEN YOU SIGN IN
 -------------------------
 
-Windows: double-click "Start With Windows.cmd". It puts the same
+Windows: double-click "Win - Start With Windows.cmd". It puts the same
 shortcut in your Startup folder, and tells you where it put it. Run it
 again with the word off to stop it:
 
-  "Start With Windows.cmd" off
+  "Win - Start With Windows.cmd" off
 
 Nothing is written to the registry and nothing runs in the background.
 It is one file in a folder you can open yourself: press Win+R and enter

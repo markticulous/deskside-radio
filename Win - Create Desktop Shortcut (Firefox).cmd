@@ -56,7 +56,7 @@ if not defined BROWSER for /f "skip=2 tokens=2,*" %%A in ('%SystemRoot%\System32
 if not defined BROWSER (
   echo.
   echo   Firefox was not found on this machine.
-  echo   Use "Create Desktop Shortcut.cmd" for Chrome or Edge instead.
+  echo   Use "Win - Create Desktop Shortcut.cmd" for Chrome or Edge instead.
   echo.
   pause
   exit /b 1
