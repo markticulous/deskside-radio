@@ -252,6 +252,22 @@
   0%, 50%      { opacity: 1; }
   50.01%, 100% { opacity: .12; }
 }
+/* The shared focus ring is currentColor, two pixels thick and three clear
+   of the edge. On a button that turns white while it is running that is a
+   white band floating round a red pill, and it shows up on an ordinary
+   click because the button is revealed by holding Shift: keyboard input,
+   which is what makes the browser count the click after it as keyboard
+   focus. Every browser has a heuristic of that shape and none of them
+   agree on it.
+
+   So the ring is fixed rather than the heuristic. Tucked inside the edge
+   and dimmed, it reads as part of the button instead of a halo round it,
+   and it does that wherever it appears and in whatever browser decided to
+   show it. A keyboard can still find the button; nothing else is loud. */
+.tuner .rec-btn:focus-visible {
+  outline: 2px solid rgba(0,0,0,.34);
+  outline-offset: -3px;
+}
 .tuner .rec-btn:disabled { opacity: .38; cursor: not-allowed; }
 /* Kept: green rather than red, and still, so the moment after stopping
    cannot be mistaken for the moment before it. */
