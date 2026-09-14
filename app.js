@@ -1592,7 +1592,7 @@
                   retro: 'Retro 8-bit', departures: 'Departures board', marconi: 'Marconi deco',
                   tivoli: 'Tivoli Model One' };
     var named = label[state.theme] || 'Deskside Radio';
-    $('shortcutIcon').src = known ? 'favicon-' + theme + '.ico' : 'favicon.ico';
+    $('shortcutIcon').src = 'favicon-' + theme + '.ico';
     $('shortcutIcon').alt = named + ' icon';
     $('shortcutTheme').textContent = named;
     // Quoted: the folder has a space in it more often than not, and an

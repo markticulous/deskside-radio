@@ -10,7 +10,7 @@
    Public domain. See fonts/VFD-Nova-LICENCE.txt. */
 @font-face {
   font-family: "VFD Nova";
-  src: url("fonts/VfdNova-Regular.otf") format("opentype");
+  src: url("fonts/VfdNova-Regular.woff") format("woff");
   font-weight: 400; font-style: normal; font-display: swap;
 }
 
@@ -299,27 +299,9 @@
   background: var(--by-plate, rgba(0,0,0,.16));
   box-shadow: inset 0 0 0 1px var(--by-line, rgba(128,128,128,.35)), inset 0 1px 0 var(--by-emboss, rgba(255,255,255,.1));
 }
-.byline[data-byline="seal"] { gap: 7px; }
-.byline[data-byline="seal"] .byline-mark {
-  display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%;
-  font-size: 9px; font-weight: 800; letter-spacing: 0;
-  color: var(--by-on-accent, #fff); background: var(--by-accent, currentColor);
-}
-.byline[data-byline="seal"] .byline-by { display: none; }
-.byline[data-byline="rule"] { padding-left: 10px; position: relative; letter-spacing: .1em; }
-.byline[data-byline="rule"]::before {
-  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-  width: 1px; height: 12px; background: var(--by-line, currentColor); opacity: .75;
-}
-.byline[data-byline="callsign"] { font-family: var(--by-mono, ui-monospace, monospace); letter-spacing: .06em; gap: 3px; }
-.byline[data-byline="callsign"]::before { content: "["; opacity: .5; }
-.byline[data-byline="callsign"]::after  { content: "]"; opacity: .5; }
-.byline[data-byline="tag"] {
-  padding: 4px 9px; border-radius: 999px; letter-spacing: .1em;
-  background: var(--by-accent, currentColor); color: var(--by-on-accent, #fff);
-}
-.byline[data-byline="tag"] .byline-by,
-.byline[data-byline="tag"] .byline-suffix { opacity: .72; }
+/* The other four treatments -- seal, rule, callsign, tag -- are drawn by
+   previews/byline-preview.html and live in that page's own stylesheet. The
+   app has only ever worn the plate. */
 
 /* ---- dial scales: ticks and labels sit at their true frequency ---- */
 .dial, .meter { display: none; }
@@ -363,7 +345,6 @@
   .display-name.can-scroll { animation: none; text-overflow: ellipsis; }
 }
 .scope { display: none; }
-.meter-caption { display: none; }
 /* Read once per theme by setLevel. A theme whose meter is drawn some
    other way -- an SVG needle, a canvas -- sets this to 0 and the level
    is then not written into the DOM at all. Default 1: forgetting it
@@ -1494,18 +1475,11 @@
    cabinet, because they belong to the box and not to a row of controls,
    and the cabinet is padded to leave them their space. */
 [data-theme="tivoli"] .tuner {
-  --cherry-hi: #9c5630;
-  --cherry: #7a3f22;
-  --cherry-lo: #4e2411;
   --cream: #f1eee5;
-  --cream-lo: #e2ddcf;
   --ink: #3a352f;
   --mute: #948d82;
   --pilot: #ff9d2e;
   --cloth: #c3b596;
-  --al-hi: #fdfdfc;
-  --al: #c2c6c5;
-  --al-lo: #7e8382;
   --grille: 252px;
   --knob: 158px;
   --gap: 16px;
