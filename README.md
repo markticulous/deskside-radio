@@ -74,7 +74,7 @@ Each has its own browser profile, so stations and settings do not carry between 
 
 `Win - Start With Windows.cmd` writes the same shortcut into the Startup folder, and `Win - Start With Windows.cmd off` removes it. Nothing touches the registry and nothing runs as a service; it is one `.lnk` in a folder the user can open with `shell:startup`. The browser detection in it is a deliberate copy of the one in `Win - Create Desktop Shortcut.cmd` rather than shared with it — these are files people double-click, often one without ever having run the other, so each has to stand alone.
 
-macOS has no equivalent script here. A `.webloc` saved from the shortcut button can be added under **System Settings → General → Login Items**, but it opens in the default browser, so the autoplay-policy lift the Windows shortcut relies on is not available and the first play needs a click.
+macOS has no equivalent script here. A `.fileloc` saved from the shortcut button can be added under **System Settings → General → Login Items**, but it opens in the default browser, so the autoplay-policy lift the Windows shortcut relies on is not available and the first play needs a click.
 
 ### Browsers
 
@@ -91,11 +91,21 @@ The fit itself used to resize the window three times while the user watched. Two
 ## What it does
 
 - **Stations.** Any stream URL with a name, frequency, colour and tagline. A built-in finder looks up stations near a city through [radio-browser](https://www.radio-browser.info/), which is public and key-free.
-- **Schedule.** Weekday and weekend time slots, each choosing a station and optionally forcing volume, bass, treble or theme when it starts. A slot hands over at its end time: `07:00` to `10:00` runs from `07:00:00` and stops at `10:00:00`, so an adjacent slot starting at `10:00` picks it up cleanly. Overlapping slots are refused on save.
+- **Schedule.** Weekday and weekend time slots, each choosing a station and optionally forcing volume, bass, treble or theme when it starts. A slot hands over at its end time: `07:00` to `10:00` runs from `07:00:00` and stops at `10:00:00`, so an adjacent slot starting at `10:00` picks it up cleanly. Overlapping slots are refused on save. A handover is announced and eased rather than sprung — see below.
 - **Themes.** Analogue dial, broadcast console, Rams minimal, editorial, retro 8-bit, departures board, Marconi deco, Model One. Each has its own desktop icon.
 - **Watchdog.** A frozen media clock plus a starved buffer means the stream died; it reconnects with exponential backoff rather than sitting silent.
 - **Memory.** Theme, station, volume and per-station tone come back exactly as you left them — unless a schedule slot covering that moment says otherwise, in which case the schedule wins.
 - **Play on launch.** Starts a station the moment the app opens, with no click at all when it is opened through the shortcut above.
+
+### What a handover looks like
+
+A slot change used to be a cut: the station simply became a different station. Now the last minute of a slot is visible and the last five seconds are audible.
+
+Through the final minute a hairline runs out along the bottom edge of the schedule chip — a detail of the button rather than a thing in its own right, so it is there to be noticed and not to be watched. Over the last five seconds the outgoing station fades down, and the incoming one comes up over two seconds once it is actually playing rather than while it is still connecting. The fade is a multiplier over the volume fader and never writes to it, so where you left the volume is where it stays.
+
+**When the last slot of the day ends** and nothing follows it, each day group decides for itself what happens — *keep playing*, or *turn the radio off*. The control sits under the slots in **Settings → Schedule**, and weekday and weekend are set separately, so the weekdays can end at bedtime while the weekend carries on.
+
+One more thing about that tab: saving from it keeps the drawer open with the slots folded shut, because a schedule is usually built several slots at a time. Saving from any other tab closes the drawer as it always did.
 
 Everything is kept in `localStorage` on the machine it runs on. Nothing is uploaded.
 
