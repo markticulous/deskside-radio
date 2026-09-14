@@ -220,6 +220,13 @@
   50.01%, 100% { opacity: .12; }
 }
 .tuner .rec-btn:disabled { opacity: .38; cursor: not-allowed; }
+/* Kept: green rather than red, and still, so the moment after stopping
+   cannot be mistaken for the moment before it. */
+.tuner .rec-btn.is-saved {
+  color: #fff; background: #1d7a45; cursor: default;
+  box-shadow: inset 0 0 0 1px rgba(150,240,190,.5);
+}
+.tuner .rec-btn.is-saved .rec-dot { animation: none; opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   .tuner .rec-btn[aria-pressed="true"] .rec-dot { animation: none; }
 }

@@ -1242,6 +1242,10 @@
      machine that made it is not much of a recording. */
   var REC_MIME = 'audio/mp4;codecs=mp4a.40.2';
   var recorder = null, recChunks = [], recStartedAt = 0, shiftHeld = false;
+  /* Held up for a moment after stopping, so the button can say what
+     happened before it goes. */
+  var savedFlash = false;
+  var SAVED_MS = 3000;
 
   function recBlockedReason() {
     if (!window.MediaRecorder || !MediaRecorder.isTypeSupported(REC_MIME)) {
@@ -1256,7 +1260,7 @@
   function refreshRec() {
     if (!el.rec) return;
     var running = !!recorder;
-    var up = shiftHeld || running;
+    var up = shiftHeld || running || savedFlash;
     /* Shown by width rather than by display, so the controls beside it
        slide over instead of jumping. The attribute is dropped once, on the
        first pass: it is in the markup so that a page with no script does
@@ -1264,6 +1268,18 @@
     el.rec.hidden = false;
     el.rec.classList.toggle('is-up', up);
     if (!up) { el.rec.disabled = true; return; }
+    /* Saying it on the button rather than anywhere else, because the button
+       is the thing that was just pressed and therefore the thing being
+       looked at. It is not disabled for this: disabled greys it, and a
+       message worth showing is worth being able to read. */
+    el.rec.classList.toggle('is-saved', savedFlash);
+    if (savedFlash) {
+      el.rec.disabled = false;
+      el.rec.setAttribute('aria-pressed', 'false');
+      el.rec.title = 'Saved to your downloads';
+      el.recWord.textContent = 'SAVED';
+      return;
+    }
     var why = running ? '' : recBlockedReason();
     el.rec.disabled = !!why;
     el.rec.title = why || (running ? 'Stop recording and save it' : 'Record this station');
@@ -1305,14 +1321,16 @@
       var blob = new Blob(recChunks, { type: 'audio/mp4' });
       recChunks = [];
       recorder = null;
-      if (blob.size) saveRecording(blob, seconds);
-      refreshRec();
-      /* Said on the button, because the button is the only thing that is
-         certainly in view: it is the thing that was just pressed. */
-      if (el.rec.classList.contains('is-up') && blob.size) {
-        el.recWord.textContent = 'SAVED';
-        setTimeout(refreshRec, 1600);
+      if (blob.size) {
+        saveRecording(blob, seconds);
+        /* The button stays up through this whether Shift is held or not,
+           and takes itself away afterwards. Stopping a recording and
+           having the control vanish in the same instant leaves nothing
+           that says the file was written. */
+        savedFlash = true;
+        setTimeout(function () { savedFlash = false; refreshRec(); }, SAVED_MS);
       }
+      refreshRec();
     };
     // A second at a time, rather than one allocation at the end of an hour.
     recorder.start(1000);
