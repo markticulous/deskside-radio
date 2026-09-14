@@ -159,7 +159,7 @@ For the radio to be playing when you sit down rather than just open,
 turn on "Play on launch" in Settings and choose a station, or set up a
 schedule.
 
-macOS: use the shortcut button next to Settings to save a .webloc file
+macOS: use the shortcut button next to Settings to save a .fileloc file
 somewhere you will keep it, then open System Settings, General, Login
 Items, and add that file under "Open at Login". It opens in your normal
 browser, so it will ask for one click before it plays -- the trick the
@@ -177,7 +177,7 @@ Edge, nothing is missing.
 
 On macOS and Linux, open index.html in Chrome, Edge or Safari. The two
 Windows scripts are Windows-only; on macOS the app can hand you a
-.webloc file instead, from the shortcut button next to Settings.
+.fileloc file instead, from the shortcut button next to Settings.
 
 Safari plays everything here, and handles HLS stations better than most.
 Two things differ. Safari will not let a page opened from a file on disk
@@ -202,6 +202,22 @@ Schedule
   10:00 and the next slot picks up there. Slots may run past midnight
   and may not overlap. A slot can also force the volume, bass, treble
   or theme when it starts.
+
+  A handover is not a cut. Through the last minute of a slot a hairline
+  runs out along the bottom of the Schedule button, so you can see the
+  change coming. Over the last five seconds the station fades down, and
+  the one replacing it comes up over two seconds once it is playing.
+  Your volume setting is not touched by any of that.
+
+  When the last slot of the day ends and nothing follows, the radio
+  either keeps playing or turns itself off - your choice, set under the
+  slots in Settings, Schedule, and set separately for weekdays and for
+  the weekend. So the weekdays can stop at bedtime while the weekend
+  carries on.
+
+  Adding several slots in one go: Save keeps the drawer open on the
+  Schedule tab with the slots folded shut, ready for the next one. Save
+  on any other tab closes the drawer as usual.
 
 Play on launch
   Turn it on, pick a station, and the radio starts by itself when you
