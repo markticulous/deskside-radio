@@ -3456,9 +3456,15 @@
 
        The button flips to Close on its own, because refreshSaveBtn reads
        the draft and the draft is now clean. */
-    if (pane === 'schedule') {
+    if (pane === 'schedule' || pane === 'stations') {
+      /* Folded shut rather than re-rendered. A fresh render would draw the
+         cards already closed, which is the same picture arrived at by a
+         jump -- and the fold is the thing worth watching, because it is
+         what says the work was taken. */
       openSlot = null;
-      renderSlotRows();
+      openStation = null;
+      syncOpenSlots();
+      syncOpenCards();
       refreshSaveBtn();
       return;
     }
