@@ -1368,9 +1368,18 @@
   content: ""; position: absolute; inset: 0;
   background: linear-gradient(90deg, var(--green) 0 62%, var(--gold) 62% 84%, var(--red) 84%);
 }
+/* One cell is 15px lit and 4px dark, so the pitch is 19. The stylesheet
+   carries a rough fraction of its own in case the measurement never runs;
+   vuTargets replaces it with the real one for the width in front of it. */
+[data-theme="retro"] .meter { --vu-cell: 19px; --vu-step: .02; }
 [data-theme="retro"] .meter-bar::after {
   content: ""; position: absolute; inset: 0; background: var(--dark);
-  transform-origin: right center; transform: scaleX(calc(1 - var(--vu, 0)));
+  transform-origin: right center;
+  /* The smooth cover first, so a browser without round() keeps what it
+     had; then the same thing snapped to whole cells, which is the only
+     way a row of LEDs can honestly show a level. */
+  transform: scaleX(calc(1 - var(--vu, 0)));
+  transform: scaleX(calc(1 - round(down, var(--vu, 0), var(--vu-step, .02))));
 }
 [data-theme="retro"] .meter-blind { font-size: 8px; line-height: 1.9; color: var(--grey); margin-top: 10px; text-transform: uppercase; }
 
