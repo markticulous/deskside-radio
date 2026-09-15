@@ -2386,12 +2386,22 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .card-acts { display: flex; gap: 3px; flex: none; margin-left: auto; }
 .card-body { padding: 2px 12px 11px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; border-top: 1px solid var(--ui-line); }
 .card-body { padding-top: 10px; }
-.card:not(.is-open) .card-body { display: none; }
+/* Direct children only. A body inside a .card-fold is a grandchild, and
+   it must be left alone: display:none here is what made every card snap
+   shut. Opening worked -- the rule stopped matching, the body appeared,
+   and the fold's rows transitioned 0fr to 1fr behind it -- but closing
+   re-applied it the instant .is-open came off, so the content vanished
+   before the row had a chance to shrink. Measured: 191px to 46px in one
+   frame going in, seven steps coming out.
 
-/* ---- station cards: the marker, the fold and the reorder slide ----
-   Only station cards carry .card-mark and .card-fold, so these rules never
-   reach the schedule slots. They must stay after the display:none rule
-   above, which they override at equal specificity. */
+   Higher specificity than .card-fold .card-body, so scoping it is the
+   only way; the fold's own overflow and its deferred visibility already
+   do the hiding, a fifth of a second later. */
+.card:not(.is-open) > .card-body { display: none; }
+
+/* ---- cards: the marker, the fold and the reorder slide ----
+   Both kinds carry .card-fold now, the slots since they gained one of
+   their own. .card-mark is still the station cards alone. */
 /* The toggle is its own button inside the header row, so the move and
    remove buttons can sit beside it rather than inside it. */
 .card-toggle {
