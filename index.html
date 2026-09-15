@@ -248,12 +248,17 @@
         <div class="pane-block">
           <h3>Updates</h3>
           <p class="hint">Once a day the app asks GitHub whether a newer version has been published. It sends nothing but the request itself &mdash; no settings, no listening history &mdash; and never installs anything on its own.</p>
-          <label class="switch">
-            <input type="checkbox" id="versionCheckOn">
-            <span class="switch-track" aria-hidden="true"></span>
-            <span class="switch-text">Check for new versions</span>
-          </label>
-          <p class="update-line" id="updateLine"></p>
+          <div class="switch-row">
+            <label class="switch">
+              <input type="checkbox" id="versionCheckOn">
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Check for new versions</span>
+            </label>
+            <!-- The daily check is the daily check; this is for when you
+                 want to know now and not tomorrow. -->
+            <button type="button" class="ghost" id="checkNow">Check now</button>
+          </div>
+          <p class="update-line" id="updateLine" role="status" aria-live="polite"></p>
         </div>
         <div class="pane-block">
           <h3>Reset</h3>
