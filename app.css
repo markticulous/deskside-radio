@@ -801,7 +801,11 @@
   content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 12px;
   background: linear-gradient(#5b6166, #3a3f45); border-radius: 1px; transition: left .15s;
 }
-[data-theme="console"] .sched-chip[aria-pressed="true"] .sched-led::after { left: 18px; background: linear-gradient(#ffd166, var(--amber)); box-shadow: 0 0 8px rgba(255,176,0,.6); }
+/* The rocker throws to green, not to amber. Amber is this theme's own
+   voice -- the readout, the meter, the label -- so lighting the pilot with
+   it said "on" in the same breath as everything else and read as another
+   lamp rather than as the schedule's own. The token was already here. */
+[data-theme="console"] .sched-chip[aria-pressed="true"] .sched-led::after { left: 18px; background: linear-gradient(#8bffb0, var(--green)); box-shadow: 0 0 8px rgba(46,229,106,.55); }
 [data-theme="console"] .sched-chip[aria-pressed="true"] .sched-label { color: var(--amber); }
 [data-theme="console"] .sched-next { font-size: 12px; color: var(--mute); opacity: 1; }
 [data-theme="console"] .icon-btn { color: var(--mute); border: 1px solid var(--line); border-radius: 2px; background: var(--panel); }
@@ -1144,9 +1148,14 @@
 [data-theme="editorial"] .brand-name { font-family: "Syne", sans-serif; font-weight: 800; font-size: 15px; letter-spacing: -.01em; }
 [data-theme="editorial"] .clock { font-weight: 500; }
 [data-theme="editorial"] .sched-chip { gap: 8px; color: var(--mute); }
+[data-theme="editorial"] { --sched-on: #2f7d4f; }
 [data-theme="editorial"] .sched-led { width: 8px; height: 8px; border-radius: 50%; background: var(--rule); }
 [data-theme="editorial"] .sched-chip[aria-pressed="true"] { color: var(--ink); }
-[data-theme="editorial"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--c); transition: background .7s; }
+/* Was the station's own colour, which made the pilot mean "this station"
+   rather than "the schedule is on" -- and turned pink or navy with it.
+   A press green instead: this theme is ink on paper, so the lamp is a
+   spot colour rather than a lit bulb. */
+[data-theme="editorial"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--sched-on); transition: background .7s; }
 [data-theme="editorial"] .sched-label { font-weight: 600; }
 [data-theme="editorial"] .sched-next { opacity: 1; color: var(--mute); }
 [data-theme="editorial"] .icon-btn { color: var(--ink); }
@@ -1574,7 +1583,11 @@
   color: var(--mute); box-shadow: inset 0 0 0 1px #4a3d1e; }
 [data-theme="marconi"] .sched-chip[aria-pressed="true"] { color: var(--gold-hi); box-shadow: inset 0 0 0 1px var(--gold); }
 [data-theme="marconi"] .sched-led { width: 6px; height: 6px; background: #4a3d1e; transform: rotate(45deg); }
-[data-theme="marconi"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--gold-hi); box-shadow: 0 0 7px rgba(240,217,138,.8); }
+/* Jade rather than gold. Gold is the whole theme, so a gold pilot was
+   invisible as a state; jade against gold is a pairing the period would
+   recognise, and it keeps the lamp's own glow. */
+[data-theme="marconi"] { --sched-on: #7ad6a0; }
+[data-theme="marconi"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--sched-on); box-shadow: 0 0 7px rgba(122,214,160,.75); }
 [data-theme="marconi"] .sched-next { font-size: 10px; letter-spacing: .16em; color: var(--mute); opacity: 1; }
 [data-theme="marconi"] .icon-btn { width: 32px; height: 32px; border-radius: 0; color: var(--mute); box-shadow: inset 0 0 0 1px #4a3d1e; }
 [data-theme="marconi"] .icon-btn:hover { color: var(--gold-hi); box-shadow: inset 0 0 0 1px var(--gold); }
@@ -1770,7 +1783,11 @@
 }
 [data-theme="tivoli"] .sched-chip[aria-pressed="true"] { color: #fbe6cf; }
 [data-theme="tivoli"] .sched-led { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,220,180,.3); }
-[data-theme="tivoli"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--pilot); box-shadow: 0 0 6px rgba(255,157,46,.8); }
+/* The pilot orange belongs to the power lamp on the cabinet, and having
+   two orange lamps meaning different things is worse than having one. A
+   warm green keeps the cherry and cream company without borrowing it. */
+[data-theme="tivoli"] { --sched-on: #6bc48a; }
+[data-theme="tivoli"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--sched-on); box-shadow: 0 0 6px rgba(107,196,138,.7); }
 [data-theme="tivoli"] .sched-next { font-size: 11px; letter-spacing: .1em; color: rgba(216,191,164,.8); }
 [data-theme="tivoli"] .icon-btn {
   width: 32px; height: 32px; border-radius: 3px; color: #d8bfa4;
