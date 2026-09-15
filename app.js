@@ -576,6 +576,8 @@
 
   function startPlayback() {
     state.intendedPlaying = true;
+    // Pressing play makes it the listener's again, not the schedule's.
+    scheduleStopped = false;
     startMeter();
     // Whatever a handover left behind, a deliberate press starts at full.
     clearInterval(fadeTimer); fadeTimer = null;
@@ -588,6 +590,10 @@
 
   function stopPlayback() {
     state.intendedPlaying = false;
+    /* Cleared here and set again by the caller when it was the schedule
+       that stopped it, so a stop the listener asked for is never undone
+       by the next slot coming round. */
+    scheduleStopped = false;
     awaitingTap = false;
     launching = false;
     userStopping = true;
@@ -891,8 +897,23 @@
     tickTimer = setTimeout(function () { tick(); startTicking(); }, wait);
   }
 
-  var lastSlotKey;
-  function slotKey(slot) { return slot ? slot.start + '|' + slot.end + '|' + slot.stationId + '|' + slot.volume : null; }
+  /* Which slot was in force at the last beat, and whether there has been
+     a beat at all. Identity, not a string of the slot's fields: the slot
+     objects in state.schedule are stable between saves, and a key built
+     from start, end, station and volume could not tell two slots apart
+     that differed only in tone or theme. seenOnce carries what the
+     undefined sentinel used to: on the very first beat nothing is retuned,
+     because boot has already decided what to play. */
+  var lastSlot = null, seenOnce = false;
+
+  /* Set when the schedule -- not the listener -- stopped the radio, so the
+     next slot knows it may start it again. Cleared by any deliberate press
+     of play or stop, which is what keeps a manual stop stopped. */
+  var scheduleStopped = false;
+
+  function groupOfSlot(slot) {
+    return (state.schedule.weekend || []).indexOf(slot) !== -1 ? 'weekend' : 'weekday';
+  }
 
   /* ---------- handover ----------
      The last minute of a slot, shown on the chip as a line running out
@@ -923,6 +944,12 @@
     var n = Scheduler.nextChange(state.schedule, now);
     if (!n) { disarmHandover(true); return; }
 
+    /* A handover to the station already playing changes settings and
+       nothing else, so there is nothing to count down to and nothing to
+       fade. Announcing it would promise a change the listener never
+       hears. */
+    if (n.slot && n.slot.stationId === state.currentStationId) { disarmHandover(true); return; }
+
     var left = n.at.getTime() - now.getTime();
     if (left > 60000 || left < 0) { disarmHandover(true); return; }
 
@@ -952,10 +979,11 @@
     var hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
     if (el.clock.textContent !== hhmm) el.clock.textContent = hhmm;
     var slot = state.schedulerEnabled ? Scheduler.activeSlot(state.schedule, now) : null;
-    var key = slotKey(slot);
-    if (key !== lastSlotKey) {
-      var first = lastSlotKey === undefined;
-      lastSlotKey = key;
+    if (slot !== lastSlot) {
+      var first = !seenOnce;
+      var ended = lastSlot;
+      lastSlot = slot;
+      seenOnce = true;
 
       /* The countdown is over because the thing it was counting to has
          happened, so it is taken down without restoring the level. That
@@ -972,25 +1000,71 @@
          the branch below for a day that simply ended. */
       if (!first) disarmHandover(false);
 
-      /* The last slot of the day has just ended and nothing has taken
-         over. Whether that means carry on or stop is the day group's own
-         setting -- weekdays can end at bedtime while the weekend runs on. */
+      /* Nothing is in force. Whether that is the end of the day or a gap
+         in the middle of it is the difference between turning the radio
+         off and leaving it alone -- the setting says "when the day's last
+         slot ends", and a midday gap is not that.
+
+         Which group's setting applies is the group of the slot that just
+         ended, not the group of the day it ended on: a Friday night slot
+         running to one in the morning is a weekday slot, and it is the
+         weekday setting that decides what happens when it stops. */
       if (!slot && !first && state.intendedPlaying) {
         var ends = state.scheduleEnds || {};
-        if (ends[Scheduler.dayGroup(now)] === 'off') stopPlayback();
-        else if (fadeMul !== 1) fadeGain(1, RETURN_FADE_MS);
+        var over = Scheduler.dayIsOver(state.schedule, now);
+        if (over && ends[groupOfSlot(ended)] === 'off') {
+          stopPlayback();
+          scheduleStopped = true;
+        } else if (fadeMul !== 1) fadeGain(1, RETURN_FADE_MS);
       }
-      if (slot && !first && state.intendedPlaying) {
+
+      if (slot && !first && (state.intendedPlaying || scheduleStopped)) {
         var st = station(slot.stationId);
-        if (st) {
+        if (!st) {
+          /* Nothing to tune. The handover has already faded the level to
+             nothing, and without this the radio would go on streaming the
+             station before it in silence -- the level is only ever put
+             back by a station going live, and none is coming. settle makes
+             this unreachable; it is here because the fade must not depend
+             on that being true. */
+          if (fadeMul !== 1) fadeGain(1, RETURN_FADE_MS);
+        } else {
+          /* The schedule stopped the radio at the end of the last day and
+             this is the next slot, so it starts it again. A stop the
+             listener asked for is not undone this way: scheduleStopped is
+             only true when the schedule was the one that stopped it. */
+          if (scheduleStopped) {
+            scheduleStopped = false;
+            state.intendedPlaying = true;
+            ensureGraph();
+            clearInterval(fadeTimer); fadeTimer = null;
+            fadeMul = 1; applyGain();
+          }
+
           /* Whatever the slot applies wins over what is in use now. Tone is
              written onto the station before tuning, because tone belongs to
              the station and tune() reads it from there. */
           var want = Scheduler.slotSettings(slot);
           if (want.bass !== null) st.bass = want.bass;
           if (want.treble !== null) st.treble = want.treble;
-          attempts = 0;
-          tune(st, want.volume === null ? state.volume : want.volume);
+
+          /* Two slots in a row on one station is a change of settings, not
+             a change of station. Retuning would tear the stream down and
+             build it again for no reason: a gap, a reconnection, and on a
+             live stream several seconds lost. So the settings are applied
+             where they stand and the audio is left running. */
+          var sameStation = st.id === state.currentStationId &&
+            state.intendedPlaying && status === 'live';
+
+          if (sameStation) {
+            loadTone(st);
+            if (want.volume !== null) setVolume(want.volume, true);
+            if (fadeMul !== 1) fadeGain(1, RETURN_FADE_MS);
+          } else {
+            attempts = 0;
+            tune(st, want.volume === null ? state.volume : want.volume);
+          }
+
           if (want.theme !== null && want.theme !== state.theme) {
             state.theme = want.theme;
             applyLook();
@@ -1067,7 +1141,7 @@
     state.schedulerEnabled = !state.schedulerEnabled;
     el.schedToggle.setAttribute('aria-pressed', state.schedulerEnabled);
     el.schedLabel.textContent = state.schedulerEnabled ? 'Schedule on' : 'Schedule off';
-    lastSlotKey = undefined;
+    lastSlot = null; seenOnce = false;
     save(); tick();
   });
 
@@ -2693,7 +2767,7 @@
     if (!station(state.currentStationId)) state.currentStationId = state.stations[0].id;
     if (state.lastGood && !station(state.lastGood.stationId)) state.lastGood = null;
     save(); applyLook(); renderPresets(); renderStation(currentStation());
-    lastSlotKey = undefined; tick();
+    lastSlot = null; seenOnce = false; tick();
     draftClean = draftSnapshot();
     // Deliberately no refreshSaveBtn() here: the drawer is closing, and
     // flipping the label back to Close under the cursor reads as a second,
@@ -2786,7 +2860,7 @@
     el.schedLabel.textContent = 'Schedule on';
     var st = currentStation();
     if (st) renderStation(st);
-    lastSlotKey = undefined;
+    lastSlot = null; seenOnce = false;
     tick();
     draft = null;
     if (el.settings.open) el.settings.close();
