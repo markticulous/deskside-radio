@@ -97,8 +97,14 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
 
 /* The folder people actually download needs its own readme: the one in the
    repository is written for someone reading the source, not for someone who
-   has just unzipped this. Plain .txt so it opens on a double-click. */
-fs.copyFileSync(path.join(ROOT, 'tools', 'dist-readme.txt'), path.join(OUT, 'README.txt'));
+   has just unzipped this.
+
+   It is a page rather than plain text because nothing that ships with
+   Windows, macOS or Linux renders Markdown -- a browser hands you a local
+   .md as raw text in a <pre>, hashes and asterisks and all -- while every
+   one of those machines has a browser, and this one is already a browser
+   app. Double-clicking it opens something set to be read. */
+fs.copyFileSync(path.join(ROOT, 'tools', 'dist-readme.html'), path.join(OUT, 'README.html'));
 
 /* And the licence, which the MIT terms ask to travel with every copy. It
    used to be left behind in the repository, which was an oversight when

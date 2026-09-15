@@ -1845,8 +1845,9 @@
 
   /* ---------- the read me ----------
      Which file it is depends on where this copy came from: the download
-     ships README.txt, the repository has README.md. Rather than guess,
-     ask for each in turn and link the first one that answers.
+     ships README.html, the repository has README.md, and README.txt is
+     what older downloads have. Rather than guess, ask for each in turn
+     and link the first one that answers.
 
      Asking is the awkward part. A page opened from a disk may not read
      its own folder -- fetch is refused outright on file: URLs and XHR
@@ -1860,7 +1861,42 @@
      If nothing answers, the link is left dead with the reason beside it,
      because a link that opens a browser error page is worse than one
      that says up front it has nowhere to go. */
-  var README_NAMES = ['README.txt', 'README.md'];
+  var README_NAMES = ['README.html', 'README.txt', 'README.md'];
+
+  /* A read me is a document, not a tab. It opens in a window of its own,
+     sized to the page's measure and centred on the screen this window is
+     on -- screen.availLeft and availTop describe the display the radio is
+     sitting on, so a second monitor gets its own centre rather than the
+     document appearing back on the primary one.
+
+     Held to what the screen can take, because a laptop at 1366x768 would
+     otherwise be handed a window taller than itself. If the browser
+     refuses the popup outright, nothing is prevented and the link does
+     what it always did. */
+  var README_W = 1040, README_H = 940;
+
+  function openReadme(e) {
+    var href = el.readmeLink.getAttribute('href');
+    if (!href) { e.preventDefault(); return; }
+    // A deliberate new tab, a new window, or the middle button: theirs.
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+
+    var sw = screen.availWidth || screen.width || README_W;
+    var sh = screen.availHeight || screen.height || README_H;
+    var w = Math.max(360, Math.min(README_W, sw - 80));
+    var h = Math.max(400, Math.min(README_H, sh - 80));
+    var ox = screen.availLeft != null ? screen.availLeft : 0;
+    var oy = screen.availTop != null ? screen.availTop : 0;
+    var win = window.open(href, 'dsradio-readme',
+      // No noopener here: with it, window.open hands back null and
+      // there would be no way to tell a refused popup from a working
+      // one. The page it opens is this app's own file.
+      'popup=yes,width=' + w + ',height=' + h +
+      ',left=' + Math.round(ox + (sw - w) / 2) + ',top=' + Math.round(oy + (sh - h) / 2));
+    if (!win) return;
+    e.preventDefault();
+    if (win.focus) win.focus();
+  }
 
   function fileExists(name, done) {
     var link = document.createElement('link');
@@ -1899,6 +1935,8 @@
         if (!ok) return next();
         el.readmeLink.href = name;
         el.readmeMissing.hidden = true;
+        // Only a page gets a window of its own; plain text is fine in a tab.
+        if (/\.html?$/i.test(name)) el.readmeLink.addEventListener('click', openReadme);
       });
     }
     next();
