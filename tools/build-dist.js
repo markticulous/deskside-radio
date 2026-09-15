@@ -103,8 +103,13 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
    Windows, macOS or Linux renders Markdown -- a browser hands you a local
    .md as raw text in a <pre>, hashes and asterisks and all -- while every
    one of those machines has a browser, and this one is already a browser
-   app. Double-clicking it opens something set to be read. */
-fs.copyFileSync(path.join(ROOT, 'tools', 'dist-readme.html'), path.join(OUT, 'README.html'));
+   app. Double-clicking it opens something set to be read.
+
+   It lives beside index.html rather than under tools/, because Settings
+   looks for it in its own folder: a copy run straight from the repository
+   has to find the same manual the download does, and one kept under tools/
+   would leave that button opening raw Markdown. */
+fs.copyFileSync(path.join(ROOT, 'README.html'), path.join(OUT, 'README.html'));
 
 /* And the licence, which the MIT terms ask to travel with every copy. It
    used to be left behind in the repository, which was an oversight when

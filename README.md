@@ -186,7 +186,9 @@ node tools/build-dist.js
 
 That writes `dist/` — `index.html` plus the theme icons, the shortcut helpers, the licence and `README.html`. The icons are separate files because Windows reads them off disk rather than out of a page.
 
-`README.html` is the manual the download carries, built by hand at `tools/dist-readme.html`. It is a page rather than plain text because nothing shipped with Windows, macOS or Linux renders Markdown — a browser hands you a local `.md` as raw text in a `<pre>` — while every one of those machines has a browser. Settings → Service links to it, and opens it in a window of its own, centred on the screen the radio is on.
+`README.html` is the manual, and it sits beside `index.html` here as well as in the download — **Settings → Service → Open the read me** looks in the app's own folder, so a copy run straight from this repository has to find the same file. It is a page rather than plain text because nothing shipped with Windows, macOS or Linux renders Markdown — a browser hands you a local `.md` as raw text in a `<pre>` — while every one of those machines has a browser. The link opens it in a window of its own, sized and centred on the screen the radio is on.
+
+This file, `README.md`, is the one for GitHub and for anyone reading the source.
 
 ## Layout
 
