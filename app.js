@@ -1794,13 +1794,40 @@
     }
   }
 
+  /* The dialog is as tall as the pane inside it, so changing tab changes
+     its height -- Stations and Look sit well under the ceiling, Schedule
+     and Service reach it. Measure, swap, measure, then hand the stylesheet
+     two pixel values to travel between: the same measure-move-measure the
+     station cards use when they reorder, and the only way to animate it,
+     since the height is auto on both sides and auto to auto transitions
+     nothing. Released back to auto once it arrives, so the box goes on
+     sizing itself to whatever the pane does next. */
+  var paneSettle = null;
+  function resizeWith(swap) {
+    var form = el.settings.querySelector('.drawer-form');
+    if (!form || !el.settings.open) { swap(); return; }
+    var from = form.getBoundingClientRect().height;
+    swap();
+    form.style.height = 'auto';
+    var to = form.getBoundingClientRect().height;
+    // Both panes reach the ceiling, or neither moved: nothing to animate.
+    if (Math.abs(to - from) < 2) { form.style.height = ''; return; }
+    form.style.height = from + 'px';
+    void form.offsetHeight;
+    form.style.height = to + 'px';
+    clearTimeout(paneSettle);
+    paneSettle = setTimeout(function () { form.style.height = ''; }, 260);
+  }
+
   function showPane(next, animate) {
     if (PANES.indexOf(next) === -1) next = PANES[0];
-    pane = next;
-    PANES.forEach(function (key) {
-      var cap = key.charAt(0).toUpperCase() + key.slice(1);
-      $('tab' + cap).setAttribute('aria-selected', key === pane ? 'true' : 'false');
-      $('pane' + cap).hidden = key !== pane;
+    resizeWith(function () {
+      pane = next;
+      PANES.forEach(function (key) {
+        var cap = key.charAt(0).toUpperCase() + key.slice(1);
+        $('tab' + cap).setAttribute('aria-selected', key === pane ? 'true' : 'false');
+        $('pane' + cap).hidden = key !== pane;
+      });
     });
     moveInk(animate);
   }
