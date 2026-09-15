@@ -1,0 +1,529 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deskside Radio — update notice placements</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Oswald:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Grounded in the radio's own type system: Archivo is the app's UI face,
+   Oswald is what its maker byline is set in, IBM Plex Mono is the mono the
+   Rams theme names. The mock bars carry each theme's real palette, so they
+   are fixed colours by design -- they are content, not page chrome. */
+
+:root {
+  --ground:  #f5f3ee;
+  --surface: #fffefb;
+  --sunk:    #ebe7de;
+  --ink:     #1c1a16;
+  --mute:    #6d675c;
+  --faint:   #9a9184;
+  --line:    #ddd7ca;
+  --rule:    #c6bfaf;
+  --accent:  #b85c12;
+  --amber:   #f0842a;
+  --good:    #2f8a4e;
+
+  --ui: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --display: "Oswald", "Arial Narrow", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:  #141310;
+    --surface: #1d1b16;
+    --sunk:    #100f0c;
+    --ink:     #ece6d9;
+    --mute:    #a49b8a;
+    --faint:   #766f62;
+    --line:    #302c25;
+    --rule:    #454036;
+    --accent:  #f0a05a;
+    --amber:   #f0842a;
+    --good:    #4cb56e;
+  }
+}
+:root[data-theme="dark"] {
+  --ground:  #141310;
+  --surface: #1d1b16;
+  --sunk:    #100f0c;
+  --ink:     #ece6d9;
+  --mute:    #a49b8a;
+  --faint:   #766f62;
+  --line:    #302c25;
+  --rule:    #454036;
+  --accent:  #f0a05a;
+  --amber:   #f0842a;
+  --good:    #4cb56e;
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--ground); }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-inline: 20px;
+  padding-block: 44px 96px;
+}
+
+/* ---- masthead ---- */
+
+.eyebrow {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .28em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+h1 {
+  margin: 12px 0 0;
+  font-family: var(--display);
+  font-size: clamp(30px, 5.2vw, 46px);
+  font-weight: 500;
+  letter-spacing: -.005em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+.standfirst {
+  max-width: 62ch;
+  margin: 16px 0 0;
+  font-size: 16.5px;
+  color: var(--mute);
+}
+.standfirst strong { color: var(--ink); font-weight: 600; }
+
+/* ---- sections ---- */
+
+section { margin-top: 64px; }
+h2 {
+  margin: 0 0 6px;
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.lede { max-width: 62ch; margin: 0 0 28px; color: var(--mute); }
+
+/* ---- the mock top bar ---------------------------------------------
+   A reduced drawing of the radio's own header: brand, maker plate,
+   clock, schedule chip, shortcut and Settings. Each theme sets the four
+   custom properties; everything else is shared, which is the point --
+   the notice has to sit in one place across all eight. */
+
+.opt {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.opt + .opt { margin-top: 20px; }
+.opt-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.opt-key {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--amber);
+}
+.opt-name { font-weight: 600; font-size: 15.5px; }
+.opt-note { color: var(--mute); font-size: 14px; flex: 1 1 24ch; min-width: 0; }
+
+.bars { display: grid; gap: 1px; background: var(--line); }
+
+.bar {
+  --bg: #2b1d14;
+  --fg: #f0e2c8;
+  --edge: rgba(255,255,255,.14);
+  --hot: #c9a24a;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 16px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 12.5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.bar::-webkit-scrollbar { display: none; }
+
+.bar-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hot); flex: none; }
+.bar-name { font-weight: 600; letter-spacing: .04em; white-space: nowrap; }
+.bar-plate {
+  font-family: var(--display);
+  font-size: 8.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 1px 5px 1px 5px;
+  box-shadow: inset 0 0 0 1px var(--edge);
+  opacity: .7;
+  white-space: nowrap;
+  flex: none;
+}
+.bar-spacer { flex: 1 1 auto; min-width: 10px; }
+.bar-clock { font-variant-numeric: tabular-nums; opacity: .85; white-space: nowrap; }
+.bar-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px; border-radius: 5px;
+  box-shadow: inset 0 0 0 1px var(--edge);
+  white-space: nowrap; flex: none;
+}
+.bar-chip i { width: 6px; height: 6px; border-radius: 50%; background: var(--good); font-style: normal; }
+.bar-chip span { opacity: .65; }
+.bar-icon {
+  position: relative;
+  width: 24px; height: 24px; border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--edge);
+  display: grid; place-items: center;
+  flex: none;
+  opacity: .9;
+}
+.bar-icon svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+
+/* the four theme skins */
+.t-dial    { --bg: #2b1d14; --fg: #f0e2c8; --edge: rgba(201,162,74,.4);  --hot: #c9a24a; }
+.t-console { --bg: #0b0c0e; --fg: #cfd4d8; --edge: rgba(255,255,255,.12); --hot: #ffb000; }
+.t-rams    { --bg: #f3f1ec; --fg: #1d1d1b; --edge: rgba(29,29,27,.18);    --hot: #f0842a; }
+.t-retro   { --bg: #0a0a0c; --fg: #fcfcfc; --edge: rgba(255,255,255,.2);  --hot: #f83800; }
+
+.t-label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  opacity: .45;
+  white-space: nowrap;
+  flex: none;
+}
+
+/* ---- the notice treatments themselves ---- */
+
+/* A. a dot on the Settings control */
+.n-dot {
+  position: absolute;
+  top: -2px; right: -2px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--hot);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+/* B. a pill in the header */
+.n-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 9px 3px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  color: var(--hot);
+  box-shadow: inset 0 0 0 1px currentColor;
+  flex: none;
+}
+.n-pill b { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* C. a word after the maker plate */
+.n-quiet {
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: var(--hot);
+  white-space: nowrap;
+  opacity: .9;
+  flex: none;
+}
+
+/* D. a hairline along the very top */
+.rail { height: 2px; background: var(--hot); }
+
+/* E. a toast over the face */
+.stage {
+  position: relative;
+  background: var(--bg);
+  color: var(--fg);
+  padding: 16px;
+  min-height: 92px;
+  display: flex; align-items: flex-end; justify-content: flex-end;
+}
+.stage-ghost {
+  position: absolute; inset: 16px auto auto 16px;
+  font-family: var(--display);
+  font-size: 26px; letter-spacing: .02em;
+  opacity: .22;
+}
+.n-toast {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--bg) 70%, #000);
+  box-shadow: inset 0 0 0 1px var(--edge), 0 6px 18px rgba(0,0,0,.35);
+  white-space: nowrap;
+}
+.n-toast b { width: 6px; height: 6px; border-radius: 50%; background: var(--hot); flex: none; }
+.n-toast u { text-decoration: none; color: var(--hot); border-bottom: 1px solid currentColor; }
+
+/* ---- verdict + the two settings questions ---- */
+
+.calls { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
+.call {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 7px 7px 0;
+  background: var(--surface);
+  padding: 16px 18px;
+}
+.call h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+.call p { margin: 0; color: var(--mute); font-size: 14px; }
+.call p + p { margin-top: 9px; }
+.call .pick {
+  display: inline-block;
+  margin-top: 11px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--good);
+}
+
+.wording {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--sunk);
+  padding: 16px 18px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.85;
+  overflow-x: auto;
+}
+.wording div + div { margin-top: 4px; }
+.wording em { font-style: normal; color: var(--faint); }
+.wording b { color: var(--ink); }
+.wording u { text-decoration: none; color: var(--accent); border-bottom: 1px solid currentColor; }
+
+.foot {
+  margin-top: 64px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  color: var(--faint);
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .opt-head { padding: 12px 14px; }
+  .bar { gap: 10px; padding: 10px 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Deskside Radio &middot; v1.3.0</p>
+  <h1>Where an update should announce itself</h1>
+  <p class="standfirst">The check already runs and already knows. What it has never had is anywhere to say so outside the Settings drawer. Five placements below, each drawn into the radio&rsquo;s own top bar across four of the eight themes &mdash; <strong>whatever is chosen has to sit in one place and read the same way in all of them.</strong></p>
+
+  <section>
+    <h2>Placements</h2>
+    <p class="lede">Each row is the same mock header under a different theme skin. Colours are each theme&rsquo;s own, so you can see whether a treatment survives a walnut ground and an off-white one.</p>
+
+    <div class="opt">
+      <div class="opt-head">
+        <span class="opt-key">A</span>
+        <span class="opt-name">A dot on the Settings control</span>
+        <span class="opt-note">The quietest of the five. It marks the one control you would press anyway, so it points at the fix rather than describing it.</span>
+      </div>
+      <div class="bars">
+        <div class="bar t-dial">
+          <span class="t-label">dial</span>
+          <span class="bar-dot"></span><span class="bar-name">Deskside Radio</span>
+          <span class="bar-plate">A Markticulous build</span>
+          <span class="bar-spacer"></span>
+          <span class="bar-clock">19:04</span>
+          <span class="bar-chip"><i></i>Schedule on <span>KISS 92.5 at 23:00</span></span>
+          <span class="bar-icon"><svg viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4M4 19h16"/></svg></span>
+          <span class="bar-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="n-dot"></span></span>
+        </div>
+        <div class="bar t-rams">
+          <span class="t-label">rams</span>
+          <span class="bar-dot"></span><span class="bar-name">Deskside Radio</span>
+          <span class="bar-plate">A Markticulous build</span>
+          <span class="bar-spacer"></span>
+          <span class="bar-clock">19:04</span>
+          <span class="bar-chip"><i></i>Schedule on <span>KISS 92.5 at 23:00</span></span>
+          <span class="bar-icon"><svg viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4M4 19h16"/></svg></span>
+          <span class="bar-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="n-dot"></span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="opt">
+      <div class="opt-head">
+        <span class="opt-key">B</span>
+        <span class="opt-name">A pill beside the wordmark</span>
+        <span class="opt-note">Says it in words, at the left where reading starts. Hardest to miss, and the only one that survives being glanced at from across a desk.</span>
+      </div>
+      <div class="bars">
+        <div class="bar t-console">
+          <span class="t-label">console</span>
+          <span class="bar-dot"></span><span class="bar-name">Deskside Radio</span>
+          <span class="n-pill"><b></b>Update available</span>
+          <span class="bar-spacer"></span>
+          <span class="bar-clock">19:04</span>
+          <span class="bar-chip"><i></i>Schedule on <span>KISS 92.5 at 23:00</span></span>
+          <span class="bar-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+        </div>
+        <div class="bar t-rams">
+          <span class="t-label">rams</span>
+          <span class="bar-dot"></span><span class="bar-name">Deskside Radio</span>
+          <span class="n-pill"><b></b>Update available</span>
+          <span class="bar-spacer"></span>
+          <span class="bar-clock">19:04</span>
+          <span class="bar-chip"><i></i>Schedule on <span>KISS 92.5 at 23:00</span></span>
+          <span class="bar-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="opt">
+      <div class="opt-head">
+        <span class="opt-key">C</span>
+        <span class="opt-name">A word after the maker plate</span>
+        <span class="opt-note">Borrows the line that already carries version-ish text. No new object on the bar &mdash; but it sits in the one place the eye has learned to skip.</span>
+      </div>
+      <div class="bars">
+        <div class="bar t-dial">
+          <span class="t-label">dial</span>
+          <span class="bar-dot"></span><span class="bar-name">Deskside Radio</span>
+          <span class="bar-plate">A Markticulous build</span>
+          <span class="n-quiet">&middot; update available</span>
+          <span class="bar-spacer"></span>
+          <span class="bar-clock">19:04</span>
+          <span class="bar-chip"><i></i>Schedule on <span>KISS 92.5 at 23:00</span></span>
+          <span class="bar-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+        </div>
+        <div class="bar t-retro">
+          <span class="t-label">retro</span>
+          <span class="bar-dot"></span><span class="bar-name">Deskside Radio</span>
+          <span class="bar-plate">A Markticulous build</span>
+          <span class="n-quiet">&middot; update available</span>
+          <span class="bar-spacer"></span>
+          <span class="bar-clock">19:04</span>
+          <span class="bar-chip"><i></i>Schedule on <span>KISS 92.5 at 23:00</span></span>
+          <span class="bar-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="opt">
+      <div class="opt-head">
+        <span class="opt-key">D</span>
+        <span class="opt-name">A hairline along the top edge</span>
+        <span class="opt-note">Ambient rather than textual. Reads instantly, but it says only &ldquo;something&rdquo; &mdash; and it competes with the countdown hairline the schedule chip already uses.</span>
+      </div>
+      <div class="bars">
+        <div class="bar t-console" style="display:block; padding:0;">
+          <div class="rail"></div>
+          <div style="display:flex; align-items:center; gap:14px; padding:11px 16px;">
+            <span class="t-label">console</span>
+            <span class="bar-dot"></span><span class="bar-name">Deskside Radio</span>
+            <span class="bar-plate">A Markticulous build</span>
+            <span class="bar-spacer"></span>
+            <span class="bar-clock">19:04</span>
+            <span class="bar-chip"><i></i>Schedule on <span>KISS 92.5 at 23:00</span></span>
+            <span class="bar-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="opt">
+      <div class="opt-head">
+        <span class="opt-key">E</span>
+        <span class="opt-name">A toast over the face</span>
+        <span class="opt-note">Carries a link, so the update can be acted on without opening Settings. But it covers the radio, and anything that fades is a thing you can miss entirely.</span>
+      </div>
+      <div class="bars">
+        <div class="stage t-dial">
+          <span class="stage-ghost">KISS 92.5</span>
+          <span class="n-toast"><b></b>Version 1.3.1 is out &mdash; <u>open the releases page</u></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What I would pick</h2>
+    <div class="calls">
+      <div class="call">
+        <h3>A, on its own</h3>
+        <p>A dot on Settings is the only treatment that costs the radio nothing. It adds no object to a bar that eight themes each lay out differently, needs no colour of its own beyond the theme accent already in use, and points at the drawer where the version line and the releases link already live.</p>
+        <p>An update is not urgent. It is worth knowing about and worth ignoring for a fortnight, which is exactly what a dot says and a pill does not.</p>
+        <span class="pick">recommended</span>
+      </div>
+      <div class="call">
+        <h3>B, if it must be readable</h3>
+        <p>Pick this if the dot would go unnoticed on your machine for months. It is the only option that names the thing, and the wordmark end of the bar has room in every theme.</p>
+        <p>Cost: a new object in the header that each theme has to be checked against, and one more thing competing with the schedule chip for attention.</p>
+      </div>
+      <div class="call">
+        <h3>Not D or E</h3>
+        <p>The hairline collides with the countdown that already runs along the schedule chip in the last minute of a slot &mdash; two hairlines meaning different things is worse than no hairline.</p>
+        <p>The toast covers the station name, which is the one thing the radio exists to show.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The Service line, reworded</h2>
+    <p class="lede">What <strong>Check now</strong> reports afterwards, in the three states it can land in.</p>
+    <div class="wording">
+      <div><em>up to date &nbsp;&rarr;</em> &nbsp;Running 1.3.0 &middot; last checked 2026-09-15 &middot; <b>Up to date</b></div>
+      <div><em>newer out &nbsp;&rarr;</em> &nbsp;Running 1.3.0 &middot; <b>New v1.3.1 available</b> &middot; <u>Download it</u></div>
+      <div><em>no answer &rarr;</em> &nbsp;Could not reach GitHub just now &middot; running 1.3.0</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How often</h2>
+    <div class="calls">
+      <div class="call">
+        <h3>Every six hours</h3>
+        <p>As asked. Four requests a day to one static file, still nothing sent but the request. A radio left open all week would ask about twenty-eight times instead of seven.</p>
+        <p>It only helps where the app stays open for days at a time &mdash; which is exactly what this app is for, so it is the right call.</p>
+        <span class="pick">as requested</span>
+      </div>
+      <div class="call">
+        <h3>What it changes</h3>
+        <p>One constant: <span style="font-family:var(--mono); font-size:12.5px;">CHECK_EVERY</span> from 24 hours to 6. The stored timestamp and the forced check behind <strong>Check now</strong> are untouched.</p>
+        <p>The readmes both say &ldquo;once a day&rdquo; in two places and would be corrected with it.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">Mock bars are reduced drawings, not screenshots &mdash; brand, maker plate, clock, schedule chip, shortcut and Settings, with each theme&rsquo;s own ground, ink and accent. The remaining four themes (editorial, departures, marconi, Model One) sit between the extremes shown here.</p>
+
+</div>
