@@ -1794,42 +1794,67 @@
     }
   }
 
-  /* The dialog is as tall as the pane inside it, so changing tab changes
-     its height -- Stations and Look sit well under the ceiling, Schedule
-     and Service reach it. Measure, swap, measure, then hand the stylesheet
-     two pixel values to travel between: the same measure-move-measure the
-     station cards use when they reorder, and the only way to animate it,
-     since the height is auto on both sides and auto to auto transitions
-     nothing. Released back to auto once it arrives, so the box goes on
-     sizing itself to whatever the pane does next. */
-  var paneSettle = null;
-  function resizeWith(swap) {
-    var form = el.settings.querySelector('.drawer-form');
-    if (!form || !el.settings.open) { swap(); return; }
-    var from = form.getBoundingClientRect().height;
-    swap();
-    form.style.height = 'auto';
-    var to = form.getBoundingClientRect().height;
-    // Both panes reach the ceiling, or neither moved: nothing to animate.
-    if (Math.abs(to - from) < 2) { form.style.height = ''; return; }
-    form.style.height = from + 'px';
-    void form.offsetHeight;
-    form.style.height = to + 'px';
-    clearTimeout(paneSettle);
-    paneSettle = setTimeout(function () { form.style.height = ''; }, 260);
-  }
+  function paneEl(key) { return $('pane' + key.charAt(0).toUpperCase() + key.slice(1)); }
 
   function showPane(next, animate) {
     if (PANES.indexOf(next) === -1) next = PANES[0];
-    resizeWith(function () {
-      pane = next;
-      PANES.forEach(function (key) {
-        var cap = key.charAt(0).toUpperCase() + key.slice(1);
-        $('tab' + cap).setAttribute('aria-selected', key === pane ? 'true' : 'false');
-        $('pane' + cap).hidden = key !== pane;
-      });
+    pane = next;
+    PANES.forEach(function (key) {
+      $('tab' + key.charAt(0).toUpperCase() + key.slice(1))
+        .setAttribute('aria-selected', key === pane ? 'true' : 'false');
+      paneEl(key).hidden = key !== pane;
     });
     moveInk(animate);
+  }
+
+  /* ---------- how tall the dialog opens ----------
+
+     Once per visit, and then it holds. A box that resized itself as you
+     moved along the tab strip drew the eye to the furniture rather than to
+     the settings, and the tab you were reaching for moved while you
+     reached for it.
+
+     The height comes from the tallest pane, not the one on show. The
+     drawer opens on Stations, and a box cut to Stations would grow a
+     scrollbar the moment you went to Service. Hidden panes are display:
+     none and so have no height to read, so each is unhidden, measured and
+     hidden again within the same turn of the script -- nothing is painted
+     in between, so there is nothing to see.
+
+     Three quarters of the window is the ceiling. Past it the body scrolls,
+     which is the honest answer when the settings really are taller than
+     the screen. */
+  var DRAWER_CEILING = 0.75;
+  // Enough to swallow sub-pixel rounding rather than round down into a bar.
+  var DRAWER_SLACK = 12;
+
+  function sizeDrawer() {
+    var form = el.settings.querySelector('.drawer-form');
+    if (!form || !el.settings.open) return;
+    form.style.height = '';
+    /* Below 640px the dialog is the whole screen and the stylesheet owns
+       its height; an inline one would override it. */
+    if (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) return;
+
+    var tallest = 0;
+    PANES.forEach(function (key) {
+      var p = paneEl(key);
+      if (!p) return;
+      var was = p.hidden;
+      p.hidden = false;
+      tallest = Math.max(tallest, p.scrollHeight);
+      p.hidden = was;
+    });
+    if (!tallest) return;
+
+    /* Everything that is not the scrolling body: the head, the tab strip,
+       the footer and the form's own borders. Their total is whatever the
+       form has beyond the body, which holds whether or not the body is
+       being clamped at the time. */
+    var body = form.querySelector('.drawer-body');
+    var frame = form.offsetHeight - body.clientHeight;
+    var want = frame + tallest + DRAWER_SLACK;
+    form.style.height = Math.min(want, Math.round(window.innerHeight * DRAWER_CEILING)) + 'px';
   }
 
   $('drawerTabs').addEventListener('click', function (e) {
@@ -1870,6 +1895,7 @@
     if (!el.settings.open) el.settings.showModal();
     // Offsets only exist once the dialog is laid out.
     showPane('stations', false);
+    sizeDrawer();
     findReadme();
   }
   $('openSettings').addEventListener('click', openSettings);

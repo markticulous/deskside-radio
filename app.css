@@ -2211,13 +2211,10 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
      changes as you move between tabs, and a centred box would slide the
      tab strip out from under the pointer that just clicked it.
 
-     The ceiling and the margin are one decision, not two: whatever the
-     margin takes at the top it takes again at the bottom, so 6vh either
-     side left a 75vh box with a tenth of the window doing nothing while
-     the station list was scrolling behind a bar. 4vh and 90vh use what
-     is there -- a handful of stations now fits on a laptop instead of
-     being cut off one row short. */
-  height: auto; max-height: 90vh; margin: 4vh auto;
+     The height itself is set by sizeDrawer as the drawer opens, from the
+     tallest pane rather than the one on show. What is left here is the
+     ceiling it may not pass, and the fallback if that never runs. */
+  height: auto; max-height: 75vh; margin: 4vh auto;
   background: var(--ui-bg); color: var(--ui-fg); font-family: var(--ui-font); font-size: 14px;
   border: 1px solid var(--ui-line); border-radius: var(--ui-radius); overflow: hidden;
   display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 0;
@@ -2242,17 +2239,9 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 
 .drawer-form {
   transform: translateY(-10px) scale(.99);
-  /* The height changes when the tab does, and a box that jumps between
-     four sizes as you click along the strip is the same complaint as the
-     chip that used to snap to its new width.
-
-     A transition alone cannot do it: the height is auto either side, so
-     nothing about the declared value changes and there is nothing to
-     interpolate -- interpolate-size does not help, because that is for
-     auto becoming a length, not auto becoming a different auto. So the
-     two heights are measured in showPane and handed here as pixels. */
-  transition: transform .18s cubic-bezier(.33, 1, .68, 1),
-              height .2s cubic-bezier(.33, 1, .68, 1);
+  /* No height transition: the height is settled once as the drawer opens
+     and does not move again while it is up, so there is nothing to ease. */
+  transition: transform .18s cubic-bezier(.33, 1, .68, 1);
 }
 .drawer[open] .drawer-form { transform: none; }
 
