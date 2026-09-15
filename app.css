@@ -862,6 +862,25 @@
    driven or not, so an undriven dot field sits faintly across the whole
    character band -- which is why a real display never looks like type on
    black. Lit segments simply light dots that were already there. */
+/* Each character carries its own copy of the phosphor stack, so one grid
+   can fall without the other twelve being repainted with it. --lit scales
+   the whole stack at once; at 1 this is exactly the shadow the readout has
+   always had. The short transition is the tube's own settling time -- a
+   grid does not switch, it fades. */
+[data-theme="console"] .display-name .vfd-ch {
+  --lit: 1;
+  text-shadow:
+    0 0 1px rgba(255,232,186,calc(.95 * var(--lit))),
+    0 0 3px rgba(255,190,70,calc(.9 * var(--lit))),
+    0 0 12px rgba(255,176,0,calc(.5 * var(--lit))),
+    0 0 34px rgba(255,150,0,calc(.3 * var(--lit))),
+    0 0 72px rgba(255,130,0,calc(.16 * var(--lit)));
+  transition: text-shadow .05s linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="console"] .display-name .vfd-ch { transition: none; }
+}
+
 /* Stepped, not slid, and stepped by exactly the pitch of the dot field
    below -- 6px, the background-size of the rule that draws it. A name
    sliding across a fixed dot grid crawls against it; a name that moves a

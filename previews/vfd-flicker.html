@@ -139,7 +139,19 @@ h1 {
 /* ---------- C · weak grid ----------
    One or two glyphs misbehave and the rest do not, which is how a real
    display fails: per-character, because each is its own grid. */
-.c .vfd .ch { display: inline-block; white-space: pre; }
+.c .vfd .ch, .f .vfd .ch { display: inline-block; white-space: pre; }
+/* Each glyph carries its own copy of the stack, so one can dim without
+   the other twelve being repainted with it. */
+.f .vfd .ch {
+  --lit: 1;
+  text-shadow:
+    0 0 1px rgba(255,232,186,calc(.95 * var(--lit))),
+    0 0 3px rgba(255,190,70,calc(.9 * var(--lit))),
+    0 0 12px rgba(255,176,0,calc(.5 * var(--lit))),
+    0 0 34px rgba(255,150,0,calc(.3 * var(--lit))),
+    0 0 72px rgba(255,130,0,calc(.16 * var(--lit)));
+  transition: text-shadow .04s linear;
+}
 @keyframes vfd-weak {
   0%, 92%   { opacity: 1; }
   93%       { opacity: .55; }
@@ -239,6 +251,16 @@ h1 {
     <p class="spec-note"><b>One timer, no animation frame loop.</b> The only one that never repeats &mdash; a keyframe cycle does, and the eye is good at finding the repeat.</p>
   </div>
 
+  <div class="spec f">
+    <div class="spec-head">
+      <span class="spec-key">F</span>
+      <span class="spec-name">Weak grid, random interval</span>
+      <span class="spec-what">C&rsquo;s per-character failure on E&rsquo;s timer. Two grids are weak and stay weak &mdash; wear does not move &mdash; and one of them stumbles at an interval that never repeats.</span>
+    </div>
+    <div class="glass"><p class="vfd" id="fLine" data-split-f>CBC RADIO ONE</p></div>
+    <p class="spec-note"><b>One timer, one glyph repainted.</b> Cheaper than every other option here: a dip redraws one character&rsquo;s glow rather than the whole readout&rsquo;s, and nothing runs between events.</p>
+  </div>
+
   <div class="legend">
     <h2>What it costs</h2>
     <p><b>A, B and D repaint the text</b> every frame they are changing, because <b>text-shadow</b> is a paint property &mdash; there is no compositor shortcut for a glow. That is fine for a dip lasting 90ms and not fine for something that runs continuously, which is why B and E are cheaper in practice than A: they are still between events almost all of the time.</p>
@@ -319,7 +341,54 @@ h1 {
     timer = setTimeout(dip, wait * mult);
   }
 
+  /* F: C's per-character weakness on E's timer.
+
+     The weak positions are fixed, not re-rolled per event, because a worn
+     grid is a physical fact about the display -- one that moved around
+     would read as noise. They are positions rather than characters, for
+     the same reason: the grid stays put when the name changes. */
+  var fLine = document.getElementById('fLine');
+  var fWeak = [];
+  document.querySelectorAll('[data-split-f]').forEach(function (p) {
+    var text = p.textContent;
+    p.textContent = '';
+    for (var i = 0; i < text.length; i++) {
+      var s = document.createElement('span');
+      s.className = 'ch';
+      s.style.whiteSpace = 'pre';
+      s.textContent = text[i];
+      p.appendChild(s);
+      if (text[i] !== ' ') fWeak.push(s);
+    }
+    // Two of them, spread apart so both are not in the same word.
+    fWeak = [fWeak[2 % fWeak.length], fWeak[(fWeak.length - 3 + fWeak.length) % fWeak.length]];
+  });
+
+  var fTimer = null;
+  function fDip() {
+    if (!run.checked) { fSchedule(); return; }
+    var ch = fWeak[(Math.random() * fWeak.length) | 0];
+    if (!ch) { fSchedule(); return; }
+    ch.style.setProperty('--lit', (0.5 + Math.random() * 0.3).toFixed(3));
+    setTimeout(function () {
+      ch.style.setProperty('--lit', '1');
+      if (Math.random() < 0.4) {
+        setTimeout(function () {
+          ch.style.setProperty('--lit', (0.7 + Math.random() * 0.2).toFixed(3));
+          setTimeout(function () { ch.style.setProperty('--lit', '1'); }, 28 + Math.random() * 40);
+        }, 55 + Math.random() * 80);
+      }
+      fSchedule();
+    }, 40 + Math.random() * 70);
+  }
+  function fSchedule() {
+    clearTimeout(fTimer);
+    var wait = (2600 + Math.random() * 9000) * (slow.checked ? 0.25 : 1);
+    fTimer = setTimeout(fDip, wait);
+  }
+
   sync();
   schedule();
+  fSchedule();
 })();
 </script>
