@@ -352,6 +352,102 @@
     }
   }
 
+  /* ---- the console's worn grid ----
+     A vacuum display fails one character at a time, because each character
+     is its own grid with its own drive. So the flicker is per glyph, and
+     the glyphs that do it are fixed: wear is a physical fact about the
+     tube, and a weak spot that wandered would read as noise rather than as
+     age. They are positions rather than letters for the same reason -- the
+     grid stays where it is for as long as one name is on the glass.
+
+     They are drawn again when the station changes, and that is a
+     deliberate departure from the physics. A real tube keeps the same weak
+     grid for its whole life -- but a readout that always stumbles on the
+     third letter stops reading as age after a week and starts reading as a
+     fault in that letter. Re-drawn per name, it holds steady for as long
+     as anyone is actually looking at it and never becomes a tic.
+
+     The interval is drawn fresh each time rather than run off a keyframe
+     cycle. A cycle repeats, and the eye is unreasonably good at finding
+     the repeat in something it is not even looking at.
+
+     Between events nothing runs at all, and an event repaints one
+     character's glow rather than the whole readout's -- which matters,
+     because text-shadow is a paint property and there is no compositor
+     shortcut for a glow. */
+  var VFD_WEAK = 2;                // how many grids are weak at a time
+  var VFD_GAP = [2600, 11600];     // how long until the next stumble
+  var VFD_DIP = [40, 110];         // and how long it lasts
+  var vfdRun = 0;
+  var vfdTimer = null;
+
+  function buildVfdChars(line, text) {
+    for (var i = 0; i < text.length; i++) {
+      var c = document.createElement('span');
+      c.className = 'vfd-ch';
+      // pre, or the browser collapses the spaces between the spans away.
+      c.style.whiteSpace = 'pre';
+      c.textContent = text.charAt(i);
+      line.appendChild(c);
+    }
+  }
+
+  function between(pair) { return pair[0] + Math.random() * (pair[1] - pair[0]); }
+
+  function vfdStop() {
+    clearTimeout(vfdTimer);
+    vfdTimer = null;
+    vfdRun++;
+  }
+
+  function vfdFlicker(nameEl) {
+    vfdStop();
+    var still = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (still) return;
+    var all = nameEl.querySelectorAll('.vfd-ch');
+    if (!all.length) return;
+
+    // Spaces have no grid to be weak, so they are not candidates.
+    var lit = [];
+    for (var i = 0; i < all.length; i++) if (all[i].textContent !== ' ') lit.push(all[i]);
+    if (!lit.length) return;
+    /* Drawn once per name and then kept, rather than per event: a weak
+       spot that moved between stumbles reads as noise across the whole
+       readout instead of as two tired grids. */
+    var weak = [];
+    var pool = lit.slice();
+    for (var k = 0; k < VFD_WEAK && pool.length; k++) {
+      weak.push(pool.splice((Math.random() * pool.length) | 0, 1)[0]);
+    }
+    if (!weak.length) return;
+
+    var run = ++vfdRun;
+    function dim(ch, to, ms, then) {
+      if (run !== vfdRun) return;
+      ch.style.setProperty('--lit', to.toFixed(3));
+      setTimeout(function () {
+        if (run !== vfdRun) return;
+        ch.style.setProperty('--lit', '1');
+        if (then) then();
+      }, ms);
+    }
+    function stumble() {
+      if (run !== vfdRun) return;
+      var ch = weak[(Math.random() * weak.length) | 0];
+      dim(ch, 0.5 + Math.random() * 0.3, between(VFD_DIP), function () {
+        // A loose drive often catches twice before it settles.
+        if (Math.random() < 0.4) {
+          setTimeout(function () { dim(ch, 0.7 + Math.random() * 0.2, 28 + Math.random() * 40, next); }, 55 + Math.random() * 80);
+        } else next();
+      });
+    }
+    function next() {
+      if (run !== vfdRun) return;
+      vfdTimer = setTimeout(stumble, between(VFD_GAP));
+    }
+    next();
+  }
+
   function randomGlyph() {
     return FLAP_GLYPHS.charAt((Math.random() * FLAP_GLYPHS.length) | 0);
   }
@@ -401,13 +497,18 @@
     lines.forEach(function (line) {
       var s = document.createElement('span');
       s.className = 'name-line';
-      if (theme === 'departures') buildFlaps(s, line); else s.textContent = line;
+      if (theme === 'departures') buildFlaps(s, line);
+      else if (theme === 'console') buildVfdChars(s, line);
+      else s.textContent = line;
       nameEl.appendChild(s);
     });
     fitName(nameEl);
 
     var still = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (theme === 'departures' && changed && !still) flapReveal(nameEl);
+    // Re-armed on every name, and stopped the moment another theme takes
+    // the readout, or its timer would go on firing at glyphs that are gone.
+    if (theme === 'console') vfdFlicker(nameEl); else vfdStop();
   }
 
   // Widest line and total line height, taken from the lines themselves.
