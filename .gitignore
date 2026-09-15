@@ -15,3 +15,6 @@ deskside-radio-settings.json
 # headless checks. It is written into the repo root because it has to
 # load the app from its own directory, and it is never a change.
 _probe.html
+
+# Release archives, written by tools/build-dist.js beside dist/.
+deskside-radio*.zip
