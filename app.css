@@ -2212,9 +2212,12 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
      tab strip out from under the pointer that just clicked it.
 
      The height itself is set by sizeDrawer as the drawer opens, from the
-     tallest pane rather than the one on show. What is left here is the
-     ceiling it may not pass, and the fallback if that never runs. */
-  height: auto; max-height: 75vh; margin: 4vh auto;
+     tallest pane rather than the one on show, against three quarters of
+     the desktop. What is left here is the one limit that is not about
+     taste: a dialog cannot be taller than the window holding it, whatever
+     the desktop has room for. 4vh of margin either side leaves 92. It is
+     also the fallback if sizeDrawer never runs. */
+  height: auto; max-height: 92vh; margin: 4vh auto;
   background: var(--ui-bg); color: var(--ui-fg); font-family: var(--ui-font); font-size: 14px;
   border: 1px solid var(--ui-line); border-radius: var(--ui-radius); overflow: hidden;
   display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 0;
