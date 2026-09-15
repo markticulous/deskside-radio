@@ -1395,6 +1395,10 @@
 
   function fitWindow(pass) {
     if (!mayFit || keepBox || !windowIsOurs() || !el.tuner) return;
+    /* Settings has the window on loan. Sizing it to the radio now would
+       shut the drawer's room out from under it, and the second pass would
+       then remember the borrowed size as the listener's own. */
+    if (borrowedBox) return;
     pass = pass || 0;
 
     /* Measured with the scrollbar suppressed, which is what took this from
@@ -1461,6 +1465,52 @@
   var keepBox = false;
   /* Nothing resizes the window before the layout has settled once. */
   var mayFit = false;
+
+  /* ---------- room for the drawer ----------
+     The window is fitted to the radio face, which is a good deal shorter
+     than Settings wants to be -- and a dialog cannot be taller than the
+     window holding it, because the overflow is cut off rather than
+     scrolled. On a 3840x2160 desktop the work area is generous and the
+     ceiling never binds; the window does, at some 575 CSS pixels.
+
+     So the window is borrowed: grown by just what the drawer needs and put
+     back exactly as it was when the drawer closes. Nothing here goes near
+     rememberBox, which is reached only through fitWindow, so a borrowed
+     size is never mistaken for a size the listener chose. */
+  var borrowedBox = null;
+
+  function growForDrawer(needInner) {
+    if (!windowIsOurs()) return false;
+    var frameH = window.outerHeight - window.innerHeight;
+    if (needInner <= window.innerHeight) return false;
+
+    var top0 = screen.availTop != null ? screen.availTop : 0;
+    var room = screen.availHeight || window.outerHeight;
+    var wantOuter = Math.min(needInner + frameH, room);
+    if (wantOuter <= window.outerHeight + 1) return false;
+
+    borrowedBox = { x: window.screenX, y: window.screenY, w: window.outerWidth, h: window.outerHeight };
+    // Grows downwards, and only climbs when the foot would leave the desk.
+    var y = window.screenY;
+    if (y + wantOuter > top0 + room) y = Math.max(top0, top0 + room - wantOuter);
+    try {
+      window.resizeTo(window.outerWidth, wantOuter);
+      if (y !== window.screenY) window.moveTo(window.screenX, y);
+    } catch (e) { borrowedBox = null; return false; }
+    return true;
+  }
+
+  function giveBackWindow() {
+    if (!borrowedBox) return;
+    var b = borrowedBox;
+    borrowedBox = null;
+    try { window.resizeTo(b.w, b.h); window.moveTo(b.x, b.y); } catch (e) { /* nothing to do */ }
+    /* A theme changed while the drawer was up asked for a fit and was
+       turned away by the guard above, and the box just restored belongs to
+       the theme being left behind. So ask again, now the window is our own
+       -- fitWindow still declines if the listener sized it by hand. */
+    setTimeout(fitWindow, 0);
+  }
 
   function sizeWindow() {
     if (sizedOnce) { keepBox = false; mayFit = true; fitWindow(); return; }
@@ -1835,6 +1885,7 @@
      and that limit is the stylesheet's max-height, which clamps whatever
      is set here. Past either, the body scrolls, which is the honest
      answer when the settings really are taller than the screen. */
+  var drawerCloseHooked = false;
   var DRAWER_CEILING = 0.75;
 
   function drawerRoom() {
@@ -1871,8 +1922,13 @@
        being clamped at the time. */
     var body = form.querySelector('.drawer-body');
     var frame = form.offsetHeight - body.clientHeight;
-    var want = frame + tallest + DRAWER_SLACK;
-    form.style.height = Math.min(want, drawerRoom()) + 'px';
+    var want = Math.min(frame + tallest + DRAWER_SLACK, drawerRoom());
+
+    /* The stylesheet will not let the dialog past 92vh, so showing `want`
+       needs a window that much taller again. Asked for before the height
+       is set, so the clamp has already relaxed by the time it is. */
+    growForDrawer(Math.ceil(want / 0.92));
+    form.style.height = want + 'px';
   }
 
   $('drawerTabs').addEventListener('click', function (e) {
@@ -1910,6 +1966,14 @@
     resetFinder();
     refreshSaveBtn();
     $('saveMsg').textContent = '';
+    /* Registered on the first open rather than at startup, which keeps it
+       beside the code that does the borrowing. Ahead of the applyLook
+       listener further down, so the window is its own again before the
+       theme has a chance to fit it. */
+    if (!drawerCloseHooked) {
+      drawerCloseHooked = true;
+      el.settings.addEventListener('close', giveBackWindow);
+    }
     if (!el.settings.open) el.settings.showModal();
     // Offsets only exist once the dialog is laid out.
     showPane('stations', false);
