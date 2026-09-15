@@ -393,3 +393,75 @@ handler must not call `showFix()`.
 the dialog prevents accidents and Undo covers regret. Left out for now to keep the strip
 meaning one thing — "here is something that happened as a result of what you did" —
 rather than also echoing what the user just confirmed.
+
+---
+
+## D4 / commit 5. Saving points at the field, not at the card
+
+**Asked for:** when a save needs the user's attention, red-highlight the actual
+affected fields rather than leaving them to hunt.
+
+**What is honest about this once settle lands.** After commit 4 the Schedule tab has
+nothing left to refuse. `settle` guarantees `validateSlots` is empty, the
+`'Fix the highlighted weekday slots.'` path is deleted, and `.has-err` on a slot card
+goes with it. So there is no schedule field left to paint red — which is the point of
+the previous four commits, not a gap in this one.
+
+Every save failure that remains lives on the **Stations** tab, and each one already
+knows exactly which field is at fault but does not say:
+
+| Today | Field it actually means |
+|---|---|
+| `Station 3 needs a name and an http(s) stream URL.` | `[data-k="name"]` or `[data-k="url"]` on card 3 — or both |
+| `Keep at least one station.` | none; stays a message |
+| `No frequency set` (the `confirmBand` soft gate) | `[data-k="band"]`, already routed by `focusStationField` |
+
+So this commit generalises the mechanism and applies it where the failures are.
+
+### The mechanism
+
+`markField(scope, index, key, message)` — built out of the existing
+`focusStationField(index, key)` (`app.js:2220-2228`), which already opens the card,
+re-renders and focuses. Added to it:
+
+- `.is-bad` on the input itself — `border-color: #c0392b` and a 2px inner ring in the
+  same red, so it reads as the field's own state rather than a box drawn round it.
+- A `.field-err` line under that field carrying the reason, 12px `#c0392b`, styled like
+  the `.miss-note` already used beside the read-me link.
+- `scrollIntoView({ block: 'nearest' })` before focus, because `.drawer-body` scrolls
+  and the current code focuses fields that may be off-screen.
+- The first offending field wins focus; **every** offending field is marked, so a
+  station missing both a name and a URL shows both, not one at a time.
+
+### Clearing
+
+- On `input` to that field — the mark and its message go immediately, so a corrected
+  field stops looking wrong before the next save. This is the failure mode the old
+  slot-card errors had: they never cleared, so a fixed slot still looked broken.
+- On `openSettings`, and on a successful `commitSettings`.
+- Never by an unrelated re-render: marks are re-applied after `renderStationRows()`
+  from a small `badFields` map keyed `stationId + '|' + key`, so changing one station
+  does not silently wipe another's mark — the exact defect the schedule cards had.
+
+### Precise messages
+
+Replacing one sentence that covers two fields:
+
+- name empty → `A name is needed.`
+- url empty → `A stream address is needed.`
+- url present but not http(s) → `This needs to start with http:// or https://.`
+
+### The schedule's one remaining case
+
+`commitSettings` runs a belt-and-braces `settle` on both groups. It should never
+return changes — if it does, something got past the live path, which is a defect in
+this code and not the user's doing. Silently rewriting their schedule at the save
+button would be the wrong response: those changes are shown in the note strip like any
+other, so the behaviour degrades into "we fixed something" rather than "your schedule
+quietly differs from what you left".
+
+### Files
+
+`app.js` (`markField`/`clearFieldMarks`/`badFields`, `draftIsValid` rewritten to mark
+rather than narrate, `renderStationRows` re-applying marks, clearing in the station
+`input` handler), `app.css` (`.in.is-bad`, `.field-err`), `index.html` (nothing).
