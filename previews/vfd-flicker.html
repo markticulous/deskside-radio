@@ -1,0 +1,325 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deskside Radio — VFD flicker interpretations</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* The real face and the real phosphor stack, lifted from app.css, so what
+   is being judged here is the flicker and nothing else. */
+@font-face {
+  font-family: "VFD Nova";
+  src: url("../fonts/VfdNova-Regular.woff") format("woff");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+
+:root {
+  --void:  #0b0c0e;
+  --panel: #131619;
+  --line:  #262b30;
+  --rule:  #3a3f45;
+  --ink:   #cfd4d8;
+  --mute:  #8a9096;
+  --amber: #ffb000;
+
+  --ui: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--void); }
+body {
+  margin: 0; background: var(--void); color: var(--ink);
+  font-family: var(--ui); font-size: 16px; line-height: 1.55;
+}
+
+.wrap { max-width: 1060px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 90px; }
+
+.eyebrow {
+  margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .3em;
+  text-transform: uppercase; color: var(--mute);
+}
+h1 {
+  margin: 10px 0 0; font-size: clamp(30px, 5vw, 44px); font-weight: 600;
+  letter-spacing: .01em; text-transform: uppercase; line-height: 1.05;
+}
+.standfirst { max-width: 60ch; margin: 14px 0 0; color: var(--mute); font-size: 17px; }
+
+.bar {
+  display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center;
+  margin: 26px 0 0; padding: 12px 16px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--panel);
+  font-size: 14px;
+}
+.bar label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; letter-spacing: .04em; text-transform: uppercase; }
+.bar input { accent-color: var(--amber); }
+.bar .hint { color: var(--mute); font-family: var(--mono); font-size: 12px; text-transform: none; letter-spacing: 0; }
+
+/* ---- a specimen ---- */
+
+.spec { margin-top: 34px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel); }
+.spec-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;
+  padding: 12px 16px; border-bottom: 1px solid var(--line);
+}
+.spec-key { font-family: var(--mono); font-size: 12px; color: var(--amber); }
+.spec-name { font-weight: 600; font-size: 17px; letter-spacing: .06em; text-transform: uppercase; }
+.spec-what { flex: 1 1 26ch; min-width: 0; color: var(--mute); font-size: 14.5px; }
+
+.glass {
+  position: relative; isolation: isolate;
+  padding: 26px 18px 30px; background: #08090a;
+  overflow: hidden;
+}
+/* The undriven dot field, printed on the glass whether lit or not --
+   the detail that stops it reading as type on black. */
+.glass::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: radial-gradient(circle at center, rgba(255,176,0,.105) 0 1.1px, transparent 1.45px);
+  background-size: 6px 7px;
+}
+.vfd {
+  position: relative; z-index: 1; margin: 0;
+  font-family: "VFD Nova", "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-weight: 400; font-size: clamp(38px, 6vw, 68px); line-height: 1.02;
+  letter-spacing: .02em; text-transform: uppercase; white-space: nowrap;
+  overflow: hidden;
+  /* The app's own four-layer phosphor: a near-white core, amber, then two
+     wide falls into the glass. --lit scales the whole stack. */
+  --lit: 1;
+  --spread: 1;
+  text-shadow:
+    0 0 1px rgba(255,232,186,calc(.95 * var(--lit))),
+    0 0 calc(3px * var(--spread)) rgba(255,190,70,calc(.9 * var(--lit))),
+    0 0 calc(12px * var(--spread)) rgba(255,176,0,calc(.5 * var(--lit))),
+    0 0 calc(34px * var(--spread)) rgba(255,150,0,calc(.3 * var(--lit))),
+    0 0 calc(72px * var(--spread)) rgba(255,130,0,calc(.16 * var(--lit)));
+  color: #ffe9c4;
+}
+.spec-note {
+  margin: 0; padding: 11px 16px; border-top: 1px solid var(--line);
+  font-family: var(--mono); font-size: 12px; color: var(--mute);
+}
+.spec-note b { color: var(--ink); font-weight: 500; }
+
+/* ---------- A · filament drift ----------
+   No events at all: the emission wanders. A long, deliberately unround
+   cycle so it never lines up with anything else on the page. */
+@keyframes vfd-drift {
+  0%   { --lit: 1; }
+  17%  { --lit: .94; }
+  31%  { --lit: 1.02; }
+  46%  { --lit: .9; }
+  58%  { --lit: .99; }
+  73%  { --lit: .93; }
+  88%  { --lit: 1.01; }
+  100% { --lit: 1; }
+}
+@property --lit { syntax: "<number>"; inherits: true; initial-value: 1; }
+@property --spread { syntax: "<number>"; inherits: true; initial-value: 1; }
+.run .a .vfd { animation: vfd-drift 11.3s ease-in-out infinite; }
+
+/* ---------- B · driver stutter ----------
+   Discrete dips, 60-90ms, at uneven spacing. Everything between them is
+   held dead steady, which is what makes the dip read as a fault. */
+@keyframes vfd-stutter {
+  0%, 21.4%   { --lit: 1; }
+  21.8%       { --lit: .62; }
+  22.3%       { --lit: 1; }
+  49.1%       { --lit: 1; }
+  49.4%       { --lit: .55; }
+  50.0%       { --lit: 1; }
+  50.4%       { --lit: .78; }
+  50.9%       { --lit: 1; }
+  77.6%       { --lit: 1; }
+  78.0%       { --lit: .6; }
+  78.6%       { --lit: 1; }
+  100%        { --lit: 1; }
+}
+.run .b .vfd { animation: vfd-stutter 8.7s steps(1, end) infinite; }
+
+/* ---------- C · weak grid ----------
+   One or two glyphs misbehave and the rest do not, which is how a real
+   display fails: per-character, because each is its own grid. */
+.c .vfd .ch { display: inline-block; white-space: pre; }
+@keyframes vfd-weak {
+  0%, 92%   { opacity: 1; }
+  93%       { opacity: .55; }
+  94%       { opacity: 1; }
+  96%       { opacity: .72; }
+  97%, 100% { opacity: 1; }
+}
+.run .c .vfd .ch.weak { animation: vfd-weak var(--dur, 6s) steps(1, end) infinite; animation-delay: var(--lag, 0s); }
+
+/* ---------- D · surge bloom ----------
+   The spread widens instead of the level dropping: a momentary over-drive
+   rather than a brown-out. Same stack, different variable. */
+@keyframes vfd-bloom {
+  0%, 38%    { --spread: 1; --lit: 1; }
+  39.5%      { --spread: 1.5; --lit: 1.06; }
+  41%        { --spread: 1; --lit: 1; }
+  81%        { --spread: 1; --lit: 1; }
+  82.2%      { --spread: 1.35; --lit: 1.04; }
+  83.6%      { --spread: 1; --lit: 1; }
+  100%       { --spread: 1; --lit: 1; }
+}
+.run .d .vfd { animation: vfd-bloom 9.9s ease-out infinite; }
+
+/* ---------- E · genuinely random ----------
+   Driven from script, because a keyframe cycle repeats and the eye finds
+   the repeat. Nothing is declared here; the level is written directly. */
+
+.legend { margin-top: 46px; border-top: 1px solid var(--line); padding-top: 22px; }
+.legend h2 { margin: 0 0 12px; font-size: 13px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--amber); }
+.legend p { margin: 0 0 12px; max-width: 64ch; color: var(--mute); font-size: 14.5px; }
+.legend b { color: var(--ink); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vfd, .vfd .ch { animation: none !important; }
+}
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Deskside Radio &middot; Broadcast console</p>
+  <h1>How the phosphor should misbehave</h1>
+  <p class="standfirst">Five readings of &ldquo;a subtle random flicker at random intervals&rdquo;, on the real VFD Nova face with the theme&rsquo;s own four-layer phosphor stack behind it. They are running now. Watch for thirty seconds before choosing &mdash; the whole question is whether a thing you only catch out of the corner of your eye reads as a display or as a fault.</p>
+
+  <div class="bar">
+    <label><input type="checkbox" id="run" checked> Running</label>
+    <label><input type="checkbox" id="slow"> Slow motion (&times;4)</label>
+    <span class="hint" id="tick">&mdash;</span>
+  </div>
+
+  <div class="spec a">
+    <div class="spec-head">
+      <span class="spec-key">A</span>
+      <span class="spec-name">Filament drift</span>
+      <span class="spec-what">No events at all. The emission wanders a few percent, the way a warm cathode does. Nothing ever &ldquo;happens&rdquo;.</span>
+    </div>
+    <div class="glass"><p class="vfd">CBC RADIO ONE</p></div>
+    <p class="spec-note"><b>11.3s cycle, unround on purpose.</b> Cheapest of the five and the least likely to be noticed at all &mdash; which may be the point, or may be too little.</p>
+  </div>
+
+  <div class="spec b">
+    <div class="spec-head">
+      <span class="spec-key">B</span>
+      <span class="spec-name">Driver stutter</span>
+      <span class="spec-what">Held dead steady, then a 60&ndash;90ms dip, at uneven spacing. Sometimes two in quick succession.</span>
+    </div>
+    <div class="glass"><p class="vfd">CBC RADIO ONE</p></div>
+    <p class="spec-note"><b>8.7s cycle, stepped.</b> The steadiness between dips is what makes a dip read as a fault rather than as a pulse.</p>
+  </div>
+
+  <div class="spec c">
+    <div class="spec-head">
+      <span class="spec-key">C</span>
+      <span class="spec-name">Weak grid</span>
+      <span class="spec-what">Two glyphs misbehave and the rest do not. This is how a real VFD fails: per character, because each one is its own grid.</span>
+    </div>
+    <div class="glass"><p class="vfd" data-split>CBC RADIO ONE</p></div>
+    <p class="spec-note"><b>Needs the text split into spans.</b> Most faithful to the object; also the only one that changes the markup the readout is built from.</p>
+  </div>
+
+  <div class="spec d">
+    <div class="spec-head">
+      <span class="spec-key">D</span>
+      <span class="spec-name">Surge bloom</span>
+      <span class="spec-what">The glow briefly widens instead of the level dropping &mdash; a moment of over-drive rather than a brown-out.</span>
+    </div>
+    <div class="glass"><p class="vfd">CBC RADIO ONE</p></div>
+    <p class="spec-note"><b>Spread &times;1.35&ndash;1.5 for ~150ms.</b> Reads warmer and less broken than a dip. Against the brief: this is a glow that grows, and you asked for a small spread.</p>
+  </div>
+
+  <div class="spec e">
+    <div class="spec-head">
+      <span class="spec-key">E</span>
+      <span class="spec-name">Genuinely random</span>
+      <span class="spec-what">Script picks the next event 3&ndash;14s out and dips for 40&ndash;110ms, sometimes twice. No cycle to find.</span>
+    </div>
+    <div class="glass"><p class="vfd" id="eLine">CBC RADIO ONE</p></div>
+    <p class="spec-note"><b>One timer, no animation frame loop.</b> The only one that never repeats &mdash; a keyframe cycle does, and the eye is good at finding the repeat.</p>
+  </div>
+
+  <div class="legend">
+    <h2>What it costs</h2>
+    <p><b>A, B and D repaint the text</b> every frame they are changing, because <b>text-shadow</b> is a paint property &mdash; there is no compositor shortcut for a glow. That is fine for a dip lasting 90ms and not fine for something that runs continuously, which is why B and E are cheaper in practice than A: they are still between events almost all of the time.</p>
+    <p><b>C is the only one that needs the readout re-built</b> as one span per character. The marquee already wraps the line in a runner when a name is too long to fit, so there is a precedent, but it is more machinery than the other four.</p>
+    <p><b>E costs one timer</b> and is idle between events. It is the only option where the interval is genuinely random rather than a cycle dressed up as one.</p>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var run = document.getElementById('run');
+  var slow = document.getElementById('slow');
+  var tick = document.getElementById('tick');
+  var root = document.body;
+
+  function sync() {
+    root.classList.toggle('run', run.checked);
+    document.querySelectorAll('.vfd, .vfd .ch').forEach(function (n) {
+      n.style.animationDuration = '';
+    });
+    if (slow.checked) {
+      document.querySelectorAll('.vfd').forEach(function (n) {
+        var cs = getComputedStyle(n).animationDuration;
+        var s = parseFloat(cs);
+        if (s) n.style.animationDuration = (s * 4) + 's';
+      });
+    }
+  }
+  run.addEventListener('change', sync);
+  slow.addEventListener('change', sync);
+
+  /* C: one span per character, and two of them picked to be the weak ones.
+     Picked once and kept, because a display's bad grid is always the same
+     grid -- one that moved about would read as noise rather than as wear. */
+  document.querySelectorAll('[data-split]').forEach(function (p) {
+    var text = p.textContent;
+    p.textContent = '';
+    var weak = [2, 9];
+    for (var i = 0; i < text.length; i++) {
+      var s = document.createElement('span');
+      s.className = 'ch' + (weak.indexOf(i) !== -1 ? ' weak' : '');
+      s.textContent = text[i];
+      if (weak.indexOf(i) !== -1) {
+        s.style.setProperty('--dur', (5.3 + i * 0.7).toFixed(1) + 's');
+        s.style.setProperty('--lag', (i * 0.9).toFixed(1) + 's');
+      }
+      p.appendChild(s);
+    }
+  });
+
+  /* E: the next event is chosen when the last one finishes, so there is no
+     cycle at all. Between events nothing runs and nothing repaints. */
+  var line = document.getElementById('eLine');
+  var timer = null;
+  function dip() {
+    if (!run.checked) { schedule(); return; }
+    var depth = 0.55 + Math.random() * 0.3;          // how far it falls
+    var len = 40 + Math.random() * 70;               // 40-110ms
+    line.style.setProperty('--lit', depth.toFixed(3));
+    setTimeout(function () {
+      line.style.setProperty('--lit', '1');
+      // Sometimes it stumbles twice, which is what a loose driver does.
+      if (Math.random() < 0.35) {
+        setTimeout(function () {
+          line.style.setProperty('--lit', (0.7 + Math.random() * 0.2).toFixed(3));
+          setTimeout(function () { line.style.setProperty('--lit', '1'); }, 30 + Math.random() * 40);
+        }, 60 + Math.random() * 90);
+      }
+      schedule();
+    }, len);
+  }
+  function schedule() {
+    clearTimeout(timer);
+    var wait = 3000 + Math.random() * 11000;         // 3-14s
+    var mult = slow.checked ? 0.25 : 1;
+    tick.textContent = 'E: next event in ' + (wait * mult / 1000).toFixed(1) + 's';
+    timer = setTimeout(dip, wait * mult);
+  }
+
+  sync();
+  schedule();
+})();
+</script>
