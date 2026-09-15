@@ -1300,6 +1300,9 @@
          about to get narrower. */
       snapPresetRows();
       if (sizedOnce) fitWindow();
+      // A cell-built meter's step is a fraction of a bar that just changed
+      // width, so it has to be taken again.
+      TunerUI.refreshMeter(el.tuner);
       var names = el.presets.querySelectorAll('.preset-name');
       // Cleared for all of them first, so each is measured against the
       // button rather than against its own previous fit.

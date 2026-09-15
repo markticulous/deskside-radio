@@ -226,6 +226,16 @@
     vu.live = true;
     try {
       vu.live = getComputedStyle(vu.meter).getPropertyValue('--vu-live').trim() !== '0';
+      /* A meter built from cells says how wide one of them is, and the
+         level is then snapped to whole ones -- half a lit LED is not
+         something a bank of LEDs can do. The step has to be a fraction of
+         the bar rather than a length, so it is measured; measured here,
+         once when the theme changes, rather than sixty times a second. */
+      var cell = parseFloat(getComputedStyle(vu.meter).getPropertyValue('--vu-cell')) || 0;
+      var bar = tunerEl.querySelector('.meter-bar');
+      var w = bar ? bar.clientWidth : 0;
+      if (cell > 0 && w > 0) vu.meter.style.setProperty('--vu-step', (cell / w).toFixed(5));
+      else vu.meter.style.removeProperty('--vu-step');
     } catch (e) { /* unreadable: write it, which is the safe way to be wrong */ }
     return vu;
   }
