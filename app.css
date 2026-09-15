@@ -2301,7 +2301,6 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .card-body { padding: 2px 12px 11px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; border-top: 1px solid var(--ui-line); }
 .card-body { padding-top: 10px; }
 .card:not(.is-open) .card-body { display: none; }
-.card .err { margin: 0; font-size: 12px; color: #d33; display: none; }
 
 /* ---- station cards: the marker, the fold and the reorder slide ----
    Only station cards carry .card-mark and .card-fold, so these rules never
@@ -2340,16 +2339,25 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 
 .card.is-sliding { transition: transform .26s cubic-bezier(.33, 1, .68, 1); }
 .card.is-lead { position: relative; z-index: 2; }
-.card.has-err { border-color: #d33; } .card.has-err .err { display: block; }
+/* A closed card whose field is being pointed at still says so. */
+.card.has-err { border-color: #c0392b; }
 
 .station-grid {
   display: grid; gap: 8px; align-items: center;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, .7fr) 44px;
   grid-template-areas: "name band color" "url url url" "tag tag tag";
 }
-.station-grid [data-k="name"] { grid-area: name; } .in-band { grid-area: band; }
+.fw { display: grid; gap: 4px; min-width: 0; }
+.fw-name { grid-area: name; } .fw-band { grid-area: band; } .fw-url { grid-area: url; }
 .in-color { grid-area: color; padding: 2px; height: 36px; }
-.in-url { grid-area: url; } .in-tag { grid-area: tag; }
+.in-tag { grid-area: tag; }
+
+/* The field's own state, not a box drawn round it: the border it already
+   has, in red, with a ring inside so it reads at a glance without moving
+   anything. */
+.in.is-bad { border-color: #c0392b; box-shadow: inset 0 0 0 1px #c0392b; }
+.in.is-bad:focus { border-color: #c0392b; }
+.field-err { margin: 0; font-size: 12px; line-height: 1.35; color: #c0392b; }
 
 /* ---- schedule slots ---- */
 .slot-when { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
