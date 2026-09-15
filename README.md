@@ -184,7 +184,9 @@ The source is split into a stylesheet and five modules because that is how it is
 node tools/build-dist.js
 ```
 
-That writes `dist/` — `index.html` plus the four theme icons and the shortcut helper. Six files, because Windows reads icons off disk rather than out of a page.
+That writes `dist/` — `index.html` plus the theme icons, the shortcut helpers, the licence and `README.html`. The icons are separate files because Windows reads them off disk rather than out of a page.
+
+`README.html` is the manual the download carries, built by hand at `tools/dist-readme.html`. It is a page rather than plain text because nothing shipped with Windows, macOS or Linux renders Markdown — a browser hands you a local `.md` as raw text in a `<pre>` — while every one of those machines has a browser. Settings → Service links to it, and opens it in a window of its own, centred on the screen the radio is on.
 
 ## Layout
 

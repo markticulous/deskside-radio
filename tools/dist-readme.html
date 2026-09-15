@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deskside Radio — Read me</title>
+<link rel="icon" href="favicon-dial.ico">
+<meta name="color-scheme" content="light dark">
+<style>
+/* A booklet, not a web page. Everything here is in this one file: no
+   fonts to fetch, no scripts to load, nothing that needs a connection.
+   It has to open from a folder on a disk, on a machine that may never
+   have been online, and look like it was set rather than dumped. */
+
+:root {
+  --paper:  #f6f4ef;
+  --card:   #fffdf9;
+  --ink:    #23211d;
+  --mute:   #6e6960;
+  --line:   #dcd7cc;
+  --rule:   #c9c3b6;
+  --accent: #a9540f;
+  --mark:   #f0842a;
+  --code-bg:#edeae2;
+
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+  --sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono: "Cascadia Mono", ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper:  #161513;
+    --card:   #1d1c19;
+    --ink:    #e9e5dc;
+    --mute:   #9a948a;
+    --line:   #33312c;
+    --rule:   #45423b;
+    --accent: #f0a05a;
+    --mark:   #f0842a;
+    --code-bg:#24231f;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.62;
+  /* Old-style figures where the face has them: dates and times sit in
+     the line rather than shouting over it. */
+  font-variant-numeric: oldstyle-num;
+}
+
+/* ---- the plate at the top ------------------------------------------ */
+
+.masthead {
+  border-bottom: 1px solid var(--rule);
+  background: var(--card);
+}
+.masthead-in {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 40px 32px 30px;
+}
+.wordmark {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .34em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.wordmark .dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  margin-right: 10px;
+  border-radius: 50%;
+  background: var(--mark);
+  vertical-align: middle;
+}
+.masthead h1 {
+  margin: 14px 0 0;
+  font-family: var(--sans);
+  font-size: clamp(30px, 5vw, 44px);
+  font-weight: 300;
+  letter-spacing: -.015em;
+  line-height: 1.1;
+}
+.standfirst {
+  max-width: 34em;
+  margin: 16px 0 0;
+  font-size: 19px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.standfirst + .standfirst { margin-top: 12px; font-size: 17px; color: var(--mute); }
+
+/* ---- the two columns ------------------------------------------------ */
+
+.shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 32px 96px;
+  display: grid;
+  gap: 56px;
+  grid-template-columns: 224px minmax(0, 1fr);
+  align-items: start;
+}
+
+.toc {
+  position: sticky;
+  top: 0;
+  padding: 44px 0 40px;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  line-height: 1.45;
+  max-height: 100vh;
+  overflow: auto;
+}
+.toc h2 {
+  margin: 0 0 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.toc ol { margin: 0; padding: 0; list-style: none; counter-reset: toc; }
+.toc li { counter-increment: toc; }
+.toc a {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 4px;
+  padding: 5px 0;
+  color: var(--mute);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  padding-left: 10px;
+  margin-left: -12px;
+  transition: color .15s ease, border-color .15s ease;
+}
+.toc a::before {
+  content: counter(toc, decimal-leading-zero);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 11px;
+  color: var(--rule);
+  padding-top: 2px;
+}
+.toc a:hover { color: var(--ink); }
+.toc a.is-here { color: var(--ink); font-weight: 600; border-left-color: var(--mark); }
+.toc a.is-here::before { color: var(--mark); }
+
+main { padding: 40px 0 0; max-width: 40em; }
+
+/* ---- sections ------------------------------------------------------- */
+
+section { padding-top: 26px; scroll-margin-top: 16px; }
+section + section { margin-top: 44px; border-top: 1px solid var(--line); }
+
+h2.sec {
+  margin: 0 0 22px;
+  font-family: var(--sans);
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: -.01em;
+  line-height: 1.2;
+}
+h2.sec .n {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--mark);
+}
+
+h3 {
+  margin: 34px 0 10px;
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -.005em;
+}
+h3:first-of-type { margin-top: 26px; }
+
+p { margin: 0 0 16px; }
+p:last-child { margin-bottom: 0; }
+
+a { color: var(--accent); text-underline-offset: 2px; text-decoration-thickness: 1px; }
+
+strong { font-weight: 700; }
+
+/* ---- the manual furniture ------------------------------------------- */
+
+code, .path, kbd {
+  font-family: var(--mono);
+  font-size: .86em;
+  font-variant-numeric: normal;
+}
+code, .path {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--code-bg);
+  word-break: break-word;
+}
+kbd {
+  padding: 1px 7px;
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--card);
+  font-size: .82em;
+}
+
+/* Numbered steps, set the way a manual sets them. */
+ol.steps { margin: 0 0 18px; padding: 0; list-style: none; counter-reset: step; }
+ol.steps > li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 44px;
+  margin-bottom: 18px;
+}
+ol.steps > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0; top: 2px;
+  width: 26px; height: 26px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--mark);
+  color: #fff;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: lining-nums;
+}
+
+ul { margin: 0 0 16px; padding-left: 1.2em; }
+li { margin-bottom: 6px; }
+
+/* A run of terms and what each is: the folder listing, the themes, the
+   troubleshooting. One shape, used three times. */
+dl.defs { margin: 0 0 18px; }
+dl.defs dt {
+  margin-top: 16px;
+  font-family: var(--sans);
+  font-size: 14.5px;
+  font-weight: 600;
+}
+dl.defs dt:first-child { margin-top: 0; }
+dl.defs dt .path { font-weight: 400; }
+dl.defs dd { margin: 3px 0 0; color: var(--mute); }
+dl.defs dd p { margin-bottom: 10px; }
+
+/* Set apart, with the orange rule that means "read this bit". */
+.note {
+  margin: 0 0 20px;
+  padding: 14px 18px;
+  border-left: 3px solid var(--mark);
+  background: var(--card);
+  border-radius: 0 var(--r, 5px) var(--r, 5px) 0;
+}
+.note p { margin-bottom: 10px; }
+.note p:last-child { margin-bottom: 0; }
+.note .lede {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--mark);
+  margin-bottom: 6px;
+}
+
+/* Something to type, on its own line. */
+.cmd {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  background: var(--code-bg);
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* The eight themes. A table, because it is one. */
+table.themes { width: 100%; border-collapse: collapse; margin: 0 0 18px; font-size: 15.5px; }
+table.themes th {
+  text-align: left;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--mute);
+  padding: 0 14px 8px 0;
+  border-bottom: 1px solid var(--rule);
+}
+table.themes td { padding: 10px 14px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.themes td:first-child { font-family: var(--sans); font-size: 14.5px; font-weight: 600; white-space: nowrap; }
+table.themes td:last-child { color: var(--mute); padding-right: 0; }
+
+.lead { font-size: 18px; }
+.mute { color: var(--mute); }
+
+/* ---- the colophon --------------------------------------------------- */
+
+.colophon {
+  border-top: 1px solid var(--rule);
+  background: var(--card);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  color: var(--mute);
+}
+.colophon-in {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 26px 32px 34px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  align-items: baseline;
+}
+.colophon a { color: var(--accent); }
+
+.totop {
+  margin-left: auto;
+  text-decoration: none;
+  color: var(--mute);
+}
+.totop:hover { color: var(--ink); }
+
+/* ---- narrow ---------------------------------------------------------- */
+
+@media (max-width: 860px) {
+  body { font-size: 16.5px; }
+  .masthead-in { padding: 30px 20px 24px; }
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0 20px 64px; }
+  .toc {
+    position: static;
+    max-height: none;
+    padding: 28px 0 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .toc ol { columns: 2; column-gap: 24px; }
+}
+
+@media (max-width: 480px) {
+  .toc ol { columns: 1; }
+  .toc a { margin-left: 0; padding-left: 0; border-left: 0; }
+  .toc a.is-here { border-left: 0; }
+  main { padding-top: 12px; }
+  .colophon-in { padding: 22px 20px 28px; }
+  .totop { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; transition: none !important; }
+}
+
+html { scroll-behavior: smooth; }
+
+/* ---- on paper -------------------------------------------------------- */
+
+@media print {
+  :root { --paper: #fff; --card: #fff; --ink: #000; --mute: #333; --line: #ccc; --rule: #999; --code-bg: #f0f0f0; }
+  .toc, .totop { display: none; }
+  .shell { display: block; padding: 0; max-width: none; }
+  main { max-width: none; }
+  .masthead { border-bottom-width: 2px; }
+  section { break-inside: auto; }
+  h2.sec, h3 { break-after: avoid; }
+  .note, .cmd, ol.steps > li, table.themes tr { break-inside: avoid; }
+  a { color: #000; }
+}
+</style>
+</head>
+<body id="top">
+
+<header class="masthead">
+  <div class="masthead-in">
+    <p class="wordmark"><span class="dot"></span>Deskside Radio</p>
+    <h1>Read me</h1>
+    <p class="standfirst">A radio for the corner of your computer desktop. It plays internet streams from stations you choose, on a schedule if you want one, and it looks like a radio rather than a browser tab.</p>
+    <p class="standfirst">It is a single web page. There is nothing to install, no account and no server. Nothing about you is sent anywhere; the two things that do leave your machine are the stations you play and, on each launch, a request to Google Fonts for the typefaces. Both are listed under <a href="#data">Your data</a>.</p>
+  </div>
+</header>
+
+<div class="shell">
+
+  <nav class="toc" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#hurry">In a hurry</a></li>
+      <li><a href="#folder">What is in this folder</a></li>
+      <li><a href="#start">Getting started on Windows</a></li>
+      <li><a href="#shortcut">Why use the shortcut</a></li>
+      <li><a href="#window">That separate window</a></li>
+      <li><a href="#browser">Choosing a browser</a></li>
+      <li><a href="#signin">Starting when you sign in</a></li>
+      <li><a href="#does">What it does</a></li>
+      <li><a href="#recording">Recording</a></li>
+      <li><a href="#streams">Stream types</a></li>
+      <li><a href="#data">Your data</a></li>
+      <li><a href="#wrong">If something goes wrong</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="hurry">
+      <h2 class="sec"><span class="n">01</span>In a hurry</h2>
+      <ol class="steps">
+        <li>Double-click <span class="path">Win&nbsp;-&nbsp;Create Desktop Shortcut (Chrome).cmd</span>.</li>
+        <li>Open the <strong>Deskside Radio</strong> shortcut it puts on your Desktop.</li>
+        <li>Press play.</li>
+      </ol>
+      <p>That is the whole of it. Everything below is detail you can come back for. On a Mac or on Linux, see <a href="#browser">Choosing a browser</a>.</p>
+    </section>
+
+    <section id="folder">
+      <h2 class="sec"><span class="n">02</span>What is in this folder</h2>
+      <dl class="defs">
+        <dt><span class="path">index.html</span></dt>
+        <dd>The radio itself. Everything is in here.</dd>
+
+        <dt><span class="path">Win - Create Desktop Shortcut (Chrome).cmd</span></dt>
+        <dd>Makes the Desktop shortcut. Start here.</dd>
+
+        <dt><span class="path">Win - Create Desktop Shortcut (Edge).cmd</span><br><span class="path">Win - Create Desktop Shortcut (Firefox).cmd</span></dt>
+        <dd>The same, pinned to one browser on purpose.</dd>
+
+        <dt><span class="path">Win - Start With Windows.cmd</span></dt>
+        <dd>Opens the radio when you sign in.</dd>
+
+        <dt><span class="path">Linux - Create Desktop Shortcut.sh</span></dt>
+        <dd>Both of those, for Linux. Add <code>--autostart</code> for sign-in.</dd>
+
+        <dt><span class="path">favicon-*.ico</span></dt>
+        <dd>One icon per theme, used by the shortcut.</dd>
+
+        <dt><span class="path">README.html</span></dt>
+        <dd>This file.</dd>
+
+        <dt><span class="path">LICENSE.txt</span></dt>
+        <dd>The MIT licence.</dd>
+      </dl>
+      <p>Anything starting <strong>Win -</strong> is for Windows and anything starting <strong>Linux -</strong> is for Linux; on a Mac you make the shortcut from inside the radio instead, with the button in the top bar.</p>
+      <p>Keep the files together in one folder. You can put that folder anywhere: Documents, OneDrive, a USB stick.</p>
+    </section>
+
+    <section id="start">
+      <h2 class="sec"><span class="n">03</span>Getting started on Windows</h2>
+      <ol class="steps">
+        <li>Unzip this folder somewhere you will keep it.</li>
+        <li>
+          <p>Double-click <span class="path">Win&nbsp;-&nbsp;Create Desktop Shortcut (Chrome).cmd</span>.</p>
+          <p>It puts <strong>Deskside Radio</strong> on your Desktop and tells you what it did. Windows may warn you about running a downloaded file; the script is plain text, so you can open it in Notepad and read it first.</p>
+        </li>
+        <li>Open the shortcut.</li>
+      </ol>
+      <p>That is the whole install.</p>
+
+      <div class="note">
+        <p class="lede">Use the helper, not the button</p>
+        <p>The shortcut button inside the radio works, but a browser will not save a <span class="path">.url</span> under its own name, so the file arrives called <span class="path">Deskside Radio.download</span> and has to be renamed — and anything a browser downloads is tagged with where it came from. A page opened from your own disk has no address the tagger understands, so the file gets marked <em>restricted</em> and Windows asks “Do you want to open this file?” every single time.</p>
+        <p>If you have already done it that way: right-click the file, <strong>Properties</strong>, tick <strong>Unblock</strong>, <strong>OK</strong>. That clears the mark for good.</p>
+        <p>The helper has neither problem: it builds the shortcut on the spot instead of downloading it.</p>
+      </div>
+
+      <p>You can also just double-click <span class="path">index.html</span>. It works, but you lose the two things the shortcut adds, described next.</p>
+    </section>
+
+    <section id="shortcut">
+      <h2 class="sec"><span class="n">04</span>Why use the shortcut</h2>
+      <p>The shortcut opens the radio in a browser window of its own, with no tabs, no address bar, and permission to start playing on its own.</p>
+      <p>That second part matters. Browsers refuse to play sound until you click something, which is why a page opened normally always asks for one click first. The shortcut lifts that restriction for this window only, so <strong>Play on launch</strong> genuinely plays on launch.</p>
+      <p>It uses Chrome, or Edge if Chrome is not installed. If you have neither, the shortcut still opens the radio in your normal browser, and you will just click once to start it.</p>
+      <p>The window remembers where you put it. The first time, it sizes itself to the radio; after that it opens at the size and in the place you last closed it, including a size you set yourself by dragging the edge. Move it to the corner of the screen you want it in and it will be there tomorrow.</p>
+      <p>To give the shortcut a different theme’s icon, run the script with that theme’s name:</p>
+      <div class="cmd">"Win - Create Desktop Shortcut (Chrome).cmd" console</div>
+      <p>Settings shows you the exact line to use for whichever theme you are on.</p>
+    </section>
+
+    <section id="window">
+      <h2 class="sec"><span class="n">05</span>That separate window</h2>
+      <p>Because the shortcut uses a browser profile of its own, it starts with no stations of yours in it. To carry your setup across:</p>
+      <ol class="steps">
+        <li>Open the radio the ordinary way and set it up how you like.</li>
+        <li><strong>Settings → Service → Export settings.</strong></li>
+        <li>Leave the downloaded <span class="path">deskside-radio-settings.js</span> beside <span class="path">index.html</span>.</li>
+      </ol>
+      <p>The next launch reads it once and keeps its own settings from then on. This is also how you set up a second machine.</p>
+    </section>
+
+    <section id="browser">
+      <h2 class="sec"><span class="n">06</span>Choosing a browser</h2>
+      <p>Chrome and Edge behave identically here — Edge is built on the same engine, and everything in this read me was checked on both. If you are on a work machine with only Edge, nothing is missing.</p>
+      <p>The Chrome script takes whichever of the two it finds, so most people need nothing else. The rest are for pinning to one browser on purpose:</p>
+      <dl class="defs">
+        <dt><span class="path">Win - Create Desktop Shortcut (Edge).cmd</span></dt>
+        <dd>Makes <strong>Deskside Radio (Edge)</strong>, pinned to Edge.</dd>
+
+        <dt><span class="path">Win - Create Desktop Shortcut (Firefox).cmd</span></dt>
+        <dd>Makes <strong>Deskside Radio (Firefox)</strong>. Firefox has no app-window mode, so this opens an ordinary window with a tab strip; press <kbd>F11</kbd> for fullscreen. Autoplay there is a preference rather than a flag, so the script writes it into the profile it creates.</dd>
+
+        <dt><span class="path">Linux - Create Desktop Shortcut.sh</span></dt>
+        <dd>
+          <p>Writes a <span class="path">.desktop</span> entry. Add <code>--autostart</code> to start it at login, or <code>--off</code> to remove both. If it will not run:</p>
+          <div class="cmd">chmod +x "Linux - Create Desktop Shortcut.sh"</div>
+        </dd>
+      </dl>
+      <p>Each shortcut has a browser profile of its own, so stations and settings do not carry across between them. Export from <strong>Settings → Service</strong> to move a setup from one to another.</p>
+
+      <h3>On a Mac</h3>
+      <p>Open <span class="path">index.html</span> in Chrome, Edge or Safari. There is no script for it; the shortcut button next to Settings hands you a <span class="path">.fileloc</span> file instead, which you drag from Downloads to the Desktop. If Finder refuses to open it, drag the address out of your browser’s address bar onto the Desktop — that always works.</p>
+      <p>Safari plays everything here and handles HLS stations better than most, with two differences. It will not let a page opened from a file on disk remember anything, so stations and settings do not survive a reload; put the folder on a web server, or use Chrome or Edge, if that matters. And the window will not size or place itself, because that is the shortcut’s doing and the shortcut is a Chrome one.</p>
+    </section>
+
+    <section id="signin">
+      <h2 class="sec"><span class="n">07</span>Starting when you sign in</h2>
+
+      <h3>Windows</h3>
+      <p>Double-click <span class="path">Win&nbsp;-&nbsp;Start With Windows.cmd</span>. It puts the same shortcut in your Startup folder, and tells you where it put it. Run it again with the word <code>off</code> to stop it:</p>
+      <div class="cmd">"Win - Start With Windows.cmd" off</div>
+      <p>Nothing is written to the registry and nothing runs in the background. It is one file in a folder you can open yourself: press <kbd>Win</kbd>&nbsp;+&nbsp;<kbd>R</kbd> and enter <code>shell:startup</code>.</p>
+      <p>For the radio to be <em>playing</em> when you sit down rather than just open, turn on <strong>Play on launch</strong> in Settings and choose a station, or set up a schedule.</p>
+
+      <h3>macOS</h3>
+      <p>Use the shortcut button next to Settings to save a <span class="path">.fileloc</span> file somewhere you will keep it, then open <strong>System Settings → General → Login Items</strong>, and add that file under <strong>Open at Login</strong>. It opens in your normal browser, so it will ask for one click before it plays — the trick the Windows shortcut uses to skip that click is a Chrome command line, and there is no equivalent to hand a login item.</p>
+    </section>
+
+    <section id="does">
+      <h2 class="sec"><span class="n">08</span>What it does</h2>
+
+      <h3>Stations</h3>
+      <p>Add any internet radio stream by name, frequency, colour and URL. Or search for one: Settings has a finder that looks up stations by city and name through a free public directory, shows the call sign and whether it is AM, FM or internet-only, and adds it in one click.</p>
+
+      <h3>Schedule</h3>
+      <p>Separate weekday and weekend time slots, each choosing a station. A slot hands over at its end time, so <strong>07:00 to 10:00</strong> runs until exactly 10:00 and the next slot picks up there. Slots may run past midnight, and a slot whose two times are the same plays all day. A slot can also force the volume, bass, treble or theme when it starts.</p>
+      <p>Slots cannot be made to collide. What you have just set stays, and anything it runs into is cut back to make room; a slot with nothing left is removed. A line above the cards says what happened, with an <strong>Undo</strong> beside it that puts the whole change back. Adding a slot puts it where there is room and tells you when the day is full. Deleting a station the schedule uses asks whether its slots move to another station or go with it.</p>
+      <p>A handover is not a cut. Through the last minute of a slot a hairline runs out along the bottom of the Schedule button, so you can see the change coming. Over the last five seconds the station fades down, and the one replacing it comes up over two seconds once it is playing. Your volume setting is not touched by any of that.</p>
+      <p>When the last slot of the day ends and nothing follows, the radio either keeps playing or turns itself off — your choice, set under the slots in <strong>Settings → Schedule</strong>, and set separately for weekdays and for the weekend. So the weekdays can stop at bedtime while the weekend carries on.</p>
+      <p class="mute">Adding several slots in one go: Save keeps the drawer open on the Schedule tab with the slots folded shut, ready for the next one. Save on any other tab closes the drawer as usual.</p>
+
+      <h3>Play on launch</h3>
+      <p>Turn it on, pick a station, and the radio starts by itself when you open the shortcut. An active schedule slot wins over it.</p>
+
+      <h3>Eight themes</h3>
+      <table class="themes">
+        <thead><tr><th>Theme</th><th>What it is</th></tr></thead>
+        <tbody>
+          <tr><td>Analogue dial</td><td>Walnut, brass, a lit glass scale and a real VU meter</td></tr>
+          <tr><td>Broadcast console</td><td>Matte rack panel, a segment readout, segmented LEDs</td></tr>
+          <tr><td>Rams minimal</td><td>Off-white, hairline rules, one orange marker</td></tr>
+          <tr><td>Editorial</td><td>Type-led, a colour per station, a bank of level bars</td></tr>
+          <tr><td>Retro 8-bit</td><td>Four colours, an 8px grid, a meter built from cells</td></tr>
+          <tr><td>Departures board</td><td>Split-flap, one character per flap</td></tr>
+          <tr><td>Marconi deco</td><td>Black lacquer and gold, with a gold VU meter</td></tr>
+          <tr><td>Model One</td><td>A cherry cabinet and one big knob; the speaker is the meter, and the cloth ripples with the level</td></tr>
+        </tbody>
+      </table>
+      <p>Each theme brings its own Desktop icon.</p>
+
+      <h3>Sound</h3>
+      <p>Volume runs on a proper decibel scale, so the middle of the slider is the middle of the range rather than everything happening at the top. Bass and treble are kept per station, since a talk station and a music station rarely want the same settings. Double-click any slider to put it back to the middle.</p>
+
+      <h3>Meters</h3>
+      <p>A real VU meter with the ballistics of the mechanical article, fed from the actual audio rather than faked from the volume setting. Some streams refuse the access it needs, and the app says so rather than showing a meter that is guessing.</p>
+      <p>VU means <em>Volume Unit</em>, and a VU meter measures the level of the programme, not how loudly you are listening to it. The needle therefore does not follow the volume fader — that is deliberate, and it is what the meters on a broadcast console or a tape deck do. Turn the volume down and the needle keeps swinging, because the station is still as loud as it was. The meters that do follow a volume knob are the power meters on a hi-fi receiver, which is a different instrument.</p>
+      <p>For the same reason the meter ignores the bass and treble controls: it is reading the station, not the room.</p>
+
+      <h3>It keeps playing</h3>
+      <p>Streams drop. The radio watches for silence and dropped connections and reconnects on its own, backing off from two seconds to thirty, and returns to whatever the schedule says or the last station that worked.</p>
+
+      <h3>Backup</h3>
+      <p><strong>Settings → Service</strong> exports everything to one file and imports it back.</p>
+    </section>
+
+    <section id="recording">
+      <h2 class="sec"><span class="n">09</span>Recording</h2>
+      <p>Hold either <kbd>Shift</kbd> key and a small red <strong>REC</strong> button appears beside play. Press it to start, press it again to stop. It stays visible while it is recording whether you are holding <kbd>Shift</kbd> or not, and the dot on it blinks so you can see at a glance that it is running. When you stop it, it turns green and reads <strong>SAVED</strong> for a few seconds before it goes, so you know the file was written.</p>
+      <p>The file lands in your Downloads folder, named for when it started and how long it ran:</p>
+      <div class="cmd">DSRadio-260913191404-7.m4a      started 2026-09-13 19:14:04, ran 7 s</div>
+      <p>It is AAC in an <span class="path">.m4a</span> file, about 96 kbps, which is roughly 45 MB an hour and opens by double-click on Windows, macOS, a phone or a car stereo.</p>
+      <p>What is recorded is the broadcast, not what comes out of your speakers. Turning the volume down, or dialling in bass for the room, changes what you hear and not what lands in the file, so a recording made quietly is not a quiet recording.</p>
+      <div class="note">
+        <p class="lede">Two things it will not do</p>
+        <p>A station that cannot drive the meter cannot be recorded either — it is the same permission, and the button says so rather than disappearing.</p>
+        <p>Closing the window while it is still recording loses that recording: press stop first.</p>
+      </div>
+    </section>
+
+    <section id="streams">
+      <h2 class="sec"><span class="n">10</span>Stream types</h2>
+      <p>Paste any of these into a station’s stream URL. The radio works out what to do with it.</p>
+
+      <h3>MP3 and AAC streams</h3>
+      <p>The ordinary kind, and what most Icecast and Shoutcast stations hand out. Everything works: sound, the meter, and the tone controls.</p>
+
+      <h3>Playlist files (<span class="path">.pls</span> and <span class="path">.m3u</span>)</h3>
+      <p>Plenty of stations publish one of these as their “Listen” link. It is not a stream; it is a short text file with the real address inside it. The radio reads the file the first time you play that station, keeps the address it finds, and goes straight to it from then on. If the station’s server refuses the request the file cannot be read, and the station will not play; open the file in a text editor and use the address from inside it instead.</p>
+
+      <h3>HLS streams (<span class="path">.m3u8</span>)</h3>
+      <p>These play, but they carry a longer delay by design, and stopping and starting one rewinds you ten to twenty seconds. The player is handed whole pre-recorded chunks and has to begin at the start of the newest one. There is no way around that from here.</p>
+      <p>What the radio does fix is the other HLS fault, which sounds worse: a few seconds in, the last several seconds play again. A station like CBC Radio 1 publishes a list of the same programme at several bitrates, twice over, on two different delivery networks. Browsers start on the lowest bitrate and step up once they have measured the connection, and the step up can land on the other network, whose copy is a few seconds behind — so you hear those seconds twice. The radio reads that list itself and hands the browser one entry, the best one, so there is nothing for it to switch to. It also means you get the full bitrate from the first second instead of the tenth.</p>
+      <p>If the connection cannot carry that entry, the radio steps down the list a rung at a time as it retries, and goes back to the top once the stream has held for ten seconds.</p>
+
+      <h3><span class="path">.asx</span> and <span class="path">.xspf</span></h3>
+      <p>Not handled. They are Windows Media and XML playlist formats. Open one in a text editor and use the stream address inside it.</p>
+
+      <h3>Anything else</h3>
+      <p>If a link will not play, try it in a browser tab on its own. If the tab cannot play it either, neither can the radio.</p>
+
+      <h3>A note on joining live</h3>
+      <p>A station sends a second or so of audio it has already broadcast the moment you connect, so the player has something to start on. The radio skips past it and joins at the live edge, which is why stopping and starting no longer repeats the last second. HLS stations are the exception, for the reason above.</p>
+    </section>
+
+    <section id="data">
+      <h2 class="sec"><span class="n">11</span>Your data</h2>
+      <p class="lead">Everything lives in your browser’s storage on this machine. No account, no sign-in, nothing uploaded, no analytics.</p>
+      <p>The page asks Google Fonts for its typefaces each time it opens, which tells Google an anonymous request came from your address, the same as any web page using a hosted font. Playing a station tells that station the same. Nothing else leaves the machine.</p>
+      <p>Once a day the app checks a single file on GitHub to see whether a newer version has been published, and says so in Settings if there is one. It sends nothing about you, downloads nothing and installs nothing. The switch beside it in <strong>Settings → Service</strong> turns that check off for good.</p>
+    </section>
+
+    <section id="wrong">
+      <h2 class="sec"><span class="n">12</span>If something goes wrong</h2>
+      <dl class="defs">
+        <dt>The meter says a stream blocks it</dt>
+        <dd>Some stations refuse the cross-origin access the meter needs. The audio is fine; only the meter and the tone controls are unavailable for that station.</dd>
+
+        <dt>A station will not play</dt>
+        <dd>Check the URL plays in a browser tab on its own. Some directory entries are playlist files rather than streams; the finder flags those before you add them.</dd>
+
+        <dt>Nothing plays until I click</dt>
+        <dd>You opened <span class="path">index.html</span> directly rather than the shortcut. See <a href="#shortcut">Why use the shortcut</a>.</dd>
+
+        <dt>Start again</dt>
+        <dd><strong>Settings → Service → Reset.</strong> It clears everything and restores the stations and settings a fresh copy starts with.</dd>
+      </dl>
+    </section>
+
+  </main>
+</div>
+
+<footer class="colophon">
+  <div class="colophon-in">
+    <span>Deskside Radio is free and open source.</span>
+    <a href="https://github.com/markticulous/deskside-radio">github.com/markticulous/deskside-radio</a>
+    <a class="totop" href="#top">Back to top ↑</a>
+  </div>
+</footer>
+
+<script>
+/* The only script here, and it does one thing: keep the contents list
+   showing where you are. Everything else on the page is markup and CSS,
+   so the read me still reads with scripting turned off. */
+(function () {
+  var links = [].slice.call(document.querySelectorAll('.toc a[href^="#"]'));
+  var map = {};
+  var targets = [];
+  links.forEach(function (a) {
+    var el = document.getElementById(a.getAttribute('href').slice(1));
+    if (!el) return;
+    map[el.id] = a;
+    targets.push(el);
+  });
+  if (!targets.length || !window.IntersectionObserver) return;
+
+  var here = null;
+  function mark(el) {
+    if (here === el) return;
+    if (here) map[here.id].classList.remove('is-here');
+    here = el;
+    if (here) map[here.id].classList.add('is-here');
+  }
+
+  var seen = [];
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      var at = seen.indexOf(e.target);
+      if (e.isIntersecting && at === -1) seen.push(e.target);
+      else if (!e.isIntersecting && at !== -1) seen.splice(at, 1);
+    });
+    // Between two sections, the one you just left stays marked; at the
+    // very top of the page the first is the honest answer.
+    if (!seen.length) {
+      if ((window.scrollY || document.documentElement.scrollTop) < 8) mark(targets[0]);
+      return;
+    }
+    // The highest section still on screen is the one you are reading.
+    mark(seen.slice().sort(function (a, b) {
+      return a.getBoundingClientRect().top - b.getBoundingClientRect().top;
+    })[0]);
+  }, { rootMargin: '-10% 0px -70% 0px' });
+
+  mark(targets[0]);
+  targets.forEach(function (t) { io.observe(t); });
+})();
+</script>
+
+</body>
+</html>
