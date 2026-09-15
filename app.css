@@ -504,6 +504,8 @@
   .tuner *, .tuner *::before, .tuner *::after { transition-duration: 0s !important; animation: none !important; }
   .sched-next { transition-duration: 0s !important; }
   .card-mark, .card-fold, .card.is-sliding { transition-duration: 0s !important; }
+  .card.is-touched, .card.is-new { animation: none !important; }
+  .fix-note { animation: none !important; }
   .mini:active, .tab:active, .ghost:active, .file-btn:active, .primary:active,
   .drawer-x:active, .result-add:active, .dtab:active, .finder-toggle:active,
   .theme-card:active .theme-thumb { transform: none; }
@@ -2877,6 +2879,64 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   padding: 7px 11px; border-radius: 1px 7px 1px 7px; color: var(--ui-mute);
 }
 .save-msg:empty { display: none; }
+/* What settling the schedule had to change, said once, above the list.
+
+   Not in the card, because the slot it is about is usually a different
+   one and may have gone altogether; not in the footer plate, which is
+   shared with Saved and built to fade. Sticky, so it is still there when
+   the list has been scrolled past it. */
+.fix-note {
+  position: sticky; top: 0; z-index: 2;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; margin-bottom: 10px;
+  background: var(--ui-field); border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius); font-size: 12.5px; color: var(--ui-fg);
+  animation: save-msg-in .18s ease-out;
+}
+.fix-note[hidden] { display: none; }
+.fix-text { flex: 1; min-width: 0; }
+.undo {
+  flex: 0 0 auto; font: inherit; font-size: 12.5px; font-weight: 600;
+  padding: 4px 10px; border: 1px solid var(--ui-line);
+  border-radius: calc(var(--ui-radius) - 1px);
+  background: var(--ui-bg); color: var(--ui-fg); cursor: pointer;
+}
+.undo:hover { background: color-mix(in srgb, var(--ui-fg) 7%, transparent); }
+.undo[hidden] { display: none; }
+
+/* A slot that is not an ordinary span of one day says so beside its times,
+   in words -- a glyph here would be one more thing to learn, and this is
+   the only place it would appear. */
+.card-late {
+  flex: none; font-size: 11px; font-style: italic; color: var(--ui-mute);
+}
+.slot-note { margin: 0; font-size: 12px; color: var(--ui-mute); }
+.slot-note[hidden] { display: none; }
+
+/* A count per group, so which day is busy is legible before switching to
+   it. Empty stays invisible rather than showing a nought. */
+.tab-n { font-size: 11px; opacity: .6; }
+.tab-n:empty { display: none; }
+
+/* A card that settling just moved, or one that was only now added: a ring
+   in the accent that fades, so the eye finds what changed without
+   anything having to stay highlighted. */
+.card.is-touched, .card.is-new { animation: card-touch .9s ease-out; }
+/* Its slot is already gone; the card is still here because taking it away
+   mid-edit would move the field being typed into. It leaves at the next
+   reflow, which is when the cursor has left the card anyway. */
+.card.is-going { opacity: .4; }
+.card.is-going .card-name, .card.is-going .card-pill { text-decoration: line-through; }
+@keyframes card-touch {
+  from { box-shadow: 0 0 0 2px var(--ui-accent); }
+  to   { box-shadow: 0 0 0 2px transparent; }
+}
+
+/* What becomes of the slots of a station being deleted. */
+.fates { display: grid; gap: 8px; margin: 10px 0 4px; }
+.fate { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.fate .in { flex: 0 1 auto; min-width: 160px; }
+
 /* The one row in the drawer that is a setting rather than a card. */
 .end-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
 .end-row .row-label { font-size: 13px; font-weight: 600; color: var(--ui-ink); }
