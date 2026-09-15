@@ -1809,8 +1809,11 @@
   function renderCounts() {
     refreshSaveBtn();
     $('countStations').textContent = draft.stations.length || '';
-    var slots = draft.schedule.weekday.length + draft.schedule.weekend.length;
-    $('countSchedule').textContent = slots || '';
+    var weekday = draft.schedule.weekday.length, weekend = draft.schedule.weekend.length;
+    $('countSchedule').textContent = (weekday + weekend) || '';
+    // Which day is busy, legible without switching to it.
+    $('countWeekday').textContent = weekday || '';
+    $('countWeekend').textContent = weekend || '';
   }
 
   function openSettings() {
@@ -1820,6 +1823,9 @@
       autoplay: state.autoplay, autoplayStationId: state.autoplayStationId
     });
     slotGroup = 'weekday';
+    openSlot = null;
+    pendingSnap = null;
+    clearFix();
     // Updates sit outside the draft: the switch takes effect as it is used.
     $('versionCheckOn').checked = !!state.versionCheck;
     renderUpdateLine();
@@ -2041,7 +2047,12 @@
     renderSlotRows();
     renderCounts();
     var tabs = el.settings.querySelectorAll('.tabs .tab');
-    for (var t = 0; t < tabs.length; t++) tabs[t].classList.toggle('is-active', tabs[t].dataset.group === slotGroup);
+    for (var t = 0; t < tabs.length; t++) {
+      var on = tabs[t].dataset.group === slotGroup;
+      tabs[t].classList.toggle('is-active', on);
+      // The class is what it looks like; this is what it is.
+      tabs[t].setAttribute('aria-selected', on ? 'true' : 'false');
+    }
   }
 
   /* A line under each thumbnail naming what the theme is borrowed from. The
@@ -2230,7 +2241,24 @@
     var last = draft.stations.length === 1;
     var notes = [];
     if (last) notes.push('This is your only station. Delete it and there is nothing left to play, and Settings will not save until you add one back.');
-    if (used) notes.push('The schedule points at it from ' + used + ' slot' + (used === 1 ? '' : 's') + ', which will need another station.');
+    if (used) notes.push('The schedule uses it in ' + used + ' slot' + (used === 1 ? '' : 's') + '.');
+
+    /* Asked rather than left dangling. A slot pointing at a station that
+       is gone used to show the first station in its dropdown while
+       refusing to save, which looks like the app being wrong about a field
+       the listener can see is right. */
+    var fates = $('stationDeleteFates'), pick = $('slotFateStation');
+    fates.hidden = !used || last;
+    if (!fates.hidden) {
+      pick.innerHTML = '';
+      draft.stations.forEach(function (other) {
+        if (other.id === st.id) return;
+        pick.appendChild(new Option(other.name || '(unnamed)', other.id));
+      });
+      var move = fates.querySelector('input[value="move"]');
+      if (move) move.checked = true;
+    }
+    if (last && used) notes.push('Its ' + used + ' slot' + (used === 1 ? '' : 's') + ' go with it.');
     var note = $('stationDeleteUsed');
     note.hidden = !notes.length;
     note.textContent = notes.join(' ');
@@ -2248,8 +2276,38 @@
     var index = pendingStationDelete;
     pendingStationDelete = null;
     if (index === null || index >= draft.stations.length) return;
+    var st = draft.stations[index];
+    var name = String(st.name || '').trim();
+    /* Decided before the station goes, while its id still means
+       something. With no choice on offer -- it was the only station --
+       every slot that used it goes too, because a slot with nothing to
+       play is not a slot. */
+    var fates = $('stationDeleteFates');
+    var chosen = fates.hidden ? 'drop' : (fates.querySelector('input[name="slotFate"]:checked') || {}).value;
+    var moveTo = chosen === 'move' ? $('slotFateStation').value : null;
+    var touched = 0;
+    ['weekday', 'weekend'].forEach(function (g) {
+      var keep = [];
+      (draft.schedule[g] || []).forEach(function (sl) {
+        if (sl.stationId !== st.id) { keep.push(sl); return; }
+        touched += 1;
+        if (moveTo) { sl.stationId = moveTo; keep.push(sl); }
+      });
+      draft.schedule[g] = keep;
+    });
+
     draft.stations.splice(index, 1);
     openStation = null;
+
+    if (touched) {
+      var to = draft.stations.filter(function (x) { return x.id === moveTo; })[0];
+      showFix(moveTo
+        ? touched + ' slot' + (touched === 1 ? '' : 's') + ' now play' + (touched === 1 ? 's' : '') + ' ' + ((to && to.name) || 'another station') + '.'
+        : touched + ' slot' + (touched === 1 ? ' was' : 's were') + ' removed with ' + (name || 'that station') + '.', null);
+    }
+    ['weekday', 'weekend'].forEach(function (g) {
+      draft.schedule[g] = Scheduler.settle(draft.schedule[g], draft.stations, null).slots;
+    });
     renderStationRows(); renderSlotRows(); renderCounts(); renderAutoplay();
     // A splice is not an input event, so the footer label has to be told.
     refreshSaveBtn();
@@ -2359,10 +2417,25 @@
     if (last) { var f = last.querySelector('[data-k="name"]'); if (f) f.focus(); }
   });
 
+  /* The note survives a change of group, because the fix it describes did
+     not go anywhere -- but it has to say which day it happened on, or it
+     reads as a claim about the day now showing. */
+  function labelFixForGroup() {
+    if (!undoSnap || undoSnap.group === slotGroup) return;
+    var t = $('fixText').textContent;
+    var prefix = (undoSnap.group === 'weekend' ? 'Weekend' : 'Weekdays') + ': ';
+    if (t.indexOf(prefix) !== 0) $('fixText').textContent = prefix + t;
+  }
+
   el.settings.querySelector('.tabs').addEventListener('click', function (e) {
-    if (!e.target.dataset.group) return;
-    slotGroup = e.target.dataset.group;
+    var tab = e.target.closest ? e.target.closest('[data-group]') : null;
+    if (!tab) return;
+    slotGroup = tab.dataset.group;
+    // The card that was open belongs to the other day now.
+    openSlot = null;
+    pendingSnap = null;
     renderDrawer();
+    labelFixForGroup();
   });
 
   /* ---------- schedule slots ----------
@@ -2370,7 +2443,75 @@
      impose when it becomes the active one. Each of those is opt-in, so the
      card shows a chip for whichever are switched on and keeps the controls
      folded away until the card is opened. */
+  /* The open card, by slot id. It used to be the group name and an array
+     index, which stopped meaning anything the moment the list sorted
+     itself -- the card that opened was whichever slot had landed in that
+     position. */
   var openSlot = null;
+
+  /* One step back, and only one. The snapshot is taken when a time field
+     is focused rather than on each keystroke, so typing 09:30 as 09, 09:3,
+     09:30 undoes to what was there before, not to a value passed through
+     on the way. It restores the times of every slot in the group and puts
+     back anything settling removed; a station or a flag changed since is
+     left alone, because those did not cause the fix. */
+  var undoSnap = null;
+
+  // Taken on focus, spent by the edit that follows it.
+  var pendingSnap = null;
+
+  function showFix(text, snap) {
+    $('fixText').textContent = text;
+    $('fixUndo').hidden = !snap;
+    $('fixNote').hidden = false;
+    undoSnap = snap || null;
+  }
+
+  function clearFix() {
+    $('fixNote').hidden = true;
+    $('fixText').textContent = '';
+    undoSnap = null;
+  }
+
+  /* Several fixes at once read better as one sentence than as a list, and
+     past two of them the detail stops being useful anyway. */
+  function fixText(changes) {
+    if (changes.length === 1) return changes[0].text;
+    if (changes.length > 2) return changes.length + ' slots were shortened or removed to make room.';
+    /* Two of them read as one sentence, and the reason only wants saying
+       once at the end of it -- otherwise it is "to make room ... to make
+       room", which is how a machine writes. */
+    var first = changes[0].text.replace(/,? to make room\.$/, '').replace(/[.,]$/, '');
+    return first + ', and ' + lowerFirst(changes[1].text);
+  }
+  function lowerFirst(t) { return t.charAt(0).toLowerCase() + t.slice(1); }
+
+  function snapshotGroup() {
+    return { group: slotGroup, slots: clone(draft.schedule[slotGroup]) };
+  }
+
+  /* The one way the drawer writes a schedule. Everything that can change a
+     slot's times goes through here, so the draft is valid at every instant
+     rather than at the save button. */
+  function afterSlotEdit(anchor, before) {
+    var r = Scheduler.settle(draft.schedule[slotGroup], draft.stations, anchor || null);
+    draft.schedule[slotGroup] = r.slots;
+    if (r.changes.length) showFix(fixText(r.changes), before);
+    else if (before) clearFix();
+    renderCounts();
+    return r;
+  }
+
+  $('fixUndo').addEventListener('click', function () {
+    if (!undoSnap) return;
+    slotGroup = undoSnap.group;
+    draft.schedule[slotGroup] = undoSnap.slots;
+    openSlot = null;
+    renderDrawer();
+    renderSlotRows();
+    showFix('Put back.', null);
+    refreshSaveBtn();
+  });
 
   var APPLIES = [
     { key: 'volume', flag: 'applyVolume', label: 'Volume', kind: 'range', min: 0, max: 100, home: 50, chip: 'vol' },
@@ -2399,8 +2540,52 @@
     var kids = $('slotRows').children;
     for (var k = 0; k < kids.length; k++) {
       if (kids[k].className.indexOf('card') !== 0) continue;   // the empty hint
-      kids[k].classList.toggle('is-open', slotGroup + k === openSlot);
+      kids[k].classList.toggle('is-open', kids[k].dataset.id === openSlot);
     }
+  }
+
+  /* The cards slide into their new order rather than being rebuilt, so a
+     field keeps its focus and a listener keeps its card. Same measure,
+     move, measure, invert as the station list, minus the folding: the card
+     being edited has to stay open and in sight while it travels. */
+  function reflowSlots() {
+    var box = $('slotRows');
+    var order = draft.schedule[slotGroup];
+    var cards = {}, was = {};
+    for (var i = 0; i < box.children.length; i++) {
+      var c = box.children[i];
+      if (!c.dataset || !c.dataset.id) continue;
+      cards[c.dataset.id] = c;
+      was[c.dataset.id] = c.getBoundingClientRect().top;
+    }
+
+    var moved = [];
+    for (var j = 0; j < order.length; j++) {
+      var card = cards[order[j].id];
+      if (!card) continue;
+      box.appendChild(card);
+      moved.push(card);
+      delete cards[order[j].id];
+    }
+    // Anything the settle removed is no longer in the list.
+    for (var gone in cards) if (cards.hasOwnProperty(gone)) cards[gone].remove();
+
+    if (stillMotion()) return;
+    for (var m = 0; m < moved.length; m++) {
+      var dy = was[moved[m].dataset.id] - moved[m].getBoundingClientRect().top;
+      if (!dy) continue;
+      moved[m].style.transition = 'none';
+      moved[m].style.transform = 'translateY(' + dy + 'px)';
+    }
+    void box.offsetWidth;
+    for (var n = 0; n < moved.length; n++) {
+      moved[n].style.transition = '';
+      moved[n].style.transform = '';
+      moved[n].classList.add('is-sliding');
+    }
+    setTimeout(function () {
+      for (var q = 0; q < moved.length; q++) moved[q].classList.remove('is-sliding');
+    }, SLIDE_MS);
   }
 
   /* Remove sits one small button away from the toggle that opens the card,
@@ -2409,10 +2594,10 @@
      rather than saying "are you sure" about nothing in particular. */
   var pendingSlotDelete = null;
 
-  function askDeleteSlot(group, index) {
-    var slot = (draft.schedule[group] || [])[index];
+  function askDeleteSlot(group, id) {
+    var slot = (draft.schedule[group] || []).filter(function (x) { return x.id === id; })[0];
     if (!slot) return;
-    pendingSlotDelete = { group: group, index: index };
+    pendingSlotDelete = { group: group, id: id };
     var st = draft.stations.filter(function (s) { return s.id === slot.stationId; })[0];
     $('slotDeleteWhat').textContent =
       (slot.start || '--:--') + ' to ' + (slot.end || '--:--') +
@@ -2428,16 +2613,33 @@
     pendingSlotDelete = null;
     if (!target) return;
     var slots = draft.schedule[target.group] || [];
-    if (target.index >= slots.length) return;
-    slots.splice(target.index, 1);
+    var at = -1;
+    for (var i = 0; i < slots.length; i++) if (slots[i].id === target.id) { at = i; break; }
+    if (at === -1) return;
+    slots.splice(at, 1);
     openSlot = null;
+    /* No note for this one. The dialog named the slot and asked; saying it
+       again afterwards would be the app talking to itself. A slot that
+       goes because an edit swallowed it is the other case, and that one is
+       a consequence rather than a decision, so it gets the note. */
+    clearFix();
     renderSlotRows();
     renderCounts();
     // A splice is not an input event, so the footer label has to be told.
     refreshSaveBtn();
   });
 
-  function renderSlotRows(errors) {
+  /* What a slot says about itself beside its times, when it is not an
+     ordinary span of one day. */
+  function slotTag(slot) {
+    var k = Scheduler.shapeOf(slot);
+    if (!k) return '';
+    if (k.kind === 'all') return 'all day';
+    if (k.kind === 'wrap') return 'past midnight';
+    return '';
+  }
+
+  function renderSlotRows() {
     var box = $('slotRows');
     box.innerHTML = '';
     var ends = $('dayEnd');
@@ -2451,11 +2653,10 @@
       box.appendChild(none);
     }
 
-    slots.forEach(function (slot, i) {
-      if (!slot.stationId && draft.stations[0]) slot.stationId = draft.stations[0].id;
-      var key = slotGroup + i;
+    slots.forEach(function (slot) {
       var card = document.createElement('div');
-      card.className = 'card' + (key === openSlot ? ' is-open' : '');
+      card.dataset.id = slot.id;
+      card.className = 'card' + (slot.id === openSlot ? ' is-open' : '');
       var st = draft.stations.filter(function (x) { return x.id === slot.stationId; })[0];
       card.style.setProperty('--c', (st && st.color) || '#8a8a84');
 
@@ -2470,6 +2671,7 @@
           '<button type="button" class="card-toggle" data-act="toggle">' +
             '<span class="card-dot"></span>' +
             '<span class="card-name">' + escapeHtml(slot.start || '--:--') + ' to ' + escapeHtml(slot.end || '--:--') + '</span>' +
+            '<span class="card-late">' + escapeHtml(slotTag(slot)) + '</span>' +
             '<span class="card-pill">' + escapeHtml(st ? (st.name || '(unnamed)') : 'Pick a station') + '</span>' +
             '<span class="chips">' + chips + '</span>' +
           '</button>' +
@@ -2486,10 +2688,10 @@
               '<input class="in in-time" data-k="end" type="time" aria-label="End" required>' +
               '<select class="in" data-k="stationId" aria-label="Station"></select>' +
             '</div>' +
+            '<p class="slot-note"></p>' +
             '<div class="slot-applies">' +
               '<span class="field-head">Apply when this slot starts</span>' +
             '</div>' +
-            '<p class="err"></p>' +
           '</div>' +
         '</div>' +
         '</div>';
@@ -2501,16 +2703,99 @@
         sel.appendChild(opt);
       });
 
+      function paintHead() {
+        card.querySelector('.card-name').textContent =
+          (slot.start || '--:--') + ' to ' + (slot.end || '--:--');
+        card.querySelector('.card-late').textContent = slotTag(slot);
+        var note = card.querySelector('.slot-note');
+        var k = Scheduler.shapeOf(slot);
+        if (k && k.kind === 'wrap') {
+          note.textContent = 'Runs past midnight. It counts as a ' +
+            (slotGroup === 'weekend' ? 'weekend' : 'weekday') + ' slot because it starts on one.';
+          note.hidden = false;
+        } else if (k && k.kind === 'all') {
+          note.textContent = 'Both times the same, so this plays all day.';
+          note.hidden = false;
+        } else {
+          note.hidden = true;
+        }
+      }
+      paintHead();
+
       var times = card.querySelectorAll('.slot-when .in');
       for (var t = 0; t < times.length; t++) {
         times[t].value = slot[times[t].dataset.k] != null ? slot[times[t].dataset.k] : '';
+
+        /* Before the first keystroke, not on each one, so undoing lands on
+           what was there rather than on a half-typed value passed through
+           on the way. */
+        times[t].addEventListener('focus', function () { pendingSnap = snapshotGroup(); });
+
         times[t].addEventListener('input', function (e) {
-          slot[e.target.dataset.k] = e.target.value;
-          if (e.target.dataset.k === 'stationId') { renderSlotRows(); return; }
-          card.querySelector('.card-name').textContent =
-            (slot.start || '--:--') + ' to ' + (slot.end || '--:--');
+          var k = e.target.dataset.k;
+          if (k === 'stationId') {
+            slot.stationId = e.target.value;
+            /* Times have not moved, so nothing needs settling and nothing
+               needs to move. Patched where it stands: a re-render here
+               would throw away the note the last edit just put up. */
+            var picked = draft.stations.filter(function (x) { return x.id === slot.stationId; })[0];
+            card.style.setProperty('--c', (picked && picked.color) || '#8a8a84');
+            card.querySelector('.card-pill').textContent = picked ? (picked.name || '(unnamed)') : 'Pick a station';
+            refreshSaveBtn();
+            return;
+          }
+
+          /* A time input reads empty until every part of it is filled in,
+             so half a time is not a change -- it is the middle of typing
+             one, and writing it through would blank the header. */
+          if (Scheduler.parseHHMM(e.target.value) === null) return;
+
+          var before = pendingSnap || snapshotGroup();
+          slot[k] = e.target.value;
+          paintHead();
+
+          var r = afterSlotEdit(slot, before);
+          /* The cards are not reordered here. The field still has the
+             cursor in it, and moving its card out from under the pointer
+             mid-edit is the one thing that would make this feel unsafe.
+             Whatever else moved is patched where it stands; the order
+             catches up when the card is left. */
+          r.changes.forEach(function (c) {
+            var other = box.querySelector('[data-id="' + c.id + '"]');
+            if (!other || other === card) return;
+            /* Struck through rather than taken away. Its slot has gone
+               and the card must not go on claiming otherwise, but pulling
+               it out from under a field that still has the cursor in it
+               would move everything below -- including, sometimes, the
+               field being typed into. It leaves at the reflow. */
+            if (c.kind === 'removed') { other.classList.add('is-going'); return; }
+            var nameEl = other.querySelector('.card-name');
+            if (nameEl) nameEl.textContent = c.slot.start + ' to ' + c.slot.end;
+            var lateEl = other.querySelector('.card-late');
+            if (lateEl) lateEl.textContent = slotTag(c.slot);
+            var ins = other.querySelectorAll('.slot-when .in-time');
+            for (var q = 0; q < ins.length; q++) ins[q].value = c.slot[ins[q].dataset.k];
+            other.classList.remove('is-touched');
+            void other.offsetWidth;
+            other.classList.add('is-touched');
+          });
+          refreshSaveBtn();
         });
       }
+
+      /* Leaving the card is when the list catches up. Anything half-typed
+         springs back to what the slot actually holds, so a field can never
+         be left showing something the schedule does not have. */
+      card.addEventListener('focusout', function (e) {
+        if (card.contains(e.relatedTarget)) return;
+        setTimeout(function () {
+          if (card.contains(document.activeElement)) return;
+          var ins = card.querySelectorAll('.slot-when .in-time');
+          for (var q = 0; q < ins.length; q++) ins[q].value = slot[ins[q].dataset.k] || '';
+          pendingSnap = null;
+          reflowSlots();
+        }, 0);
+      });
 
       var applies = card.querySelector('.slot-applies');
       APPLIES.forEach(function (spec) {
@@ -2568,17 +2853,12 @@
       card.querySelector('.card-top').addEventListener('click', function (e) {
         var hit = e.target.closest('[data-act]');
         var act = hit ? hit.dataset.act : 'toggle';
-        if (act === 'del') { askDeleteSlot(slotGroup, i); return; }
-        openSlot = key === openSlot ? null : key;
+        if (act === 'del') { askDeleteSlot(slotGroup, slot.id); return; }
+        openSlot = slot.id === openSlot ? null : slot.id;
         // Only the class changes, so the fold has something to animate.
         syncOpenSlots();
       });
 
-      var errs = (errors || []).filter(function (er) { return er.index === i; });
-      if (errs.length) {
-        card.classList.add('has-err', 'is-open');
-        card.querySelector('.err').textContent = errs.map(function (er) { return er.message; }).join(' ');
-      }
       box.appendChild(card);
     });
   }
@@ -2598,19 +2878,39 @@
 
   $('addSlot').addEventListener('click', function () {
     var slots = draft.schedule[slotGroup];
-    var last = slots[slots.length - 1];
-    slots.push({
-      start: last ? last.end : '07:00',
-      end: last ? '23:00' : '10:00',
+    /* Where it goes is worked out from what is free, not chained off
+       whichever slot happens to be last in the array. That chaining is
+       what produced a slot starting and ending at 23:00 on the third
+       press -- which under the old reading matched nothing at all and was
+       refused at the save. */
+    var home = Scheduler.suggestSlot(slots);
+    if (!home) {
+      showFix('The day is full. Shorten a slot to make room for another.', null);
+      return;
+    }
+    var fresh = {
+      id: slotId(),
+      start: home.start, end: home.end,
       stationId: draft.stations[0] ? draft.stations[0].id : '',
-      volume: state.volume, applyVolume: true,
+      // From the draft, not the live radio: this is what is being edited.
+      volume: draft.volume != null ? draft.volume : state.volume, applyVolume: true,
       bass: 0, applyBass: false,
       treble: 0, applyTreble: false,
-      theme: state.theme, applyTheme: false
-    });
-    openSlot = slotGroup + (slots.length - 1);
+      theme: draft.theme || state.theme, applyTheme: false
+    };
+    slots.push(fresh);
+    openSlot = fresh.id;
+    clearFix();
+    afterSlotEdit(fresh, null);
     renderSlotRows();
     renderCounts();
+    var card = $('slotRows').querySelector('[data-id="' + fresh.id + '"]');
+    if (card) {
+      card.classList.add('is-new');
+      if (card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+      var first = card.querySelector('.in-time');
+      if (first) first.focus();
+    }
   });
 
   /* ---------- station finder ----------
@@ -2785,15 +3085,10 @@
       }
       s.name = s.name.trim(); s.url = s.url.trim();
     }
-    var ids = draft.stations.map(function (s) { return s.id; });
-    var groups = ['weekday', 'weekend'];
-    for (var g = 0; g < groups.length; g++) {
-      var errs = Scheduler.validateSlots(draft.schedule[groups[g]], ids);
-      if (errs.length) {
-        slotGroup = groups[g]; renderDrawer(); renderSlotRows(errs);
-        msg.textContent = 'Fix the highlighted ' + groups[g] + ' slots.'; msg.className = 'save-msg bad'; return false;
-      }
-    }
+    /* Nothing here about the schedule any more. Every path that can write
+       one goes through settle, so by the time the save button is pressed
+       there is no such thing as an invalid schedule to refuse -- which is
+       the whole point of the four changes before this one. */
     return true;
   }
 
@@ -2821,6 +3116,12 @@
     state.schedule = draft.schedule;
     state.scheduleEnds = draft.scheduleEnds;
     state.scheduleV = 2;
+    /* Normally nothing, and then the note goes with the rest of the visit.
+       If the belt-and-braces settle did find something, that is a defect
+       here rather than the listener's doing, and it is said rather than
+       written in behind their back. */
+    if (lateFixes.length) showFix(lateFixes.join(' '), null);
+    else clearFix();
     state.theme = draft.theme;
     state.autoplay = !!draft.autoplay;
     state.autoplayStationId = draft.autoplayStationId;
@@ -3087,6 +3388,13 @@
           ? 'Imported, with ' + fixes.length + ' schedule fix' + (fixes.length === 1 ? '' : 'es') + '. Press Save to keep it.'
           : 'Imported. Press Save to keep it.';
         $('saveMsg').className = 'save-msg good';
+        /* No Undo offered: the only thing to go back to is a schedule that
+           does not work. The file said one thing, the schedule can only be
+           the other, and the difference is worth naming. */
+        if (fixes.length) {
+          showPane('schedule', true);
+          showFix(fixes.length === 1 ? fixes[0] : fixes.length + ' slots in the imported file were shortened, removed or given a station.', null);
+        }
       } catch (e) { $('saveMsg').textContent = 'That file is not a Deskside Radio export.'; $('saveMsg').className = 'save-msg bad'; }
     };
     r.readAsText(f);

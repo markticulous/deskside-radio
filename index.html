@@ -199,21 +199,29 @@
       </section>
 
       <section class="pane" id="paneSchedule" role="tabpanel" aria-labelledby="tabSchedule" hidden>
-        <p class="hint">A slot hands over at its end time: 07:00 to 10:00 starts at 07:00:00 and stops at 10:00:00, so the next slot can start at 10:00. Slots cannot overlap. A slot may run past midnight. Between slots the current station keeps playing. Whatever a slot applies wins over the settings in use at the time.</p>
-        <div class="tabs" role="tablist">
-          <button type="button" class="tab is-active" data-group="weekday" role="tab">Weekdays</button>
-          <button type="button" class="tab" data-group="weekend" role="tab">Weekend</button>
+        <p class="hint">A slot plays one station between two times, handing over at its end. Slots never overlap: stretch one across another and the other is trimmed to fit, with an Undo. Give a slot the same time at both ends and it runs all day. A slot that runs past midnight belongs to the day it starts on. Between slots the radio keeps playing whatever is on, unless you turn it off below.</p>
+        <div class="tabs" role="tablist" aria-label="Day group">
+          <button type="button" class="tab is-active" data-group="weekday" role="tab" aria-selected="true">Weekdays <span class="tab-n" id="countWeekday"></span></button>
+          <button type="button" class="tab" data-group="weekend" role="tab" aria-selected="false">Weekend <span class="tab-n" id="countWeekend"></span></button>
+        </div>
+        <!-- What settling the schedule had to change, and the one step
+             back. Above the list because the change is usually to a card
+             other than the one being edited, and sticky because a long
+             list scrolls the evidence away. -->
+        <div class="fix-note" id="fixNote" role="status" aria-live="polite" hidden>
+          <span class="fix-text" id="fixText"></span>
+          <button type="button" class="undo" id="fixUndo">Undo</button>
         </div>
         <div class="cards" id="slotRows"></div>
         <button type="button" class="ghost" id="addSlot">+ Add time slot</button>
         <label class="row end-row">
-          <span class="row-label">When the last slot of the day ends</span>
+          <span class="row-label">When the day's last slot ends</span>
           <select class="in" id="dayEnd">
             <option value="play">Keep playing (free play)</option>
-            <option value="off">Turn the radio off</option>
+            <option value="off">Turn the radio off until the next slot</option>
           </select>
         </label>
-        <p class="hint">Set for each day group on its own, so weekdays can end at bedtime and the weekend can carry on.</p>
+        <p class="hint">Set for weekdays and the weekend separately, so the weekdays can end at bedtime while the weekend carries on. The radio comes back on by itself when the next slot starts. A gap in the middle of the day is not the end of it.</p>
       </section>
 
       <section class="pane" id="paneLook" role="tabpanel" aria-labelledby="tabLook" hidden>
@@ -280,6 +288,20 @@
     <h2>Delete this station?</h2>
     <p id="stationDeleteWhat"></p>
     <p id="stationDeleteUsed" class="hint" hidden></p>
+    <!-- Offered only when slots actually point at it. Leaving them behind
+         was what used to make a slot that looks right, refuses to save and
+         cannot be fixed without touching its dropdown. -->
+    <div class="fates" id="stationDeleteFates" hidden>
+      <label class="fate">
+        <input type="radio" name="slotFate" value="move" checked>
+        <span>Move those slots to</span>
+        <select class="in" id="slotFateStation"></select>
+      </label>
+      <label class="fate">
+        <input type="radio" name="slotFate" value="drop">
+        <span>Delete those slots too</span>
+      </label>
+    </div>
     <div class="confirm-actions">
       <button type="submit" value="keep" class="ghost">Keep it</button>
       <button type="submit" value="delete" class="primary danger" id="stationDeleteGo">Delete station</button>
