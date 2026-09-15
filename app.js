@@ -3453,7 +3453,20 @@
     return !!(state.versionLatest && newerThan(state.versionLatest, APP_VERSION));
   }
 
+  /* True only while a request is actually out. The button reads its state
+     from this rather than being switched on and off by hand at each call
+     site, which is how one of them ends up forgetting. */
+  var checking = false;
+
+  function syncCheckNow() {
+    var b = $('checkNow');
+    if (!b) return;
+    b.disabled = checking || !state.versionCheck;
+    b.textContent = checking ? 'Checking…' : 'Check now';
+  }
+
   function renderUpdateLine(note) {
+    syncCheckNow();
     var line = $('updateLine');
     if (!line) return;
     line.className = 'update-line';
@@ -3473,19 +3486,29 @@
     if (!state.versionCheck) { renderUpdateLine(); return; }
     if (!force && Date.now() - (state.versionLastCheck || 0) < CHECK_EVERY) { renderUpdateLine(); return; }
     if (typeof fetch !== 'function') return;
+    checking = true;
+    renderUpdateLine('Asking GitHub…');
     fetch(VERSION_URL, { cache: 'no-store' }).then(function (r) {
       return r.ok ? r.json() : null;
     }).then(function (data) {
+      checking = false;
       state.versionLastCheck = Date.now();
       if (data && typeof data.version === 'string') state.versionLatest = data.version;
       save();
-      renderUpdateLine();
+      /* A press that finds nothing has to say so. Left to the usual line
+         it would read "last checked" with today's date on it -- the same
+         sentence it showed before the press, which reads as nothing
+         having happened. */
+      renderUpdateLine(force && !updateAvailable() ? 'Up to date · running ' + APP_VERSION : null);
       if (updateAvailable()) $('appVersion').classList.add('is-stale');
     }).catch(function () {
       // Offline, or GitHub is having a day. Say so and try again tomorrow.
+      checking = false;
       renderUpdateLine('Could not reach GitHub just now · running ' + APP_VERSION);
     });
   }
+
+  $('checkNow').addEventListener('click', function () { checkVersion(true); });
 
   $('versionCheckOn').addEventListener('change', function () {
     state.versionCheck = this.checked;

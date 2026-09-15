@@ -2435,6 +2435,10 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   background: var(--ui-field);
 }
 .switch { display: flex; align-items: center; gap: 9px; cursor: pointer; font-size: 14px; }
+/* The switch and the button that overrides its timing, on one line, the
+   button next to it rather than flung to the far edge: it belongs to the
+   switch, and the gap that would leave reads as two unrelated controls. */
+.switch-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .switch input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .switch-track {
   width: 36px; height: 20px; flex: none; border-radius: 999px; position: relative;
@@ -2917,6 +2921,12 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   content: ""; display: inline-block; width: 5px; height: 5px; margin-left: 5px;
   border-radius: 50%; background: #f0842a; vertical-align: .35em;
 }
+/* Off, or already asking: either way there is nothing for a press to do,
+   and a button that looks pressable but is not teaches people to distrust
+   the rest of them. */
+.ghost:disabled { opacity: .45; cursor: default; }
+.ghost:disabled:hover { background: none; color: var(--ui-mute); border-color: var(--ui-line); }
+
 .update-line { margin: 2px 0 0; font-size: 12.5px; color: var(--ui-mute); }
 .update-line.is-new { color: var(--ui-fg); }
 .update-line a { color: inherit; }
