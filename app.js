@@ -1163,15 +1163,30 @@
      chip sat at 30ch for every station. A Range's rect is the run of
      glyphs themselves, letter-spacing included, whatever box they are in.
      Only read when the text actually changed, a few times an hour. */
-  function setNextUp(text) {
+  /* Split out from setNextUp because the text is not the only thing that
+     changes the width of it. Every theme sets its own size and letter
+     spacing on this chip -- Tivoli 11px at .1em against the default --
+     and a theme change leaves the text identical, so setNextUp returned
+     early and the box kept a width measured under the theme before it.
+     Narrower theme, same width, and the last characters were cut off:
+     "Free play at 18" for "Free play at 18:00". */
+  function measureNext() {
     var n = el.schedNext;
-    if (n.textContent === text) return;
-    n.textContent = text;
+    if (!n.textContent) return;
     var range = document.createRange();
     range.selectNodeContents(n);
     var w = range.getBoundingClientRect().width;
     range.detach();
-    n.style.setProperty('--next-w', Math.ceil(w) + 'px');
+    /* Two pixels of slack. The rect is fractional and the box is not, and
+       rounding a hair short costs a whole character to overflow: hidden. */
+    n.style.setProperty('--next-w', (Math.ceil(w) + 2) + 'px');
+  }
+
+  function setNextUp(text) {
+    var n = el.schedNext;
+    if (n.textContent === text) return;
+    n.textContent = text;
+    measureNext();
   }
 
   function renderNext(now) {
@@ -1187,7 +1202,22 @@
     var when = pad(n.at.getHours()) + ':' + pad(n.at.getMinutes());
     var sameDay = n.at.toDateString() === now.toDateString();
     var day = sameDay ? '' : ' ' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][n.at.getDay()];
-    setNextUp((st ? st.name : 'Free play') + ' at ' + when + day);
+
+    /* Nothing playing at that instant is not the same thing as free play.
+       Whether the radio keeps going or turns itself off is the question
+       tick() answers at the changeover, and the chip has to answer it the
+       same way or it promises music where there is about to be silence.
+       The group that decides is the one the ending slot belongs to, not
+       the day it ends on. */
+    var label = st ? st.name : 'Free play';
+    if (!st) {
+      var ending = Scheduler.activeSlot(state.schedule, now);
+      var ends = state.scheduleEnds || {};
+      if (ending && Scheduler.dayIsOver(state.schedule, n.at) && ends[groupOfSlot(ending)] === 'off') {
+        label = 'Radio off';
+      }
+    }
+    setNextUp(label + ' at ' + when + day);
   }
 
   el.schedToggle.addEventListener('click', function () {
@@ -1314,10 +1344,14 @@
      been used yet, which starts a fresh load well after that, so the event
      is what to listen to. The observer covers the other half: the buttons
      change width when the window does, and when a station is added. */
+  /* The next-up chip is measured text in a box held at that measurement,
+     so it wants the same news: a face that arrives after the first
+     measurement is a different width for the same string. */
+  function measureNames() { measurePresetNames(); measureNext(); }
   if (document.fonts) {
-    if (document.fonts.ready) document.fonts.ready.then(measurePresetNames);
+    if (document.fonts.ready) document.fonts.ready.then(measureNames);
     if (document.fonts.addEventListener) {
-      document.fonts.addEventListener('loadingdone', measurePresetNames);
+      document.fonts.addEventListener('loadingdone', measureNames);
     }
   }
   if (window.ResizeObserver && el.presets) {
@@ -1543,6 +1577,8 @@
       // The meter is drawn differently by every theme, and setLevel works
       // that out once rather than each frame -- so tell it to look again.
       TunerUI.refreshMeter(el.tuner);
+      // The chip's font and tracking belong to the theme that just landed.
+      measureNext();
       var st = currentStation();
       if (!st) return;
       TunerUI.setNeedle(el.tuner, st.band);
