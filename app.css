@@ -1646,8 +1646,18 @@
 /* A gold slide-rule, hairline ticks, one lit pointer. */
 [data-theme="marconi"] .dial { display: grid; gap: 18px; margin: 22px auto 0; max-width: 520px; padding-left: 54px; }
 [data-theme="marconi"] .scale { color: var(--gold); border-bottom: 1px solid var(--gold); height: 26px; }
-[data-theme="marconi"] .scale:not(.is-active) { opacity: .3; }
-[data-theme="marconi"] .scale-labels { font-size: 11px; letter-spacing: .1em; color: var(--mute); padding-top: 5px; }
+/* Legibility, against a ground that is working hard against it: the band
+   the radio is not tuned to sits over the gold rays, and at .3 its figures
+   were competing with them rather than sitting on top. Still plainly the
+   quieter of the two scales, just readable now. */
+[data-theme="marconi"] .scale:not(.is-active) { opacity: .46; }
+/* Between --mute and --gold-hi. The labels are 11px with wide tracking on
+   near-black, which is the hardest thing on this panel to read, and --mute
+   is a colour meant for text sitting on its own rather than over rays. */
+[data-theme="marconi"] .scale-labels { font-size: 11px; letter-spacing: .1em; color: #c6ae79; padding-top: 5px; }
+/* The hairlines carry the reading as much as the figures do. */
+[data-theme="marconi"] .tick { opacity: .46; }
+[data-theme="marconi"] .tick.is-major { opacity: 1; }
 [data-theme="marconi"] .scale-badge {
   position: absolute; left: -54px; top: 50%; transform: translateY(-50%);
   width: 42px; text-align: center;
@@ -2052,8 +2062,11 @@
 }
 /* A machined push-button, the kind that is a disc of aluminium with a
    glyph cut into it and a spring behind. */
+/* The same disc as the tone knobs beside it -- 54px, --dia -- because on
+   a cabinet like this the transport and the tone controls are the same
+   piece of hardware with different things cut into them. */
 [data-theme="tivoli"] .play-btn {
-  width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center;
+  width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center;
   color: #434847;
   background:
     radial-gradient(circle at 36% 28%, rgba(255,255,255,.85), rgba(255,255,255,0) 50%),
@@ -2066,7 +2079,10 @@
     0 5px 10px rgba(0,0,0,.55);
   transition: transform .07s ease, box-shadow .07s ease;
 }
-[data-theme="tivoli"] .play-btn { margin-top: 2px; }
+/* No nudge now the diameters match: the row is topped, so equal discs
+   starting at the same line are already on the same centre. The 2px was
+   there to put a 50px button's middle level with a 54px knob's. */
+[data-theme="tivoli"] .play-btn { margin-top: 0; }
 /* The control row is topped rather than centred here, so that the knob
    labels line up; the record button is dropped by hand until its middle
    is level with the transport's. */
