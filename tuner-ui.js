@@ -527,6 +527,7 @@
      which spends a different share of its cycle travelling. */
   var TRAVEL_SHARE = 0.46;
   var STEP_MS = 230;           // one flap, on a board
+  var PRESET_SLOWER = 1.4;     // a button's name, against the readout's
 
   function startScroll(el, by, steps) {
     el.classList.add('can-scroll');
@@ -542,9 +543,19 @@
        The sliding pace is left exactly as it was. It was not what was
        reported and it does not have the same problem: a slide has no
        cadence to get wrong, only a speed, and that one reads fine. */
+    /* A preset's name is glanced at rather than watched, and it was still
+       going out quicker than it could be taken in. Its cycle is stretched;
+       the readout's is left exactly as it was, since that one reads fine
+       and was not what was reported. The presets never take the stepped
+       path -- that is only ever a display name -- so this only ever
+       touches the slide. Stretching the cycle stretches the pauses at
+       each end with it, which is no loss on a name you are trying to
+       read. */
+    var slide = 2600 + by * 28;
+    if (el.classList.contains('preset-name')) slide *= PRESET_SLOWER;
     var total = steps
       ? Math.round(steps * STEP_MS / TRAVEL_SHARE)
-      : Math.round(2600 + by * 28);
+      : Math.round(slide);
     el.style.setProperty('--marquee-ms', total + 'ms');
 
     /* The timing function belongs on whatever carries the animation, which
