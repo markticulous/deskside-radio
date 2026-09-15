@@ -506,6 +506,8 @@
   .card-mark, .card-fold, .card.is-sliding { transition-duration: 0s !important; }
   .card.is-touched, .card.is-new { animation: none !important; }
   .fix-note { animation: none !important; }
+  .drawer, .drawer::backdrop, .drawer-form { transition-duration: 0s !important; }
+  .drawer-form, .drawer[open] .drawer-form { transform: none; }
   .mini:active, .tab:active, .ghost:active, .file-btn:active, .primary:active,
   .drawer-x:active, .result-add:active, .dtab:active, .finder-toggle:active,
   .theme-card:active .theme-thumb { transform: none; }
@@ -2199,10 +2201,57 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .drawer { border: 0; padding: 0; background: transparent; max-width: none; max-height: none; position: fixed; inset: 0; width: auto; height: auto; }
 .drawer::backdrop { background: rgba(0,0,0,.55); }
 .drawer-form {
-  box-sizing: border-box; width: min(760px, 100%); height: min(88vh, 780px); margin: 5vh auto;
+  box-sizing: border-box; width: min(760px, 100%);
+  /* As tall as what is in it, and no taller: General is a handful of rows
+     and used to be given the same near-full-height box as a list of twenty
+     stations, so most of the dialog was empty. Three quarters of the window
+     is the ceiling, and the body scrolls past that.
+
+     Anchored near the top rather than centred on purpose. The height
+     changes as you move between tabs, and a centred box would slide the
+     tab strip out from under the pointer that just clicked it. */
+  height: auto; max-height: 75vh; margin: 6vh auto;
   background: var(--ui-bg); color: var(--ui-fg); font-family: var(--ui-font); font-size: 14px;
   border: 1px solid var(--ui-line); border-radius: var(--ui-radius); overflow: hidden;
   display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 0;
+}
+
+/* ---- opening and closing ----
+
+   A dialog in the top layer cannot simply be faded, because it is display:
+   none either side of being open. `allow-discrete` is what lets display
+   and overlay take part, and @starting-style is what gives the opening
+   frame something to come from -- without it the first frame is already
+   the finished state and nothing moves.
+
+   Short on purpose. The drawer is opened deliberately, so anything longer
+   than a breath reads as the app being slow rather than as an entrance.
+   Browsers without allow-discrete get what they got before: it appears. */
+.drawer, .drawer::backdrop {
+  opacity: 0;
+  transition: opacity .16s ease, overlay .16s allow-discrete, display .16s allow-discrete;
+}
+.drawer[open], .drawer[open]::backdrop { opacity: 1; }
+
+.drawer-form {
+  transform: translateY(-10px) scale(.99);
+  /* The height changes when the tab does, and a box that jumps between
+     four sizes as you click along the strip is the same complaint as the
+     chip that used to snap to its new width.
+
+     A transition alone cannot do it: the height is auto either side, so
+     nothing about the declared value changes and there is nothing to
+     interpolate -- interpolate-size does not help, because that is for
+     auto becoming a length, not auto becoming a different auto. So the
+     two heights are measured in showPane and handed here as pixels. */
+  transition: transform .18s cubic-bezier(.33, 1, .68, 1),
+              height .2s cubic-bezier(.33, 1, .68, 1);
+}
+.drawer[open] .drawer-form { transform: none; }
+
+@starting-style {
+  .drawer[open], .drawer[open]::backdrop { opacity: 0; }
+  .drawer[open] .drawer-form { transform: translateY(-10px) scale(.99); }
 }
 .drawer-body { overflow-y: auto; scrollbar-width: thin; }
 .pane { padding: 18px 24px 26px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; }
@@ -2987,7 +3036,7 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 }
 
 @media (max-width: 640px) {
-  .drawer-form { width: 100%; height: 100%; margin: 0; border: 0; border-radius: 0; }
+  .drawer-form { width: 100%; height: 100%; max-height: none; margin: 0; border: 0; border-radius: 0; transform: none; }
   .drawer-head, .drawer-foot { padding: 14px 16px; }
   .pane { padding: 16px 16px 22px; }
   .drawer-tabs { padding: 0 8px; overflow-x: auto; scrollbar-width: none; }
