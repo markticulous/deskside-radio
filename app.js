@@ -4,7 +4,11 @@
 
   var KEY = 'radio.v1';
   var THEMES = ['dial', 'console', 'rams', 'editorial', 'retro', 'departures', 'marconi', 'tivoli'];
-  // Bump on release, and publish the same number in version.json.
+  /* Bump on release, in all three places: here, version.json (which is
+     what every running copy checks once a day), and the placeholder in
+     index.html -- that one is overwritten at boot and so is never seen,
+     but a number that is wrong in the markup is a number that will be
+     believed by whoever reads it next. */
   var APP_VERSION = '1.3.0';
 
   var DEFAULTS = {
