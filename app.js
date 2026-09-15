@@ -26,6 +26,10 @@
        beside the schedule rather than inside it, because the slots are a
        list and this is a property of the day. */
     scheduleEnds: { weekday: 'play', weekend: 'play' },
+    /* Which reading of a slot whose start equals its end this schedule was
+       written under: absent or 1 means "matches nothing", 2 means all day.
+       normalise drops the old kind once and stamps this. */
+    scheduleV: 2,
     schedulerEnabled: false,
     // Where the window was left. Filled in once there is one to remember.
     windowBox: null,
@@ -75,9 +79,19 @@
     return st;
   }
 
+  /* An identity of its own, so nothing has to refer to a slot by where it
+     sits in the array. The list is sorted by start time now, which moves
+     slots about under the drawer's feet -- the open card, the delete
+     button and the undo snapshot all used to be positions, and a position
+     stops meaning anything the moment the order changes. Written back into
+     stored settings on the first save, and harmless in an export. */
+  var slotSeq = 0;
+  function slotId() { return 'sl_' + Date.now().toString(36) + (slotSeq++).toString(36); }
+
   function cleanSlots(list) {
     return (Array.isArray(list) ? list : [])
-      .filter(function (sl) { return sl && typeof sl === 'object'; });
+      .filter(function (sl) { return sl && typeof sl === 'object'; })
+      .map(function (sl) { if (!sl.id) sl.id = slotId(); return sl; });
   }
 
   /* Above the line below, and it matters. var hoists the name and not the
@@ -107,6 +121,30 @@
       merged.schedule = Object.assign({ weekday: [], weekend: [] }, s.schedule || {});
       merged.schedule.weekday = cleanSlots(merged.schedule.weekday);
       merged.schedule.weekend = cleanSlots(merged.schedule.weekend);
+
+      /* Equal start and end used to mean a slot that matched nothing at
+         all; it now means all day. Anything saved before that flip has to
+         be read the old way once, or it wakes up owning the whole day --
+         and the Add button's old defaults produced exactly 23:00 to 23:00
+         on the third press, so this is not hypothetical. They did nothing
+         before, so dropping them changes nothing anyone could have heard.
+         The marker is absent on every install that predates this, and set
+         once here, so a slot made deliberately after the upgrade is never
+         mistaken for one of these. */
+      /* Asked of the stored object, not the merged one. DEFAULTS carries
+         scheduleV: 2, so Object.assign fills it in before this runs and
+         merged.scheduleV is always 2 -- which silently skipped the
+         migration for every install that needed it. Caught by seeding a
+         lone 23:00-23:00 slot and watching it survive. */
+      if (!s || s.scheduleV !== 2) {
+        ['weekday', 'weekend'].forEach(function (g) {
+          merged.schedule[g] = merged.schedule[g].filter(function (sl) {
+            var a = Scheduler.parseHHMM(sl.start), b = Scheduler.parseHHMM(sl.end);
+            return !(a !== null && a === b);
+          });
+        });
+        merged.scheduleV = 2;
+      }
       var ends = (s && s.scheduleEnds && typeof s.scheduleEnds === 'object') ? s.scheduleEnds : {};
       merged.scheduleEnds = {
         weekday: ends.weekday === 'off' ? 'off' : 'play',
@@ -116,6 +154,17 @@
       merged.stations = merged.stations.map(cleanStation).filter(Boolean);
       if (!merged.stations.length) merged.stations = clone(DEFAULTS.stations);
       if (THEMES.indexOf(merged.theme) === -1) merged.theme = DEFAULTS.theme;
+
+      /* The gate, on the way in. Storage is shared with every other local
+         page the browser has opened, a seed file is a file like any other,
+         and neither has been near the drawer -- so an overlapping, unsorted
+         or dangling schedule can arrive from either. It is settled before
+         anything reads it, silently: there is nobody to tell at this point
+         and nothing they could do about it. After the stations, because
+         settle has to know which ids are real. */
+      ['weekday', 'weekend'].forEach(function (g) {
+        merged.schedule[g] = Scheduler.settle(merged.schedule[g], merged.stations, null).slots;
+      });
       /* Bass and treble used to be one pair of numbers for the whole app.
          They now belong to the station, so seed every station that has none
          from the old global pair and the listener hears no change. */
@@ -1767,7 +1816,7 @@
   function openSettings() {
     draft = clone({
       stations: state.stations, schedule: state.schedule,
-      scheduleEnds: state.scheduleEnds, theme: state.theme,
+      scheduleEnds: state.scheduleEnds, scheduleV: state.scheduleV || 2, theme: state.theme,
       autoplay: state.autoplay, autoplayStationId: state.autoplayStationId
     });
     slotGroup = 'weekday';
@@ -2759,8 +2808,19 @@
   function commitSettings() {
     var msg = $('saveMsg');
     state.stations = draft.stations;
+    /* Settled once more on the way out. It should find nothing -- every
+       path into the draft has already been through the gate -- and if it
+       ever does, that is a defect here rather than the listener's doing,
+       so what it changed is said rather than written in silently. */
+    var lateFixes = [];
+    ['weekday', 'weekend'].forEach(function (g) {
+      var r = Scheduler.settle(draft.schedule[g], draft.stations, null);
+      draft.schedule[g] = r.slots;
+      r.changes.forEach(function (c) { lateFixes.push(c.text); });
+    });
     state.schedule = draft.schedule;
     state.scheduleEnds = draft.scheduleEnds;
+    state.scheduleV = 2;
     state.theme = draft.theme;
     state.autoplay = !!draft.autoplay;
     state.autoplayStationId = draft.autoplayStationId;
@@ -2954,7 +3014,7 @@
        scripts -- where reading the same bytes as data would need the
        browser opened with the run of the disk. Import reads it either
        way, so an older .json export still works. */
-    var body = 'window.DESKSIDE_SEED = ' + JSON.stringify({ stations: state.stations, schedule: state.schedule, scheduleEnds: state.scheduleEnds, theme: state.theme, volume: state.volume, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId }, null, 2) + ';\n';
+    var body = 'window.DESKSIDE_SEED = ' + JSON.stringify({ stations: state.stations, schedule: state.schedule, scheduleEnds: state.scheduleEnds, scheduleV: state.scheduleV || 2, theme: state.theme, volume: state.volume, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId }, null, 2) + ';\n';
     var blob = new Blob([body], { type: 'text/javascript' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -2971,6 +3031,30 @@
     if (!target.stations.length) throw new Error('no stations');
     var sched = (data.schedule && typeof data.schedule === 'object') ? data.schedule : {};
     target.schedule = { weekday: cleanSlots(sched.weekday), weekend: cleanSlots(sched.weekend) };
+
+    /* An imported file gets the same reading as a stored one: equal times
+       meant nothing when it was written and mean all day now. */
+    if (data.scheduleV !== 2) {
+      ['weekday', 'weekend'].forEach(function (g) {
+        target.schedule[g] = target.schedule[g].filter(function (sl) {
+          var a = Scheduler.parseHHMM(sl.start), b = Scheduler.parseHHMM(sl.end);
+          return !(a !== null && a === b);
+        });
+      });
+    }
+    target.scheduleV = 2;
+
+    /* Settled here rather than left for the save button, which no longer
+       refuses anything. What it had to change is handed back so the drawer
+       can say so -- an import is the one path where the fixes are worth
+       mentioning and cannot be undone, the alternative being a schedule
+       that does not work. */
+    target.importFixes = [];
+    ['weekday', 'weekend'].forEach(function (g) {
+      var r = Scheduler.settle(target.schedule[g], target.stations, null);
+      target.schedule[g] = r.slots;
+      r.changes.forEach(function (c) { target.importFixes.push(c.text); });
+    });
     var e = (data.scheduleEnds && typeof data.scheduleEnds === 'object') ? data.scheduleEnds : {};
     target.scheduleEnds = {
       weekday: e.weekday === 'off' ? 'off' : 'play',
@@ -2998,7 +3082,11 @@
         importSettingsInto(draft, parseExport(r.result));
         renderDrawer();
         refreshSaveBtn();
-        $('saveMsg').textContent = 'Imported. Press Save to keep it.'; $('saveMsg').className = 'save-msg good';
+        var fixes = draft.importFixes || [];
+        $('saveMsg').textContent = fixes.length
+          ? 'Imported, with ' + fixes.length + ' schedule fix' + (fixes.length === 1 ? '' : 'es') + '. Press Save to keep it.'
+          : 'Imported. Press Save to keep it.';
+        $('saveMsg').className = 'save-msg good';
       } catch (e) { $('saveMsg').textContent = 'That file is not a Deskside Radio export.'; $('saveMsg').className = 'save-msg bad'; }
     };
     r.readAsText(f);
