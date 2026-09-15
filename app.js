@@ -1821,10 +1821,28 @@
      hidden again within the same turn of the script -- nothing is painted
      in between, so there is nothing to see.
 
-     Three quarters of the window is the ceiling. Past it the body scrolls,
-     which is the honest answer when the settings really are taller than
-     the screen. */
+     Three quarters of the *desktop* is the ceiling, not three quarters of
+     the window. The two are the same thing only when the radio is running
+     full height, and it usually is not: on a display at 150% scaling a
+     near-fullscreen window measured 630 CSS pixels, so a window-relative
+     ceiling handed the dialog 470 and put a scrollbar through three
+     stations that wanted 561. screen.availHeight is the work area the
+     desktop actually offers, taskbar already taken off, and is reported
+     in CSS pixels, so it needs no scaling of its own.
+
+     What the window can show is still the hard limit -- a dialog taller
+     than the window it lives in is cut off by the window, not scrolled --
+     and that limit is the stylesheet's max-height, which clamps whatever
+     is set here. Past either, the body scrolls, which is the honest
+     answer when the settings really are taller than the screen. */
   var DRAWER_CEILING = 0.75;
+
+  function drawerRoom() {
+    var screenRoom = window.screen && screen.availHeight ? screen.availHeight : 0;
+    // No screen to ask, or a nonsense answer: fall back to the window.
+    if (!screenRoom || screenRoom < window.innerHeight) screenRoom = window.innerHeight;
+    return Math.round(screenRoom * DRAWER_CEILING);
+  }
   // Enough to swallow sub-pixel rounding rather than round down into a bar.
   var DRAWER_SLACK = 12;
 
@@ -1854,7 +1872,7 @@
     var body = form.querySelector('.drawer-body');
     var frame = form.offsetHeight - body.clientHeight;
     var want = frame + tallest + DRAWER_SLACK;
-    form.style.height = Math.min(want, Math.round(window.innerHeight * DRAWER_CEILING)) + 'px';
+    form.style.height = Math.min(want, drawerRoom()) + 'px';
   }
 
   $('drawerTabs').addEventListener('click', function (e) {
