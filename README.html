@@ -23,6 +23,10 @@
   --mark:   #f0842a;
   --code-bg:#edeae2;
 
+  /* The height of the sticky bar, named once because three other things
+     have to keep out from under it. */
+  --bar-h: 46px;
+
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
   --sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
   --mono: "Cascadia Mono", ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
@@ -58,6 +62,74 @@ body {
   font-variant-numeric: oldstyle-num;
 }
 
+/* ---- the bar that stays --------------------------------------------- */
+
+/* Full width, but its contents line up with the 1180px column the rest of
+   the page uses -- done with padding rather than an inner wrapper, so the
+   element the eye sees and the element that sticks are the same one. */
+.wordmark {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: 0;
+  min-height: var(--bar-h);
+  padding: 0 max(32px, calc((100% - 1180px) / 2));
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .34em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.wordmark .dot {
+  flex: none;
+  width: 7px; height: 7px;
+  margin-right: -5px;
+  border-radius: 50%;
+  background: var(--mark);
+}
+/* The name can go; the dot, the badge and the number cannot. */
+.wordmark-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Lifted from the app's own lockup, with Rams's palette: hollow plate,
+   hairline edge, top-left and bottom-right cropped square so it reads as a
+   stamped tag rather than a box. Oswald is not fetched here -- the read me
+   asks the network for nothing -- so it falls back the same way the app
+   does offline. */
+.byline {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 1px 6px 1px 6px;
+  box-shadow: inset 0 0 0 1px var(--rule);
+  font-family: "Oswald", "Arial Narrow", "Helvetica Neue", sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: .12em;
+  line-height: 1;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+.byline-by, .byline-suffix { opacity: .6; }
+
+.ver {
+  flex: none;
+  margin-left: -6px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: none;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: color-mix(in srgb, var(--mute) 72%, transparent);
+}
+
 /* ---- the plate at the top ------------------------------------------ */
 
 .masthead {
@@ -67,24 +139,7 @@ body {
 .masthead-in {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 40px 32px 30px;
-}
-.wordmark {
-  margin: 0;
-  font-family: var(--sans);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: .34em;
-  text-transform: uppercase;
-  color: var(--mute);
-}
-.wordmark .dot {
-  display: inline-block;
-  width: 7px; height: 7px;
-  margin-right: 10px;
-  border-radius: 50%;
-  background: var(--mark);
-  vertical-align: middle;
+  padding: 34px 32px 30px;
 }
 .masthead h1 {
   margin: 14px 0 0;
@@ -117,12 +172,12 @@ body {
 
 .toc {
   position: sticky;
-  top: 0;
+  top: var(--bar-h);
   padding: 44px 0 40px;
   font-family: var(--sans);
   font-size: 13.5px;
   line-height: 1.45;
-  max-height: 100vh;
+  max-height: calc(100vh - var(--bar-h));
   overflow: auto;
 }
 .toc h2 {
@@ -162,7 +217,9 @@ main { padding: 40px 0 0; max-width: 40em; }
 
 /* ---- sections ------------------------------------------------------- */
 
-section { padding-top: 26px; scroll-margin-top: 16px; }
+/* Clicking a contents entry has to land the heading below the bar, not
+   underneath it. */
+section { padding-top: 26px; scroll-margin-top: calc(var(--bar-h) + 14px); }
 section + section { margin-top: 44px; border-top: 1px solid var(--line); }
 
 h2.sec {
@@ -345,7 +402,8 @@ table.themes td:last-child { color: var(--mute); padding-right: 0; }
 
 @media (max-width: 860px) {
   body { font-size: 16.5px; }
-  .masthead-in { padding: 30px 20px 24px; }
+  .wordmark { padding: 0 20px; gap: 10px; letter-spacing: .2em; font-size: 12px; }
+  .masthead-in { padding: 26px 20px 24px; }
   .shell { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0 20px 64px; }
   .toc {
     position: static;
@@ -358,6 +416,9 @@ table.themes td:last-child { color: var(--mute); padding-right: 0; }
 
 @media (max-width: 480px) {
   .toc ol { columns: 1; }
+  /* Below this the three of them cannot share a line honestly. The badge
+     is the one that goes: the name and the version are the information. */
+  .byline { display: none; }
   .toc a { margin-left: 0; padding-left: 0; border-left: 0; }
   .toc a.is-here { border-left: 0; }
   main { padding-top: 12px; }
@@ -376,6 +437,9 @@ html { scroll-behavior: smooth; }
 @media print {
   :root { --paper: #fff; --card: #fff; --ink: #000; --mute: #333; --line: #ccc; --rule: #999; --code-bg: #f0f0f0; }
   .toc, .totop { display: none; }
+  /* Nothing sticks to a sheet of paper. */
+  .wordmark { position: static; padding: 0 0 10px; }
+  section { scroll-margin-top: 0; }
   .shell { display: block; padding: 0; max-width: none; }
   main { max-width: none; }
   .masthead { border-bottom-width: 2px; }
@@ -388,9 +452,19 @@ html { scroll-behavior: smooth; }
 </head>
 <body id="top">
 
+<p class="wordmark">
+  <span class="dot"></span><span class="wordmark-name">Deskside Radio</span>
+  <!-- The maker byline as the Rams theme wears it: the same stamped plate
+       with two corners cropped square, hollow rather than filled, which is
+       the treatment that suits paper. -->
+  <span class="byline">
+    <span class="byline-by">A</span><span class="byline-name">Markticulous</span><span class="byline-suffix">build</span>
+  </span>
+  <span class="ver" id="verChip">v1.3.0</span>
+</p>
+
 <header class="masthead">
   <div class="masthead-in">
-    <p class="wordmark"><span class="dot"></span>Deskside Radio</p>
     <h1>Read me</h1>
     <p class="standfirst">A radio for the corner of your computer desktop. It plays internet streams from stations you choose, on a schedule if you want one, and it looks like a radio rather than a browser tab.</p>
     <p class="standfirst">It is a single web page. There is nothing to install, no account and no server. Nothing about you is sent anywhere; the two things that do leave your machine are the stations you play and, on each launch, a request to Google Fonts for the typefaces. Both are listed under <a href="#data">Your data</a>.</p>
