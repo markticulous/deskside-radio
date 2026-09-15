@@ -3555,7 +3555,10 @@
      from disk needs. Off in one click, and then nothing is ever sent. */
   var VERSION_URL = 'https://raw.githubusercontent.com/Markticulous/deskside-radio/main/version.json';
   var RELEASES_URL = 'https://github.com/Markticulous/deskside-radio/releases/latest';
-  var CHECK_EVERY = 24 * 60 * 60 * 1000;
+  /* Six hours rather than a day. The radio is built to be left open for
+     days at a time, which is the only case where the interval matters at
+     all -- four requests a day to one static file against one. */
+  var CHECK_EVERY = 6 * 60 * 60 * 1000;
 
   // 1.2.10 is newer than 1.2.9, which a string compare gets wrong.
   function newerThan(a, b) {
@@ -3583,21 +3586,51 @@
     b.textContent = checking ? 'Checking…' : 'Check now';
   }
 
+  /* Year, month, day rather than the locale's own order. This line is read
+     beside a version number, and 9/14/2026 is a different date in half the
+     world. */
+  function isoDay(ts) {
+    var d = new Date(ts);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  /* The pill on the face of the radio, shown by exactly the test the
+     Service line uses, so the two can never disagree about whether there
+     is something to fetch. */
+  function syncUpdatePill() {
+    var pill = $('updatePill');
+    if (!pill) return;
+    var on = updateAvailable();
+    pill.hidden = !on;
+    // The gear carries the same mark: the pill says what, this says where.
+    var gear = $('openSettings');
+    if (gear) gear.classList.toggle('has-update', on);
+    if (!on) return;
+    pill.href = RELEASES_URL;
+    pill.title = 'Version ' + state.versionLatest + ' has been published. Running ' + APP_VERSION + '.';
+  }
+
   function renderUpdateLine(note) {
     syncCheckNow();
+    syncUpdatePill();
     var line = $('updateLine');
     if (!line) return;
     line.className = 'update-line';
     if (note) { line.textContent = note; return; }
     if (!state.versionCheck) { line.textContent = 'Checking is off. Nothing is sent.'; return; }
+
+    var running = 'Running ' + escapeHtml(APP_VERSION);
     if (updateAvailable()) {
       line.className = 'update-line is-new';
-      line.innerHTML = 'Version ' + escapeHtml(state.versionLatest) + ' is out. ' +
-        '<a href="' + RELEASES_URL + '" target="_blank" rel="noopener">Open the releases page</a>';
+      line.innerHTML = running + ' · <b>New v' + escapeHtml(state.versionLatest) + ' available</b> · ' +
+        '<a href="' + RELEASES_URL + '" target="_blank" rel="noopener">Download it</a>';
       return;
     }
-    var when = state.versionLastCheck ? new Date(state.versionLastCheck).toLocaleDateString() : 'not yet';
-    line.textContent = 'Running ' + APP_VERSION + ' · last checked ' + when;
+    /* Never checked reads differently from checked and found nothing, and
+       that difference is most of what this line is for. */
+    line.innerHTML = state.versionLastCheck
+      ? running + ' · last checked ' + isoDay(state.versionLastCheck) + ' · <b>Up to date</b>'
+      : running + ' · not checked yet';
   }
 
   function checkVersion(force) {
@@ -3613,11 +3646,9 @@
       state.versionLastCheck = Date.now();
       if (data && typeof data.version === 'string') state.versionLatest = data.version;
       save();
-      /* A press that finds nothing has to say so. Left to the usual line
-         it would read "last checked" with today's date on it -- the same
-         sentence it showed before the press, which reads as nothing
-         having happened. */
-      renderUpdateLine(force && !updateAvailable() ? 'Up to date · running ' + APP_VERSION : null);
+      // The line says "Up to date" either way now, so a press needs no
+      // wording of its own to show that something happened.
+      renderUpdateLine();
       if (updateAvailable()) $('appVersion').classList.add('is-stale');
     }).catch(function () {
       // Offline, or GitHub is having a day. Say so and try again tomorrow.
@@ -3803,6 +3834,8 @@
     startTicking();
     $('appVersion').textContent = 'v' + APP_VERSION;
     if (updateAvailable()) $('appVersion').classList.add('is-stale');
+    // What the last check found, remembered across launches.
+    syncUpdatePill();
     // Not on the critical path: let the radio come up first.
     setTimeout(function () { checkVersion(false); }, 3000);
     el.tuner.classList.add('is-quiet');

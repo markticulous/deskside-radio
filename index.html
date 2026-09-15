@@ -43,6 +43,12 @@
         <span class="byline-name">Markticulous</span>
         <span class="byline-suffix">build</span>
       </span>
+      <!-- Only ever here, and only ever this, whatever the theme: the one
+           place the radio says a newer version exists without being asked.
+           Hidden until there is one. -->
+      <a class="update-pill" id="updatePill" hidden target="_blank" rel="noopener">
+        <span class="update-dot" aria-hidden="true"></span><span id="updatePillText">Update available</span>
+      </a>
     </div>
     <time class="clock" id="clock">--:--</time>
     <button class="sched-chip" id="schedToggle" aria-pressed="true" title="Turn the schedule on or off">
@@ -247,7 +253,7 @@
         </div>
         <div class="pane-block">
           <h3>Updates</h3>
-          <p class="hint">Once a day the app asks GitHub whether a newer version has been published. It sends nothing but the request itself &mdash; no settings, no listening history &mdash; and never installs anything on its own.</p>
+          <p class="hint">Every six hours the app asks GitHub whether a newer version has been published, and shows a small <strong>Update available</strong> mark beside the wordmark when there is one. It sends nothing but the request itself &mdash; no settings, no listening history &mdash; and never installs anything on its own.</p>
           <div class="switch-row">
             <label class="switch">
               <input type="checkbox" id="versionCheckOn">

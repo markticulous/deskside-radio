@@ -174,7 +174,7 @@ There is no drift correction. It was written and then removed: playing at 0.5x f
 
 ## Updates
 
-Once a day the app fetches [`version.json`](version.json) from this repo and says so in **Settings → Service** if a newer version has been published. It sends no identifiers, downloads nothing, and installs nothing. The switch beside it turns the check off for good, and **Check now** beside that asks straight away rather than waiting for the day to turn over — useful after a release, and the only way to find out without closing and reopening.
+Every six hours the app fetches [`version.json`](version.json) from this repo. When a newer version has been published it shows an **Update available** pill beside the wordmark and a dot on the Settings control, and names the version in **Settings → Service**. It sends no identifiers, downloads nothing, and installs nothing. The switch beside it turns the check off for good, and **Check now** beside that asks straight away rather than waiting for the interval — useful after a release, and the only way to find out without closing and reopening.
 
 ## Building the single-file version
 

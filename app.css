@@ -152,7 +152,18 @@
 /* Turning the schedule off slides the next-up text away instead of
    dropping it, so the chip changes width in one short move. */
 .sched-chip[aria-pressed="false"] .sched-next { width: 0; opacity: 0; }
-.icon-btn     { display: inline-grid; place-items: center; width: 40px; height: 40px; }
+.icon-btn     { display: inline-grid; place-items: center; width: 40px; height: 40px; position: relative; }
+/* The same news as the pill, on the control that leads to it. Drawn rather
+   than marked up, so it costs the header no extra element, and cut from
+   the theme's own byline colour like the pill is. The ring is the button's
+   own ground showing through, which is why it is currentColor at low alpha
+   rather than a background this rule would have to guess at. */
+#openSettings.has-update::after {
+  content: ''; position: absolute; top: 6px; right: 6px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--by-fg, currentColor);
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 22%, transparent);
+}
 .shortcut-btn { width: 30px; height: 30px; opacity: .55; transition: opacity .16s ease; }
 .shortcut-btn:hover { opacity: 1; }
 .shortcut-btn svg { width: 15px; height: 15px; }
@@ -398,6 +409,33 @@
 /* The other four treatments -- seal, rule, callsign, tag -- are drawn by
    previews/byline-preview.html and live in that page's own stylesheet. The
    app has only ever worn the plate. */
+
+/* The update notice. It sits beside the maker plate and is cut from the
+   same cloth -- --by-fg and --by-line are the two tokens every one of the
+   eight themes already tunes, so one rule dresses it everywhere without
+   inventing eight new colours for it.
+
+   Quiet on purpose. An update is worth knowing about and worth ignoring
+   for a fortnight, which is what a hairline pill says and a banner does
+   not. A shade shorter than the plate's own lockup so it reads as the
+   lighter of the two. */
+.update-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 9px 2px 7px;
+  border: 1px solid var(--by-line, rgba(128,128,128,.35));
+  border-radius: 999px;
+  color: var(--by-fg, currentColor);
+  font-family: var(--by-font, "Oswald", "Arial Narrow", sans-serif);
+  font-size: 10px; font-weight: 500; line-height: 1.4;
+  letter-spacing: .1em; text-transform: uppercase;
+  text-decoration: none; white-space: nowrap;
+  transition: opacity .16s ease;
+}
+/* display: inline-flex would otherwise beat the attribute. */
+.update-pill[hidden] { display: none; }
+.update-pill:hover { opacity: .72; }
+.update-pill:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.update-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none; }
 
 /* ---- dial scales: ticks and labels sit at their true frequency ---- */
 .dial, .meter { display: none; }
