@@ -2,11 +2,17 @@
 
    The source stays split — five modules and a stylesheet — because that is
    how it is worked on. What ships is index.html with all of it inlined, the
-   four theme icons, and the shortcut helper: six files, and the only ones
-   that cannot be folded in are the icons, because Windows reads them off
-   disk rather than out of the page.
+   eight theme icons, the shortcut helpers, the licence and the manual. The
+   icons are the only thing that cannot be folded in, because Windows reads
+   them off disk rather than out of the page.
 
-     node tools/build-dist.js          → dist/
+     node tools/build-dist.js          → dist/ and the release zips
+
+   The zip is built here rather than by hand at release time, because the
+   hand-made one drifted: the archive published with 1.2.5 still carried
+   the shortcut scripts under their old names and had never heard of the
+   Edge, Firefox or Linux ones. A folder and an archive that can disagree
+   will eventually disagree.
 
    The webfont link is left pointing at Google. Offline the app falls back
    to the stacks named beside each face, which is the same behaviour the
@@ -21,6 +27,7 @@
 const fs = require('fs');
 const path = require('path');
 const strip = require('./strip.js');
+const zip = require('./zip.js');
 
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'dist');
@@ -117,12 +124,43 @@ fs.copyFileSync(path.join(ROOT, 'README.html'), path.join(OUT, 'README.html'));
    the build takes the comments out. */
 fs.copyFileSync(path.join(ROOT, 'LICENSE'), path.join(OUT, 'LICENSE.txt'));
 
-const files = fs.readdirSync(OUT);
+const files = fs.readdirSync(OUT).sort();
 const total = files.reduce(function (n, f) { return n + fs.statSync(path.join(OUT, f)).size; }, 0);
 console.log('dist/  ' + files.length + ' files, ' + (total / 1024).toFixed(0) + ' KB');
 files.forEach(function (f) {
   console.log('  ' + f + '  ' + (fs.statSync(path.join(OUT, f)).size / 1024).toFixed(1) + ' KB');
 });
+
+/* ---------- the archive that actually gets downloaded ----------------
+
+   Entries sit at the root of the zip with no folder around them, which is
+   what the earlier releases did: every unzipper worth the name makes a
+   folder for a multi-file archive anyway, and changing it would move where
+   the app lands for anyone who already knows where to put it.
+
+   Stamped from the release date rather than the clock, so building twice
+   from the same source gives the same bytes. */
+const meta = JSON.parse(read('version.json'));
+const stamp = new Date(meta.released + 'T12:00:00');
+
+const entries = files.map(function (f) {
+  return {
+    name: f,
+    data: fs.readFileSync(path.join(OUT, f)),
+    // The Linux script arrives ready to run instead of needing a chmod.
+    mode: /\.sh$/.test(f) ? 0o100755 : 0o100644
+  };
+});
+
+const archive = zip(entries, stamp);
+/* Two names, one archive: the versioned one is what the release page
+   lists, and the bare one is a link that can be printed somewhere and go
+   on working after the next release. */
+[ 'deskside-radio-' + meta.version + '.zip', 'deskside-radio.zip' ].forEach(function (name) {
+  fs.writeFileSync(path.join(ROOT, name), archive);
+});
+console.log('\ndeskside-radio-' + meta.version + '.zip  ' + (archive.length / 1024).toFixed(0) +
+  ' KB, ' + entries.length + ' entries (and a copy as deskside-radio.zip)');
 console.log('index.html went from ' + (before / 1024).toFixed(1) + ' KB to ' +
   (fs.statSync(path.join(OUT, 'index.html')).size / 1024).toFixed(1) + ' KB with everything folded in');
 console.log('  (' + (saved / 1024).toFixed(1) + ' KB of comments and indentation left behind)');
