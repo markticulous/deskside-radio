@@ -1823,6 +1823,7 @@
       autoplay: state.autoplay, autoplayStationId: state.autoplayStationId
     });
     slotGroup = 'weekday';
+    clearFieldMarks();
     openSlot = null;
     pendingSnap = null;
     clearFix();
@@ -2140,6 +2141,67 @@
      be eighteen form rows stacked on top of each other. `openStation` holds
      the id of the one card that is open, so it survives a re-render. */
   var openStation = null;
+
+  /* Which fields a refused save is pointing at, keyed by the station's own
+     id rather than its position, so re-ordering or deleting another
+     station cannot make a mark describe the wrong field. Held here rather
+     than on the DOM because the cards are rebuilt on every render. */
+  var badFields = {};
+
+  function markField(id, key, message) { badFields[id + '|' + key] = message; }
+
+  function clearFieldMarks() {
+    badFields = {};
+    var box = $('stationRows');
+    if (!box) return;
+    var i, marked = box.querySelectorAll('.in.is-bad');
+    for (i = 0; i < marked.length; i++) { marked[i].classList.remove('is-bad'); marked[i].removeAttribute('aria-invalid'); }
+    var lines = box.querySelectorAll('.field-err');
+    for (i = 0; i < lines.length; i++) lines[i].parentNode.removeChild(lines[i]);
+    var cards = box.querySelectorAll('.card.has-err');
+    for (i = 0; i < cards.length; i++) cards[i].classList.remove('has-err');
+  }
+
+  /* The moment a field is touched it stops being wrong. The old slot-card
+     errors never cleared, so a field the listener had already corrected
+     went on looking broken until the next save -- which taught them to
+     ignore the red rather than read it. */
+  function clearFieldMark(id, key, field) {
+    if (!badFields[id + '|' + key]) return;
+    delete badFields[id + '|' + key];
+    field.classList.remove('is-bad');
+    field.removeAttribute('aria-invalid');
+    var line = field.parentNode.querySelector('.field-err');
+    if (line) line.parentNode.removeChild(line);
+    var card = field.closest('.card');
+    if (card && !card.querySelector('.in.is-bad')) card.classList.remove('has-err');
+  }
+
+  // Re-painted after every render, because the render throws the DOM away.
+  function applyFieldMarks() {
+    var box = $('stationRows');
+    for (var k in badFields) {
+      if (!Object.prototype.hasOwnProperty.call(badFields, k)) continue;
+      var cut = k.lastIndexOf('|');
+      var id = k.slice(0, cut), key = k.slice(cut + 1), at = -1;
+      for (var i = 0; i < draft.stations.length; i++) if (draft.stations[i].id === id) { at = i; break; }
+      // The station it was about is gone, and so is the complaint.
+      if (at === -1) { delete badFields[k]; continue; }
+      var card = box.children[at];
+      var field = card && card.querySelector('[data-k="' + key + '"]');
+      if (!field) continue;
+      field.classList.add('is-bad');
+      field.setAttribute('aria-invalid', 'true');
+      card.classList.add('has-err');
+      var line = field.parentNode.querySelector('.field-err');
+      if (!line) {
+        line = document.createElement('p');
+        line.className = 'field-err';
+        field.parentNode.appendChild(line);
+      }
+      line.textContent = badFields[k];
+    }
+  }
   var reordering = false;
   var FOLD_MS = 200, SLIDE_MS = 260;
 
@@ -2350,10 +2412,14 @@
         '<div class="card-fold">' +
         '<div class="card-body">' +
           '<div class="station-grid">' +
-            '<input class="in" data-k="name" placeholder="Station name" aria-label="Name">' +
-            '<input class="in in-band" data-k="band" placeholder="1010 AM" aria-label="Frequency">' +
+            /* The three fields a save can refuse are each in a wrapper
+               that holds the grid cell, so the message goes under its own
+               field and pushes the row down instead of being parked at the
+               bottom of the card away from what it is about. */
+            '<div class="fw fw-name"><input class="in" data-k="name" placeholder="Station name" aria-label="Name"></div>' +
+            '<div class="fw fw-band"><input class="in in-band" data-k="band" placeholder="1010 AM" aria-label="Frequency"></div>' +
             '<input class="in in-color" data-k="color" type="color" aria-label="Colour">' +
-            '<input class="in in-url" data-k="url" placeholder="https://stream.example.com/live.mp3" aria-label="Stream URL">' +
+            '<div class="fw fw-url"><input class="in in-url" data-k="url" placeholder="https://stream.example.com/live.mp3" aria-label="Stream URL"></div>' +
             '<input class="in in-tag" data-k="tag" placeholder="Tagline (optional)" aria-label="Tagline">' +
           '</div>' +
         '</div>' +
@@ -2365,6 +2431,7 @@
         ins[k].addEventListener('input', function (e) {
           var key = e.target.dataset.k;
           st[key] = e.target.value;
+          clearFieldMark(st.id, key, e.target);
           if (key === 'name') {
             var label = card.querySelector('.card-name');
             var now = String(e.target.value || '').trim();
@@ -2394,6 +2461,7 @@
 
       box.appendChild(card);
     });
+    applyFieldMarks();
     renderAutoplay();
   }
 
@@ -2405,7 +2473,11 @@
     renderStationRows();
     var card = $('stationRows').children[index];
     var field = card && card.querySelector('[data-k="' + key + '"]');
-    if (field) { field.focus(); field.select(); }
+    if (!field) return;
+    // The drawer body scrolls; focusing alone can leave it off screen.
+    if (field.scrollIntoView) field.scrollIntoView({ block: 'nearest' });
+    field.focus();
+    if (field.select) field.select();
   }
   $('addStation').addEventListener('click', function () {
     var fresh = { id: 'st_' + Date.now().toString(36), name: '', band: '', tag: '', url: '', color: '#2a6f4e', bass: 0, treble: 0 };
@@ -3077,13 +3149,39 @@
 
   function draftIsValid() {
     var msg = $('saveMsg');
+    clearFieldMarks();
     if (!draft.stations.length) { msg.textContent = 'Keep at least one station.'; msg.className = 'save-msg bad'; return false; }
+
+    /* Every offending field is marked, not only the first: a station
+       missing both a name and an address used to be reported as one
+       problem, fixed, and then refused again for the other. The first is
+       the one that gets the cursor. */
+    var bad = 0, firstAt = -1, firstKey = '';
+    function blame(at, id, key, why) {
+      markField(id, key, why);
+      bad += 1;
+      if (firstAt === -1) { firstAt = at; firstKey = key; }
+    }
     for (var i = 0; i < draft.stations.length; i++) {
       var s = draft.stations[i];
-      if (!s.name.trim() || !/^https?:\/\/\S+$/i.test(s.url.trim())) {
-        msg.textContent = 'Station ' + (i + 1) + ' needs a name and an http(s) stream URL.'; msg.className = 'save-msg bad'; return false;
-      }
-      s.name = s.name.trim(); s.url = s.url.trim();
+      var nm = String(s.name || '').trim(), u = String(s.url || '').trim();
+      if (!nm) blame(i, s.id, 'name', 'A name is needed.');
+      if (!u) blame(i, s.id, 'url', 'A stream address is needed.');
+      else if (!/^https?:\/\/\S+$/i.test(u)) blame(i, s.id, 'url', 'This needs to start with http:// or https://.');
+    }
+    if (bad) {
+      msg.textContent = bad === 1 ? 'One field needs your attention.' : bad + ' fields need your attention.';
+      msg.className = 'save-msg bad';
+      showPane('stations', true);
+      // Opens the card, paints every mark, and lands in the first of them.
+      focusStationField(firstAt, firstKey);
+      return false;
+    }
+    // Trimmed only once nothing is being refused, so a rejected save never
+    // rewrites what is still in front of the listener.
+    for (var t = 0; t < draft.stations.length; t++) {
+      draft.stations[t].name = String(draft.stations[t].name || '').trim();
+      draft.stations[t].url = String(draft.stations[t].url || '').trim();
     }
     /* Nothing here about the schedule any more. Every path that can write
        one goes through settle, so by the time the save button is pressed
@@ -3116,6 +3214,7 @@
     state.schedule = draft.schedule;
     state.scheduleEnds = draft.scheduleEnds;
     state.scheduleV = 2;
+    clearFieldMarks();
     /* Normally nothing, and then the note goes with the rest of the visit.
        If the belt-and-braces settle did find something, that is a defect
        here rather than the listener's doing, and it is said rather than

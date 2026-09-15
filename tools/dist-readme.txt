@@ -226,9 +226,17 @@ Stations
 Schedule
   Separate weekday and weekend time slots, each choosing a station. A
   slot hands over at its end time, so 07:00 to 10:00 runs until exactly
-  10:00 and the next slot picks up there. Slots may run past midnight
-  and may not overlap. A slot can also force the volume, bass, treble
-  or theme when it starts.
+  10:00 and the next slot picks up there. Slots may run past midnight,
+  and a slot whose two times are the same plays all day. A slot can
+  also force the volume, bass, treble or theme when it starts.
+
+  Slots cannot be made to collide. What you have just set stays, and
+  anything it runs into is cut back to make room; a slot with nothing
+  left is removed. A line above the cards says what happened, with an
+  Undo beside it that puts the whole change back. Adding a slot puts
+  it where there is room and tells you when the day is full. Deleting
+  a station the schedule uses asks whether its slots move to another
+  station or go with it.
 
   A handover is not a cut. Through the last minute of a slot a hairline
   runs out along the bottom of the Schedule button, so you can see the
