@@ -479,6 +479,12 @@
      Both sides of this are shared with the preset buttons, which had the
      same twitch on a name a few pixels too wide. */
   var MAX_SQUEEZE_EM = 0.04;
+  /* ...but never more than this, whatever the size. Quoted per em, the
+     budget scales with the face: at 22px a theme absorbed three times the
+     overrun an 8px one did, so the same name slid in one theme and was
+     silently tracked-in in another. The complaint was that console did not
+     scroll; it did, only later than everywhere else. */
+  var MAX_SQUEEZE_PX = 0.34;
 
   /* The thing that actually moves. A display name is already built as one
      or more .name-line blocks, which are the right shape for it. Anything
@@ -529,7 +535,12 @@
   var STEP_MS = 230;           // one flap, on a board
   var PRESET_SLOWER = 1.4;     // a button's name, against the readout's
 
-  function startScroll(el, by, steps) {
+  /* `paceBySteps` is what tells a flap from a pitch. A board is paced by
+     its flaps, because the flap is the event -- one every 230ms reads as a
+     mechanism. A name quantised to a dot grid is not a mechanism; it is a
+     slide that happens to land on whole dots, and pacing 116 six-pixel
+     dots at 230ms each would take the best part of a minute to cross. */
+  function startScroll(el, by, steps, paceBySteps) {
     el.classList.add('can-scroll');
     el.style.setProperty('--marquee-by', '-' + by.toFixed(2) + 'px');
 
@@ -553,7 +564,7 @@
        read. */
     var slide = 2600 + by * 28;
     if (el.classList.contains('preset-name')) slide *= PRESET_SLOWER;
-    var total = steps
+    var total = (steps && paceBySteps)
       ? Math.round(steps * STEP_MS / TRAVEL_SHARE)
       : Math.round(slide);
     el.style.setProperty('--marquee-ms', total + 'ms');
@@ -568,6 +579,21 @@
 
   /* Call with the tracking and any previous scroll already cleared, or the
      measurement is of the last fit rather than this one. */
+  /* The advance of the first character, measured rather than assumed --
+     which is what "a character at a time" has to mean for a face whose
+     letters are not all one width. */
+  function firstCharWidth(el) {
+    var node = el.firstChild;
+    while (node && node.nodeType !== 3) node = node.firstChild;
+    if (!node || !node.textContent.length) return 0;
+    var r = document.createRange();
+    r.setStart(node, 0);
+    r.setEnd(node, 1);
+    var w = r.getBoundingClientRect().width;
+    r.detach();
+    return w;
+  }
+
   function fitLine(el) {
     if (!el || !el.clientWidth) return;
     var over = el.scrollWidth - el.clientWidth;
@@ -581,7 +607,7 @@
     if (flaps.length) {
       var pitch = flaps[0].getBoundingClientRect().width;
       var n = pitch > 0 ? Math.ceil(over / pitch) : 1;
-      startScroll(el, pitch > 0 ? n * pitch : over, n);
+      startScroll(el, pitch > 0 ? n * pitch : over, n, true);
       return;
     }
 
@@ -589,7 +615,7 @@
     var px = parseFloat(cs.fontSize) || 16;
     var gaps = Math.max(1, el.textContent.trim().length - 1);
     var squeeze = over / gaps;
-    if (squeeze <= MAX_SQUEEZE_EM * px) {
+    if (squeeze <= Math.min(MAX_SQUEEZE_EM * px, MAX_SQUEEZE_PX)) {
       el.style.letterSpacing = ((parseFloat(cs.letterSpacing) || 0) - squeeze).toFixed(3) + 'px';
       return;
     }
@@ -600,6 +626,20 @@
        app telling you there is more and then not showing it. The twitch
        that floor was guarding against was a stale measurement, and that is
        fixed where it belongs. */
+    /* A theme can ask for the name to step rather than slide, so the
+       glyphs stay on whatever grid is drawn behind them: the console's
+       phosphor dot field, the 8-bit face's own cells. A length is a pitch;
+       `char` measures the first glyph, because on an 8-bit face the grid
+       is the glyph. */
+    var spec = String(cs.getPropertyValue('--scroll-step') || '').trim();
+    if (spec) {
+      var pitch = spec === 'char' ? firstCharWidth(el) : (parseFloat(spec) || 0);
+      if (pitch > 0.5) {
+        var steps = Math.ceil(over / pitch);
+        startScroll(el, steps * pitch, steps);
+        return;
+      }
+    }
     startScroll(el, over);
   }
 
