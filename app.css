@@ -862,6 +862,12 @@
    driven or not, so an undriven dot field sits faintly across the whole
    character band -- which is why a real display never looks like type on
    black. Lit segments simply light dots that were already there. */
+/* Stepped, not slid, and stepped by exactly the pitch of the dot field
+   below -- 6px, the background-size of the rule that draws it. A name
+   sliding across a fixed dot grid crawls against it; a name that moves a
+   whole dot at a time stays registered to it, which is what a real segment
+   display does because it has no choice. */
+[data-theme="console"] .display-name { --scroll-step: 6px; }
 [data-theme="console"] .display-name::before {
   content: ""; position: absolute; inset: -6px 0; z-index: -1; pointer-events: none;
   background-image: radial-gradient(circle at center, rgba(255,176,0,.105) 0 1.1px, transparent 1.45px);
@@ -1338,6 +1344,10 @@
   margin: 14px 0 0; font-size: clamp(17px, 3.1vw, 32px); line-height: 1.35;
   letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; overflow: hidden;
 }
+/* One character at a time. An 8-bit face has no sub-pixel life in it --
+   everything else on this theme sits on the 8px grid -- so a name that
+   slides smoothly is the one thing on screen not obeying it. */
+[data-theme="retro"] .display-name { --scroll-step: char; }
 [data-theme="retro"] .display-tag { margin: 14px 0 0; font-size: 8px; line-height: 2; color: var(--grey); text-transform: uppercase; }
 [data-theme="retro"] .display-status { margin-top: 16px; font-size: 8px; color: var(--grey); }
 [data-theme="retro"] .status-led { width: 8px; height: 8px; border-radius: 0; }
