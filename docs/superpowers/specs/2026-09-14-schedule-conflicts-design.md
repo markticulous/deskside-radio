@@ -312,3 +312,84 @@ tints, `.ghost.is-off`, `.hint`, `.confirm` dialog shell and its click-not-close
 - Pixel/visual: render the strip and a `past midnight` card in the drawer at 1133px and
   at 390px (phone) to confirm the sticky strip and wrap tag lay out.
 - Compliance table before each commit; push after the four.
+
+---
+
+## Decisions taken 2026-09-14 (second round)
+
+These replace the corresponding "judgement calls" in §10 above.
+
+### D1. A slot swallowed in the middle keeps its first part
+
+Morning Show 10:00–14:00, News set to 11:00–12:00 → Morning Show becomes 10:00–11:00
+and the 12:00–14:00 remainder is dropped. Note: `Shortened Morning Show to end 11:00. · Undo`
+
+Rejected: splitting it in two (one edit would silently create a slot the user never
+added, and the card count grows behind them) and removing it outright (loses the most
+for the smallest edit).
+
+### D2. Same time at both ends means all day
+
+`08:00 to 08:00` reads as "round the clock from 08:00". Chosen over an explicit
+*All day* switch because it needs no new control on a card that already carries six,
+and over leaving it impossible because the closest expressible thing —
+`00:00–23:59` — leaves a one-minute gap at midnight which, with *turn off at day end*
+set, is a minute of silence every night.
+
+**This inverts existing semantics and needs a one-time migration.** Today
+`start === end` matches nothing, in three places: `contains` (`scheduler.js:30`),
+`nextChange`'s edge loop (`:50`) and `validateSlots` (`:84`). And the Add-slot defect
+this work fixes produces **exactly** `23:00→23:00` — so a user who pressed "+ Add time
+slot" three times is carrying a dormant zero-length slot that would, on upgrade,
+silently take over their whole day.
+
+Migration: `state.scheduleV` (absent on every existing install). When `normalise` sees a
+schedule with no `scheduleV`, it **drops** `start === end` slots — they did nothing
+before, so dropping them changes nothing a user could observe — then stamps
+`scheduleV: 2`. After that, equal times mean all day. One-time, silent, and it cannot
+misfire on a slot created after the upgrade.
+
+Consequent changes beyond the plan above:
+- `contains`: `s === e` → always true (all day).
+- `nextChange`: an all-day slot contributes one edge, its start; it is never a gap.
+- `validateSlots`: the `'Start and end are the same time.'` rule is **deleted**.
+- `settle`: zero-length is no longer a removal reason; an all-day slot occupies all
+  1440 minutes, so anything it is settled against is trimmed to nothing and removed —
+  which is correct and should be said plainly in the note.
+- `suggestSlot`: never proposes an all-day slot; the day is "full" instead.
+- UI: header tag `· all day` beside the times (same treatment as `· past midnight`,
+  and mutually exclusive); the zero-length revert-on-blur and its note are dropped.
+- `dayIsOver`: an all-day slot means the day is never over, so *turn off at day end*
+  never fires for that group. Correct, and worth a line in the readme.
+
+### D3. The delete dialog stays, but only for the delete button
+
+A slot can leave the list two ways, and they are not the same act. Pressing the card's
+× is deliberate and aimed at one slot the user is looking at; `settle()` removing a
+slot is a *consequence* of editing a different one, which the user did not ask for and
+might not notice. The ceremony follows that distinction:
+
+| Slot disappears because | What happens |
+|---|---|
+| The user pressed × | `#confirmSlot` names it and asks. Confirmed, it is gone. No strip note — the dialog was the decision, and repeating it is noise. |
+| An edit swallowed it whole | Note + Undo, no interruption |
+| Import or seed found it invalid | Note, no Undo (the alternative is an invalid schedule) |
+| Its station was deleted | The station dialog already asked, and carried the choice |
+
+So `#confirmSlot`, `askDeleteSlot` and `pendingSlotDelete` are all **kept** as they are
+today. The code comment at `app.js:2283-2286` that justifies the dialog by "no undo
+behind it" gets rewritten: the reason is now that a deliberate removal deserves a
+question, while a consequential one deserves an explanation.
+
+The settle path must never open a dialog. One stretch of a slot can swallow two
+neighbours, and a modal — let alone two in a row — in the middle of dragging a time
+field would be intolerable. That path is silent, reversible, and explained by the strip.
+
+One consequence to keep straight in the code: the × handler and the settle path both
+end in "a slot left the list", but only the settle path touches the strip. The delete
+handler must not call `showFix()`.
+
+*Open if wanted later:* showing the note with Undo **after** a confirmed × as well, so
+the dialog prevents accidents and Undo covers regret. Left out for now to keep the strip
+meaning one thing — "here is something that happened as a result of what you did" —
+rather than also echoing what the user just confirmed.
