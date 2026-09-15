@@ -6,7 +6,10 @@
   var SVG = 'http://www.w3.org/2000/svg';
 
   var VU_R = 82;          // arc radius
-  var VU_LABEL_R = 65;    // where the printed numbers sit
+  /* Inside the ticks, not among them. A major tick reaches in to VU_R-12,
+     which is 70, and a figure centred at 65 puts its own box across that
+     -- so -20 and +3 were printed touching the marks they belong to. */
+  var VU_LABEL_R = 55;    // where the printed numbers sit
   var VU_NEEDLE_R = 76;
 
   function svg(tag, attrs) {
@@ -120,11 +123,14 @@
     var defs = svg('defs', {});
     defs.appendChild(gradient('linearGradient', uid + '-paper', { x1: 0, y1: 0, x2: 0, y2: 1 },
       [['vu-paper-a', '0'], ['vu-paper-b', '1']]));
-    /* The lamp behind the card. A meter of this vintage is lit from inside
-       the case, so the card does not merely take light, it gives some off:
-       a warm pool behind the middle of the scale, falling away to the rim. Themes that want an unlit movement leave the stops alone and
-       get nothing. */
-    defs.appendChild(gradient('radialGradient', uid + '-lamp', { cx: '.5', cy: '.58', r: '.98' },
+    /* The lamp behind the card. A meter of this vintage is lit by one small
+       bulb sitting in the bottom of the case, below the movement -- so the
+       pool is low and tight, brightest along the bottom edge and gone well
+       before the top corners, rather than a even wash behind the whole
+       scale. The vignette darkening the far corners is the same light
+       running out. Themes that want an unlit movement leave the stops
+       alone and get nothing. */
+    defs.appendChild(gradient('radialGradient', uid + '-lamp', { cx: '.5', cy: '1.02', r: '.66' },
       [['vu-lamp-a', '0'], ['vu-lamp-b', '1']]));
     defs.appendChild(gradient('radialGradient', uid + '-vig', { cx: '.5', cy: '.86', r: '1' },
       [['vu-vig-a', '.5'], ['vu-vig-b', '1']]));
@@ -157,7 +163,8 @@
       }
     });
 
-    var vu = svg('text', { class: 'vu-mark', x: pivot.x, y: pivot.y - 18, 'text-anchor': 'middle' });
+    // Higher off the pivot than it was, and set a little larger in CSS.
+    var vu = svg('text', { class: 'vu-mark', x: pivot.x, y: pivot.y - 27, 'text-anchor': 'middle' });
     vu.textContent = 'VU';
     face.appendChild(vu);
 
@@ -177,6 +184,34 @@
       ' L' + (pivot.x + 1.6) + ' ' + pivot.y + ' Z' });
     needle.style.transformOrigin = pivot.x + 'px ' + pivot.y + 'px';
     arm.appendChild(needle);
+
+    /* Two pieces of deco jewellery for the pointer: a counterweight spike
+       behind the pivot and a lozenge part way up the arm, which is what a
+       lacquer-and-gold instrument of that period would have been given
+       instead of a plain machined arm.
+
+       They carry .vu-needle so setLevel swings them with the pointer -- it
+       rotates everything with that class -- and .vu-orn so every theme but
+       Marconi can keep them off. Built for all of them rather than only
+       when Marconi is showing, because the face is drawn once and the
+       theme can change under it without it being drawn again. */
+    var ornAt = pivot.y - VU_NEEDLE_R * 0.52;
+    [
+      // the tail, balancing the arm across the pivot
+      'M' + (pivot.x - 1.45) + ' ' + pivot.y +
+      ' L' + pivot.x + ' ' + (pivot.y + 14) +
+      ' L' + (pivot.x + 1.45) + ' ' + pivot.y + ' Z',
+      // and the lozenge riding on it
+      'M' + pivot.x + ' ' + (ornAt - 6.4) +
+      ' L' + (pivot.x + 3.3) + ' ' + ornAt +
+      ' L' + pivot.x + ' ' + (ornAt + 6.4) +
+      ' L' + (pivot.x - 3.3) + ' ' + ornAt + ' Z'
+    ].forEach(function (d) {
+      var orn = svg('path', { class: 'vu-needle vu-orn', d: d });
+      orn.style.transformOrigin = pivot.x + 'px ' + pivot.y + 'px';
+      arm.appendChild(orn);
+    });
+
     face.appendChild(arm);
 
     face.appendChild(svg('circle', { class: 'vu-pin', cx: pivot.x, cy: pivot.y, r: 5, fill: 'url(#' + uid + '-pin)' }));
