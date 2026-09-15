@@ -2209,8 +2209,15 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 
      Anchored near the top rather than centred on purpose. The height
      changes as you move between tabs, and a centred box would slide the
-     tab strip out from under the pointer that just clicked it. */
-  height: auto; max-height: 75vh; margin: 6vh auto;
+     tab strip out from under the pointer that just clicked it.
+
+     The ceiling and the margin are one decision, not two: whatever the
+     margin takes at the top it takes again at the bottom, so 6vh either
+     side left a 75vh box with a tenth of the window doing nothing while
+     the station list was scrolling behind a bar. 4vh and 90vh use what
+     is there -- a handful of stations now fits on a laptop instead of
+     being cut off one row short. */
+  height: auto; max-height: 90vh; margin: 4vh auto;
   background: var(--ui-bg); color: var(--ui-fg); font-family: var(--ui-font); font-size: 14px;
   border: 1px solid var(--ui-line); border-radius: var(--ui-radius); overflow: hidden;
   display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 0;
