@@ -101,7 +101,7 @@ The fit itself used to resize the window three times while the user watched. Two
 
 A slot change used to be a cut: the station simply became a different station. Now the last minute of a slot is visible and the last five seconds are audible.
 
-Through the final minute a hairline runs out along the bottom edge of the schedule chip — a detail of the button rather than a thing in its own right, so it is there to be noticed and not to be watched. Over the last five seconds the outgoing station fades down, and the incoming one comes up over two seconds once it is actually playing rather than while it is still connecting. The fade is a multiplier over the volume fader and never writes to it, so where you left the volume is where it stays.
+Through the final minute a hairline runs out along the bottom edge of the schedule chip — a detail of the button rather than a thing in its own right, so it is there to be noticed and not to be watched. Over the last five seconds the outgoing station fades down, and the incoming one comes up over two seconds once it is actually playing rather than while it is still connecting. The volume control slides down and back up with the fade so you can see it happening — but the fade is a multiplier over the fader and never writes to it, so the number beside it does not move and where you left the volume is where it stays.
 
 **When the last slot of the day ends** and nothing follows it, each day group decides for itself what happens — *keep playing*, or *turn the radio off*. The control sits under the slots in **Settings → Schedule**, and weekday and weekend are set separately, so the weekdays can end at bedtime while the weekend carries on.
 

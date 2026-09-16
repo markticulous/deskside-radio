@@ -847,6 +847,31 @@
     // the fader behaves the same whether or not the analyser tap is in use.
     if (gainNode && audio === corsEl) { corsEl.volume = 1; gainNode.gain.value = gain; }
     else audio.volume = gain;
+    paintFade();
+  }
+
+  /* The fade is a multiplier over the fader and still never writes to it:
+     where the volume was left is where it stays, which is the whole point
+     of doing it this way. But a listener watching a handover should see the
+     control move -- sound going away with nothing on screen accounting for
+     it reads as a fault rather than as a handover.
+
+     So the fader is *drawn* at the level being heard, and the number beside
+     it is left alone. The number is the setting, and the setting has not
+     changed.
+
+     Read off the input's own value rather than state.volume, so a fader
+     being dragged through a fade shows where it is being dragged to and
+     the two never fight over the thumb.
+
+     --turn is what every theme builds its thumb or knob from, so this is
+     one property and no theme has to know about it. */
+  function paintFade() {
+    var input = el.volume;
+    if (!input) return;
+    var lo = +input.min, hi = +input.max;
+    var at = hi > lo ? (+input.value - lo) / (hi - lo) : 0;
+    (input.parentElement || input).style.setProperty('--turn', (at * fadeMul).toFixed(4));
   }
 
   /* Ramped on a timer rather than with the Web Audio scheduler, because
