@@ -23,17 +23,25 @@ rem
 rem   "Win - Uninstall Deskside Radio.cmd"            this folder
 rem   "Win - Uninstall Deskside Radio.cmd" D:\Radio   somewhere else
 
-rem ---- the second copy, doing the one thing the first cannot ------------
-rem Checked before anything else, because this is not a run anybody asked
-rem for. See "the app folder" below for why it exists.
-if /i "%~2"=="--finish" goto :finish
-
-title Deskside Radio - uninstall
-
-echo.
-echo   DESKSIDE RADIO - UNINSTALL
-echo.
-
+rem ---- which copy of this am I --------------------------------------
+rem cmd reads a .cmd one line at a time and holds the file open the whole
+rem way through, so a script inside the app folder cannot delete the folder
+rem it is inside: its own file survives and keeps the folder alive with it.
+rem
+rem The first attempt at this left the deletion until the very end and
+rem handed it to a copy in %TEMP% that waited for the first window to
+rem close. It worked, but it could not report: by the time anything was
+rem deleted the window that would have said so was gone, and if the folder
+rem could not be removed -- which happens whenever the radio is still open,
+rem because the shortcut sets that folder as the browser's working
+rem directory -- nobody was told anything at all.
+rem
+rem So the handover happens first instead. The copy in the app folder does
+rem nothing but move itself to %TEMP% and start that, which then owns the
+rem whole job from the confirmation onwards and can watch the folder go.
+rem Set above the handover, not below it: the copy in %TEMP% jumps straight
+rem to :worker and would otherwise arrive with no PS to call and no idea
+rem where the profile lives.
 set "DEFAULT=%LOCALAPPDATA%\DesksideRadio\app"
 set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile"
 
@@ -41,6 +49,14 @@ rem Full paths, for the same reason the other scripts use them: a
 rem double-clicked .cmd runs with its own folder as the current directory
 rem and cmd looks there before it looks along PATH.
 set "PS=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
+
+if /i "%~2"=="--worker" goto :worker
+
+title Deskside Radio - uninstall
+
+echo.
+echo   DESKSIDE RADIO - UNINSTALL
+echo.
 
 rem The same discriminator the installer uses: app.css is in the source
 rem tree and is inlined away by the build. Without this, running the
@@ -69,6 +85,29 @@ call set "APPROOT=%%APPDIR:~0,-1%%"
 
 if not exist "%APPDIR%index.html" goto :notthere
 
+rem Running from inside the folder that is about to go. Step outside first.
+if /i "%~dp0"=="%APPDIR%" (
+  set "MOVED=%TEMP%\deskside-radio-uninstall.cmd"
+  copy /y "%~f0" "%TEMP%\deskside-radio-uninstall.cmd" >nul 2>&1
+  if not exist "%TEMP%\deskside-radio-uninstall.cmd" goto :notemp
+  start "" "%TEMP%\deskside-radio-uninstall.cmd" "%APPROOT%" --worker
+  exit /b 0
+)
+
+:worker
+rem Reached either by the copy in %TEMP% -- which is handed the folder as
+rem argument 1 -- or by a copy run from anywhere else with the folder
+rem named. Both are outside the folder, which is the only thing that
+rem matters from here on.
+if /i "%~2"=="--worker" (
+  set "APPROOT=%~1"
+  call set "APPDIR=%%APPROOT%%\"
+  title Deskside Radio - uninstall
+  echo.
+  echo   DESKSIDE RADIO - UNINSTALL
+  echo.
+)
+
 echo   This will remove Deskside Radio from this machine.
 echo.
 echo     the app folder    "%APPROOT%"
@@ -89,20 +128,35 @@ rem Found two ways rather than read off a list of names. A list goes stale
 rem the moment a new launcher ships, and it never covered a shortcut
 rem somebody renamed or copied.
 rem
-rem   by name    Deskside Radio*.lnk, which is every shortcut any of these
-rem              scripts has ever written -- Deskside Radio, (Edge) and
-rem              (Firefox) -- plus any a later one adds, plus a copy
-rem              somebody made and called "Deskside Radio mornings".
-rem   by target  any .lnk in those folders pointing into the app folder,
-rem              as its target, its working directory, or inside its
-rem              arguments, which is where the file:// URL sits for the
-rem              browser shortcuts. This is what catches one renamed to
-rem              something else entirely.
+rem   by target  any .lnk in those folders pointing into the folder being
+rem              removed -- as its target, its working directory, or inside
+rem              its arguments, which is where the file:// URL sits for the
+rem              browser shortcuts. This is what catches one that was
+rem              renamed to something else entirely.
+rem   by name    Deskside Radio*.lnk and Update Deskside Radio.lnk, but
+rem              only when the thing it points at is no longer there.
+rem
+rem That second condition was learned the hard way. Matching on the name
+rem alone removed the Start menu entry belonging to a different install
+rem that was not being uninstalled and was still perfectly good. A
+rem shortcut with our name and a target that still exists elsewhere
+rem belongs to that elsewhere; one with our name and a dead target is
+rem what this uninstall just orphaned, and is ours to clear up.
 rem
 rem Four folders: this account's Desktop, the all-users Desktop, the
 rem Startup folder and the Start menu. Every value reaches PowerShell as an
 rem environment variable and every quote is built with [char]34, because a
 rem literal one would end the -Command line cmd is holding open.
+rem
+rem The pipes are bare. ^ escapes a pipe on a cmd command line, but not
+rem inside a quoted string -- there it is just a caret, and PowerShell was
+rem handed a literal ^| and refused to parse the whole block:
+rem
+rem   Unexpected token '^' in expression or statement.
+rem
+rem Which it printed, and then carried on, so every shortcut survived an
+rem uninstall that said it had removed them. The caret is only ever needed
+rem at the end of these lines, outside the quotes, where it joins them.
 echo.
 echo   Removing shortcuts...
 "%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
@@ -112,21 +166,23 @@ echo   Removing shortcuts...
   "  [Environment]::GetFolderPath('CommonDesktopDirectory')," ^
   "  (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup')," ^
   "  (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs')" ^
-  ") ^| Where-Object { $_ -and (Test-Path -LiteralPath $_) } ^| Select-Object -Unique;" ^
+  ") | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -Unique;" ^
   "$root = $env:APPROOT;" ^
   "$shell = New-Object -ComObject WScript.Shell;" ^
   "$hit = @();" ^
   "foreach ($dir in $where) {" ^
-  "  Get-ChildItem -LiteralPath $dir -Filter '*.lnk' -ErrorAction SilentlyContinue ^| ForEach-Object {" ^
-  "    $take = ($_.Name -like 'Deskside Radio*.lnk') -or ($_.Name -eq 'Update Deskside Radio.lnk');" ^
-  "    if (-not $take -and $root) {" ^
-  "      try {" ^
-  "        $s = $shell.CreateShortcut($_.FullName);" ^
-  "        $take = ($s.TargetPath -and $s.TargetPath -like ($root + '*')) -or" ^
-  "                ($s.WorkingDirectory -and $s.WorkingDirectory -like ($root + '*')) -or" ^
-  "                ($s.Arguments -and $s.Arguments -like ('*' + $root + '*'));" ^
-  "      } catch { $take = $false }" ^
-  "    }" ^
+  "  Get-ChildItem -LiteralPath $dir -Filter '*.lnk' -ErrorAction SilentlyContinue | ForEach-Object {" ^
+  "    $named = ($_.Name -like 'Deskside Radio*.lnk') -or ($_.Name -eq 'Update Deskside Radio.lnk');" ^
+  "    $take = $false;" ^
+  "    try {" ^
+  "      $s = $shell.CreateShortcut($_.FullName);" ^
+  "      $mine = $root -and (" ^
+  "        ($s.TargetPath -and $s.TargetPath -like ($root + '*')) -or" ^
+  "        ($s.WorkingDirectory -and $s.WorkingDirectory -like ($root + '*')) -or" ^
+  "        ($s.Arguments -and $s.Arguments -like ('*' + $root + '*')));" ^
+  "      $dead = -not ($s.TargetPath) -or -not (Test-Path -LiteralPath $s.TargetPath);" ^
+  "      $take = $mine -or ($named -and $dead);" ^
+  "    } catch { $take = $named }" ^
   "    if ($take) { $hit += $_.FullName }" ^
   "  }" ^
   "};" ^
@@ -138,10 +194,10 @@ echo   Removing shortcuts...
   "if ($hit.Count -eq 0) { Write-Host '    none found' }"
 
 rem ---- the settings -----------------------------------------------------
-rem Asked before the folder goes, because the folder going is the last
-rem thing that happens and this window has to still be here to ask. The
-rem default is to keep them: somebody uninstalling to fix something, or to
-rem move the install, wants their stations there afterwards.
+rem Its own question, with its own answer, because this is the one part of
+rem an uninstall that reinstalling cannot undo. The default is to keep
+rem them: somebody uninstalling to fix something, or to move the install,
+rem wants their stations there afterwards.
 if not exist "%PROFILE%\" goto :folder
 echo.
 echo   Your stations, schedule and settings are in
@@ -158,80 +214,82 @@ if /i not "%WIPE%"=="D" (
 )
 
 rem ---- the app folder ---------------------------------------------------
-rem cmd reads a .cmd one line at a time and holds the file open the whole
-rem way through, so a script inside the folder cannot delete the folder it
-rem is inside: its own file survives and keeps the folder alive with it.
+rem This copy is outside the folder, so it can simply delete it and watch
+rem what happened -- no handover, no minimised window, no guessing.
 rem
-rem So the last step is handed to a copy of this file in %TEMP%, started
-rem without waiting, which then waits for this window to close before it
-rem removes the tree. Deliberately the very last thing, after everything
-rem that needs to be said has been said and read, because this window has
-rem to be gone before the other one can do its work.
-rem
-rem When this is being run from outside the folder -- with the folder named
-rem as an argument -- none of that applies and it is removed right here,
-rem where the result can be reported.
+rem The usual reason it will not go is that the radio is still open: the
+rem Desktop shortcut sets the app folder as the browser's working
+rem directory, and Windows will not remove a folder that a running process
+rem is sitting in. That is worth saying in those words, because "access
+rem denied" sends people looking for permissions they do not need.
 :folder
 echo.
-if /i not "%~dp0"=="%APPDIR%" (
-  echo   Removing "%APPROOT%"...
-  rd /s /q "%APPROOT%" 2>nul
-  if exist "%APPROOT%\" (
-    echo   Some of it could not be removed. Usually that means the radio is
-    echo   still open - close it and run this again.
-  ) else (
-    echo   Gone.
-  )
-  goto :done
-)
+echo   Removing "%APPROOT%"...
+rd /s /q "%APPROOT%" 2>nul
 
-set "MOVED=%TEMP%\deskside-radio-uninstall.cmd"
-copy /y "%~f0" "%MOVED%" >nul 2>&1
-if not exist "%MOVED%" (
-  echo   Could not write to "%TEMP%", so the app folder is still here.
-  echo   Everything else is done. Delete "%APPROOT%" by hand to finish.
-  goto :done
-)
+if not exist "%APPROOT%\" goto :gone
 
-echo   Everything else is done.
+rem Still there. Give whatever is holding it a moment -- a browser that has
+rem just been closed can take a second to let go -- and try again.
+%SystemRoot%\System32\ping.exe -n 3 127.0.0.1 >nul 2>&1
+rd /s /q "%APPROOT%" 2>nul
+if not exist "%APPROOT%\" goto :gone
+
 echo.
-echo   "%APPROOT%" is removed as this window closes - it holds this script
-echo   open while it is running, so it has to go last.
+echo   The folder could not be removed:
+echo     "%APPROOT%"
+echo.
+echo   Almost always this means the radio is still open. Its window uses
+echo   that folder as its working directory, and Windows will not delete a
+echo   folder something is running in.
+echo.
+echo   Close every Deskside Radio window and run this again - everything
+echo   else is already done, so it will go straight to this step.
 echo.
 pause
-start "" /min "%MOVED%" "%APPROOT%" --finish
-exit /b 0
+exit /b 1
+
+:gone
+set "MSG=Removed"
+call :ok
 
 :done
 echo.
 echo   Deskside Radio has been uninstalled.
 echo.
 pause
+
+rem The copy in %TEMP% takes itself out on the way past: cmd releases the
+rem file once it has read the goto, so the del lands. Only that copy. A
+rem script somebody keeps somewhere and runs with a path has to survive
+rem being run.
+if /i "%~f0"=="%TEMP%\deskside-radio-uninstall.cmd" ((goto) 2>nul & del "%~f0")
 exit /b 0
 
-rem ---- the second copy --------------------------------------------------
-rem Started by the copy in the app folder, with the folder to remove, and
-rem never run by hand. It says nothing and asks nothing.
-rem
-rem The window it was started from is closing as this begins, so the first
-rem attempt can still find the script locked. ping is the wait: timeout
-rem needs a console of its own and this one is minimised. Ten tries at
-rem roughly a second is far longer than a window takes to go.
-:finish
-set "TREE=%~1"
-if not defined TREE exit /b 1
-if not exist "%TREE%\" exit /b 0
-for /l %%i in (1,1,10) do (
-  rd /s /q "%TREE%" 2>nul
-  if not exist "%TREE%\" goto :finished
-  %SystemRoot%\System32\ping.exe -n 2 127.0.0.1 >nul 2>&1
-)
-:finished
-rem And this copy takes itself out of %TEMP% on the way past: cmd releases
-rem the file once it has read the goto, so the del lands.
-(goto) 2>nul & del "%~f0"
+rem ---- saying a thing went right ----------------------------------------
+rem Colour through PowerShell's Write-Host rather than ANSI escapes, for
+rem the reason the installer gives: a console without virtual-terminal
+rem processing turns escapes into visible gibberish.
+:ok
+"%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
+  "Write-Host '  ' -NoNewline;" ^
+  "Write-Host '[OK]' -ForegroundColor Green -NoNewline;" ^
+  "Write-Host ('  ' + $env:MSG)"
+exit /b 0
 
 rem ---- the ways it can go wrong -----------------------------------------
+
+:notemp
+echo.
+echo   Could not copy this script to "%TEMP%", which it needs to do before
+echo   it can remove the folder it is sitting in.
+echo.
+echo   Run it from somewhere else instead, naming the folder:
+echo.
+echo     "Win - Uninstall Deskside Radio.cmd" "%APPROOT%"
+echo.
+pause
+exit /b 1
 
 :repo
 echo   This is the Deskside Radio source folder, not an install.
