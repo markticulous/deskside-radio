@@ -3656,8 +3656,16 @@
     var running = 'Running ' + escapeHtml(APP_VERSION);
     if (updateAvailable()) {
       line.className = 'update-line is-new';
+      /* Not "download it" any more. The installer ships inside the zip,
+         so whichever way this copy arrived there is one beside it, and
+         running that is the whole update. The page cannot start it --
+         a file:// page has no way to run a local script, and one that
+         could would be a hole -- so it is named rather than linked,
+         with the releases page left for anyone who would rather read
+         what changed first. */
       line.innerHTML = running + ' · <b>New v' + escapeHtml(state.versionLatest) + ' available</b> · ' +
-        '<a href="' + RELEASES_URL + '" target="_blank" rel="noopener">Download it</a>';
+        'run <b>Update Deskside Radio</b> from the Start menu · ' +
+        '<a href="' + RELEASES_URL + '" target="_blank" rel="noopener">what changed</a>';
       return;
     }
     /* Never checked reads differently from checked and found nothing, and

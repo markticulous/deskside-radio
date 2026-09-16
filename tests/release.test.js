@@ -112,6 +112,75 @@ test('the launcher builds its quotes with [char]34, never a literal one', () => 
     'the argument string should quote with [char]34');
 });
 
+/* ---- the installer ----
+   It runs on a machine we will never see, from a folder we do not choose,
+   against a URL that has to keep working for every release after this one.
+   None of that is reachable from a unit test, so it is read as text. */
+const INSTALLER = 'Win - Install or Update Deskside Radio.cmd';
+
+test('the installer names every tool it runs by its full path', () => {
+  /* It is double-clicked from Downloads, so its current directory is the
+     one folder on the machine that is full of files nobody vetted -- and
+     cmd looks there before it looks along PATH. A bare curl is whatever
+     someone was sent last week. Kept apart from the launcher's own test
+     because that one also asserts reg.exe, which this never calls. */
+  const cmd = read(INSTALLER);
+  ['curl.exe', 'tar.exe', 'findstr.exe'].forEach(function (exe) {
+    assert.ok(cmd.indexOf('%SystemRoot%\\System32\\' + exe) !== -1,
+      INSTALLER + ' no longer calls ' + exe + ' by its full path');
+  });
+  assert.ok(/%SystemRoot%\\System32\\WindowsPowerShell\\v1\.0\\powershell\.exe/.test(cmd),
+    INSTALLER + ' no longer calls powershell by its full path');
+});
+
+test('the installer downloads the release that is current, not one release', () => {
+  /* latest/download is what makes this file work forever. Pinned to a
+     version it would install that version for the rest of time, and every
+     copy already sitting in an app folder would stop updating -- silently,
+     because it would still succeed. */
+  const cmd = read(INSTALLER);
+  assert.ok(cmd.indexOf('releases/latest/download/deskside-radio.zip') !== -1,
+    INSTALLER + ' no longer points at releases/latest/download');
+  assert.equal(/releases\/download\/v[0-9]/.test(cmd), false,
+    INSTALLER + ' points at a versioned release asset, which freezes every future update');
+});
+
+test('the installer makes the shortcut by calling the script that owns it', () => {
+  /* Reimplementing the .lnk block would give the WScript.Shell call, the
+     [char]34 quoting and the browser detection a second copy to drift from.
+     The dependency is satisfied by construction: the installer extracts
+     that script before it calls it. */
+  const cmd = read(INSTALLER);
+  const owner = 'Win - Create Desktop Shortcut (Chrome).cmd';
+  assert.ok(cmd.indexOf(owner) !== -1, INSTALLER + ' no longer calls ' + owner);
+  assert.ok(fs.existsSync(path.join(ROOT, owner)), owner + ' is gone, and the installer calls it');
+  assert.ok(read(owner).indexOf('if not defined DESKSIDE_NOPAUSE pause') !== -1,
+    owner + ' no longer honours DESKSIDE_NOPAUSE, so the installer will stop halfway and wait');
+});
+
+test('the installer never deletes the folder it installs into', () => {
+  /* It extracts over the top instead. tar replaces the files it carries and
+     leaves the rest, which is the whole reason a settings seed sitting
+     beside index.html survives an update without being saved and restored.
+     A wipe would also turn a failed extraction into an empty app folder. */
+  const cmd = read(INSTALLER);
+  [/\brd\s+\/s/i, /\brmdir\s+\/s/i, /Remove-Item[^\n]*-Recurse/i].forEach(function (re) {
+    assert.equal(re.test(cmd), false,
+      INSTALLER + ' deletes a directory tree; it is meant to extract over the top');
+  });
+});
+
+test('the installer builds its quotes with [char]34 too, never a literal one', () => {
+  const powershell = read(INSTALLER)
+    .split('\n')
+    .filter(function (ln) { return /^\s{4}"/.test(ln); });
+  assert.ok(powershell.length > 3, 'expected the inline PowerShell block');
+  powershell.forEach(function (ln) {
+    const body = ln.trim().replace(/^"/, '').replace(/"\s*\^?$/, '');
+    assert.equal(body.indexOf('"'), -1, 'literal quote inside a -Command line: ' + ln.trim());
+  });
+});
+
 test('the launcher still falls back when no browser is found', () => {
   const cmd = read('Win - Create Desktop Shortcut (Chrome).cmd');
   assert.ok(/if \(\$env:BROWSER\)/.test(cmd), 'no branch on a missing browser');

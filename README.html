@@ -498,11 +498,11 @@ html { scroll-behavior: smooth; }
     <section id="hurry">
       <h2 class="sec"><span class="n">01</span>In a hurry to get started?</h2>
       <ol class="steps">
-        <li>Double-click <span class="path">Win&nbsp;-&nbsp;Create Desktop Shortcut (Chrome).cmd</span>.</li>
-        <li>Open the <strong>Deskside Radio</strong> shortcut it puts on your Desktop.</li>
+        <li>Double-click <span class="path">Win&nbsp;-&nbsp;Install or Update Deskside Radio.cmd</span>.</li>
         <li>Press play.</li>
       </ol>
-      <p>That is the whole of it. Everything below is detail you can come back for. On a Mac or on Linux, see <a href="#browser">Choosing a browser</a>.</p>
+      <p>That is the whole of it &mdash; it installs the radio, puts a shortcut on your Desktop and opens it. If you are reading this inside a folder you unzipped yourself, double-click <span class="path">Win&nbsp;-&nbsp;Create Desktop Shortcut (Chrome).cmd</span> instead and it works the same way from where it stands.</p>
+      <p>Everything below is detail you can come back for. On a Mac or on Linux, see <a href="#browser">Choosing a browser</a>.</p>
     </section>
 
     <section id="folder">
@@ -511,8 +511,11 @@ html { scroll-behavior: smooth; }
         <dt><span class="path">index.html</span></dt>
         <dd>The radio itself. Everything is in here.</dd>
 
+        <dt><span class="path">Win - Install or Update Deskside Radio.cmd</span></dt>
+        <dd>Installs the radio, and updates it later. The same file does both: run it again whenever the <strong>Update available</strong> mark appears.</dd>
+
         <dt><span class="path">Win - Create Desktop Shortcut (Chrome).cmd</span></dt>
-        <dd>Makes the Desktop shortcut. Start here.</dd>
+        <dd>Makes the Desktop shortcut on its own, for a folder you unzipped by hand.</dd>
 
         <dt><span class="path">Win - Create Desktop Shortcut (Edge).cmd</span><br><span class="path">Win - Create Desktop Shortcut (Firefox).cmd</span></dt>
         <dd>The same, pinned to one browser on purpose.</dd>
@@ -539,20 +542,21 @@ html { scroll-behavior: smooth; }
     <section id="start">
       <h2 class="sec"><span class="n">03</span>Getting started on Windows</h2>
       <ol class="steps">
-        <li>Unzip this folder somewhere you will keep it.</li>
+        <li>Download <span class="path">Win&nbsp;-&nbsp;Install or Update Deskside Radio.cmd</span> from the releases page.</li>
         <li>
-          <p>Double-click <span class="path">Win&nbsp;-&nbsp;Create Desktop Shortcut (Chrome).cmd</span>.</p>
-          <p>It puts <strong>Deskside Radio</strong> on your Desktop and tells you what it did. Windows may warn you about running a downloaded file; the script is plain text, so you can open it in Notepad and read it first.</p>
+          <p>Double-click it.</p>
+          <p>Windows asks once whether to run a downloaded file &mdash; the script is plain text, so you can open it in Notepad and read it first. It then fetches the radio, unpacks it, puts <strong>Deskside Radio</strong> on your Desktop and opens it.</p>
         </li>
-        <li>Open the shortcut.</li>
       </ol>
-      <p>That is the whole install.</p>
+      <p>That is the whole install. It goes in your own account&rsquo;s program folder and needs no administrator, so nothing asks again &mdash; not now, and not when you update.</p>
+      <p class="mute">If you already have the zip, it still works exactly as it did: unzip it anywhere and double-click <span class="path">Win&nbsp;-&nbsp;Create Desktop Shortcut (Chrome).cmd</span> inside it.</p>
 
       <div class="note">
         <p class="lede">Use the helper, not the button</p>
         <p>The shortcut button inside the radio works, but a browser will not save a <span class="path">.url</span> under its own name, so the file arrives called <span class="path">Deskside Radio.download</span> and has to be renamed — and anything a browser downloads is tagged with where it came from. A page opened from your own disk has no address the tagger understands, so the file gets marked <em>restricted</em> and Windows asks “Do you want to open this file?” every single time.</p>
         <p>If you have already done it that way: right-click the file, <strong>Properties</strong>, tick <strong>Unblock</strong>, <strong>OK</strong>. That clears the mark for good.</p>
         <p>The helper has neither problem: it builds the shortcut on the spot instead of downloading it.</p>
+        <p>The installer goes one better. Unzipping in Explorer puts that same mark on every script it extracts, which is why they ask before running; the installer unpacks them itself, and files that arrive that way carry no mark at all. The one question on the installer is the only one you ever answer.</p>
       </div>
 
       <p>You can also just double-click <span class="path">index.html</span>. It works, but you lose the two things the shortcut adds, described next.</p>
@@ -708,6 +712,9 @@ html { scroll-behavior: smooth; }
       <p class="lead">Everything lives in your browser’s storage on this machine. No account, no sign-in, nothing uploaded, no analytics.</p>
       <p>The page asks Google Fonts for its typefaces each time it opens, which tells Google an anonymous request came from your address, the same as any web page using a hosted font. Playing a station tells that station the same. Nothing else leaves the machine.</p>
       <p>Every six hours the app checks a single file on GitHub to see whether a newer version has been published. When there is one it shows a small <strong>Update available</strong> pill beside the wordmark and a dot on the Settings control — the same mark in the same place whichever theme you are in. It sends nothing about you, downloads nothing and installs nothing. The switch beside it in <strong>Settings → Service</strong> turns that check off for good.</p>
+      <p>To take an update, run <strong>Update Deskside Radio</strong> from the Start menu &mdash; type &ldquo;update desk&rdquo; at the Start button and it is there. It is the same file that installed the radio, left in the app folder and replaced by every update. It works out that it is being run from inside an install, fetches the new version and unpacks it over the old one. Close the radio and open it again to see it.</p>
+      <p><strong>Nothing is downloaded or replaced until you ask for it.</strong> There is no scheduled task, no background updater, and nothing running when the radio is not. The radio only ever tells you that a version exists; it cannot start the updater itself, because a page opened from a disk has no way to run a program &mdash; and that is a limit worth keeping.</p>
+      <p>An update replaces every file in the app folder and loses nothing, because your stations, schedule and settings are not in it &mdash; they are in the browser profile. Anything else you left beside <span class="path">index.html</span>, such as a settings seed, survives as well: the update unpacks over the top rather than clearing the folder out first.</p>
       <p><strong>Check now</strong>, next to that switch, asks straight away instead of waiting for the day to turn over. It says <em>Up to date</em> when there is nothing new, names the version when there is, and goes quiet while the switch is off.</p>
     </section>
 

@@ -129,4 +129,8 @@ if defined BROWSER (
 )
 
 echo.
-pause
+rem The installer calls this script and prints its own summary after it, so
+rem it sets DESKSIDE_NOPAUSE to run straight through. Undefined when this is
+rem double-clicked on its own, which is every other time. The two pauses on
+rem the error paths above are left alone: those should always stop.
+if not defined DESKSIDE_NOPAUSE pause
