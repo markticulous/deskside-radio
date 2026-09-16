@@ -33,6 +33,15 @@ rem whose icon is missing, it falls back to the analogue dial icon.
 
 title Deskside Radio - Desktop shortcut
 
+rem The installer calls this one and prints its own commentary around
+rem it, and a banner in the middle of somebody else's output is not a
+rem banner. DESKSIDE_NOPAUSE already means "you are being called".
+if not defined DESKSIDE_NOPAUSE (
+  echo.
+  echo   DESKSIDE RADIO - DESKTOP SHORTCUT
+  echo.
+)
+
 set "APPDIR=%~dp0"
 set "TARGET=%APPDIR%index.html"
 
@@ -47,14 +56,14 @@ if not exist "%TARGET%" (
 
 set "THEME=%~1"
 if not defined THEME set "THEME=dial"
-set "ICON=%APPDIR%favicon-%THEME%.ico"
+set "ICON=%APPDIR%assets\favicon-%THEME%.ico"
 if not exist "%ICON%" (
   set "THEME=dial"
-  set "ICON=%APPDIR%favicon-dial.ico"
+  set "ICON=%APPDIR%assets\favicon-dial.ico"
 )
 if not exist "%ICON%" (
   set "THEME=default"
-  set "ICON=%APPDIR%favicon-dial.ico"
+  set "ICON=%APPDIR%assets\favicon-dial.ico"
 )
 
 rem Chrome first, then Edge, which every Windows 11 machine has. App Paths is

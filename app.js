@@ -50,7 +50,11 @@
     lastGood: null,
     versionCheck: true,
     versionLastCheck: 0,
-    versionLatest: null
+    versionLatest: null,
+    /* Set by the x on the pill, cleared by the next completed check. The
+       pill is a nag and this is the snooze; the mark on the gear is the
+       fact, and nothing here touches that. */
+    versionPillOff: false
   };
 
   function clampTone(v) {
@@ -1284,6 +1288,23 @@
            tears the stream down and rebuilds it, which on a live stream means
            a gap and a restart several seconds behind where it was. */
         if (st.id === state.currentStationId && state.intendedPlaying && !awaitingTap) return;
+
+        /* A stopped radio stays stopped. Choosing a station on a set that
+           is off is choosing what will play when it is switched on, which
+           is what moving the dial on a real one does -- it is not a
+           request to switch it on. The choice is still made, shown and
+           saved; only the audio is left alone.
+
+           awaitingTap is deliberately not caught by this: there the
+           listener has already asked for sound and the browser is waiting
+           on a gesture, so this press is the gesture. */
+        if (!state.intendedPlaying && !awaitingTap) {
+          state.currentStationId = st.id;
+          renderStation(st);
+          save();
+          return;
+        }
+
         ensureGraph();
         state.intendedPlaying = true; attempts = 0;
         el.overlay.hidden = true;
@@ -2198,7 +2219,7 @@
          each theme ships its own .ico, and a per-theme path also sidesteps
          the Windows icon cache, which keys on the file it was told about. */
       var known = /^(dial|console|rams|editorial|retro|departures|marconi|tivoli)$/.test(state.theme);
-      var icon = windowsPathOf(appFolderUrl() + 'favicon-' + (known ? state.theme : 'dial') + '.ico');
+      var icon = windowsPathOf(appFolderUrl() + 'assets/favicon-' + (known ? state.theme : 'dial') + '.ico');
       // .url files want CRLF and the icon given as a full path.
       body = ['[InternetShortcut]', 'URL=' + here, 'IconFile=' + icon, 'IconIndex=0', ''].join('\r\n');
       type = 'text/plain';
@@ -2220,7 +2241,7 @@
 
     if (mac) {
       setStatus(status, 'Shortcut downloaded · drag it to your Desktop');
-      $('macIcon').src = 'favicon-' + theme + '.ico';
+      $('macIcon').src = 'assets/favicon-' + theme + '.ico';
       $('macIcon').alt = named + ' icon';
       $('macTheme').textContent = named;
       $('macHelp').showModal();
@@ -2237,7 +2258,7 @@
        the name but not the value, every press of the button threw -- after
        the download, before showModal, so the file arrived and the panel
        explaining it never did. */
-    $('shortcutIcon').src = 'favicon-' + theme + '.ico';
+    $('shortcutIcon').src = 'assets/favicon-' + theme + '.ico';
     $('shortcutIcon').alt = named + ' icon';
     $('shortcutTheme').textContent = named;
     // Quoted: the folder has a space in it more often than not, and an
@@ -3635,13 +3656,20 @@
     var pill = $('updatePill');
     if (!pill) return;
     var on = updateAvailable();
-    pill.hidden = !on;
-    // The gear carries the same mark: the pill says what, this says where.
+    /* Two different questions. The gear is marked for as long as the
+       update exists and has not been installed -- that is a fact about
+       the machine and the x does not get a vote on it. The pill is the
+       announcement, and an announcement you have read should be able to
+       stop talking until there is news again. */
+    pill.hidden = !on || !!state.versionPillOff;
     var gear = $('openSettings');
     if (gear) gear.classList.toggle('has-update', on);
     if (!on) return;
-    pill.href = RELEASES_URL;
-    pill.title = 'Version ' + state.versionLatest + ' has been published. Running ' + APP_VERSION + '.';
+    var link = $('updatePillLink');
+    if (link) {
+      link.href = RELEASES_URL;
+      link.title = 'Version ' + state.versionLatest + ' has been published. Running ' + APP_VERSION + '.';
+    }
   }
 
   function renderUpdateLine(note) {
@@ -3687,6 +3715,11 @@
       checking = false;
       state.versionLastCheck = Date.now();
       if (data && typeof data.version === 'string') state.versionLatest = data.version;
+      /* Every check that comes back starts the notice again, which is what
+         makes the x a snooze rather than a mute: press it and the pill is
+         gone for the rest of the day, and it is back the next time the
+         radio has actually been out to look. */
+      state.versionPillOff = false;
       save();
       // The line says "Up to date" either way now, so a press needs no
       // wording of its own to show that something happened.
@@ -3700,6 +3733,12 @@
   }
 
   $('checkNow').addEventListener('click', function () { checkVersion(true); });
+
+  $('updatePillClose').addEventListener('click', function () {
+    state.versionPillOff = true;
+    save();
+    syncUpdatePill();
+  });
 
   $('versionCheckOn').addEventListener('change', function () {
     state.versionCheck = this.checked;

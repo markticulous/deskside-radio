@@ -296,9 +296,36 @@
          something a bank of LEDs can do. The step has to be a fraction of
          the bar rather than a length, so it is measured; measured here,
          once when the theme changes, rather than sixty times a second. */
-      var cell = parseFloat(getComputedStyle(vu.meter).getPropertyValue('--vu-cell')) || 0;
+      var cs = getComputedStyle(vu.meter);
+      var cell = parseFloat(cs.getPropertyValue('--vu-cell')) || 0;
+      var gap = parseFloat(cs.getPropertyValue('--vu-gap')) || 0;
       var bar = tunerEl.querySelector('.meter-bar');
       var w = bar ? bar.clientWidth : 0;
+
+      /* The cells are cut by hard mask stops, and a hard stop lands on a
+         device pixel or it is antialiased. At 100% scaling 19px does land
+         on one; at 125% it lands on a half pixel four times out of five,
+         and each of those cells is painted with a thinner, weaker line
+         down one side than its neighbours have. It is not a rounding
+         error anyone would find by reading the sheet -- it depends on the
+         screen, which the sheet cannot see.
+
+         So the authored lengths are rounded here to whole device pixels,
+         and the pattern is shifted by whatever fraction of a pixel the bar
+         itself begins on, so that the first edge is aligned as well as
+         every edge after it. Rounding is done against --vu-cell and
+         --vu-gap, which nothing writes to, so this stays put rather than
+         creeping a little further each time it runs. */
+      if (bar && cell > 0) {
+        var dpr = root.devicePixelRatio || 1;
+        var snap = function (px) { return Math.max(1, Math.round(px * dpr)) / dpr; };
+        cell = snap(cell);
+        bar.style.setProperty('--cell-dp', cell + 'px');
+        if (gap > 0) bar.style.setProperty('--gap-dp', snap(gap) + 'px');
+        var left = bar.getBoundingClientRect().left * dpr;
+        bar.style.setProperty('--cell-origin', (-(left - Math.floor(left)) / dpr).toFixed(4) + 'px');
+      }
+
       if (cell > 0 && w > 0) vu.meter.style.setProperty('--vu-step', (cell / w).toFixed(5));
       else vu.meter.style.removeProperty('--vu-step');
     } catch (e) { /* unreadable: write it, which is the safe way to be wrong */ }
@@ -525,18 +552,39 @@
     var run = ++flapRun;
     nameEl.setAttribute('data-flap-run', run);
 
+    /* Emptied first, and in one pass before any of the timers start.
+
+       Each panel used to be left showing its own final letter until its
+       turn came round, and the turns are staggered by 45ms -- so a
+       thirteen-letter name was painted in full, correct and readable, for
+       up to six tenths of a second, and only then scrambled and flipped
+       back to what it had already been showing. The board arrived having
+       already finished.
+
+       A board that is about to turn is blank, so that is where this one
+       starts. The width of each panel is measured off its own letter and
+       held while it is empty; without that the line collapses to nothing
+       and springs back open as the letters land. */
+    for (var m = 0; m < chars.length; m++) {
+      var w = chars[m].getBoundingClientRect().width;
+      if (w) chars[m].style.minWidth = w.toFixed(2) + 'px';
+      chars[m].textContent = '';
+    }
+
     for (var i = 0; i < chars.length; i++) {
       (function (ch, index) {
         var target = ch.getAttribute('data-ch');
-        if (target === ' ') return;          // a blank flap has nothing to show
+        // A blank flap has nothing to show, so it stays as it now is.
+        if (target === ' ') { ch.textContent = ' '; return; }
         var left = 3 + (index % 4);          // uneven, so they do not land together
         ch.classList.add('is-flapping');
-        ch.textContent = randomGlyph();
         var tick = function () {
           if (nameEl.getAttribute('data-flap-run') !== String(run)) return;
           if (left <= 0) {
             ch.textContent = target;
             ch.classList.remove('is-flapping');
+            // The panel is carrying its letter again, so it can size itself.
+            ch.style.removeProperty('min-width');
             return;
           }
           left -= 1;

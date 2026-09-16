@@ -181,6 +181,148 @@ test('the installer builds its quotes with [char]34 too, never a literal one', (
   });
 });
 
+/* ---- the uninstaller ----
+   It deletes things, which nothing else here does, and it deletes them on
+   a machine we will never see. */
+const UNINSTALLER = 'Win - Uninstall Deskside Radio.cmd';
+
+test('the uninstaller refuses to run in the source tree', () => {
+  /* Every other guard in this file protects a download. This one protects
+     the repository: the uninstaller removes the folder it decides it is
+     in, and without this line, double-clicking the copy sitting at the
+     root would take the source with it. app.css is the discriminator
+     because the build inlines it away, so it exists here and nowhere in
+     a download. */
+  const cmd = read(UNINSTALLER);
+  assert.ok(cmd.indexOf('if exist "%~dp0app.css" goto :repo') !== -1,
+    UNINSTALLER + ' no longer refuses to run in the source folder');
+  const guard = cmd.indexOf('%~dp0app.css');
+  const first = cmd.search(/rd\s+\/s/i);
+  assert.ok(first === -1 || guard < first,
+    UNINSTALLER + ' deletes something before it has checked it is not in the source tree');
+});
+
+test('the uninstaller keeps the settings unless it is told twice', () => {
+  /* The app folder is replaceable and the profile is not -- it holds every
+     station, the schedule and the settings, and no reinstall brings it
+     back. So it is a second question with its own answer, and the answer
+     that does nothing is the one you get by pressing Enter. */
+  const cmd = read(UNINSTALLER);
+  assert.ok(cmd.indexOf('DesksideRadio\\profile') !== -1,
+    UNINSTALLER + ' no longer knows where the settings live');
+  assert.ok(/if \/i not "%WIPE%"=="D"/.test(cmd),
+    UNINSTALLER + ' no longer asks separately before deleting the profile');
+});
+
+test('the uninstaller finds shortcuts by target as well as by name', () => {
+  /* A list of four filenames was the first version of this, and it misses
+     any shortcut somebody renamed and every shortcut a later launcher
+     adds. Both halves have to stay. */
+  const cmd = read(UNINSTALLER);
+  assert.ok(cmd.indexOf("'Deskside Radio*.lnk'") !== -1,
+    UNINSTALLER + ' no longer matches shortcuts by name');
+  assert.ok(cmd.indexOf('$s.TargetPath') !== -1 && cmd.indexOf('$s.Arguments') !== -1,
+    UNINSTALLER + ' no longer matches shortcuts by where they point');
+  ["GetFolderPath('Desktop')", 'Startup', 'Start Menu'].forEach(function (place) {
+    assert.ok(cmd.indexOf(place) !== -1, UNINSTALLER + ' no longer looks in ' + place);
+  });
+});
+
+test('every script announces itself in capitals before it does anything', () => {
+  /* These are double-clicked or run blind, and a console that opens
+     straight into its own output leaves you reading it to work out what
+     you started. The banner is the first thing printed, so it sits above
+     whatever follows.
+
+     Both families, because the promise is about what a console looks like
+     and not about which shell drew it. The two quote their arguments
+     differently -- `echo   TEXT` in cmd, `echo "  TEXT"` in bash -- so the
+     optional quote is the only thing the pattern has to allow for. */
+  fs.readdirSync(ROOT)
+    .filter(function (f) { return /\.(cmd|sh)$/i.test(f); })
+    .forEach(function (f) {
+      const src = read(f);
+      const banner = /^[ \t]*echo +"? *(DESKSIDE RADIO[^"\r\n]*?) *"?[ \t]*$/m.exec(src);
+      assert.ok(banner, f + ' prints no DESKSIDE RADIO banner');
+      assert.equal(banner[1], banner[1].toUpperCase(),
+        f + ' banner is not in capitals: ' + banner[1]);
+      /* And ahead of every other line of output. A heading printed under
+         the first three things the script said is not a heading. The blank
+         line is `echo.` in cmd and a bare `echo` in bash; neither is
+         output, so neither counts. */
+      const firstEcho = src.search(/^[ \t]*echo +[^.\r\n]/m);
+      assert.ok(firstEcho === -1 || src.indexOf(banner[0]) <= firstEcho,
+        f + ' prints something before its banner');
+    });
+});
+
+test('the download puts only double-clickable things in its root', () => {
+  /* The unzipped folder is the whole interface for half of what this
+     project does, and somebody who has just opened it is looking for the
+     thing to run. Eight icons and a licence in that same list are nine
+     wrong answers. So: scripts, the app and its manual in the root,
+     everything else in assets/.
+
+     Asserted against build-dist.js rather than against dist/, which is not
+     in the repository and may not have been built. */
+  const build = read('tools/build-dist.js');
+  assert.ok(/const ASSETS = 'assets';/.test(build),
+    'build-dist.js no longer has a name for the folder the support files go in');
+  assert.ok(/path\.join\(OUT, ASSETS, 'LICENSE\.txt'\)/.test(build),
+    'the licence is being written to the root of the download again');
+  assert.ok(build.indexOf("path.join(OUT, ASSETS, f)") !== -1,
+    'the icons are being written to the root of the download again');
+  /* The copy list is the root of the download, so nothing in it may be an
+     icon or a licence. */
+  const list = /\['Win - Create Desktop Shortcut \(Chrome\)[\s\S]*?\]\.forEach/.exec(build);
+  assert.ok(list, 'the root copy list has moved or been renamed');
+  assert.equal(/favicon|LICENSE/i.test(list[0]), false,
+    'a support file is back in the list of things copied to the root');
+});
+
+test('every script looks for the icons where they actually are', () => {
+  /* The icons sit in assets/ in the source tree as well as in the
+     download, so one path string serves both and a launcher run from a
+     clone finds the same file the download does. A script still naming
+     them in the root would write a shortcut with no icon -- which is not
+     an error, just a blank square nobody connects to this. */
+  fs.readdirSync(ROOT)
+    .filter(function (f) { return /\.(cmd|sh)$/i.test(f); })
+    .forEach(function (f) {
+      read(f).split('\n').forEach(function (line) {
+        if (line.indexOf('favicon-') === -1) return;
+        /* The installer is the one file allowed to name the old root
+           location, because clearing what an earlier version left there is
+           the whole point of those two lines. They are recognised by the
+           del that does it, and pinned by the test below so they cannot
+           quietly turn into something else. */
+        if (/\bdel\b|if exist "%APPDIR%favicon-dial\.ico"/.test(line)) return;
+        (line.match(/.{0,8}favicon-/g) || []).forEach(function (m) {
+          assert.ok(/assets[\\/]favicon-$/.test(m),
+            f + ' names an icon without assets/ in front of it: ' + JSON.stringify(m.trim()));
+        });
+      });
+    });
+  ['index.html', 'README.html'].forEach(function (f) {
+    assert.equal(/href="favicon-/.test(read(f)), false,
+      f + ' loads an icon from the root, where there is no longer one');
+  });
+});
+
+test('updating an older install clears the icons it left in the root', () => {
+  /* Unpacking writes over the top and removes nothing, so a folder
+     installed while the icons lived in the root would end up carrying both
+     sets -- the old ones unreferenced, and sitting in the one list this
+     change exists to shorten. Guarded on both sides: it only fires once
+     the new set is confirmed present, and it names files rather than a
+     tree, which the test above this one also insists on. */
+  const cmd = read(INSTALLER);
+  assert.ok(cmd.indexOf('if exist "%APPDIR%assets\\favicon-dial.ico" if exist "%APPDIR%favicon-dial.ico"') !== -1,
+    INSTALLER + ' no longer checks both layouts before clearing the old icons');
+  assert.ok(/del \/q "%APPDIR%favicon-\*\.ico"/.test(cmd),
+    INSTALLER + ' no longer clears the icons an older version left in the root');
+});
+
 test('the launcher still falls back when no browser is found', () => {
   const cmd = read('Win - Create Desktop Shortcut (Chrome).cmd');
   assert.ok(/if \(\$env:BROWSER\)/.test(cmd), 'no branch on a missing browser');

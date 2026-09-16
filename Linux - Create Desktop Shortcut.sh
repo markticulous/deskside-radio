@@ -22,6 +22,13 @@
 
 set -u
 
+# The same heading the Windows scripts print. These are all double-clicked
+# or run blind, and a console that opens straight into its own output
+# leaves you reading it to work out what you started.
+echo
+echo "  DESKSIDE RADIO - DESKTOP SHORTCUT"
+echo
+
 APPDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET="$APPDIR/index.html"
 APPS="$HOME/.local/share/applications"
@@ -55,8 +62,8 @@ for arg in "$@"; do
   esac
 done
 
-ICON="$APPDIR/favicon-$THEME.ico"
-[ -f "$ICON" ] || { THEME="dial"; ICON="$APPDIR/favicon-dial.ico"; }
+ICON="$APPDIR/assets/favicon-$THEME.ico"
+[ -f "$ICON" ] || { THEME="dial"; ICON="$APPDIR/assets/favicon-dial.ico"; }
 
 # ---- find a browser that can open a window of its own -------------------
 # Chromium and its relatives take --app, which is what gives the radio a

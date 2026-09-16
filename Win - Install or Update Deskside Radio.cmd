@@ -30,6 +30,10 @@ rem   "Win - Install or Update Deskside Radio.cmd" D:\Radio   somewhere else
 
 title Deskside Radio - install or update
 
+echo.
+echo   DESKSIDE RADIO - INSTALL OR UPDATE
+echo.
+
 set "ZIPURL=https://github.com/markticulous/deskside-radio/releases/latest/download/deskside-radio.zip"
 set "DEFAULT=%LOCALAPPDATA%\DesksideRadio\app"
 
@@ -121,6 +125,16 @@ del /q "%ZIP%" >nul 2>&1
 
 if not exist "%APPDIR%index.html" goto :corrupt
 
+rem The icons used to sit in the root beside the scripts and now live in
+rem assets\. Unpacking over the top writes the new ones and cannot remove
+rem the old ones, so a folder installed before this would keep both sets --
+rem the stale copies inert, unreferenced, and sitting in the one list this
+rem release is trying to shorten. Cleared by name, in the root only, and
+rem only once the new set is confirmed to be there.
+if exist "%APPDIR%assets\favicon-dial.ico" if exist "%APPDIR%favicon-dial.ico" (
+  del /q "%APPDIR%favicon-*.ico" >nul 2>&1
+)
+
 rem ---- the shortcut -----------------------------------------------------
 rem Made by the script that has always made it, which is now guaranteed to
 rem be sitting right there. One copy of the WScript.Shell block, the
@@ -148,7 +162,7 @@ if exist "%SELF%" (
     "if (Test-Path -LiteralPath $dir) {" ^
     "  $link = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $dir 'Update Deskside Radio.lnk'));" ^
     "  $link.TargetPath = $env:SELF;" ^
-    "  $link.IconLocation = $env:APPDIR + 'favicon-dial.ico,0';" ^
+    "  $link.IconLocation = $env:APPDIR + 'assets\favicon-dial.ico,0';" ^
     "  $link.WorkingDirectory = $env:APPROOT;" ^
     "  $link.Description = 'Check for and install a newer Deskside Radio';" ^
     "  $link.Save();" ^

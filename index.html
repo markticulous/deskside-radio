@@ -6,7 +6,7 @@
 <title>Deskside Radio</title>
 <!-- The ICO carries seven hand-tuned frames; the small ones drop the fine
      ticks and the wordmark because they turn to mush below 32px. -->
-<link rel="icon" href="favicon-dial.ico" sizes="16x16 24x24 32x32 48x48 64x64 128x128 256x256">
+<link rel="icon" href="assets/favicon-dial.ico" sizes="16x16 24x24 32x32 48x48 64x64 128x128 256x256">
 <link rel="icon" href="icon-small.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-256.png">
 <!-- The typefaces are fetched without holding up the first paint.
@@ -46,9 +46,19 @@
       <!-- Only ever here, and only ever this, whatever the theme: the one
            place the radio says a newer version exists without being asked.
            Hidden until there is one. -->
-      <a class="update-pill" id="updatePill" hidden target="_blank" rel="noopener">
-        <span class="update-dot" aria-hidden="true"></span><span id="updatePillText">Update available</span>
-      </a>
+      <span class="update-pill" id="updatePill" hidden>
+        <a class="update-pill-link" id="updatePillLink" target="_blank" rel="noopener">
+          <span class="update-dot" aria-hidden="true"></span><span id="updatePillText">Update available</span>
+        </a>
+        <!-- The pill is a notice and the dismiss is a control, so they are
+             two elements: a button inside a link is not a thing a browser
+             will let you build, and making the whole pill a button would
+             cost the link to what changed. -->
+        <button type="button" class="update-pill-x" id="updatePillClose"
+                title="Hide this until the next check" aria-label="Hide this notice until the next check">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </span>
     </div>
     <time class="clock" id="clock">--:--</time>
     <button class="sched-chip" id="schedToggle" aria-pressed="true" title="Turn the schedule on or off">

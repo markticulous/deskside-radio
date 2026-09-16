@@ -17,7 +17,9 @@ const zlib = require('zlib');
 
 const SRC = process.argv[2];
 if (!SRC) { console.error('usage: node tools/make-favicon-ico.js <srcdir>'); process.exit(1); }
-const OUT = path.join(__dirname, '..');
+/* Beside the app rather than on top of it: these ship, so they sit in
+   the same assets/ folder the download carries. */
+const OUT = path.join(__dirname, '..', 'assets');
 const THEMES = ['dial', 'console', 'rams', 'editorial', 'retro', 'departures', 'marconi', 'tivoli'];
 
 // ---------- CRC32 ----------
@@ -198,6 +200,7 @@ THEMES.forEach(function (theme) {
     return { size: p.size, png: encodePng(resize(p.from, p.size)) };
   });
 
+  fs.mkdirSync(OUT, { recursive: true });
   const file = path.join(OUT, 'favicon-' + theme + '.ico');
   fs.writeFileSync(file, buildIco(entries));
   console.log('favicon-' + theme + '.ico  ' + fs.statSync(file).size + ' bytes, ' + entries.length + ' sizes');
