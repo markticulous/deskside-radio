@@ -302,6 +302,19 @@
   .preset.is-active .preset-name.can-scroll .scroll-run { animation: none; }
   .preset:hover .preset-name.can-scroll,
   .preset.is-active .preset-name.can-scroll { text-overflow: ellipsis; }
+  /* Unless it has been asked for. Scrolling a name that does not fit is
+     the one animation here that carries information -- switch it back on
+     and nothing else comes with it. */
+  :root.scroll-anyway .preset:hover .preset-name.can-scroll .scroll-run {
+    animation: preset-marquee var(--marquee-ms, 6s) ease-in-out infinite;
+    animation-delay: .55s;
+  }
+  :root.scroll-anyway .preset.is-active .preset-name.can-scroll .scroll-run {
+    animation: preset-marquee var(--marquee-ms, 6s) ease-in-out infinite;
+    animation-delay: .9s;
+  }
+  :root.scroll-anyway .preset:hover .preset-name.can-scroll,
+  :root.scroll-anyway .preset.is-active .preset-name.can-scroll { text-overflow: clip; }
 }
 
 .fader         { display: flex; align-items: center; gap: 9px; }
@@ -550,6 +563,11 @@
 @media (prefers-reduced-motion: reduce) {
   .display-name.can-scroll .name-line { animation: none; }
   .display-name.can-scroll { text-overflow: ellipsis; }
+  :root.scroll-anyway .display-name.can-scroll .name-line {
+    animation: name-marquee var(--marquee-ms, 6s) ease-in-out infinite;
+    animation-delay: .9s;
+  }
+  :root.scroll-anyway .display-name.can-scroll { text-overflow: clip; }
 }
 .scope { display: none; }
 /* Read once per theme by setLevel. A theme whose meter is drawn some
@@ -599,6 +617,27 @@
 
 @media (prefers-reduced-motion: reduce) {
   .tuner *, .tuner *::before, .tuner *::after { transition-duration: 0s !important; animation: none !important; }
+  /* The one exception, and only when it has been asked for. That blanket
+     rule above is an !important on a universal selector, so nothing wins
+     against it by being more specific -- the way back has to be another
+     !important, which is why these three live here rather than beside the
+     marquee rules they are undoing.
+
+     Scrolling a name that does not fit is the only animation in the app
+     that carries information: without it the end of the name is not slow,
+     it is missing. Everything else stays off. */
+  :root.scroll-anyway .display-name.can-scroll .name-line {
+    animation: name-marquee var(--marquee-ms, 6s) ease-in-out infinite !important;
+    animation-delay: .9s !important;
+  }
+  :root.scroll-anyway .preset:hover .preset-name.can-scroll .scroll-run {
+    animation: preset-marquee var(--marquee-ms, 6s) ease-in-out infinite !important;
+    animation-delay: .55s !important;
+  }
+  :root.scroll-anyway .preset.is-active .preset-name.can-scroll .scroll-run {
+    animation: preset-marquee var(--marquee-ms, 6s) ease-in-out infinite !important;
+    animation-delay: .9s !important;
+  }
   .sched-next { transition-duration: 0s !important; }
   .card-mark, .card-fold, .card.is-sliding { transition-duration: 0s !important; }
   .card.is-touched, .card.is-new { animation: none !important; }

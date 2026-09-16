@@ -729,6 +729,9 @@ html { scroll-behavior: smooth; }
         <dt>Uninstalling left the folder behind</dt>
         <dd>Fixed in 1.4.3. Before that it removed the app folder but not <span class="path">%LOCALAPPDATA%\DesksideRadio</span> around it, and in 1.4.0 and 1.4.1 it removed nothing at all and said it had. Run the current uninstaller again &mdash; everything it does is safe to repeat &mdash; or delete that folder by hand, which is all that is left of it.</dd>
 
+        <dt>Long names are cut off instead of scrolling</dt>
+        <dd>Windows is set to reduce animation &mdash; <strong>Settings &rarr; Accessibility &rarr; Visual effects &rarr; Animation effects</strong>, which is often off on a work machine. That setting turns off every animation in this app, and scrolling is one of them. A name you cannot read is information lost rather than motion saved, so <strong>Settings &rarr; Theme</strong> offers <strong>Scroll long names anyway</strong> whenever it detects that. Nothing else starts moving.</dd>
+
         <dt>The lamp blinks amber and green, and it says no audio</dt>
         <dd>The stream is connected and arriving, and carrying silence. That is the station's end, not yours &mdash; a dead encoder or genuine dead air. The radio re-tunes itself after 10 seconds of it, and again after 30, 90 and 120 seconds, which usually lands on a different server and fixes it. After four goes it stops trying and leaves the lamp saying so, rather than interrupting a station that is simply off the air. It can only notice this where the meter works, so a station that blocks the meter will not be caught.</dd>
 
