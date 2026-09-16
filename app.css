@@ -526,18 +526,26 @@
   animation-delay: .9s;
   will-change: transform;
 }
-/* The outward leg is 46% of the cycle and stays there -- tuner-ui reads
-   that share as TRAVEL_SHARE to pace a split-flap name one flap at a
-   time, so moving it would change how fast the board turns over.
+/* Four phases, and the only one that must not change is the outward leg:
+   tuner-ui paces a split-flap name one flap at a time against it, so a
+   different share would change how fast the board turns over.
 
-   What changed is the way back: 18% of the cycle rather than 26%, which
-   reads as the line returning to its mark rather than scrolling
-   backwards. The eight points it gives up go to the pause at the far
-   end, where the end of a long name sits still and can be read. */
+   The other three were re-cut against the old cycle, which is what these
+   percentages are fractions of. Holding 12, travelling 46, the pause at
+   the far end came down from 24 to 17 and the way back from 18 to 12 --
+   the end of a name is read in a glance and does not need a quarter of
+   the cycle sitting still, and the return is a reset rather than a second
+   reading, so it can move.
+
+   Those add to 87 rather than 100, so the cycle itself is 13% shorter and
+   every share is written here as its part of the new, shorter whole:
+   12/87, 58/87, 75/87. TRAVEL_SHARE and the slide duration in tuner-ui
+   carry the same 0.87, which is what keeps the outward leg at exactly the
+   pace it had. */
 @keyframes name-marquee {
-  0%, 12%   { transform: translateX(0); }
-  58%, 82%  { transform: translateX(var(--marquee-by, 0)); }
-  100%      { transform: translateX(0); }
+  0%, 13.79%     { transform: translateX(0); }
+  66.67%, 86.21% { transform: translateX(var(--marquee-by, 0)); }
+  100%           { transform: translateX(0); }
 }
 @media (prefers-reduced-motion: reduce) {
   .display-name.can-scroll .name-line { animation: none; }
@@ -2398,6 +2406,42 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   animation: tally-flash .5s steps(1) infinite;
 }
 
+/* Connected, and carrying nothing.
+   Neither of the two lamps this app already has would say it. Green is a
+   lie -- there is no sound. Amber is the other lie: amber means it is
+   working on it, and it is not, it has finished and arrived at silence.
+   So the lamp says both in turn, which is a state you have to have been
+   told about and, once you have, cannot mistake for either.
+
+   Deliberately not a smooth crossfade. steps(1) makes each beat land, and
+   a lamp that snaps reads as a lamp; one that slides reads as a
+   transition between two ordinary states, which is the reading to avoid.
+   The longer dark at the end is what groups it into a repeating pair
+   rather than an even four-beat blink that would pass for the connecting
+   flash at a glance. */
+@keyframes silent-alternate {
+  0%,  24%  { background: #f0842a; box-shadow: 0 0 8px rgba(240,132,42,.8), 0 0 0 1px rgba(0,0,0,.18); }
+  25%, 37%  { background: var(--lamp-off); box-shadow: 0 0 0 1px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.22); }
+  38%, 62%  { background: var(--live); box-shadow: 0 0 8px color-mix(in srgb, var(--live) 70%, transparent), 0 0 0 1px rgba(0,0,0,.18); }
+  63%, 100% { background: var(--lamp-off); box-shadow: 0 0 0 1px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.22); }
+}
+/* Three classes, so it outranks [data-theme] .status-led.live and the
+   four cabinets that set their own unlit colour. The lamp keeps whatever
+   shape its theme gives it -- the console's square, the board's flap, the
+   deco corner -- because only the colour is being spoken here. */
+.tuner.is-silent .status-led,
+.tuner.is-silent .status-led.live {
+  animation: silent-alternate 1.2s steps(1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Still has to say it without blinking: amber-over-green, held. */
+  .tuner.is-silent .status-led,
+  .tuner.is-silent .status-led.live {
+    animation: none;
+    background: linear-gradient(#f0842a 50%, var(--live) 50%);
+  }
+}
+
 .drawer { border: 0; padding: 0; background: transparent; max-width: none; max-height: none; position: fixed; inset: 0; width: auto; height: auto; }
 .drawer::backdrop { background: rgba(0,0,0,.55); }
 .drawer-form {
@@ -2863,9 +2907,17 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .theme-thumb[data-theme="console"] .tt-cap { color: #6a7078; font-weight: 600; }
 .theme-thumb[data-theme="console"] .tt-freq { display: none; }
 .theme-thumb[data-theme="console"] .tt-glass { background: #050506; box-shadow: inset 0 0 0 1px #1d2126; }
+/* The readout, in the face the readout actually uses. Barlow Condensed
+   stood in for it and made the thumbnail the one place the console theme
+   was advertised by a typeface it does not own -- the segments are the
+   whole look. Weight 400 because that is the only weight the face has,
+   and asking for 700 gets a synthetic bold that smears the segments, the
+   same reason the real display sets 400. */
 .theme-thumb[data-theme="console"] .tt-glass::before {
-  content: "68.0"; position: absolute; left: 6px; top: 5px;
-  font: 700 16px/1 "Barlow Condensed", sans-serif; color: #ffb000; letter-spacing: .02em;
+  content: "68.0 FM"; position: absolute; left: 6px; top: 5px;
+  font: 400 16px/1 "VFD Nova", "Barlow Condensed", sans-serif;
+  color: #ffb000; letter-spacing: .04em;
+  text-shadow: 0 0 3px rgba(255,190,70,.55), 0 0 9px rgba(255,176,0,.35);
 }
 .theme-thumb[data-theme="console"] .tt-glass::after {
   content: ""; position: absolute; left: 6px; right: 6px; bottom: 5px; height: 4px;

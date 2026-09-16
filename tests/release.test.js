@@ -44,6 +44,40 @@ test('the settings sanitisers are defined above the first thing that uses them',
     'var CAP is declared after the load() that needs it, so stored settings are dropped at boot');
 });
 
+test('the silence detector is declared above the transport that clears it', () => {
+  /* The same trap as CAP above: setStatus clears the silence state, var
+     hoists the name and not the value, and setStatus is defined a long
+     way above where these used to sit. Nothing about that is visible in a
+     diff, and the failure -- a status line that keeps saying there is no
+     audio after the station has changed -- would look like anything. */
+  const src = read('app.js');
+  const decl = src.indexOf('var silentSince = 0');
+  const paint = src.indexOf('function paintSilence');
+  const setStatus = src.indexOf('function setStatus');
+  assert.ok(decl !== -1 && paint !== -1 && setStatus !== -1, 'expected all three');
+  assert.ok(decl < setStatus, 'silentSince is declared below the setStatus that clears it');
+  assert.ok(paint < setStatus, 'paintSilence is declared below the setStatus beside it');
+});
+
+test('the silent-stream ladder climbs and then stops', () => {
+  /* Four rungs and no fifth. A ladder that looped would re-tune a station
+     that is simply off the air, every couple of minutes, all night -- and
+     each attempt is a real interruption for anybody listening to the next
+     station along when it comes back. The waits are quoted from the notice
+     appearing, which is itself five seconds into the silence, so they read
+     five short of the 10/30/90/120 they produce. */
+  const src = read('app.js');
+  const ladder = /var SILENT_RETRY = \[([^\]]+)\]/.exec(src);
+  assert.ok(ladder, 'SILENT_RETRY is gone');
+  const rungs = ladder[1].split(',').map(function (n) { return parseInt(n.trim(), 10); });
+  assert.deepEqual(rungs.map(function (ms) { return (ms + 5000) / 1000; }), [10, 30, 90, 120],
+    'the ladder no longer fires at 10, 30, 90 and 120 seconds of silence');
+  assert.ok(/silentTries >= SILENT_RETRY\.length/.test(src),
+    'nothing stops the ladder once it runs out of rungs');
+  /* And it climbs: without this the first rung would be retried forever. */
+  assert.ok(/silentTries\+\+/.test(src), 'the ladder never advances');
+});
+
 test('every Windows script is named for Windows, and every Linux one for Linux', () => {
   /* A folder of double-clickable scripts is the one place a filename has
      to say what it is for before anyone opens it -- there is no other
@@ -171,8 +205,16 @@ test('the installer makes the shortcut by calling the script that owns it', () =
   const owner = 'Win - Create Desktop Shortcut (Chrome).cmd';
   assert.ok(cmd.indexOf(owner) !== -1, INSTALLER + ' no longer calls ' + owner);
   assert.ok(fs.existsSync(path.join(ROOT, owner)), owner + ' is gone, and the installer calls it');
-  assert.ok(read(owner).indexOf('if not defined DESKSIDE_NOPAUSE pause') !== -1,
+  /* It has to run straight through when the installer calls it, or the
+     install stops on a "Press any key" nobody is watching for. The flag
+     now also skips the script's own introduction, which the installer
+     says better in one line -- but the part that matters here is that it
+     reaches the end without pausing. */
+  const ownerSrc = read(owner);
+  assert.ok(ownerSrc.indexOf('if defined DESKSIDE_NOPAUSE goto :quietend') !== -1,
     owner + ' no longer honours DESKSIDE_NOPAUSE, so the installer will stop halfway and wait');
+  assert.ok(ownerSrc.search(/^:quietend$/m) > ownerSrc.search(/^pause$/m),
+    owner + ' rejoins before its pause, so DESKSIDE_NOPAUSE no longer skips it');
 });
 
 test('the installer never deletes the folder it installs into', () => {

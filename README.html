@@ -462,7 +462,7 @@ html { scroll-behavior: smooth; }
   <span class="byline">
     <span class="byline-by">A</span><span class="byline-name">Markticulous</span><span class="byline-suffix">build</span>
   </span>
-  <span class="ver" id="verChip">v1.4.0</span>
+  <span class="ver" id="verChip">v1.4.1</span>
 </p>
 
 <header class="masthead">
@@ -725,6 +725,9 @@ html { scroll-behavior: smooth; }
       <dl class="defs">
         <dt>The meter says a stream blocks it</dt>
         <dd>Some stations refuse the cross-origin access the meter needs. The audio is fine; only the meter and the tone controls are unavailable for that station.</dd>
+
+        <dt>The lamp blinks amber and green, and it says no audio</dt>
+        <dd>The stream is connected and arriving, and carrying silence. That is the station's end, not yours &mdash; a dead encoder or genuine dead air. The radio re-tunes itself after 10 seconds of it, and again after 30, 90 and 120 seconds, which usually lands on a different server and fixes it. After four goes it stops trying and leaves the lamp saying so, rather than interrupting a station that is simply off the air. It can only notice this where the meter works, so a station that blocks the meter will not be caught.</dd>
 
         <dt>A station will not play</dt>
         <dd>Check the URL plays in a browser tab on its own. Some directory entries are playlist files rather than streams; the finder flags those before you add them.</dd>

@@ -755,9 +755,22 @@
      stepped path needs it, and the stepped path is only ever a display
      name, so this tracks that one keyframe block and not preset-marquee,
      which spends a different share of its cycle travelling. */
-  var TRAVEL_SHARE = 0.46;
+  /* 46 parts of a cycle that is now 87 of its old 100 -- see the note over
+     @keyframes name-marquee. Quoted against the shortened cycle so the
+     outward leg still lasts exactly as long as it used to. */
+  var TRAVEL_SHARE = 0.5287;
+  /* What the cycle lost when the far pause and the return were cut back.
+     The slide is quoted for the travel, so it is scaled by the same amount
+     or shortening the tail would speed the whole thing up. */
+  var CYCLE_TRIM = 0.87;
   var STEP_MS = 230;           // one flap, on a board
-  var PRESET_SLOWER = 1.4;     // a button's name, against the readout's
+  /* A button's name, against the readout's. Raised from 1.4: a preset is
+     read out of the corner of the eye while something else has your
+     attention, so it can afford to go slower than the thing you are
+     actually looking at. Stretching the cycle stretches the pauses at
+     each end with it, which is no loss on a name you are trying to
+     read. */
+  var PRESET_SLOWER = 1.8;
 
   /* `paceBySteps` is what tells a flap from a pitch. A board is paced by
      its flaps, because the flap is the event -- one every 230ms reads as a
@@ -787,7 +800,12 @@
        each end with it, which is no loss on a name you are trying to
        read. */
     var slide = 2600 + by * 28;
+    /* The trim belongs to the readout alone. A preset's name runs on
+       preset-marquee, whose keyframes were not re-cut, so shortening its
+       cycle would just make the whole thing go faster -- which is the
+       opposite of what PRESET_SLOWER is there for. */
     if (el.classList.contains('preset-name')) slide *= PRESET_SLOWER;
+    else slide *= CYCLE_TRIM;
     var total = (steps && paceBySteps)
       ? Math.round(steps * STEP_MS / TRAVEL_SHARE)
       : Math.round(slide);
