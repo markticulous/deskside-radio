@@ -111,7 +111,7 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
     has run once, a copy of it is always in the app folder and updating is
     double-clicking it. That is also why it needs no stored install path --
     it works out where it is and what that means. */
- 'Win - Install or Update Deskside Radio.cmd',
+ 'Win-Install-or-Update-Deskside-Radio.cmd',
  /* And the way back out, which ships for the same reason: the folder
     somebody wants to be rid of is the folder that knows how to remove
     itself, its shortcuts and nothing else. */
