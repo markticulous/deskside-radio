@@ -113,7 +113,7 @@ rem contain a space, so it needs no quoting of its own.
   "$link.WorkingDirectory = $env:APPDIR;" ^
   "$link.Description = 'Deskside Radio';" ^
   "$link.Save();" ^
-  "Write-Host ''; Write-Host ('  Shortcut created: ' + $path)"
+  "if (-not $env:DESKSIDE_NOPAUSE) { Write-Host ''; Write-Host ('  Shortcut created: ' + $path) }"
 
 if errorlevel 1 (
   echo.
@@ -122,6 +122,14 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
+
+rem Everything below is this script introducing itself, which is right when
+rem it has been double-clicked and wrong when the installer called it: there
+rem it lands in the middle of the installer's own account of what it is
+rem doing, and says a good deal of it twice. The installer prints one line
+rem for this step instead. Errors are never suppressed -- those are above,
+rem and they stop either way.
+if defined DESKSIDE_NOPAUSE goto :quietend
 
 echo   Icon: %THEME%
 if defined BROWSER (
@@ -138,8 +146,8 @@ if defined BROWSER (
 )
 
 echo.
-rem The installer calls this script and prints its own summary after it, so
-rem it sets DESKSIDE_NOPAUSE to run straight through. Undefined when this is
-rem double-clicked on its own, which is every other time. The two pauses on
-rem the error paths above are left alone: those should always stop.
-if not defined DESKSIDE_NOPAUSE pause
+pause
+
+rem Where the installer's call rejoins. The two pauses on the error paths
+rem above are left alone: those should always stop, whoever is calling.
+:quietend

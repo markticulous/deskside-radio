@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.4.0';
+  var APP_VERSION = '1.4.1';
 
   var DEFAULTS = {
     stations: [
@@ -243,6 +243,83 @@
   var retryTimer = null;
   var liveSince = 0;
   var lastTime = -1, stuckSince = 0;
+  /* A stream that is connected, advancing, and carrying nothing.
+     It happened on a station here: the transport said Live for several
+     minutes, the needle sat on its stop, and there was no sound. Nothing
+     in the watchdog could see it -- currentTime was moving, readyState was
+     high, no error fired. The only thing that knew was the meter.
+
+     -60 dBFS rather than exact zero, because a silent encoder is rarely
+     digitally silent: it carries a dither floor or a trace of hum, which
+     is inaudible and is not zero. Anything above this and a listener
+     would hear something.
+
+     Five seconds because speech and music both have gaps, and the longest
+     of them -- a beat between tracks, a pause for effect -- is nothing
+     like this long. */
+  var SILENT_RMS = 0.001;
+  var SILENCE_MS = 5000;
+  var silentSince = 0, streamSilent = false;
+
+  /* Having spotted it, try to fix it. Re-tuning opens a new connection,
+     which on most stations means a different edge node, and a node feeding
+     silence is the common cause -- so it is worth one go.
+
+     What it must not become is a machine that hammers a station which is
+     simply off the air overnight. Each attempt costs a real interruption,
+     and after four of them the honest conclusion is that the silence is
+     the broadcast rather than the connection, so it stops and leaves the
+     lamp saying so.
+
+     Written as waits from the notice appearing, which is itself five
+     seconds into the silence -- so each one is five short of the figure it
+     is there to produce. Every attempt therefore lands after that much
+     unbroken silence, counted from when this bout of it started:
+
+       10s   30s   90s   120s
+
+     The ladder does not reset when a retune reconnects; it resets when
+     sound actually arrives, or nothing would ever climb past the first
+     rung. */
+  var SILENT_RETRY = [5000, 25000, 85000, 115000];
+  var silentTries = 0, silentRetryTimer = null;
+
+  function stopSilentRetry() {
+    clearTimeout(silentRetryTimer);
+    silentRetryTimer = null;
+  }
+
+  function armSilentRetry() {
+    stopSilentRetry();
+    if (silentTries >= SILENT_RETRY.length) return;
+    var wait = SILENT_RETRY[silentTries];
+    silentRetryTimer = setTimeout(function () {
+      silentRetryTimer = null;
+      /* Everything has to still be true at the moment it fires: the
+         listener has not stopped, the silence has not lifted, and nothing
+         else is already mid-reconnect. */
+      if (!streamSilent || !state.intendedPlaying || awaitingTap || retryTimer) return;
+      var st = currentStation();
+      if (!st) return;
+      silentTries++;
+      tune(st);
+    }, wait);
+  }
+
+  /* Only ever true where there is a meter to read. A stream that refuses
+     CORS plays through the untapped element with no analyser on it, so
+     there is no level to look at and silence cannot be told from sound --
+     that is the same limit the meter itself has, and it is why this says
+     nothing rather than guessing. */
+  function paintSilence() {
+    el.tuner.classList.toggle('is-silent', streamSilent);
+    if (!streamSilent) { stopSilentRetry(); return; }
+    el.status.textContent = silentTries
+      ? 'Stream detected · no audio · tried ' + silentTries
+      : 'Stream detected · no audio';
+    armSilentRetry();
+  }
+
   var graphInterrupted = false;
   var userStopping = false;
   var startedThisTune = false;
@@ -486,9 +563,25 @@
     audio = next;
   }
 
+  /* What the transport last said, so the silence notice can hand the line
+     back rather than inventing one. */
+  var statusText = '';
+  function sayStatus() { if (el.status) el.status.textContent = statusText; }
+
   function setStatus(s, text) {
     var was = status;
     status = s;
+    statusText = text;
+    /* Any real change of transport state ends the silence: it is a fact
+       about one connection, and this is a different one. Cleared before
+       the text is written, or paintSilence would put its own line back
+       over the top of whatever this call came to say. */
+    if (streamSilent || silentSince) {
+      streamSilent = false;
+      silentSince = 0;
+      stopSilentRetry();
+      if (el.tuner) el.tuner.classList.remove('is-silent');
+    }
     // Connecting, live, reconnecting: all of them have a needle to move.
     if (s !== 'stopped' && s !== 'idle') startMeter();
     /* Coming out of a handover: the level was taken to nothing before the
@@ -655,6 +748,8 @@
     launching = false;
     userStopping = true;
     clearTimeout(retryTimer); retryTimer = null;
+    stopSilentRetry();
+    silentTries = 0;
     audio.pause();
     audio.removeAttribute('src');
     audio.load();
@@ -774,6 +869,7 @@
 
   // ---------- metering ----------
   var level = 0, lastTs = 0, meterQuiet = false, quietSince = 0;
+
   /* Set when tune() is called, cleared the moment audio arrives. Holding
      the needle through a rebuffer is right; holding it through a station
      change is not, because the old station's level is then being shown
@@ -813,7 +909,20 @@
       analyser.getFloatTimeDomainData(timeData);
       var sum = 0;
       for (var i = 0; i < timeData.length; i++) sum += timeData[i] * timeData[i];
-      target = Signal.rmsToVu(Math.sqrt(sum / timeData.length));
+      var rms = Math.sqrt(sum / timeData.length);
+      target = Signal.rmsToVu(rms);
+      /* Measured on the raw RMS and not on `level`, which is the needle:
+         the ballistics take about a second to fall and would put that
+         second into every reading of how long the silence has lasted. */
+      if (rms < SILENT_RMS) { if (!silentSince) silentSince = ts; }
+      else {
+        silentSince = 0;
+        /* Sound. Whatever was wrong is over, so the ladder goes back to
+           the bottom -- and only here, because a retune of our own puts
+           the transport through 'connecting' and would otherwise look
+           like a fix every time. */
+        if (silentTries) silentTries = 0;
+      }
       /* Filling this costs a 2048-point transform, and in every theme
          but Editorial the canvas it feeds is display:none. */
       if (TunerUI.scopeShowing(el.tuner)) {
@@ -821,6 +930,17 @@
         TunerUI.drawBars(el.tuner, freqData);
       }
     }
+    if (!lit) silentSince = 0;
+    var nowSilent = !!silentSince && ts - silentSince > SILENCE_MS;
+    if (nowSilent !== streamSilent) {
+      streamSilent = nowSilent;
+      paintSilence();
+      /* Coming back is the transport's line to write again, not this
+         one's -- it knows the band, and it may have moved on while the
+         silence was showing. */
+      if (!streamSilent) sayStatus();
+    }
+
     if (!holding) level = Signal.vuBallistics(level, target, dt);
     TunerUI.setLevel(el.tuner, level);
 

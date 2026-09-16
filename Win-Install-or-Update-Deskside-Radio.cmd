@@ -89,15 +89,31 @@ if not defined UPDATING if exist "%APPROOT%\" (
 )
 
 echo.
-if defined UPDATING (echo   Updating "%APPROOT%") else (echo   Installing to "%APPROOT%")
+if defined UPDATING (
+  echo   Updating the copy in
+) else (
+  rem Somebody who has just double-clicked a downloaded file and been shown
+  rem a black window full of moving numbers has every reason to wonder what
+  rem it is doing. So it says so, in advance, in plain words.
+  echo   This downloads Deskside Radio from GitHub and sets it up for your
+  echo   account only. It needs no administrator, writes nothing to the
+  echo   registry, and leaves the rest of your computer alone.
+  echo.
+  echo   Installing into
+)
+echo      "%APPROOT%"
 echo.
 
 rem ---- fetch ------------------------------------------------------------
 set "ZIP=%TEMP%\deskside-radio-download.zip"
 if exist "%ZIP%" del /q "%ZIP%" >nul 2>&1
 
-echo   Fetching the latest release...
-"%CURL%" -fL --retry 2 -o "%ZIP%" "%ZIPURL%"
+rem --progress-bar in place of curl's default table. The table is seven
+rem columns of transfer statistics, mostly zeroes, and it is the single
+rem most alarming thing on the screen for anyone who does not already know
+rem what curl is. One bar says the same thing.
+echo   Downloading...
+"%CURL%" -fL --retry 2 --progress-bar -o "%ZIP%" "%ZIPURL%"
 if errorlevel 1 goto :nofetch
 
 rem Read the archive through before writing a single file out of it. One
@@ -105,6 +121,10 @@ rem line, and it turns a truncated download from a half-replaced app
 rem folder into nothing having happened at all.
 "%TAR%" -tf "%ZIP%" >nul 2>&1
 if errorlevel 1 goto :corrupt
+
+for %%A in ("%ZIP%") do set /a ZIPKB=%%~zA/1024
+set "MSG=Downloaded and checked  (%ZIPKB% KB)"
+call :ok
 
 rem ---- put it in place --------------------------------------------------
 rem Extracted over the top, never wiped first. tar replaces the files it
@@ -122,6 +142,8 @@ echo   Unpacking...
 "%TAR%" -xf "%ZIP%" -C "%APPROOT%"
 if errorlevel 1 goto :locked
 del /q "%ZIP%" >nul 2>&1
+set "MSG=Unpacked"
+call :ok
 
 if not exist "%APPDIR%index.html" goto :corrupt
 
@@ -166,6 +188,8 @@ rem pipe answers that keypress. Harmless once it is no longer needed.
 set "DESKSIDE_NOPAUSE=1"
 echo.| call "%APPDIR%Win - Create Desktop Shortcut (Chrome).cmd"
 set "DESKSIDE_NOPAUSE="
+set "MSG=Desktop shortcut created"
+call :ok
 
 rem And one in the Start menu for the updater itself, because
 rem %LOCALAPPDATA% is not a folder anyone goes looking in. Type "update
@@ -184,26 +208,56 @@ if exist "%SELF%" (
     "  $link.Description = 'Check for and install a newer Deskside Radio';" ^
     "  $link.Save();" ^
     "}"
+  set "MSG=Start menu entry added"
+  call :ok
 )
 
 rem ---- done -------------------------------------------------------------
 echo.
 if defined UPDATING (
-  echo   Updated.
+  set "MSG=Updated"
+  call :ok
   echo.
   echo   Close the radio and open it again to see the new version.
-) else (
-  echo   Installed to "%APPROOT%"
   echo.
-  echo   There is a Deskside Radio shortcut on your Desktop.
+  echo   Your stations and settings were not touched. They live with the
+  echo   browser profile rather than in the app folder, which is why an
+  echo   update can replace every file here and lose nothing.
+) else (
+  set "MSG=All done"
+  call :ok
+  echo.
+  echo   There is now a Deskside Radio shortcut on your Desktop, and the
+  echo   radio is opening.
+  echo.
+  echo   Anything you set up - stations, the schedule, the theme - is kept
+  echo   with the browser profile rather than in the app folder, so
+  echo   updating later never touches it.
   if defined UPDATER echo   To update later, type "update desk" at the Start button.
-  echo   Opening the radio now.
   "%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
     "$p = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Deskside Radio.lnk';" ^
     "if (Test-Path -LiteralPath $p) { Invoke-Item -LiteralPath $p }"
 )
 echo.
 pause
+exit /b 0
+
+rem ---- saying a thing went right ----------------------------------------
+rem Colour through PowerShell's Write-Host rather than ANSI escapes. The
+rem escapes are shorter and need no second process, but a console without
+rem virtual-terminal processing prints them as visible gibberish -- which
+rem is precisely the "what is this thing doing to my computer" reaction
+rem this whole section exists to avoid. Write-Host goes through the console
+rem API and is the same on every Windows that can run this file.
+rem
+rem The message travels in an environment variable so it can be read with
+rem $env:MSG, which needs no quoting of its own. One process per tick, and
+rem there are five of them.
+:ok
+"%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
+  "Write-Host '  ' -NoNewline;" ^
+  "Write-Host '[OK]' -ForegroundColor Green -NoNewline;" ^
+  "Write-Host ('  ' + $env:MSG)"
 exit /b 0
 
 rem ---- the ways it can go wrong -----------------------------------------
