@@ -207,6 +207,8 @@ Updating an install made before this happened leaves the old icons in the root �
 
 Your stations, schedule and settings are in the browser profile, not the app folder, so they survive by default. It asks about them separately at the end, and the answer you get by pressing Enter is to keep them — that is the one part of this that reinstalling cannot undo.
 
+When the install was in its default place it also removes `%LOCALAPPDATA%\DesksideRadio` itself, the folder the app and the profile sit side by side in. That is the whole point of putting them there: everything the radio ever writes is under one folder, and an uninstall that leaves that folder standing has not finished. It is removed with `rd` and no `/s`, which only works on an empty directory — so keeping your settings simply makes the call fail quietly and the folder stays, holding the profile. It is only ever attempted at the default path: an install at `D:\Radio` has `D:\` above it, and that is emphatically not ours to remove.
+
 It can also be pointed at an install somewhere else:
 
 ```

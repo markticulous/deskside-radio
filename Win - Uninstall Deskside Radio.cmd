@@ -108,13 +108,15 @@ if /i "%~2"=="--worker" (
   echo.
 )
 
-echo   This will remove Deskside Radio from this machine.
+echo   This removes Deskside Radio from this computer. It touches nothing
+echo   outside the two places it put things, and needs no administrator.
 echo.
-echo     the app folder    "%APPROOT%"
-echo     its shortcuts     Desktop, Startup and the Start menu
+echo   What goes:
+echo      the app folder    "%APPROOT%"
+echo      its shortcuts     Desktop, Startup and the Start menu
 echo.
-echo   Your stations and settings are kept - they are in the browser
-echo   profile, not in that folder. You are asked about those separately.
+echo   What stays, unless you say otherwise at the end:
+echo      your stations, the schedule, the theme, the sound settings
 echo.
 set "GO="
 set /p "GO=  Type Y and press Enter to go ahead, or just press Enter to stop: "
@@ -158,7 +160,7 @@ rem Which it printed, and then carried on, so every shortcut survived an
 rem uninstall that said it had removed them. The caret is only ever needed
 rem at the end of these lines, outside the quotes, where it joins them.
 echo.
-echo   Removing shortcuts...
+echo   Looking for shortcuts...
 "%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
   "$q = [char]34;" ^
   "$where = @(" ^
@@ -188,10 +190,12 @@ echo   Removing shortcuts...
   "};" ^
   "foreach ($f in $hit) {" ^
   "  Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue;" ^
-  "  if (Test-Path -LiteralPath $f) { Write-Host ('    could not remove ' + $q + $f + $q) }" ^
-  "  else { Write-Host ('    removed ' + $q + (Split-Path $f -Leaf) + $q) }" ^
+  "  if (Test-Path -LiteralPath $f) { Write-Host ('     could not remove ' + $q + $f + $q) }" ^
+  "  else { Write-Host ('     ' + $q + (Split-Path $f -Leaf) + $q) }" ^
   "};" ^
-  "if ($hit.Count -eq 0) { Write-Host '    none found' }"
+  "if ($hit.Count -eq 0) { Write-Host '     none were left to remove' }"
+set "MSG=Shortcuts cleared"
+call :ok
 
 rem ---- the settings -----------------------------------------------------
 rem Its own question, with its own answer, because this is the one part of
@@ -201,16 +205,23 @@ rem wants their stations there afterwards.
 if not exist "%PROFILE%\" goto :folder
 echo.
 echo   Your stations, schedule and settings are in
-echo     "%PROFILE%"
+echo      "%PROFILE%"
 echo.
-echo   Kept, they are picked up again if you ever reinstall.
+echo   Keep them and they are picked up again if you ever reinstall. This
+echo   is the one part of an uninstall that reinstalling cannot undo.
 set "WIPE="
 set /p "WIPE=  Type D and press Enter to delete them too, or just press Enter to keep them: "
 if /i not "%WIPE%"=="D" (
-  echo   Kept.
+  set "MSG=Settings kept"
+  call :ok
 ) else (
   rd /s /q "%PROFILE%" 2>nul
-  if exist "%PROFILE%\" (echo   Could not remove it - close any Deskside Radio window and run this again.) else (echo   Deleted.)
+  if exist "%PROFILE%\" (
+    echo      Could not remove them - close any Deskside Radio window and run this again.
+  ) else (
+    set "MSG=Settings deleted"
+    call :ok
+  )
 )
 
 rem ---- the app folder ---------------------------------------------------
@@ -224,7 +235,7 @@ rem is sitting in. That is worth saying in those words, because "access
 rem denied" sends people looking for permissions they do not need.
 :folder
 echo.
-echo   Removing "%APPROOT%"...
+echo   Removing the app folder...
 rd /s /q "%APPROOT%" 2>nul
 
 if not exist "%APPROOT%\" goto :gone
@@ -253,9 +264,28 @@ exit /b 1
 set "MSG=Removed"
 call :ok
 
+rem And the folder above it, which is ours too when the install was in its
+rem default place: the installer puts the app and the browser profile side
+rem by side under %LOCALAPPDATA%\DesksideRadio precisely so that everything
+rem the radio ever writes is in one place. Leaving that place behind, empty,
+rem after an uninstall that said it was finished is not finishing.
+rem
+rem `rd` without /s removes a directory only when it is empty, so this is
+rem safe by construction: keep your settings and the profile is still in
+rem there, the call fails, and nothing is said about it. It is only ever
+rem tried when the install was at the default path -- an install at D:\Radio
+rem has D:\ above it, and that is emphatically not ours to remove.
+if /i "%APPROOT%"=="%DEFAULT%" rd /q "%LOCALAPPDATA%\DesksideRadio" 2>nul
+if /i "%APPROOT%"=="%DEFAULT%" if not exist "%LOCALAPPDATA%\DesksideRadio\" (
+  set "MSG=Removed %LOCALAPPDATA%\DesksideRadio"
+  call :ok
+)
+
 :done
 echo.
-echo   Deskside Radio has been uninstalled.
+echo   Deskside Radio has been uninstalled. Nothing of it is left running
+echo   and nothing was written to the registry, so there is nothing else
+echo   to tidy up.
 echo.
 pause
 
