@@ -201,6 +201,14 @@ The icons sit at that same path in this repository, so the launchers name them o
 
 Updating an install made before this happened leaves the old icons in the root — unpacking writes over the top and removes nothing. The installer clears those by name once it has confirmed the new set arrived.
 
+## Reduced motion
+
+Windows' **Accessibility → Visual effects → Animation effects**, off by default on a lot of managed machines, makes Chrome report `prefers-reduced-motion: reduce`. The app honours it: every animation stops, scrolling included.
+
+Scrolling a name that does not fit is the one animation here that carries information rather than decorating — without it the end of the name is not slow, it is missing. So **Settings → Theme** grows a **Scroll long names anyway** switch, shown only when the system is actually asking for reduced motion. It re-enables the readout and preset marquees and nothing else; the split-flap reveal, the VFD flicker and the rest stay off.
+
+It has to be `!important` to work, which is unusual enough to explain: the reduced-motion block carries `.tuner *, .tuner *::before, .tuner *::after { animation: none !important }`, and nothing beats an `!important` on a universal selector by being more specific.
+
 ## Removing it
 
 `Win - Uninstall Deskside Radio.cmd` ships inside the zip, so it is sitting in the app folder. Double-click it and it removes that folder and every shortcut the scripts wrote — on the Desktop, in the Startup folder and in the Start menu. Shortcuts are found both by name (`Deskside Radio*.lnk`) and by where they point, so one that was renamed or copied still goes.

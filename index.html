@@ -242,6 +242,21 @@
 
       <section class="pane" id="paneLook" role="tabpanel" aria-labelledby="tabLook" hidden>
         <div class="themes" id="themeCards"></div>
+        <!-- Windows turns this on under Accessibility - Visual effects, and
+             a lot of work machines have it off by policy. It stops every
+             animation in the app, this one included -- but a name that does
+             not fit can only be read by scrolling it, so this is the one
+             piece of movement that carries information rather than
+             decorating it, and it gets a way back. -->
+        <div class="pane-block" id="motionBlock" hidden>
+          <h3>Scrolling names</h3>
+          <p class="hint">Windows is set to reduce animation, so a station name longer than its box is cut off rather than scrolled. Nothing else in the app animates either, which is what that setting is for &mdash; but a name you cannot read is information lost, not motion saved.</p>
+          <label class="switch">
+            <input type="checkbox" id="scrollAnyway">
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">Scroll long names anyway</span>
+          </label>
+        </div>
       </section>
 
       <section class="pane" id="paneService" role="tabpanel" aria-labelledby="tabService" hidden>

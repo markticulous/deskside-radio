@@ -54,7 +54,12 @@
     /* Set by the x on the pill, cleared by the next completed check. The
        pill is a nag and this is the snooze; the mark on the gear is the
        fact, and nothing here touches that. */
-    versionPillOff: false
+    versionPillOff: false,
+    /* Only ever consulted when the system asks for reduced motion. Off by
+       default, because the preference is the listener's and following it
+       is the right default -- this is the way back for the one animation
+       that carries information rather than decorating. */
+    scrollAnyway: false
   };
 
   function clampTone(v) {
@@ -2164,6 +2169,9 @@
     clearFix();
     // Updates sit outside the draft: the switch takes effect as it is used.
     $('versionCheckOn').checked = !!state.versionCheck;
+    // So does this one, and whether it is worth showing at all depends on
+    // a system setting that can have changed since the drawer last opened.
+    paintMotion();
     renderUpdateLine();
     renderDrawer();
     // Snapshot after the render, which fills in any blanks of its own.
@@ -3013,11 +3021,31 @@
       was[c.dataset.id] = c.getBoundingClientRect().top;
     }
 
+    /* Moved only when it is in the wrong place, which it usually is not.
+       appendChild on a node that is already in the document does not copy
+       it, it MOVES it -- the browser detaches the subtree and puts it back
+       -- and doing that between a mousedown and its mouseup throws the
+       click away. Both land on the same element, at the same place, and no
+       click event is ever dispatched.
+
+       Which is how a slot switch came to need two presses. The first press
+       moves focus out of whatever was focused, the card's focusout fires,
+       its setTimeout(0) lands mid-press, and this loop re-inserted all
+       fourteen unchanged cards. The press threw away its own click. The
+       second press worked because focus was by then already inside the
+       card, so no focusout, no reflow, nothing moved.
+
+       It never showed up on the identical switch in Stations, which has no
+       reflow behind it, and it survived every theory about animation and
+       scrolling because the element really was exactly where it looked. */
     var moved = [];
+    var prev = null;
     for (var j = 0; j < order.length; j++) {
       var card = cards[order[j].id];
       if (!card) continue;
-      box.appendChild(card);
+      var shouldFollow = prev ? prev.nextSibling : box.firstChild;
+      if (card !== shouldFollow) box.insertBefore(card, shouldFollow);
+      prev = card;
       moved.push(card);
       delete cards[order[j].id];
     }
@@ -3745,6 +3773,18 @@
     return false;
   }
 
+  /* The block is shown only where it means something. On a machine with
+     animation left on, a switch offering to re-enable scrolling that is
+     already scrolling reads as a fault in the app. */
+  function paintMotion() {
+    var reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    var block = $('motionBlock');
+    if (block) block.hidden = !reduced;
+    var box = $('scrollAnyway');
+    if (box) box.checked = !!state.scrollAnyway;
+    document.documentElement.classList.toggle('scroll-anyway', reduced && !!state.scrollAnyway);
+  }
+
   function updateAvailable() {
     return !!(state.versionLatest && newerThan(state.versionLatest, APP_VERSION));
   }
@@ -3850,6 +3890,25 @@
       checking = false;
       renderUpdateLine('Could not reach GitHub just now · running ' + APP_VERSION);
     });
+  }
+
+  $('scrollAnyway').addEventListener('change', function () {
+    state.scrollAnyway = this.checked;
+    save();
+    paintMotion();
+    /* The names were measured against a box that was not scrolling; they
+       have to be measured again now that they are, or nothing knows how
+       far to travel. */
+    measureNames();
+  });
+
+  /* Windows can be changed while the radio is open, and the media query
+     says so without a reload. */
+  if (window.matchMedia) {
+    var motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var onMotion = function () { paintMotion(); measureNames(); };
+    if (motionQuery.addEventListener) motionQuery.addEventListener('change', onMotion);
+    else if (motionQuery.addListener) motionQuery.addListener(onMotion);
   }
 
   $('checkNow').addEventListener('click', function () { checkVersion(true); });
@@ -4038,6 +4097,7 @@
     // What the last check found, remembered across launches.
     syncUpdatePill();
     // Not on the critical path: let the radio come up first.
+    paintMotion();
     setTimeout(function () { checkVersion(false); }, 3000);
     el.tuner.classList.add('is-quiet');
     meterQuiet = true;

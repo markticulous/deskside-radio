@@ -78,6 +78,27 @@ test('the silent-stream ladder climbs and then stops', () => {
   assert.ok(/silentTries\+\+/.test(src), 'the ladder never advances');
 });
 
+test('the slot list is only re-ordered when it is out of order', () => {
+  /* appendChild on a node that is already in the document MOVES it: the
+     browser detaches the subtree and reattaches it. Doing that between a
+     mousedown and its mouseup throws the click away -- both land on the
+     same element, at the same place, and no click is ever dispatched.
+
+     reflowSlots runs off the card's focusout, on a setTimeout(0), and a
+     mousedown is what causes that focusout. So pressing a switch in a slot
+     re-inserted every card mid-press and the press threw away its own
+     click: the switch needed two goes, every time, and only in the slots.
+     Nothing about that is visible in a diff, which is why it is here. */
+  const src = read('app.js');
+  const at = src.indexOf('function reflowSlots');
+  assert.ok(at !== -1, 'reflowSlots is gone');
+  const fn = src.slice(at, at + 2600);
+  assert.equal(/box\.appendChild\(card\)/.test(fn), false,
+    'reflowSlots moves every card again, which cancels any click in progress inside one');
+  assert.ok(/if \(card !== shouldFollow\) box\.insertBefore\(card, shouldFollow\)/.test(fn),
+    'reflowSlots no longer checks whether a card is already in the right place');
+});
+
 test('every Windows script is named for Windows, and every Linux one for Linux', () => {
   /* A folder of double-clickable scripts is the one place a filename has
      to say what it is for before anyone opens it -- there is no other
