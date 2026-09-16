@@ -98,6 +98,11 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
     filename has to say what it does before anyone opens it. */
  'Win - Create Desktop Shortcut (Edge).cmd',
  'Win - Create Desktop Shortcut (Firefox).cmd',
+ /* The installer ships inside the thing it installs, on purpose: once it
+    has run once, a copy of it is always in the app folder and updating is
+    double-clicking it. That is also why it needs no stored install path --
+    it works out where it is and what that means. */
+ 'Win - Install or Update Deskside Radio.cmd',
  'Linux - Create Desktop Shortcut.sh'].forEach(function (f) {
   fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
 });

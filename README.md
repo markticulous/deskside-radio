@@ -6,9 +6,13 @@ The four themes are laid out side by side in [previews/preview.html](previews/pr
 
 ## Running it
 
-Download the latest release, unzip it anywhere, and open `index.html`. That is the whole installation.
+Download **Win - Install or Update Deskside Radio.cmd** from the [latest release](https://github.com/markticulous/deskside-radio/releases/latest) and double-click it. It fetches the release, unpacks it into `%LOCALAPPDATA%\DesksideRadio\app`, puts a shortcut on your Desktop and opens the radio. Windows asks once whether to run a downloaded file; after that there are no prompts, on this run or on any update.
 
-To put it on the Desktop, double-click **Win - Create Desktop Shortcut (Chrome).cmd** in the same folder. It writes a proper Windows shortcut carrying the icon of whichever theme you name:
+It needs no administrator, which is why it does not go in Program Files: that would cost a UAC prompt every time, including every update.
+
+The old way still works and is unchanged — download `deskside-radio.zip`, unzip it anywhere, open `index.html`. The app itself installs nothing and runs from wherever it sits.
+
+Either way, to put it on the Desktop by hand, double-click **Win - Create Desktop Shortcut (Chrome).cmd** in the same folder. It writes a proper Windows shortcut carrying the icon of whichever theme you name:
 
 ```
 "Win - Create Desktop Shortcut (Chrome).cmd" console
@@ -176,6 +180,12 @@ There is no drift correction. It was written and then removed: playing at 0.5x f
 
 Every six hours the app fetches [`version.json`](version.json) from this repo. When a newer version has been published it shows an **Update available** pill beside the wordmark and a dot on the Settings control, and names the version in **Settings → Service**. It sends no identifiers, downloads nothing, and installs nothing. The switch beside it turns the check off for good, and **Check now** beside that asks straight away rather than waiting for the interval — useful after a release, and the only way to find out without closing and reopening.
 
+To take the update, run **Update Deskside Radio** from the Start menu — or double-click `Win - Install or Update Deskside Radio.cmd`, which the installer leaves in the app folder and every update replaces. It is the same file that installed it, and it works out that it is being run from inside an install and updates that folder in place.
+
+**Nothing is downloaded or replaced until you ask for it.** There is no scheduled task, no background updater and no service; the radio only ever tells you a version exists. It cannot start the updater itself either — a `file://` page has no way to run a local script, which is a limit worth keeping.
+
+Your stations, schedule and settings are not in the app folder. They live in the browser profile at `%LOCALAPPDATA%\DesksideRadio\profile`, so an update replaces every file in the install and loses nothing. Anything else you left beside `index.html` — a `deskside-radio-settings.js` seed, for instance — survives too: the update unpacks over the top rather than clearing the folder first.
+
 ## Building the single-file version
 
 The source is split into a stylesheet and five modules because that is how it is worked on. What ships is one HTML file with all of it inlined:
@@ -189,6 +199,10 @@ That writes `dist/` — `index.html` plus the theme icons, the shortcut helpers,
 `README.html` is the manual, and it sits beside `index.html` here as well as in the download — **Settings → Service → Open the read me** looks in the app's own folder, so a copy run straight from this repository has to find the same file. It is a page rather than plain text because nothing shipped with Windows, macOS or Linux renders Markdown — a browser hands you a local `.md` as raw text in a `<pre>` — while every one of those machines has a browser. The link opens it in a window of its own, sized and centred on the screen the radio is on.
 
 This file, `README.md`, is the one for GitHub and for anyone reading the source.
+
+**Cutting a release.** Attach three files: `deskside-radio-<version>.zip`, `deskside-radio.zip`, and **`Win - Install or Update Deskside Radio.cmd`**. The installer has to be a release asset rather than a link into the repository, because `raw.githubusercontent.com` serves a `.cmd` as `text/plain` and the browser renders it in a tab instead of downloading it. Release assets send `Content-Disposition: attachment`, so they arrive as files.
+
+The installer always fetches `releases/latest/download/deskside-radio.zip` — the stable name, never a versioned one. Pinning it to a version would freeze every copy already sitting in an app folder, silently, because it would still appear to work.
 
 ## Layout
 
