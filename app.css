@@ -643,7 +643,12 @@
   position: absolute; left: -58px; top: 50%; transform: translateY(-50%);
   width: 46px; text-align: center;
   font-family: "Archivo", sans-serif; font-size: 13px; font-weight: 700; letter-spacing: .16em;
-  padding: 5px 0 4px; border-radius: 3px;
+  /* Letter-spacing is added after the last letter as well as between the
+     two, so centring a two-letter word puts it a pixel left of centre and
+     the tracking pads the right. text-indent is halved by the centring,
+     which is exactly the pixel back. The padding is the same 9px, one
+     more of it under the word than over it. */
+  padding: 4px 0 5px; text-indent: 2px; border-radius: 3px;
   color: #7a6134; background: rgba(58,42,18,.09);
   box-shadow: inset 0 0 0 1px rgba(90,66,24,.3);
 }
@@ -2709,23 +2714,24 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
    pseudo-elements replaced the artwork with a tick the moment the card was
    selected. The card has its own to spare, and the thumbnail is its first
    row, so the corner is the same corner. */
-/* The badge is drawn by the card and every --tint is declared on the
-   thumbnail inside it, so the card cannot see one. Rather than lift eight
-   palettes up a level, the badge is given the two values it needs. The
-   ink is dark on all of these but two, which are dark enough themselves
-   that a dark tick would disappear into them. */
-.theme-card:has([data-theme="dial"])       { --tint-badge: #c9a24a; }
-.theme-card:has([data-theme="console"])    { --tint-badge: #ffb000; }
-.theme-card:has([data-theme="rams"])       { --tint-badge: #f0842a; }
-.theme-card:has([data-theme="editorial"])  { --tint-badge: #e11d74; --tint-ink: #fff; }
-.theme-card:has([data-theme="retro"])      { --tint-badge: #f83800; --tint-ink: #fff; }
-.theme-card:has([data-theme="departures"]) { --tint-badge: #a9c23a; }
-.theme-card:has([data-theme="marconi"])    { --tint-badge: #c9a227; }
-.theme-card:has([data-theme="tivoli"])     { --tint-badge: #ff9d2e; }
+/* One flag, the same on all eight. It used to take its colour from the
+   theme it sat on, which made it part of the artwork -- and the one thing
+   this mark has to do is be found at a glance, in a grid where every
+   other square is a different world. A mark that restyles itself per
+   square is the one mark in the grid that cannot be scanned for.
+
+   So: the same orange disc and the same green tick every time, from the
+   two colours below and nowhere else. The pair carries about 4:1, which a
+   2px stroke needs; a brighter green on this orange measures under 2 and
+   vibrates at this size. */
+.theme-card {
+  --badge-disc: #ff9d2e;
+  --badge-tick: #0d5a28;
+}
 
 .theme-card:has(input:checked)::before {
   content: ""; position: absolute; right: 6px; top: 6px; width: 19px; height: 19px;
-  border-radius: 50%; background: var(--tint-badge, var(--ui-fg));
+  border-radius: 50%; background: var(--badge-disc);
   box-shadow: 0 1px 3px rgba(0,0,0,.5); z-index: 3; pointer-events: none;
 }
 /* Two borders of an empty box, turned: a glyph would be set in whatever
@@ -2734,7 +2740,7 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .theme-card:has(input:checked)::after {
   content: ""; position: absolute; right: 12px; top: 9px;
   width: 5px; height: 9px; z-index: 4; pointer-events: none;
-  border: solid var(--tint-ink, #16140d);
+  border: solid var(--badge-tick);
   border-width: 0 2px 2px 0;
   transform: rotate(43deg);
 }
@@ -2774,7 +2780,7 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   color: #7c5f26; font-weight: 700;
 }
 .theme-thumb[data-theme="dial"] .tt-glass {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 16' preserveAspectRatio='none'%3E%3Cpath d='M2.5 13.5 A11.5 11.5 0 0 1 21.5 13.5' fill='none' stroke='%236b5324' stroke-width='1.1'/%3E%3Cpath d='M6.5 7.6 L7.6 8.9 M12 5.6 L12 7.3 M17.5 7.6 L16.4 8.9' stroke='%236b5324' stroke-width='.9'/%3E%3Cline x1='12' y1='14' x2='16.8' y2='7.4' stroke='%23c1402f' stroke-width='1.1'/%3E%3Ccircle cx='12' cy='14' r='1.2' fill='%233a2a12'/%3E%3C/svg%3E") right 5px top 2px / 26px 17px no-repeat, linear-gradient(#f3e8c6, #ddc99a);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 16' preserveAspectRatio='none'%3E%3Crect x='.55' y='.55' width='22.9' height='14.9' rx='2.2' fill='none' stroke='%236b5324' stroke-width='1.1'/%3E%3Cpath d='M2.5 13.5 A11.5 11.5 0 0 1 21.5 13.5' fill='none' stroke='%236b5324' stroke-width='1.1'/%3E%3Cpath d='M6.5 7.6 L7.6 8.9 M12 5.6 L12 7.3 M17.5 7.6 L16.4 8.9' stroke='%236b5324' stroke-width='.9'/%3E%3Cline x1='12' y1='14' x2='16.8' y2='7.4' stroke='%23c1402f' stroke-width='1.1'/%3E%3Ccircle cx='12' cy='14' r='1.2' fill='%233a2a12'/%3E%3C/svg%3E") right 5px top 2px / 26px 17px no-repeat, linear-gradient(#f3e8c6, #ddc99a);
 }
 .theme-thumb[data-theme="dial"] .tt-glass::before {
   content: ""; position: absolute; left: 5px; right: 34px; bottom: 7px; height: 6px;
