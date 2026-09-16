@@ -23,6 +23,10 @@ rem Settings and pick a station, or set up a schedule.
 
 title Deskside Radio - start with Windows
 
+echo.
+echo   DESKSIDE RADIO - START WITH WINDOWS
+echo.
+
 set "APPDIR=%~dp0"
 set "TARGET=%APPDIR%index.html"
 set "STARTUP=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
@@ -71,14 +75,14 @@ rem ---- on -----------------------------------------------------------------
 :install
 set "THEME=%MODE%"
 if not defined THEME set "THEME=dial"
-set "ICON=%APPDIR%favicon-%THEME%.ico"
+set "ICON=%APPDIR%assets\favicon-%THEME%.ico"
 if not exist "%ICON%" (
   set "THEME=dial"
-  set "ICON=%APPDIR%favicon-dial.ico"
+  set "ICON=%APPDIR%assets\favicon-dial.ico"
 )
 if not exist "%ICON%" (
   set "THEME=default"
-  set "ICON=%APPDIR%favicon-dial.ico"
+  set "ICON=%APPDIR%assets\favicon-dial.ico"
 )
 
 set "BROWSER="

@@ -431,23 +431,62 @@
    for a fortnight, which is what a hairline pill says and a banner does
    not. A shade shorter than the plate's own lockup so it reads as the
    lighter of the two. */
+/* The pill is the shell; the notice inside it links out, and the dismiss
+   beside it is a button. Two elements because a button inside a link is
+   not something a browser will build, and because the hover then belongs
+   to whichever of the two the pointer is actually over. */
 .update-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 2px 9px 2px 7px;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 2px 4px 2px 7px;
   border: 1px solid var(--by-line, rgba(128,128,128,.35));
   border-radius: 999px;
   color: var(--by-fg, currentColor);
   font-family: var(--by-font, "Oswald", "Arial Narrow", sans-serif);
   font-size: 10px; font-weight: 500; line-height: 1.4;
   letter-spacing: .1em; text-transform: uppercase;
-  text-decoration: none; white-space: nowrap;
-  transition: opacity .16s ease;
+  white-space: nowrap;
 }
 /* display: inline-flex would otherwise beat the attribute. */
 .update-pill[hidden] { display: none; }
-.update-pill:hover { opacity: .72; }
-.update-pill:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.update-pill-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: inherit; text-decoration: none;
+  font: inherit; letter-spacing: inherit;
+  transition: opacity .16s ease;
+}
+.update-pill-link:hover { opacity: .72; }
+.update-pill-link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .update-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none; }
+/* A ring around the cross rather than a bare one: at this size, in a line
+   of tracked-out uppercase, a lone x reads as another letter. The ring is
+   what says it is a thing to press. Kept at .55 so it sits behind the
+   words until it is wanted -- the notice is the point, this is the way
+   out of it. */
+/* Scoped through the pill because `.tuner button` up at the top of this
+   sheet zeroes border and padding on every button inside the radio, and
+   at one class to one element it outranks a bare `.update-pill-x` -- the
+   ring simply did not draw. */
+.update-pill .update-pill-x {
+  flex: none; display: grid; place-items: center;
+  width: 13px; height: 13px; padding: 0;
+  border: 1px solid currentColor; border-radius: 50%;
+  background: none; color: inherit; cursor: pointer;
+  font: 400 11px/1 "Helvetica Neue", Arial, sans-serif; letter-spacing: 0;
+  opacity: var(--x-rest, .55); transition: opacity .16s ease;
+  -webkit-appearance: none; appearance: none;
+}
+/* Console, Retro and Departures are the three that put a grey byline on a
+   near-black ground, and .55 of a grey on black is most of the way to the
+   background. They get more of their own colour at rest; the warmer
+   themes do not need it and would only be shouted at. */
+[data-theme="console"] .update-pill,
+[data-theme="retro"] .update-pill,
+[data-theme="departures"] .update-pill { --x-rest: .8; }
+/* The multiplication sign does not sit centred on its own em box, so it
+   is nudged onto the middle of the ring rather than left riding low. */
+.update-pill .update-pill-x > span { display: block; margin-top: -1px; }
+.update-pill .update-pill-x:hover { opacity: 1; }
+.update-pill .update-pill-x:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; opacity: 1; }
 
 /* ---- dial scales: ticks and labels sit at their true frequency ---- */
 .dial, .meter { display: none; }
@@ -646,9 +685,15 @@
   /* Letter-spacing is added after the last letter as well as between the
      two, so centring a two-letter word puts it a pixel left of centre and
      the tracking pads the right. text-indent is halved by the centring,
-     which is exactly the pixel back. The padding is the same 9px, one
-     more of it under the word than over it. */
-  padding: 4px 0 5px; text-indent: 2px; border-radius: 3px;
+     which is exactly the pixel back.
+
+     Vertically 5/4 rather than 4/5, which looks wrong written down and
+     measures right: these are capitals with no descender, so the ink ends
+     at the baseline while the line box carries the descent underneath it.
+     Centring the box leaves the word sitting high. Measured on the glyphs
+     themselves, 5 over and 4 under puts 7px of air above the ink and 7
+     below. */
+  padding: 5px 0 4px; text-indent: 2px; border-radius: 3px;
   color: #7a6134; background: rgba(58,42,18,.09);
   box-shadow: inset 0 0 0 1px rgba(90,66,24,.3);
 }
@@ -888,13 +933,20 @@
    grid does not switch, it fades. */
 [data-theme="console"] .display-name .vfd-ch {
   --lit: 1;
+  /* The glow alone was not a flicker. Dimming only the text-shadow left
+     the glyph painted at full amber with a slightly smaller halo, which
+     against this background is invisible -- the stumble was running and
+     could not be seen. A grid that is not being driven emits less light,
+     so the segment itself has to fall with it, and the colour goes toward
+     the dark of the glass rather than toward grey. */
+  color: color-mix(in srgb, var(--amber) calc(var(--lit) * 100%), #241a08);
   text-shadow:
     0 0 1px rgba(255,232,186,calc(.95 * var(--lit))),
     0 0 3px rgba(255,190,70,calc(.9 * var(--lit))),
     0 0 12px rgba(255,176,0,calc(.5 * var(--lit))),
     0 0 34px rgba(255,150,0,calc(.3 * var(--lit))),
     0 0 72px rgba(255,130,0,calc(.16 * var(--lit)));
-  transition: text-shadow .05s linear;
+  transition: text-shadow .05s linear, color .05s linear;
 }
 @media (prefers-reduced-motion: reduce) {
   [data-theme="console"] .display-name .vfd-ch { transition: none; }
@@ -1397,10 +1449,23 @@
    whole bar chopped into cells, so colour stays fixed to the scale. */
 [data-theme="retro"] .meter { display: block; margin-top: 22px; }
 [data-theme="retro"] .meter-face, [data-theme="retro"] .meter-scale { display: none; }
+/* The cells are cut by a mask whose stops are hard edges, and a hard edge
+   that does not land on a whole device pixel gets antialiased -- so at
+   125% or 150% display scaling a 19px pitch put roughly three quarters of
+   the boundaries on a half pixel and the browser painted each of those as
+   a thinner, weaker line down one side of a cell. Every cell should look
+   like every other cell; these did not.
+
+   So the pitch here is the intent and refreshMeter writes back the
+   realisation: the same lengths rounded to whole device pixels for the
+   screen in front of them, plus the bar's own subpixel offset, so that
+   the edges start on a pixel as well as repeat on one. Without a script
+   the authored values are used and it looks exactly as it did. */
 [data-theme="retro"] .meter-bar {
   position: relative; height: 22px; background: var(--dark);
-  -webkit-mask: repeating-linear-gradient(90deg, #000 0 15px, transparent 15px 19px);
-          mask: repeating-linear-gradient(90deg, #000 0 15px, transparent 15px 19px);
+  --lit-w: calc(var(--cell-dp, var(--vu-cell, 19px)) - var(--gap-dp, var(--vu-gap, 4px)));
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 var(--lit-w), transparent var(--lit-w) var(--cell-dp, var(--vu-cell, 19px))) var(--cell-origin, 0) 0 / auto auto;
+          mask: repeating-linear-gradient(90deg, #000 0 var(--lit-w), transparent var(--lit-w) var(--cell-dp, var(--vu-cell, 19px))) var(--cell-origin, 0) 0 / auto auto;
 }
 [data-theme="retro"] .meter-bar::before {
   content: ""; position: absolute; inset: 0;
@@ -1409,7 +1474,7 @@
 /* One cell is 15px lit and 4px dark, so the pitch is 19. The stylesheet
    carries a rough fraction of its own in case the measurement never runs;
    vuTargets replaces it with the real one for the width in front of it. */
-[data-theme="retro"] .meter { --vu-cell: 19px; --vu-step: .02; }
+[data-theme="retro"] .meter { --vu-cell: 19px; --vu-gap: 4px; --vu-step: .02; }
 [data-theme="retro"] .meter-bar::after {
   content: ""; position: absolute; inset: 0; background: var(--dark);
   transform-origin: right center;

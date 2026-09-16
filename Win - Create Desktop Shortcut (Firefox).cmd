@@ -26,6 +26,10 @@ rem the others.
 
 title Deskside Radio - desktop shortcut (Firefox)
 
+echo.
+echo   DESKSIDE RADIO - DESKTOP SHORTCUT (FIREFOX)
+echo.
+
 set "APPDIR=%~dp0"
 set "TARGET=%APPDIR%index.html"
 
@@ -40,10 +44,10 @@ if not exist "%TARGET%" (
 
 set "THEME=%~1"
 if not defined THEME set "THEME=dial"
-set "ICON=%APPDIR%favicon-%THEME%.ico"
+set "ICON=%APPDIR%assets\favicon-%THEME%.ico"
 if not exist "%ICON%" (
   set "THEME=dial"
-  set "ICON=%APPDIR%favicon-dial.ico"
+  set "ICON=%APPDIR%assets\favicon-dial.ico"
 )
 
 rem ---- find Firefox -------------------------------------------------------

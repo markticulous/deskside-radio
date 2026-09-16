@@ -241,6 +241,66 @@ h2 {
 }
 .n-pill b { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
+/* ---- the shipped pill, with its dismiss -------------------------------
+   Built the way the app builds it rather than approximated: a shell with
+   the border, a link inside it, and a button beside the link. Each row
+   carries one theme's real --by-fg and --by-line, which are the two
+   values the pill reads. */
+.ship {
+  display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 14px;
+  padding: 13px 16px; background: var(--bg);
+  border-bottom: 1px solid rgba(128,128,128,.18);
+}
+.ship:last-child { border-bottom: 0; }
+.ship .t-label { font: 500 10px/1 var(--mono); letter-spacing: .08em; color: var(--fg); opacity: .5; }
+
+.s-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 2px 4px 2px 7px;
+  border: 1px solid var(--by-line); border-radius: 999px;
+  color: var(--by-fg);
+  font-family: var(--display);
+  font-size: 10px; font-weight: 500; line-height: 1.4;
+  letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
+}
+.s-pill[hidden] { display: none; }
+.s-link { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; font: inherit; letter-spacing: inherit; }
+.s-link:hover { opacity: .72; }
+.s-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none; }
+.s-x {
+  flex: none; display: grid; place-items: center;
+  width: 13px; height: 13px; padding: 0;
+  border: 1px solid currentColor; border-radius: 50%;
+  background: none; color: inherit; cursor: pointer;
+  font: 400 11px/1 "Helvetica Neue", Arial, sans-serif; letter-spacing: 0;
+  opacity: var(--x-rest, .55); transition: opacity .16s ease;
+  -webkit-appearance: none; appearance: none;
+}
+.s-x > span { display: block; margin-top: -1px; }
+.s-x:hover { opacity: 1; }
+.s-gone { font: 400 11px/1 var(--mono); color: var(--fg); opacity: .4; }
+.s-gone[hidden] { display: none; }
+
+.ship-foot {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 14px 16px; background: var(--sunk);
+  border-top: 1px solid var(--line);
+}
+.ship-foot button {
+  font: 500 12px/1 var(--ui); letter-spacing: .02em;
+  padding: 8px 14px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--rule); background: var(--surface); color: var(--ink);
+}
+.ship-foot button:hover { border-color: var(--accent); color: var(--accent); }
+.ship-foot span { font-size: 12.5px; color: var(--mute); }
+
+/* Big enough to see what is being pressed. */
+.zoom { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; padding: 22px 16px; background: var(--bg); }
+.zoom .s-pill { font-size: 20px; gap: 14px; padding: 4px 8px 4px 14px; border-width: 2px; }
+.zoom .s-dot { width: 10px; height: 10px; }
+.zoom .s-x { width: 26px; height: 26px; border-width: 2px; font-size: 22px; }
+.zoom .s-x > span { margin-top: -2px; }
+
 /* C. a word after the maker plate */
 .n-quiet {
   font-size: 11px;
@@ -342,9 +402,79 @@ h2 {
 
 <div class="wrap">
 
-  <p class="eyebrow">Deskside Radio &middot; v1.3.0</p>
+  <p class="eyebrow">Deskside Radio &middot; v1.4.0</p>
   <h1>Where an update should announce itself</h1>
   <p class="standfirst">The check already runs and already knows. What it has never had is anywhere to say so outside the Settings drawer. Five placements below, each drawn into the radio&rsquo;s own top bar across four of the eight themes &mdash; <strong>whatever is chosen has to sit in one place and read the same way in all of them.</strong></p>
+
+  <section>
+    <h2>The dismiss, as built</h2>
+    <p class="lede">B was chosen and shipped. What it did not have was a way to stop saying it. The pill now carries a ring-and-cross at its right-hand end &mdash; <strong>every pill below is live: press one and watch it go.</strong> &ldquo;Restore&rdquo; at the foot stands in for the next completed check.</p>
+
+    <div class="opt">
+      <div class="opt-head">
+        <span class="opt-key">&times;</span>
+        <span class="opt-name">Inside the pill, after the words</span>
+        <span class="opt-note">A ring rather than a bare cross: at 10px, in a line of tracked-out uppercase, a lone x reads as another letter. It sits at 55% opacity and comes up to full on hover, so the notice stays the loud thing and the way out of it stays available.</span>
+      </div>
+      <div class="zoom" style="--bg: #2b1d14; --fg: #f0e2c8; --by-fg: #e3cf9a; --by-line: rgba(201,162,74,.55);">
+        <span class="s-pill"><a class="s-link" href="#" onclick="return false"><span class="s-dot"></span>Update available</a><button type="button" class="s-x" aria-label="Hide this until the next check"><span aria-hidden="true">&times;</span></button></span><span class="s-gone" hidden>dismissed &mdash; back at the next check</span>
+      </div>
+      <div class="bars">
+        <div class="ship" style="--bg: #2b1d14; --fg: #f0e2c8; --by-fg: #e3cf9a; --by-line: rgba(201,162,74,.55);">
+          <span class="t-label">dial</span>
+          <span><span class="s-pill"><a class="s-link" href="#" onclick="return false"><span class="s-dot"></span>Update available</a><button type="button" class="s-x" aria-label="Hide this until the next check"><span aria-hidden="true">&times;</span></button></span><span class="s-gone" hidden>dismissed &mdash; back at the next check</span></span>
+        </div>
+        <div class="ship" style="--bg: #0b0c0e; --fg: #cfd4d8; --x-rest: .8; --by-fg: #8a9096; --by-line: #3a3f45;">
+          <span class="t-label">console</span>
+          <span><span class="s-pill"><a class="s-link" href="#" onclick="return false"><span class="s-dot"></span>Update available</a><button type="button" class="s-x" aria-label="Hide this until the next check"><span aria-hidden="true">&times;</span></button></span><span class="s-gone" hidden>dismissed &mdash; back at the next check</span></span>
+        </div>
+        <div class="ship" style="--bg: #f3f1ec; --fg: #1d1d1b; --by-fg: #7a7871; --by-line: #cfcbc2;">
+          <span class="t-label">rams</span>
+          <span><span class="s-pill"><a class="s-link" href="#" onclick="return false"><span class="s-dot"></span>Update available</a><button type="button" class="s-x" aria-label="Hide this until the next check"><span aria-hidden="true">&times;</span></button></span><span class="s-gone" hidden>dismissed &mdash; back at the next check</span></span>
+        </div>
+        <div class="ship" style="--bg: #fbfbfa; --fg: #111111; --by-fg: #6e6e6a; --by-line: #cfcfca;">
+          <span class="t-label">editorial</span>
+          <span><span class="s-pill"><a class="s-link" href="#" onclick="return false"><span class="s-dot"></span>Update available</a><button type="button" class="s-x" aria-label="Hide this until the next check"><span aria-hidden="true">&times;</span></button></span><span class="s-gone" hidden>dismissed &mdash; back at the next check</span></span>
+        </div>
+        <div class="ship" style="--bg: #0a0a0c; --fg: #fcfcfc; --x-rest: .8; --by-fg: #7c7c7c; --by-line: #3c3c3c;">
+          <span class="t-label">retro</span>
+          <span><span class="s-pill"><a class="s-link" href="#" onclick="return false"><span class="s-dot"></span>Update available</a><button type="button" class="s-x" aria-label="Hide this until the next check"><span aria-hidden="true">&times;</span></button></span><span class="s-gone" hidden>dismissed &mdash; back at the next check</span></span>
+        </div>
+        <div class="ship" style="--bg: #0b0b0c; --fg: #f5f3ec; --x-rest: .8; --by-fg: #6f7176; --by-line: #2a2c31;">
+          <span class="t-label">departures</span>
+          <span><span class="s-pill"><a class="s-link" href="#" onclick="return false"><span class="s-dot"></span>Update available</a><button type="button" class="s-x" aria-label="Hide this until the next check"><span aria-hidden="true">&times;</span></button></span><span class="s-gone" hidden>dismissed &mdash; back at the next check</span></span>
+        </div>
+        <div class="ship" style="--bg: #0f0c09; --fg: #f3e8cd; --by-fg: #9a875c; --by-line: rgba(201,162,39,.5);">
+          <span class="t-label">marconi</span>
+          <span><span class="s-pill"><a class="s-link" href="#" onclick="return false"><span class="s-dot"></span>Update available</a><button type="button" class="s-x" aria-label="Hide this until the next check"><span aria-hidden="true">&times;</span></button></span><span class="s-gone" hidden>dismissed &mdash; back at the next check</span></span>
+        </div>
+        <div class="ship" style="--bg: #4a2418; --fg: #f3ece1; --by-fg: #d8bfa4; --by-line: rgba(255,220,180,.3);">
+          <span class="t-label">tivoli</span>
+          <span><span class="s-pill"><a class="s-link" href="#" onclick="return false"><span class="s-dot"></span>Update available</a><button type="button" class="s-x" aria-label="Hide this until the next check"><span aria-hidden="true">&times;</span></button></span><span class="s-gone" hidden>dismissed &mdash; back at the next check</span></span>
+        </div>
+      </div>
+      <div class="ship-foot">
+        <button type="button" id="restore">Restore &mdash; as a check would</button>
+        <span>The mark on the Settings control is not affected by any of this. It stays for as long as the update is there and has not been installed.</span>
+      </div>
+    </div>
+
+    <div class="opt">
+      <div class="opt-head">
+        <span class="opt-key">?</span>
+        <span class="opt-name">What the cross actually does</span>
+        <span class="opt-note">It is a snooze, not a mute.</span>
+      </div>
+      <div style="padding: 16px 18px;">
+        <ul style="margin: 0; padding-left: 20px; line-height: 1.75; font-size: 14px;">
+          <li>Pressing it hides the pill and remembers that, so it stays hidden across a restart.</li>
+          <li>The next check that comes back &mdash; the six-hourly one, or <em>Check now</em> &mdash; clears it, and the pill returns if the update is still outstanding.</li>
+          <li>The dot on the Settings control is never hidden by it. That one is a fact about the machine; the pill is an announcement about it.</li>
+          <li>Both disappear for good the moment the running version catches up with the published one.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
 
   <section>
     <h2>Placements</h2>
@@ -527,3 +657,20 @@ h2 {
   <p class="foot">Mock bars are reduced drawings, not screenshots &mdash; brand, maker plate, clock, schedule chip, shortcut and Settings, with each theme&rsquo;s own ground, ink and accent. The remaining four themes (editorial, departures, marconi, Model One) sit between the extremes shown here.</p>
 
 </div>
+
+<script>
+/* Only what the page has to do to show the thing: hide a pill on its own
+   cross, and put them all back when the button stands in for a check. */
+document.querySelectorAll('.s-x').forEach(function (x) {
+  x.addEventListener('click', function () {
+    var pill = x.closest('.s-pill');
+    pill.hidden = true;
+    var gone = pill.nextElementSibling;
+    if (gone && gone.classList.contains('s-gone')) gone.hidden = false;
+  });
+});
+document.getElementById('restore').addEventListener('click', function () {
+  document.querySelectorAll('.s-pill').forEach(function (p) { p.hidden = false; });
+  document.querySelectorAll('.s-gone').forEach(function (g) { g.hidden = true; });
+});
+</script>

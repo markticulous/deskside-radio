@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Deskside Radio — Read me</title>
-<link rel="icon" href="favicon-dial.ico">
+<link rel="icon" href="assets/favicon-dial.ico">
 <meta name="color-scheme" content="light dark">
 <style>
 /* A booklet, not a web page. Everything here is in this one file: no
@@ -524,17 +524,17 @@ html { scroll-behavior: smooth; }
         <dt><span class="path">Win - Start With Windows.cmd</span></dt>
         <dd>Opens the radio when you sign in.</dd>
 
+        <dt><span class="path">Win - Uninstall Deskside Radio.cmd</span></dt>
+        <dd>Takes it off again: this folder and every shortcut it put on the Desktop, in Startup and in the Start menu. Your stations and settings are kept unless you say otherwise &mdash; it asks about those separately, because that is the one part reinstalling cannot bring back.</dd>
+
         <dt><span class="path">Linux - Create Desktop Shortcut.sh</span></dt>
         <dd>Both of those, for Linux. Add <code>--autostart</code> for sign-in.</dd>
-
-        <dt><span class="path">favicon-*.ico</span></dt>
-        <dd>One icon per theme, used by the shortcut.</dd>
 
         <dt><span class="path">README.html</span></dt>
         <dd>This file.</dd>
 
-        <dt><span class="path">LICENSE.txt</span></dt>
-        <dd>The MIT licence.</dd>
+        <dt><span class="path">assets/</span></dt>
+        <dd>Everything the radio needs and nobody opens &mdash; one <span class="path">favicon-*.ico</span> per theme, for the shortcut, and <span class="path">LICENSE.txt</span>. The root of this folder is only the things you double-click; this is where the rest of it went.</dd>
       </dl>
       <p>Anything starting <strong>Win -</strong> is for Windows and anything starting <strong>Linux -</strong> is for Linux; on a Mac you make the shortcut from inside the radio instead, with the button in the top bar.</p>
       <p>Keep the files together in one folder. You can put that folder anywhere: Documents, OneDrive, a USB stick.</p>
@@ -713,6 +713,7 @@ html { scroll-behavior: smooth; }
       <p class="lead">Everything lives in your browser’s storage on this machine. No account, no sign-in, nothing uploaded, no analytics.</p>
       <p>The page asks Google Fonts for its typefaces each time it opens, which tells Google an anonymous request came from your address, the same as any web page using a hosted font. Playing a station tells that station the same. Nothing else leaves the machine.</p>
       <p>Every six hours the app checks a single file on GitHub to see whether a newer version has been published. When there is one it shows a small <strong>Update available</strong> pill beside the wordmark and a dot on the Settings control — the same mark in the same place whichever theme you are in. It sends nothing about you, downloads nothing and installs nothing. The switch beside it in <strong>Settings → Service</strong> turns that check off for good.</p>
+      <p>The pill carries a small &times; in a ring. Press it and the pill goes away until the next time the radio has actually been out to look, so it is a snooze rather than a mute. The dot on the Settings control is not touched by it: that one stays for as long as the update is there and has not been installed.</p>
       <p>To take an update, run <strong>Update Deskside Radio</strong> from the Start menu &mdash; type &ldquo;update desk&rdquo; at the Start button and it is there. It is the same file that installed the radio, left in the app folder and replaced by every update. It works out that it is being run from inside an install, fetches the new version and unpacks it over the old one. Close the radio and open it again to see it.</p>
       <p><strong>Nothing is downloaded or replaced until you ask for it.</strong> There is no scheduled task, no background updater, and nothing running when the radio is not. The radio only ever tells you that a version exists; it cannot start the updater itself, because a page opened from a disk has no way to run a program &mdash; and that is a limit worth keeping.</p>
       <p>An update replaces every file in the app folder and loses nothing, because your stations, schedule and settings are not in it &mdash; they are in the browser profile. Anything else you left beside <span class="path">index.html</span>, such as a settings seed, survives as well: the update unpacks over the top rather than clearing the folder out first.</p>

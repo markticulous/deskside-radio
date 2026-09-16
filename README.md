@@ -184,13 +184,37 @@ There is no drift correction. It was written and then removed: playing at 0.5x f
 
 ## Updates
 
-Every six hours the app fetches [`version.json`](version.json) from this repo. When a newer version has been published it shows an **Update available** pill beside the wordmark and a dot on the Settings control, and names the version in **Settings → Service**. It sends no identifiers, downloads nothing, and installs nothing. The switch beside it turns the check off for good, and **Check now** beside that asks straight away rather than waiting for the interval — useful after a release, and the only way to find out without closing and reopening.
+Every six hours the app fetches [`version.json`](version.json) from this repo. When a newer version has been published it shows an **Update available** pill beside the wordmark and a dot on the Settings control, and names the version in **Settings → Service**. The pill carries a ⓧ: pressing it puts the pill away until the next completed check, which is a snooze rather than a mute. The dot on the Settings control is not affected by it and stays for as long as the update is outstanding. It sends no identifiers, downloads nothing, and installs nothing. The switch beside it turns the check off for good, and **Check now** beside that asks straight away rather than waiting for the interval — useful after a release, and the only way to find out without closing and reopening.
 
 To take the update, run **Update Deskside Radio** from the Start menu — or double-click `Win - Install or Update Deskside Radio.cmd`, which the installer leaves in the app folder and every update replaces. It is the same file that installed it, and it works out that it is being run from inside an install and updates that folder in place.
 
 **Nothing is downloaded or replaced until you ask for it.** There is no scheduled task, no background updater and no service; the radio only ever tells you a version exists. It cannot start the updater itself either — a `file://` page has no way to run a local script, which is a limit worth keeping.
 
 Your stations, schedule and settings are not in the app folder. They live in the browser profile at `%LOCALAPPDATA%\DesksideRadio\profile`, so an update replaces every file in the install and loses nothing. Anything else you left beside `index.html` — a `deskside-radio-settings.js` seed, for instance — survives too: the update unpacks over the top rather than clearing the folder first.
+
+## What the download looks like
+
+The root of the unzipped folder holds only things meant to be double-clicked — `index.html`, `README.html`, and the `Win -` and `Linux -` scripts. Everything the radio needs but nobody opens is in `assets/`: one `favicon-*.ico` per theme, and `LICENSE.txt`.
+
+The icons sit at that same path in this repository, so the launchers name them one way and it works whether they are run from a clone or from a download. The licence is the exception: `LICENSE` stays at the repo root, where GitHub and every licence scanner looks for it, and the build writes it to `assets/LICENSE.txt` on the way into the archive.
+
+Updating an install made before this happened leaves the old icons in the root — unpacking writes over the top and removes nothing. The installer clears those by name once it has confirmed the new set arrived.
+
+## Removing it
+
+`Win - Uninstall Deskside Radio.cmd` ships inside the zip, so it is sitting in the app folder. Double-click it and it removes that folder and every shortcut the scripts wrote — on the Desktop, in the Startup folder and in the Start menu. Shortcuts are found both by name (`Deskside Radio*.lnk`) and by where they point, so one that was renamed or copied still goes.
+
+Your stations, schedule and settings are in the browser profile, not the app folder, so they survive by default. It asks about them separately at the end, and the answer you get by pressing Enter is to keep them — that is the one part of this that reinstalling cannot undo.
+
+It can also be pointed at an install somewhere else:
+
+```
+"Win - Uninstall Deskside Radio.cmd" D:\Somewhere\Radio
+```
+
+Run inside the source tree it refuses, on the same `app.css` test the installer uses.
+
+One wrinkle worth knowing, because it looks odd from the outside: cmd holds a `.cmd` open for as long as it is running, so a script inside the app folder cannot delete the folder it is inside. The last step is therefore handed to a copy of itself in `%TEMP%`, which waits for the console window to close and then removes the tree. It is the final action, after everything has been reported, and that copy deletes itself afterwards.
 
 ## Building the single-file version
 

@@ -31,6 +31,8 @@ const zip = require('./zip.js');
 
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'dist');
+// Everything the app needs and nobody double-clicks.
+const ASSETS = 'assets';
 const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const bytes = (s) => Buffer.byteLength(s, 'utf8');
 let saved = 0;
@@ -83,16 +85,23 @@ html = html.replace('href="icon-256.png"', 'href="' + dataUri('icon-256.png', 'i
    Only real tags count — app.js builds URLs in strings, and matching those
    made the build report itself. */
 const loads = html.match(/<(?:script|link|img)\b[^>]*\b(?:src|href)="(?!https?:|data:)([^"]+)"/g) || [];
-const outside = loads.filter(function (tag) { return tag.indexOf('favicon-dial.ico') === -1; });
+const outside = loads.filter(function (tag) { return tag.indexOf(ASSETS + '/favicon-dial.ico') === -1; });
 if (outside.length) console.log('note: still loading from separate files:\n  ' + outside.join('\n  '));
 
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
 
-['favicon-dial.ico', 'favicon-console.ico', 'favicon-rams.ico', 'favicon-editorial.ico',
- 'favicon-retro.ico', 'favicon-departures.ico', 'favicon-marconi.ico', 'favicon-tivoli.ico',
- 'Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start With Windows.cmd',
+/* What lands in the root of the download is exactly what somebody is
+   meant to double-click, and nothing else. Anything the app needs but
+   nobody opens goes in assets/ beside it.
+
+   The reason is that this folder is the whole interface for half of what
+   this project does. Someone who has just unzipped it is looking for the
+   thing to run, and eight .ico files and a licence sitting in the same
+   list as the scripts are eight wrong answers each. Sorted this way the
+   root reads as a short menu. */
+['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start With Windows.cmd',
  /* The per-browser launchers, and Linux. Named for the platform they are
     for, because a folder of double-clickable scripts is the one place a
     filename has to say what it does before anyone opens it. */
@@ -103,9 +112,23 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
     double-clicking it. That is also why it needs no stored install path --
     it works out where it is and what that means. */
  'Win - Install or Update Deskside Radio.cmd',
+ /* And the way back out, which ships for the same reason: the folder
+    somebody wants to be rid of is the folder that knows how to remove
+    itself, its shortcuts and nothing else. */
+ 'Win - Uninstall Deskside Radio.cmd',
  'Linux - Create Desktop Shortcut.sh'].forEach(function (f) {
   fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
 });
+
+/* The icons keep the path they have in the source tree, so the launchers
+   name them the same way whether they are run from a clone or from a
+   download -- there is one string, and it cannot drift. */
+fs.mkdirSync(path.join(OUT, ASSETS), { recursive: true });
+fs.readdirSync(path.join(ROOT, ASSETS))
+  .filter(function (f) { return /\.ico$/i.test(f); })
+  .forEach(function (f) {
+    fs.copyFileSync(path.join(ROOT, ASSETS, f), path.join(OUT, ASSETS, f));
+  });
 
 /* The folder people actually download needs its own readme: the one in the
    repository is written for someone reading the source, not for someone who
@@ -129,10 +152,23 @@ fs.writeFileSync(path.join(OUT, 'README.html'), manual);
 /* And the licence, which the MIT terms ask to travel with every copy. It
    used to be left behind in the repository, which was an oversight when
    the source carried its own header comment and is plainly one now that
-   the build takes the comments out. */
-fs.copyFileSync(path.join(ROOT, 'LICENSE'), path.join(OUT, 'LICENSE.txt'));
+   the build takes the comments out.
 
-const files = fs.readdirSync(OUT).sort();
+   In assets/ rather than the root: it has to be in the download and it is
+   not a thing anyone opens to use the radio. It keeps its root place in
+   the repository, where it is the file GitHub and every licence scanner
+   goes looking for. */
+fs.copyFileSync(path.join(ROOT, 'LICENSE'), path.join(OUT, ASSETS, 'LICENSE.txt'));
+
+/* Forward slashes, because these names become zip entry names and that is
+   what the format uses on every platform. */
+function walk(dir, prefix) {
+  return fs.readdirSync(path.join(OUT, dir || '.')).sort().reduce(function (all, f) {
+    const rel = prefix ? prefix + '/' + f : f;
+    return all.concat(fs.statSync(path.join(OUT, rel)).isDirectory() ? walk(rel, rel) : [rel]);
+  }, []);
+}
+const files = walk('', '');
 const total = files.reduce(function (n, f) { return n + fs.statSync(path.join(OUT, f)).size; }, 0);
 console.log('dist/  ' + files.length + ' files, ' + (total / 1024).toFixed(0) + ' KB');
 files.forEach(function (f) {
