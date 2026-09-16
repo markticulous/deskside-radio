@@ -215,7 +215,9 @@ It can also be pointed at an install somewhere else:
 
 Run inside the source tree it refuses, on the same `app.css` test the installer uses.
 
-One wrinkle worth knowing, because it looks odd from the outside: cmd holds a `.cmd` open for as long as it is running, so a script inside the app folder cannot delete the folder it is inside. The last step is therefore handed to a copy of itself in `%TEMP%`, which waits for the console window to close and then removes the tree. It is the final action, after everything has been reported, and that copy deletes itself afterwards.
+One wrinkle worth knowing, because it looks odd from the outside: cmd holds a `.cmd` open for as long as it is running, so a script inside the app folder cannot delete the folder it is inside. It therefore copies itself to `%TEMP%` and hands the whole job over to that copy **before doing anything else** — a new window opens, the original closes, and everything from the confirmation onwards happens in the new one. That copy deletes itself when it finishes.
+
+The handover used to be the *last* step rather than the first, which worked and could not report: by the time anything was deleted the window that would have said so was gone. If the folder could not be removed — which happens whenever the radio is still open, because the shortcut makes that folder the browser's working directory and Windows will not delete a folder something is running in — nobody was told anything at all. Now it is deleted in a window that is still there to say what happened, and says that in those words rather than leaving you with "access denied".
 
 ## Building the single-file version
 
