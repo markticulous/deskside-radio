@@ -6,13 +6,19 @@ The four themes are laid out side by side in [previews/preview.html](previews/pr
 
 ## Running it
 
-Download **Win - Install or Update Deskside Radio.cmd** from the [latest release](https://github.com/markticulous/deskside-radio/releases/latest) and double-click it. It fetches the release, unpacks it into `%LOCALAPPDATA%\DesksideRadio\app`, puts a shortcut on your Desktop and opens the radio. Windows asks once whether to run a downloaded file; after that there are no prompts, on this run or on any update.
+Download **Win - Install or Update Deskside Radio.cmd** from the [latest release](https://github.com/markticulous/deskside-radio/releases/latest) and double-click it.
+
+That's all — it installs the radio, puts a shortcut on your Desktop and opens it.
+
+If you are reading this inside a folder you unzipped yourself, double-click **Win - Create Desktop Shortcut (Chrome).cmd** instead and it works the same way from where it stands.
+
+It unpacks into `%LOCALAPPDATA%\DesksideRadio\app`. Windows asks once whether to run a downloaded file; after that there are no prompts, on this run or on any update.
 
 It needs no administrator, which is why it does not go in Program Files: that would cost a UAC prompt every time, including every update.
 
 The old way still works and is unchanged — download `deskside-radio.zip`, unzip it anywhere, open `index.html`. The app itself installs nothing and runs from wherever it sits.
 
-Either way, to put it on the Desktop by hand, double-click **Win - Create Desktop Shortcut (Chrome).cmd** in the same folder. It writes a proper Windows shortcut carrying the icon of whichever theme you name:
+**Win - Create Desktop Shortcut (Chrome).cmd** writes a proper Windows shortcut carrying the icon of whichever theme you name:
 
 ```
 "Win - Create Desktop Shortcut (Chrome).cmd" console

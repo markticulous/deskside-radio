@@ -8,9 +8,28 @@
   var VU_R = 82;          // arc radius
   /* Inside the ticks, not among them. A major tick reaches in to VU_R-12,
      which is 70, and a figure centred at 65 puts its own box across that
-     -- so -20 and +3 were printed touching the marks they belong to. */
-  var VU_LABEL_R = 55;    // where the printed numbers sit
+     -- so -20 and +3 were printed touching the marks they belong to.
+     61 is as far out as they go: the binding pair is -20 and +3, whose
+     boxes turn with the ray and reach their own tick corner-first, and
+     the four numerals read as belonging to their marks rather than
+     floating below them. */
+  var VU_LABEL_R = 61;    // where the printed numbers sit
   var VU_NEEDLE_R = 76;
+
+  /* The card, and every layer printed on it. Narrower than the drawing
+     area and carried further below the pivot: the sweep is 104 degrees,
+     so the corners either side of the arc were always empty card, while
+     the movement's own tail -- Marconi's counterweight, at pivot + 14 --
+     sat past the bottom edge and was cut off by it.
+
+     The bottom edge lands at 123, which is the tail's own 122 plus one:
+     that spike is the lowest thing drawn, and it is what stops this
+     number coming down any further.
+
+     Nothing inside moves. VU_R, VU_PIVOT and the needle are untouched,
+     and the viewBox keeps its 200 units across, so the scale, the ticks
+     and the pointer are drawn at exactly the size they were. */
+  var VU_BOX = { x: 12, y: 2, width: 176, height: 121, rx: 6 };
 
   function svg(tag, attrs) {
     var e = document.createElementNS(SVG, tag);
@@ -108,6 +127,17 @@
     return g;
   }
 
+  /* Every layer of the card is the same rectangle: paper, lamp, vignette
+     and the sheen over the print. They are drawn as separate rects so the
+     gradients can stack, and any one of them a pixel out from the others
+     shows as a seam along an edge. */
+  function card(cls, gradientId) {
+    return svg('rect', {
+      class: cls, x: VU_BOX.x, y: VU_BOX.y, width: VU_BOX.width, height: VU_BOX.height,
+      rx: VU_BOX.rx, fill: 'url(#' + gradientId + ')'
+    });
+  }
+
   function buildVuFace(host) {
     var marks = S.vuMarks();
     var pivot = S.VU_PIVOT;
@@ -116,7 +146,7 @@
     var pz = S.vuPoint(zero.angle, VU_R);
     var uid = 'vu' + (++faceSeq);
 
-    var face = svg('svg', { viewBox: '0 0 200 120', 'aria-hidden': 'true' });
+    var face = svg('svg', { viewBox: '0 0 200 125', 'aria-hidden': 'true' });
 
     /* Lit from above: card stock graded light to warm, a darkened rim, a
        sheen across the glass, and a real cast shadow under the needle. */
@@ -145,9 +175,9 @@
     defs.appendChild(cast);
     face.appendChild(defs);
 
-    face.appendChild(svg('rect', { class: 'vu-face', x: 2, y: 2, width: 196, height: 116, rx: 6, fill: 'url(#' + uid + '-paper)' }));
-    face.appendChild(svg('rect', { class: 'vu-lamp', x: 2, y: 2, width: 196, height: 116, rx: 6, fill: 'url(#' + uid + '-lamp)' }));
-    face.appendChild(svg('rect', { class: 'vu-vignette', x: 2, y: 2, width: 196, height: 116, rx: 6, fill: 'url(#' + uid + '-vig)' }));
+    face.appendChild(card('vu-face', uid + '-paper'));
+    face.appendChild(card('vu-lamp', uid + '-lamp'));
+    face.appendChild(card('vu-vignette', uid + '-vig'));
     face.appendChild(svg('path', { class: 'vu-arc', d: 'M' + p0.x + ' ' + p0.y + ' A' + VU_R + ' ' + VU_R + ' 0 0 1 ' + p1.x + ' ' + p1.y }));
     face.appendChild(svg('path', { class: 'vu-red', d: 'M' + pz.x + ' ' + pz.y + ' A' + VU_R + ' ' + VU_R + ' 0 0 1 ' + p1.x + ' ' + p1.y }));
 
@@ -171,7 +201,7 @@
     /* Glass goes over the print but under the needle, which stays crisp.
        It reuses the face rect: a shape of its own would cut a visible seam
        wherever its edge fell while the sheen was still partly opaque. */
-    face.appendChild(svg('rect', { class: 'vu-gloss', x: 2, y: 2, width: 196, height: 116, rx: 6, fill: 'url(#' + uid + '-gloss)' }));
+    face.appendChild(card('vu-gloss', uid + '-gloss'));
 
     /* A tapered pointer reads as a machined arm; a straight stroke reads as
        a line. It pivots as a path, which setLevel rotates the same way. */
