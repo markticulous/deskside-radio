@@ -250,6 +250,18 @@
      nothing ever overflows for the ellipsis to replace. */
   min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* Vertical room inside the clip, handed straight back so the row height
+     does not move. overflow: hidden clips at the padding edge, and several
+     themes set a line box exactly as tall as the ink standing in it --
+     measured, the 8-bit face is 11.0 of ink in an 11.0 box, and Model One
+     and Marconi are no better. With nothing spare, the top row of pixels
+     has nowhere to go the moment a fractional layout position or a display
+     scale rounds it outward, and the caps lose their lids.
+
+     Three pixels either side is invisible and costs the layout nothing,
+     because the negative margin takes exactly what the padding added. */
+  padding-block: 3px;
+  margin-block: -3px;
 }
 /* The travel is a transform, not an indent.
 
