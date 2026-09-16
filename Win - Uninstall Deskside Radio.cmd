@@ -2,7 +2,7 @@
 setlocal
 rem Deskside Radio - take it off this machine.
 rem
-rem The counterpart to "Win - Install or Update Deskside Radio.cmd", and it
+rem The counterpart to "Win-Install-or-Update-Deskside-Radio.cmd", and it
 rem works out what to remove the same way that one works out what to
 rem install: if index.html is beside this script, this folder is the
 rem install. Otherwise argument 1, or the default below.

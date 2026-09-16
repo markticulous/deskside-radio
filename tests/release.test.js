@@ -47,15 +47,32 @@ test('the settings sanitisers are defined above the first thing that uses them',
 test('every Windows script is named for Windows, and every Linux one for Linux', () => {
   /* A folder of double-clickable scripts is the one place a filename has
      to say what it is for before anyone opens it -- there is no other
-     signal, and running the wrong one does nothing useful. */
+     signal, and running the wrong one does nothing useful.
+
+     "Win - " or "Win-", because the installer is the one script that is
+     also published on its own as a release asset, and GitHub replaces
+     every space in an asset filename with a dot: it was being listed as
+     Win.-.Install.or.Update.Deskside.Radio.cmd, which is not a name
+     anybody can read or type. Hyphens survive the trip unchanged. The
+     rest keep their spaces; they only ever arrive inside the zip, where
+     nothing rewrites them. */
   fs.readdirSync(ROOT).forEach(function (f) {
     if (/\.cmd$/i.test(f)) {
-      assert.ok(f.indexOf('Win - ') === 0, f + ' is a .cmd and should start with "Win - "');
+      assert.ok(/^Win( - |-)/.test(f), f + ' is a .cmd and should start with "Win - " or "Win-"');
     }
     if (/\.sh$/i.test(f)) {
       assert.ok(f.indexOf('Linux - ') === 0, f + ' is a .sh and should start with "Linux - "');
     }
   });
+});
+
+test('the release asset name survives GitHub without being rewritten', () => {
+  /* The installer is downloaded on its own, so its filename is the one
+     the reader is told to look for. A space in it comes back as a dot and
+     the readmes then name a file nobody can see. */
+  assert.equal(/[ ]/.test(INSTALLER), false,
+    INSTALLER + ' has a space in it, which GitHub turns into a dot on the release page');
+  assert.ok(fs.existsSync(path.join(ROOT, INSTALLER)), INSTALLER + ' is not there');
 });
 
 test('the build ships every launcher that is in the repository', () => {
@@ -116,7 +133,7 @@ test('the launcher builds its quotes with [char]34, never a literal one', () => 
    It runs on a machine we will never see, from a folder we do not choose,
    against a URL that has to keep working for every release after this one.
    None of that is reachable from a unit test, so it is read as text. */
-const INSTALLER = 'Win - Install or Update Deskside Radio.cmd';
+const INSTALLER = 'Win-Install-or-Update-Deskside-Radio.cmd';
 
 test('the installer names every tool it runs by its full path', () => {
   /* It is double-clicked from Downloads, so its current directory is the

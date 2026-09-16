@@ -25,8 +25,8 @@ rem browser profile at %LOCALAPPDATA%\DesksideRadio\profile, so replacing
 rem everything here loses nothing, and moving the folder loses nothing
 rem either.
 rem
-rem   "Win - Install or Update Deskside Radio.cmd"            the usual way
-rem   "Win - Install or Update Deskside Radio.cmd" D:\Radio   somewhere else
+rem   "Win-Install-or-Update-Deskside-Radio.cmd"            the usual way
+rem   "Win-Install-or-Update-Deskside-Radio.cmd" D:\Radio   somewhere else
 
 title Deskside Radio - install or update
 
@@ -135,6 +135,23 @@ if exist "%APPDIR%assets\favicon-dial.ico" if exist "%APPDIR%favicon-dial.ico" (
   del /q "%APPDIR%favicon-*.ico" >nul 2>&1
 )
 
+rem And this file's own older name. It used to have spaces in it, which
+rem GitHub turns into dots on the release page -- it was published as
+rem Win.-.Install.or.Update.Deskside.Radio.cmd, which is not a name anyone
+rem can read or type. An update unpacks the hyphenated one beside the old
+rem one rather than over it, so the old one is removed here, once the new
+rem one is confirmed to have arrived.
+rem
+rem Not while it is the file running: a folder updated by double-clicking
+rem the old copy still has that copy open, and cmd is reading the next line
+rem out of it. It goes on the run after, which is the one that comes from
+rem the Start menu shortcut -- rewritten below to point at the new name.
+if exist "%APPDIR%Win-Install-or-Update-Deskside-Radio.cmd" (
+  if /i not "%~nx0"=="Win - Install or Update Deskside Radio.cmd" (
+    del /q "%APPDIR%Win - Install or Update Deskside Radio.cmd" >nul 2>&1
+  )
+)
+
 rem ---- the shortcut -----------------------------------------------------
 rem Made by the script that has always made it, which is now guaranteed to
 rem be sitting right there. One copy of the WScript.Shell block, the
@@ -153,7 +170,7 @@ set "DESKSIDE_NOPAUSE="
 rem And one in the Start menu for the updater itself, because
 rem %LOCALAPPDATA% is not a folder anyone goes looking in. Type "update
 rem desk" at the Start button and it is there.
-set "SELF=%APPDIR%Win - Install or Update Deskside Radio.cmd"
+set "SELF=%APPDIR%Win-Install-or-Update-Deskside-Radio.cmd"
 set "UPDATER="
 if exist "%SELF%" (
   set "UPDATER=1"
