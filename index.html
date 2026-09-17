@@ -152,7 +152,7 @@
     <header class="drawer-head">
       <div class="drawer-title">
         <h2>Settings</h2>
-        <span class="app-version">Deskside Radio&nbsp;&nbsp;<i class="ver-dot" aria-hidden="true"></i>&nbsp;&nbsp;<span id="appVersion">v1.4.3</span></span>
+        <span class="app-version">Deskside Radio&nbsp;&nbsp;<i class="ver-dot" aria-hidden="true"></i>&nbsp;&nbsp;<span id="appVersion">v1.4.4</span></span>
       </div>
       <button type="button" id="drawerClose" class="drawer-x" aria-label="Close">&times;</button>
     </header>
@@ -188,7 +188,17 @@
 
         <div class="finder" id="finder">
           <button type="button" class="finder-toggle" id="finderToggle" aria-expanded="false" aria-controls="finderBody">
-            <span class="finder-icon" aria-hidden="true">&#9906;</span>
+            <!-- A magnifier rather than the U+26B2 it used to be, which is
+                 an astronomical symbol nobody reads as "search", and which
+                 renders differently in every one of the eight themes'
+                 typefaces because it comes from the font rather than from
+                 here. Drawn, so it is the same shape everywhere. -->
+            <span class="finder-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                <circle cx="10.5" cy="10.5" r="6.75"></circle>
+                <path d="M15.4 15.4 L21 21"></path>
+              </svg>
+            </span>
             <span class="finder-title">Find a station</span>
             <span class="finder-chev" aria-hidden="true">&#9654;</span>
           </button>
@@ -273,7 +283,7 @@
           <p class="hint">A settings file holds the stations, the schedule, the theme and the sound settings. Nothing else leaves this machine.</p>
           <div class="btn-row">
             <button type="button" class="ghost" id="exportBtn">Export settings</button>
-            <label class="ghost file-btn">Import settings <input type="file" id="importFile" accept="application/json" hidden></label>
+            <label class="ghost file-btn">Import settings <input type="file" id="importFile" accept=".js,.json,application/json,text/javascript" hidden></label>
           </div>
         </div>
         <div class="pane-block">
@@ -294,7 +304,14 @@
         <div class="pane-block">
           <h3>Reset</h3>
           <p class="hint">Puts everything back to a fresh install: the three original stations, an empty schedule, no remembered city, and the sound settings at their middle.</p>
-          <button type="button" class="ghost danger" id="resetBtn">Reset to defaults</button>
+          <div class="btn-row">
+            <button type="button" class="ghost danger" id="resetBtn">Reset to defaults</button>
+            <!-- Held back behind Shift for the same reason the record button
+                 is: it is not what this tab is for, and a row of two buttons
+                 where one of them resets everything invites the wrong one
+                 being pressed. -->
+            <button type="button" class="ghost" id="openFolderBtn" hidden>Open app folder</button>
+          </div>
         </div>
       </section>
 
@@ -309,12 +326,12 @@
 
 <dialog class="confirm" id="confirmBand">
   <form method="dialog" class="confirm-box">
-    <h2>No frequency set</h2>
+    <h2>Filled in as Web stream</h2>
     <p id="bandMissingList"></p>
-    <p>Without one the dial has nothing to point at and the AM or FM badge stays dark. Enter it as <strong>99.1 FM</strong> or <strong>1010 AM</strong>. Internet-only stations genuinely have no frequency, and saving without one is fine.</p>
+    <p>A station with no frequency is almost always an internet-only one, which genuinely has no dial position &mdash; so rather than stopping to ask, that is what has been entered. If it does broadcast over the air, put the frequency in as <strong>99.1 FM</strong> or <strong>1010 AM</strong> and the dial will point at it.</p>
     <div class="confirm-actions">
-      <button type="submit" value="fix" class="ghost">Let me add it</button>
-      <button type="submit" value="save" class="primary">Save anyway</button>
+      <button type="submit" value="fix" class="ghost">Let me fix it</button>
+      <button type="submit" value="save" class="primary">That's fine</button>
     </div>
   </form>
 </dialog>
@@ -324,20 +341,13 @@
     <h2>Delete this station?</h2>
     <p id="stationDeleteWhat"></p>
     <p id="stationDeleteUsed" class="hint" hidden></p>
-    <!-- Offered only when slots actually point at it. Leaving them behind
-         was what used to make a slot that looks right, refuses to save and
-         cannot be fixed without touching its dropdown. -->
-    <div class="fates" id="stationDeleteFates" hidden>
-      <label class="fate">
-        <input type="radio" name="slotFate" value="move" checked>
-        <span>Move those slots to</span>
-        <select class="in" id="slotFateStation"></select>
-      </label>
-      <label class="fate">
-        <input type="radio" name="slotFate" value="drop">
-        <span>Delete those slots too</span>
-      </label>
-    </div>
+    <!-- There used to be a choice here: move the slots to another station,
+         or delete them with it. It is gone. Deleting a station is not a
+         moment for a second decision about something else, the dropdown
+         that carried it turned up empty on somebody's screen, and a slot
+         that played this station is not obviously a slot that wants to
+         play some other one. The slots go with it, and the line above says
+         how many so it is not a surprise. -->
     <div class="confirm-actions">
       <button type="submit" value="keep" class="ghost">Keep it</button>
       <button type="submit" value="delete" class="primary danger" id="stationDeleteGo">Delete station</button>
