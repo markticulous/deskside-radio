@@ -469,7 +469,36 @@
 }
 .update-pill-link:hover { opacity: .72; }
 .update-pill-link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
-.update-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none; }
+/* The dot blinks so the pill is noticed from the corner of the eye. It is
+   the only thing on the plate that moves on its own, which is the whole
+   point, so it is kept slow and the dark beat is kept short: lit for
+   three quarters of every two seconds reads as a marker with a pulse in
+   it rather than an alarm.
+
+   Asymmetric on purpose: it snaps on and fades off over 60ms. The snap
+   is what the eye catches -- a dot that eases in as well reads as
+   something still loading -- and the fade is what keeps the off-beat from
+   reading as a flicker. The easing sits on the 74% stop because a
+   per-keyframe animation-timing-function governs the segment that starts
+   there, which is the only segment that moves.
+
+   No separate on/off switch is needed. The pill carries `hidden` when
+   there is nothing to say, and display: none stops the animation dead. */
+@keyframes update-dot-blink {
+  0%   { opacity: 1; }
+  74%  { opacity: 1; animation-timing-function: ease-in; }
+  77%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+.update-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none;
+  animation: update-dot-blink 2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Held lit. The dot's job is to mark the notice; the blink is only the
+     part that asks for the glance, and that is what is being declined. */
+  .update-dot { animation: none; opacity: 1; }
+}
 /* A ring around the cross rather than a bare one: at this size, in a line
    of tracked-out uppercase, a lone x reads as another letter. The ring is
    what says it is a thing to press. Kept at .55 so it sits behind the
