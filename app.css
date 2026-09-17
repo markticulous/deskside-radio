@@ -2445,6 +2445,17 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   animation: tally-flash .5s steps(1) infinite;
 }
 
+/* Reachable, and with nothing behind it any more.
+   A steady amber, deliberately not blinking: connecting blinks because it
+   is working on it, and this one has finished and found nothing. A lamp
+   that has stopped moving says the same thing about the stream. */
+.tuner.is-gone .status-led,
+.tuner.is-gone .status-led.live {
+  animation: none;
+  background: #b06a1f;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.14);
+}
+
 /* Connected, and carrying nothing.
    Neither of the two lamps this app already has would say it. Green is a
    lie -- there is no sound. Amber is the other lie: amber means it is
@@ -2517,23 +2528,46 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
    Short on purpose. The drawer is opened deliberately, so anything longer
    than a breath reads as the app being slow rather than as an entrance.
    Browsers without allow-discrete get what they got before: it appears. */
+/* Two directions, two sets of numbers, and within each direction the fade
+   and the movement share a duration and a curve.
+
+   They did not before: the overlay faded over 160ms on `ease` while the
+   panel moved over 180ms on a different curve, so the backdrop finished
+   first and the last twenty milliseconds were the panel arriving on its
+   own. Twenty milliseconds is not long enough to see and is long enough
+   to feel, which is what made it read as a hitch rather than a movement.
+
+   Opening is the slower of the two and lands on an ease-out that spends
+   most of its time decelerating: it arrives rather than stops. Closing is
+   quicker and eases in, because a panel being dismissed should get out of
+   the way and not perform on its way out. */
 .drawer, .drawer::backdrop {
   opacity: 0;
-  transition: opacity .16s ease, overlay .16s allow-discrete, display .16s allow-discrete;
+  transition: opacity .19s cubic-bezier(.4, 0, 1, 1),
+              overlay .19s allow-discrete,
+              display .19s allow-discrete;
 }
-.drawer[open], .drawer[open]::backdrop { opacity: 1; }
+.drawer[open], .drawer[open]::backdrop {
+  opacity: 1;
+  transition: opacity .28s cubic-bezier(.16, 1, .3, 1),
+              overlay .28s allow-discrete,
+              display .28s allow-discrete;
+}
 
 .drawer-form {
-  transform: translateY(-10px) scale(.99);
+  transform: translateY(-12px) scale(.985);
   /* No height transition: the height is settled once as the drawer opens
      and does not move again while it is up, so there is nothing to ease. */
-  transition: transform .18s cubic-bezier(.33, 1, .68, 1);
+  transition: transform .19s cubic-bezier(.4, 0, 1, 1);
 }
-.drawer[open] .drawer-form { transform: none; }
+.drawer[open] .drawer-form {
+  transform: none;
+  transition: transform .28s cubic-bezier(.16, 1, .3, 1);
+}
 
 @starting-style {
   .drawer[open], .drawer[open]::backdrop { opacity: 0; }
-  .drawer[open] .drawer-form { transform: translateY(-10px) scale(.99); }
+  .drawer[open] .drawer-form { transform: translateY(-12px) scale(.985); }
 }
 .drawer-body { overflow-y: auto; scrollbar-width: thin; }
 .pane { padding: 18px 24px 26px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; }
@@ -3366,13 +3400,22 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 /* ---- station finder in Settings ---- */
 /* The search folds away, so it stops occupying the top of the station list
    on every visit to Settings. */
-.finder { border: 1px solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-field); overflow: hidden; }
+/* No overflow:hidden. The city suggestions hang out of the bottom of this
+   box on an absolutely positioned list, and clipping them to the panel cut
+   the list off after two entries -- with its own scrollbar inside the part
+   that was still visible, which is a confusing thing to be shown. Nothing
+   needed the clip: the only child with a background of its own is the
+   toggle, and that one is `background: none`. */
+.finder { border: 1px solid var(--ui-line); border-radius: var(--ui-radius); background: var(--ui-field); }
 .finder-toggle {
   width: 100%; font: inherit; font-size: 13px; text-align: left; cursor: pointer;
   display: flex; align-items: center; gap: 9px; padding: 10px 12px;
   border: 0; background: none; color: var(--ui-fg);
 }
-.finder-icon { color: var(--ui-mute); }
+/* The accent the selected tab's count badge uses, because this is the one
+   control in the drawer that goes and fetches something. */
+.finder-icon { color: var(--ui-accent); display: flex; flex: none; }
+.finder-icon svg { width: 18px; height: 18px; display: block; }
 .finder-title { flex: 1; }
 .finder-chev { color: var(--ui-mute); font-size: 10px; transition: transform .18s ease; }
 .finder-toggle[aria-expanded="true"] .finder-chev { transform: rotate(90deg); }

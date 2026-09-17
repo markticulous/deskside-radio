@@ -99,6 +99,45 @@ test('the slot list is only re-ordered when it is out of order', () => {
     'reflowSlots no longer checks whether a card is already in the right place');
 });
 
+test('the settings seed is one filename, spelled the same everywhere', () => {
+  /* Six files name this thing: the export writes it, the loader reads it,
+     four launcher scripts tell people where to put it, and both readmes
+     explain it. It was .json until the launcher stopped being handed the
+     run of the disk -- a script tag is the only way a file:// page can read
+     a file off disk, so the export had to become .js -- and .gitignore was
+     left naming the old one. The result was that the file the app actually
+     writes was not ignored, and a seed dropped beside index.html to test
+     with was staged with everything else. Committed, it would have seeded
+     every clone with one machine's stations. */
+  const SEED = 'deskside-radio-settings.js';
+  const app = read('app.js');
+  assert.ok(app.indexOf("a.download = '" + SEED + "'") !== -1,
+    'the export no longer writes ' + SEED);
+  assert.ok(app.indexOf("tag.src = '" + SEED + "'") !== -1,
+    'the seed loader no longer reads ' + SEED);
+
+  /* Nothing anywhere may name the old one. */
+  ['.gitignore', 'app.js', 'index.html', 'README.md', 'README.html'].forEach(function (f) {
+    assert.equal(read(f).indexOf('deskside-radio-settings.json'), -1,
+      f + ' still names deskside-radio-settings.json, which nothing writes any more');
+  });
+
+  /* And the one file the app writes has to be ignored, or the next person
+     who drops one in to test has it staged for them. */
+  assert.ok(read('.gitignore').indexOf(SEED) !== -1, SEED + ' is not ignored');
+
+  /* Every script that tells somebody where to put it says the same name. */
+  fs.readdirSync(ROOT)
+    .filter(function (f) { return /\.(cmd|sh)$/i.test(f); })
+    .forEach(function (f) {
+      const src = read(f);
+      if (src.indexOf('deskside-radio-settings') === -1) return;
+      assert.equal(src.indexOf('deskside-radio-settings.json'), -1,
+        f + ' points people at the old .json name');
+      assert.ok(src.indexOf(SEED) !== -1, f + ' names the seed as something other than ' + SEED);
+    });
+});
+
 test('every Windows script is named for Windows, and every Linux one for Linux', () => {
   /* A folder of double-clickable scripts is the one place a filename has
      to say what it is for before anyone opens it -- there is no other

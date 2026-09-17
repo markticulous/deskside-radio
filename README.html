@@ -462,7 +462,7 @@ html { scroll-behavior: smooth; }
   <span class="byline">
     <span class="byline-by">A</span><span class="byline-name">Markticulous</span><span class="byline-suffix">build</span>
   </span>
-  <span class="ver" id="verChip">v1.4.3</span>
+  <span class="ver" id="verChip">v1.4.4</span>
 </p>
 
 <header class="masthead">
@@ -532,6 +532,9 @@ html { scroll-behavior: smooth; }
 
         <dt><span class="path">README.html</span></dt>
         <dd>This file.</dd>
+
+        <dt>Settings &rarr; Service, holding Shift</dt>
+        <dd>An <strong>Open app folder</strong> button appears beside Reset. It copies this folder's path and opens it for you. It cannot open File Explorer &mdash; a page is not allowed to start a program &mdash; so what opens is the browser's own listing, and the path is on your clipboard to paste wherever you want it.</dd>
 
         <dt><span class="path">assets/</span></dt>
         <dd>Everything the radio needs and nobody opens &mdash; one <span class="path">favicon-*.ico</span> per theme, for the shortcut, and <span class="path">LICENSE.txt</span>. The root of this folder is only the things you double-click; this is where the rest of it went.</dd>
@@ -725,6 +728,12 @@ html { scroll-behavior: smooth; }
       <dl class="defs">
         <dt>The meter says a stream blocks it</dt>
         <dd>Some stations refuse the cross-origin access the meter needs. The audio is fine; only the meter and the tone controls are unavailable for that station.</dd>
+
+        <dt>A station says the stream is gone</dt>
+        <dd>It answered, and there was nothing behind it &mdash; the station has retired that stream, which happens more often than you would think. The radio checks each quality of an HLS stream before playing it, and when none of them are there it says so and stops reconnecting rather than trying all night. Press play to make it look again, or replace the URL from <strong>Find a station</strong>.</dd>
+
+        <dt>A station shows &ldquo;Web stream&rdquo; instead of a frequency</dt>
+        <dd>Its name had no frequency in it, and an internet-only station genuinely has no dial position. If it does broadcast over the air, type the frequency into the station's own field as <strong>99.1 FM</strong> or <strong>1010 AM</strong> and the dial will point at it.</dd>
 
         <dt>Uninstalling left the folder behind</dt>
         <dd>Fixed in 1.4.3. Before that it removed the app folder but not <span class="path">%LOCALAPPDATA%\DesksideRadio</span> around it, and in 1.4.0 and 1.4.1 it removed nothing at all and said it had. Run the current uninstaller again &mdash; everything it does is safe to repeat &mdash; or delete that folder by hand, which is all that is left of it.</dd>

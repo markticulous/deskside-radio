@@ -201,6 +201,18 @@ The icons sit at that same path in this repository, so the launchers name them o
 
 Updating an install made before this happened leaves the old icons in the root — unpacking writes over the top and removes nothing. The installer clears those by name once it has confirmed the new set arrived.
 
+## Frequencies, and stations that have none
+
+A station's frequency is usually sitting in its own name — NewsTalk 1010, KISS 92.5, 98.1 CHFI — so on save that is where it is read from, using the same parser that gives a station added from the finder its dial position. The codec and bitrate come off first: a name the finder wrote reads `BBC World Service AAC+ · 101 kbps`, and 101 is squarely in the FM band, so left in it would be read as a frequency invented out of a bitrate.
+
+What is left over is an internet-only station, which genuinely has no dial position. Those are filled in as **Web stream** and the save goes through. Saving no longer stops to ask: the old dialog interrupted to put a question whose answer was almost always "it hasn't got one", and for the rest the answer was in the name all along. When something is filled in as a web stream it says so afterwards, with a button that scrolls to the station and puts the cursor in the field.
+
+## When a stream has been retired
+
+A station can answer perfectly and have nothing behind it. BBC World Service serves a valid HLS playlist, with CORS, listing one variant that has returned `410 Gone` since the stream was retired — so the app dutifully handed a dead playlist to the audio element and reconnected forever.
+
+Each rung of an HLS ladder is now asked whether it is there before any of it is played. If none of them are, the radio says **Stream is gone · check the station**, lights the lamp a steady amber — not the blinking amber of connecting, because it has finished and found nothing — and stops retrying. Only `400`, `403`, `404` and `410` count. A network error with no status at all stays temporary, so being offline is never mistaken for a station closing down. Pressing play clears what it learned and looks again.
+
 ## Reduced motion
 
 Windows' **Accessibility → Visual effects → Animation effects**, off by default on a lot of managed machines, makes Chrome report `prefers-reduced-motion: reduce`. The app honours it: every animation stops, scrolling included.
@@ -208,6 +220,14 @@ Windows' **Accessibility → Visual effects → Animation effects**, off by defa
 Scrolling a name that does not fit is the one animation here that carries information rather than decorating — without it the end of the name is not slow, it is missing. So **Settings → Theme** grows a **Scroll long names anyway** switch, shown only when the system is actually asking for reduced motion. It re-enables the readout and preset marquees and nothing else; the split-flap reveal, the VFD flicker and the rest stay off.
 
 It has to be `!important` to work, which is unusual enough to explain: the reduced-motion block carries `.tuner *, .tuner *::before, .tuner *::after { animation: none !important }`, and nothing beats an `!important` on a universal selector by being more specific.
+
+## The app folder
+
+Hold **Shift** on **Settings → Service** and an **Open app folder** button appears beside Reset. It copies the folder's path to the clipboard and opens the folder.
+
+It cannot open File Explorer: a web page cannot start a program, and the one route to the real file manager would be a protocol handler in the registry, which this app does not write to. What it opens is the browser's own directory listing, which is the most a `file://` page is allowed — hence the path on the clipboard as well, in the backslash form Explorer's address bar and a command prompt both take.
+
+It is behind Shift for the same reason the record button is: it sits next to Reset, and two ordinary-looking buttons where one of them wipes everything is a row asking for the wrong press.
 
 ## Removing it
 

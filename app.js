@@ -9,27 +9,44 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.4.3';
+  var APP_VERSION = '1.4.4';
 
   var DEFAULTS = {
+    /* The three a fresh install starts with, in this order, taken from a
+       real set that had been lived with rather than assembled. All three
+       answer with CORS, which is what the meter and the tone controls
+       need -- a default station that arrives with a dead meter teaches the
+       wrong thing about the app on the first run.
+
+       The ids are written out rather than carried over from the directory:
+       an export names them rb_77871905-48cd-465c-..., which is fine for a
+       station somebody added and is not what belongs in the file that
+       defines what this thing is. */
     stations: [
-      { id: 'cfrb', name: 'NewsTalk 1010', band: '1010 AM', tag: "Toronto's news, traffic and weather, all day.",
-        url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CFRBAM.mp3', color: '#10307a', bass: 0, treble: 0 },
+      { id: 'covers', name: '100% Covers Lounge', band: '100 FM', tag: 'MP3 · 128 kbps · Toronto',
+        url: 'https://az1.mediacp.eu/listen/100coverslounge/radio.mp3', color: '#5b2a86', bass: 0, treble: 0 },
       /* CBC hands out an HLS playlist rather than a plain stream. Every
          current desktop browser plays it off the element, Chrome included,
          so it needs no library — see the note in radio-directory.js about
          judging a stream by whether it holds up, not by its extension. */
-      { id: 'cbc1', name: 'CBC Radio 1 Toronto', band: '99.1 FM', tag: 'CBLA-FM',
+      { id: 'cbc1', name: 'CBC Radio 1 · Toronto', band: '99.1 FM', tag: 'CBLA-FM',
         url: 'https://cbcradiolive.akamaized.net/hls/live/2041036/ES_R1ETR/master.m3u8', color: '#a8321c', bass: 0, treble: 0 },
-      { id: 'kiss', name: 'KISS 92.5', band: '92.5 FM', tag: "Toronto's hit music station.",
-        url: 'https://rogers-hls.leanstream.co/rogers/tor925.stream/icy', color: '#e11d74', bass: 0, treble: 0 }
+      { id: 'cfrb', name: 'NewsTalk 1010', band: '1010 AM', tag: "Toronto's news, traffic and weather, all day.",
+        url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CFRBAM.mp3', color: '#10307a', bass: 0, treble: 0 }
     ],
     schedule: { weekday: [], weekend: [] },
     /* What each day group does once its last slot has ended and nothing
        follows: 'play' leaves whatever is on playing, 'off' stops. Kept
        beside the schedule rather than inside it, because the slots are a
        list and this is a property of the day. */
-    scheduleEnds: { weekday: 'play', weekend: 'play' },
+    /* A fresh install turns the radio off when the day's last slot ends,
+       rather than carrying the last station on indefinitely. Somebody who
+       has gone to the trouble of setting a schedule has said when they
+       want it on; silence outside those hours is the other half of that
+       sentence, and it is the easier default to notice and change.
+       Only the default -- an existing install keeps whatever it was set
+       to, since the value is stored. */
+    scheduleEnds: { weekday: 'off', weekend: 'off' },
     /* Which reading of a slot whose start equals its end this schedule was
        written under: absent or 1 means "matches nothing", 2 means all day.
        normalise drops the old kind once and stamps this. */
@@ -43,6 +60,11 @@
     volume: 50,
     volumeCurve: 2,
     autoplay: false,
+    /* Filled in from the list below once it exists -- see just under the
+       closing brace. The drawer already falls back to the first station
+       when it finds nothing chosen, but that only happens once somebody
+       opens the drawer; this makes a fresh install say so from the start,
+       whether or not anybody looks. Play on launch itself stays off. */
     autoplayStationId: null,
     lastCity: null,
     bass: 0,
@@ -61,6 +83,11 @@
        that carries information rather than decorating. */
     scrollAnyway: false
   };
+
+  /* Derived rather than typed, so renaming or reordering the three
+     stations a fresh install ships with cannot leave this pointing at an
+     id that is no longer there. */
+  DEFAULTS.autoplayStationId = DEFAULTS.stations[0].id;
 
   function clampTone(v) {
     if (typeof v !== 'number' || !isFinite(v)) return 0;
@@ -588,7 +615,7 @@
       if (el.tuner) el.tuner.classList.remove('is-silent');
     }
     // Connecting, live, reconnecting: all of them have a needle to move.
-    if (s !== 'stopped' && s !== 'idle') startMeter();
+    if (s !== 'stopped' && s !== 'idle' && s !== 'gone') startMeter();
     /* Coming out of a handover: the level was taken to nothing before the
        change, so the station that replaced it is brought up rather than
        dropped in at full. Waiting for 'live' rather than ramping from the
@@ -598,6 +625,7 @@
     refreshRec();
     el.status.textContent = text;
     el.led.classList.toggle('live', s === 'live');
+    el.tuner.classList.toggle('is-gone', s === 'gone');
     el.tuner.classList.toggle('is-playing', s === 'live');
     el.tuner.classList.toggle('is-reconnecting', s === 'reconnecting');
     el.tuner.classList.toggle('is-connecting', s === 'connecting');
@@ -672,18 +700,80 @@
   var hlsLadder = {};
   var hlsStep = {};
 
+  /* Is this URL permanently not there?
+
+     A stream that has been retired answers with a status, and the audio
+     element never tells us what it was -- it reports "it did not play",
+     which is what it also reports for a slow connection and for a CDN
+     having a bad minute. Those deserve the retry ladder. A 410 does not.
+
+     Only these four count. Anything else, including a network error with
+     no status at all, is treated as temporary, because being offline must
+     never be mistaken for a station having closed down. */
+  var GONE_STATUS = { 400: 1, 403: 1, 404: 1, 410: 1 };
+
+  function probe(url) {
+    var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    var opts = { cache: 'no-store', method: 'GET' };
+    if (ctl) opts.signal = ctl.signal;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 6000);
+    return fetch(url, opts).then(function (r) {
+      clearTimeout(timer);
+      /* The headers are the whole answer; the body of a live playlist is
+         small but there is no reason to read it. */
+      if (ctl) { try { ctl.abort(); } catch (e) { /* already done */ } }
+      return { ok: r.ok, gone: !!GONE_STATUS[r.status], status: r.status };
+    }, function () {
+      clearTimeout(timer);
+      return { ok: false, gone: false, status: 0 };
+    });
+  }
+
+  /* The station is reachable and has nothing behind it. Said once, and the
+     retrying stops -- a ladder that keeps climbing a stream that has been
+     taken down is just noise, and it hides the one fact worth knowing. */
+  function markGone(st) {
+    clearTimeout(retryTimer); retryTimer = null;
+    attempts = 0;
+    try { audio.pause(); } catch (e) { /* nothing playing */ }
+    /* Nothing is playing and nothing is going to, so the transport says so
+       too. Left intending to play, the play button reads as "stop" and the
+       first press after this turns off a radio that was already off --
+       which is a second thing gone wrong from one thing being gone. */
+    state.intendedPlaying = false;
+    save();
+    setStatus('gone', 'Stream is gone · check the station');
+  }
+
   function resolveHlsThenTune(st, volume) {
     var master = st.url;
     hlsTried[master] = true;
     fetchText(master)
       .then(function (text) {
         var ladder = Directory.listHlsVariants(text, master);
-        if (ladder.length) {
-          hlsLadder[master] = ladder;
+        if (!ladder.length) { tune(st, volume); return; }
+        /* The master parsing is not proof of anything. BBC World Service
+           serves a perfectly good master, with CORS, listing one variant
+           that has answered 410 since the stream was retired -- so the app
+           dutifully handed a dead playlist to the element and reconnected
+           for ever. Each rung is asked whether it is there before any of
+           them is played. */
+        /* A rung is a URL string -- listHlsVariants sorts by bandwidth and
+           maps the objects away before returning. Reading .url off one got
+           undefined, which fetch then resolved against the page's own
+           folder: every probe quietly checked a file that was not there,
+           came back "not permanently gone", and the dead rung was played
+           exactly as before. */
+        return Promise.all(ladder.map(function (url) {
+          return probe(url).then(function (r) { return { url: url, r: r }; });
+        })).then(function (checked) {
+          var alive = checked.filter(function (c) { return !c.r.gone; }).map(function (c) { return c.url; });
+          if (!alive.length) { markGone(st); return; }
+          hlsLadder[master] = alive;
           hlsStep[master] = 0;
-          hlsVariant[master] = ladder[0];
-        }
-        tune(st, volume);
+          hlsVariant[master] = alive[0];
+          tune(st, volume);
+        });
       })
       .catch(function () { tune(st, volume); });
   }
@@ -730,6 +820,15 @@
   }
 
   function startPlayback() {
+    /* A deliberate press clears everything learned about the stream being
+       gone: stations come back, and the listener asking again is the only
+       signal worth acting on -- nothing here is going to poll a dead URL
+       hoping it returns. */
+    var was = currentStation();
+    if (was) {
+      delete hlsVariant[was.url]; delete hlsTried[was.url];
+      delete hlsLadder[was.url]; delete hlsStep[was.url];
+    }
     state.intendedPlaying = true;
     // Pressing play makes it the listener's again, not the schedule's.
     scheduleStopped = false;
@@ -783,6 +882,9 @@
 
   function onFailure(loadFailed) {
     if (!state.intendedPlaying || userStopping || retryTimer || awaitingTap) return;
+    // Already established that there is nothing there. Pressing play again
+    // is what asks for another look; see startPlayback.
+    if (status === 'gone') return;
     var st = currentStation();
     /* A stream whose resource would not load at all may be refusing the
        CORS request the analyser needs, so retry it once on the untapped
@@ -2059,6 +2161,7 @@
   function showPane(next, animate) {
     if (PANES.indexOf(next) === -1) next = PANES[0];
     pane = next;
+    refreshFolderBtn();
     PANES.forEach(function (key) {
       $('tab' + key.charAt(0).toUpperCase() + key.slice(1))
         .setAttribute('aria-selected', key === pane ? 'true' : 'false');
@@ -2693,24 +2796,14 @@
     var last = draft.stations.length === 1;
     var notes = [];
     if (last) notes.push('This is your only station. Delete it and there is nothing left to play, and Settings will not save until you add one back.');
-    if (used) notes.push('The schedule uses it in ' + used + ' slot' + (used === 1 ? '' : 's') + '.');
-
-    /* Asked rather than left dangling. A slot pointing at a station that
-       is gone used to show the first station in its dropdown while
-       refusing to save, which looks like the app being wrong about a field
-       the listener can see is right. */
-    var fates = $('stationDeleteFates'), pick = $('slotFateStation');
-    fates.hidden = !used || last;
-    if (!fates.hidden) {
-      pick.innerHTML = '';
-      draft.stations.forEach(function (other) {
-        if (other.id === st.id) return;
-        pick.appendChild(new Option(other.name || '(unnamed)', other.id));
-      });
-      var move = fates.querySelector('input[value="move"]');
-      if (move) move.checked = true;
+    /* One sentence, not two. It said "The schedule uses it in 1 slot." and
+       then "Its 1 slot go with it." -- the same fact twice, and the second
+       one ungrammatical for a single slot. */
+    if (used) {
+      notes.push('The schedule uses it in ' + used + ' slot' + (used === 1 ? '' : 's') +
+        ', which ' + (used === 1 ? 'goes' : 'go') + ' with it.');
     }
-    if (last && used) notes.push('Its ' + used + ' slot' + (used === 1 ? '' : 's') + ' go with it.');
+
     var note = $('stationDeleteUsed');
     note.hidden = !notes.length;
     note.textContent = notes.join(' ');
@@ -2730,20 +2823,16 @@
     if (index === null || index >= draft.stations.length) return;
     var st = draft.stations[index];
     var name = String(st.name || '').trim();
-    /* Decided before the station goes, while its id still means
-       something. With no choice on offer -- it was the only station --
-       every slot that used it goes too, because a slot with nothing to
-       play is not a slot. */
-    var fates = $('stationDeleteFates');
-    var chosen = fates.hidden ? 'drop' : (fates.querySelector('input[name="slotFate"]:checked') || {}).value;
-    var moveTo = chosen === 'move' ? $('slotFateStation').value : null;
+    /* Every slot that used it goes with it. A slot with nothing to play is
+       not a slot, and the alternative -- reassigning them to a station
+       nobody chose for that hour -- leaves a schedule that looks intact
+       and does the wrong thing at seven in the morning. */
     var touched = 0;
     ['weekday', 'weekend'].forEach(function (g) {
       var keep = [];
       (draft.schedule[g] || []).forEach(function (sl) {
         if (sl.stationId !== st.id) { keep.push(sl); return; }
         touched += 1;
-        if (moveTo) { sl.stationId = moveTo; keep.push(sl); }
       });
       draft.schedule[g] = keep;
     });
@@ -2752,10 +2841,8 @@
     openStation = null;
 
     if (touched) {
-      var to = draft.stations.filter(function (x) { return x.id === moveTo; })[0];
-      showFix(moveTo
-        ? touched + ' slot' + (touched === 1 ? '' : 's') + ' now play' + (touched === 1 ? 's' : '') + ' ' + ((to && to.name) || 'another station') + '.'
-        : touched + ' slot' + (touched === 1 ? ' was' : 's were') + ' removed with ' + (name || 'that station') + '.', null);
+      showFix(touched + ' slot' + (touched === 1 ? ' was' : 's were') +
+        ' removed with ' + (name || 'that station') + '.', null);
     }
     ['weekday', 'weekend'].forEach(function (g) {
       draft.schedule[g] = Scheduler.settle(draft.schedule[g], draft.stations, null).slots;
@@ -2856,7 +2943,7 @@
   }
 
   // Open a station card and put the cursor in one of its fields.
-  function focusStationField(index, key) {
+  function focusStationField(index, key, toBottom) {
     var st = draft.stations[index];
     if (!st) return;
     openStation = st.id;
@@ -2864,8 +2951,14 @@
     var card = $('stationRows').children[index];
     var field = card && card.querySelector('[data-k="' + key + '"]');
     if (!field) return;
-    // The drawer body scrolls; focusing alone can leave it off screen.
-    if (field.scrollIntoView) field.scrollIntoView({ block: 'nearest' });
+    /* The drawer body scrolls; focusing alone can leave it off screen.
+       `toBottom` is for the card at the end of the list, where "nearest"
+       scrolls it just into view at the bottom edge and leaves it half
+       under the footer -- there, scrolling the list to its end puts the
+       whole card on screen with the field in the middle of it. */
+    var body = document.querySelector('.drawer-body');
+    if (toBottom && body) body.scrollTop = body.scrollHeight;
+    else if (field.scrollIntoView) field.scrollIntoView({ block: 'nearest' });
     field.focus();
     if (field.select) field.select();
   }
@@ -3600,6 +3693,34 @@
     return true;
   }
 
+  /* What goes in the frequency field of a station that has no transmitter.
+     Deliberately words rather than a blank: blank reads as unfinished, and
+     somebody coming back to the list a month later cannot tell whether
+     they forgot to fill it in or there was nothing to fill in. */
+  var WEB_STREAM = 'Web stream';
+
+  /* Most stations carry their own frequency in their name -- NewsTalk 1010,
+     KISS 92.5, 98.1 CHFI -- and the directory already knows how to read one
+     out of a string, which is how a station added from the finder gets its
+     dial position. The same reading is applied here to the ones typed in by
+     hand or added before that existed.
+
+     The codec and bitrate come off first. A name the finder wrote reads
+     "BBC World Service AAC+ ... 101 kbps", and 101 sits squarely in the FM
+     band, so left in place it would be read as 101 FM -- a real-looking
+     frequency invented out of a bitrate, which is worse than no frequency
+     at all. */
+  function bandFromOwnName(name) {
+    var clean = String(name == null ? '' : name)
+      .split('·')[0]
+      .replace(/(aac[+]?|mp3|ogg|opus|flac|he-aac|hls)/ig, ' ')
+      .replace(/[0-9]+ ?kbps/ig, ' ')
+      .replace(/ +/g, ' ')
+      .trim();
+    if (!clean) return '';
+    try { return Directory.bandFromName(clean) || ''; } catch (e) { return ''; }
+  }
+
   function stationsWithoutBand() {
     return draft.stations.filter(function (s) { return !String(s.band || '').trim(); });
   }
@@ -3673,11 +3794,34 @@
     // Nothing changed, so this is just a way out of the drawer.
     if (!draftIsDirty()) { el.settings.close(); return; }
     if (!draftIsValid()) return;
+    /* No longer a question. A station with no frequency is nearly always
+       an internet-only one, and the old dialog stopped the save to ask
+       about something the answer to which was almost always "it hasn't
+       got one". So it is filled in, the save goes through, and the dialog
+       only reports what was done -- with a way to correct it for the
+       minority that do broadcast. */
     var missing = stationsWithoutBand();
     if (!missing.length) { commitSettings(); return; }
-    $('bandMissingList').textContent = missing.length === 1
-      ? (missing[0].name || 'One station') + ' has no frequency yet.'
-      : missing.length + ' stations have no frequency yet: ' + missing.map(function (s) { return s.name || 'unnamed'; }).join(', ') + '.';
+
+    /* Read it out of the name where it is there, and call it a web stream
+       where it is not. Either way the save goes through: the old dialog
+       stopped to ask a question whose answer was almost always "it hasn't
+       got one", and for the rest it was sitting in the name all along. */
+    var guessed = [], unknown = [];
+    missing.forEach(function (st) {
+      var band = bandFromOwnName(st.name);
+      if (band) { st.band = band; guessed.push(st); }
+      else { st.band = WEB_STREAM; unknown.push(st); }
+    });
+    renderStationRows();
+
+    /* Nothing to report when every one of them was readable: a frequency
+       taken from the station's own name is not news. */
+    if (!unknown.length) { commitSettings(); return; }
+    $('bandMissingList').textContent = unknown.length === 1
+      ? (unknown[0].name || 'One station') + ' has no frequency in its name, so it is down as a web stream.'
+      : unknown.length + ' stations have no frequency in their names, so they are down as web streams: ' +
+        unknown.map(function (s) { return s.name || 'unnamed'; }).join(', ') + '.';
     $('confirmBand').showModal();
   });
 
@@ -3686,9 +3830,13 @@
     // Send them to the first frequency field that needs filling in. With the
     // cards collapsed that means opening the right one first.
     showPane('stations', true);
-    for (var i = 0; i < draft.stations.length; i++) {
-      if (String(draft.stations[i].band || '').trim()) continue;
-      focusStationField(i, 'band');
+    /* The one to correct is the one just added, which is the last in the
+       list -- so the list goes to the bottom and the cursor lands in the
+       field, rather than leaving somebody to scroll and hunt for which of
+       their stations it meant. Searched from the end for the same reason. */
+    for (var i = draft.stations.length - 1; i >= 0; i--) {
+      if (String(draft.stations[i].band || '').trim() !== WEB_STREAM) continue;
+      focusStationField(i, 'band', true);
       break;
     }
   });
@@ -3924,6 +4072,82 @@
     save();
     if (state.versionCheck) checkVersion(true);
     else renderUpdateLine();
+  });
+
+  /* Shift, on the Service tab, offers a way into the folder the app is
+     running from -- the one place its own files, its readme and its
+     scripts all are, and which on a normal install is buried under
+     %LOCALAPPDATA% where nobody would go looking.
+
+     Behind Shift rather than on the tab, because it sits next to Reset and
+     two ordinary-looking buttons where one of them wipes everything is a
+     row asking for the wrong press.
+
+     What it can actually do is worth being exact about: a page cannot
+     start a program, so this cannot open Explorer. It opens the folder as
+     a listing in a browser window, which is the most a file:// page is
+     allowed. Everything in it can be opened from there. */
+  var shiftForFolder = false;
+
+  function refreshFolderBtn() {
+    var b = $('openFolderBtn');
+    if (!b) return;
+    b.hidden = !(shiftForFolder && el.settings.open && pane === 'service');
+  }
+
+  window.addEventListener('keydown', function (e) {
+    if (e.key !== 'Shift' || shiftForFolder) return;
+    shiftForFolder = true;
+    refreshFolderBtn();
+  });
+  window.addEventListener('keyup', function (e) {
+    if (e.key !== 'Shift') return;
+    shiftForFolder = false;
+    refreshFolderBtn();
+  });
+  /* A window that loses focus with the key down never sees the keyup. */
+  window.addEventListener('blur', function () {
+    shiftForFolder = false;
+    refreshFolderBtn();
+  });
+
+  $('openFolderBtn').addEventListener('click', function () {
+    var btn = this;
+    /* The page's own directory, whatever it was opened from -- a clone, an
+       install under %LOCALAPPDATA%, a folder on a stick. Nothing is
+       hard-coded, so it is right wherever this copy happens to live. */
+    var folder = location.href.replace(/[?#].*$/, '').replace(/[^/]*$/, '');
+
+    /* Both, because neither on its own is what somebody wants. The listing
+       is a browser's, not Explorer's -- a page cannot start a program, and
+       the one way to reach the real file manager would be a protocol
+       handler in the registry, which this app does not write to. So the
+       path goes on the clipboard as well, in the backslash form Explorer's
+       address bar and a command prompt both take, and pasting it there is
+       the two seconds this cannot do for you. */
+    var win = windowsPathOf(folder).replace(/[\\/]+$/, '');
+
+    /* The copy has to finish before the new window takes the focus.
+       Writing to the clipboard needs the document focused, and opening the
+       listing first -- or even in the same tick, since the write is async
+       -- hands the focus away before the write runs and it is refused. So
+       the window is opened once the clipboard has settled, either way. */
+    function say(word) {
+      btn.textContent = word;
+      setTimeout(function () { btn.textContent = 'Open app folder'; }, 1600);
+    }
+    function show() { window.open(folder, '_blank', 'noopener'); }
+
+    try {
+      navigator.clipboard.writeText(win).then(
+        function () { say('Path copied'); show(); },
+        function () { say('Opened it'); show(); }
+      );
+    } catch (e) {
+      // A page opened from disk is sometimes refused the clipboard outright.
+      say('Opened it');
+      show();
+    }
   });
 
   $('resetBtn').addEventListener('click', function () {

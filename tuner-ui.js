@@ -763,6 +763,15 @@
      The slide is quoted for the travel, so it is scaled by the same amount
      or shortening the tail would speed the whole thing up. */
   var CYCLE_TRIM = 0.87;
+  /* preset-marquee travels from 14% to 74% of its cycle. Written down here
+     because the floor below has to convert between a travel time and a
+     whole cycle, and the two keyframe blocks do not share a share. */
+  var PRESET_TRAVEL_SHARE = 0.60;
+  /* How slowly a name that barely overflows is allowed to move, and how
+     long the slowest one may take. Nine pixels a second reads as drift
+     rather than as motion, which is the point. */
+  var CRAWL_PX_PER_S = 9;
+  var CRAWL_CEIL_MS = 9000;
   var STEP_MS = 230;           // one flap, on a board
   /* A button's name, against the readout's. Raised from 1.4: a preset is
      read out of the corner of the eye while something else has your
@@ -799,13 +808,32 @@
        touches the slide. Stretching the cycle stretches the pauses at
        each end with it, which is no loss on a name you are trying to
        read. */
+    var isPreset = el.classList.contains('preset-name');
     var slide = 2600 + by * 28;
     /* The trim belongs to the readout alone. A preset's name runs on
        preset-marquee, whose keyframes were not re-cut, so shortening its
        cycle would just make the whole thing go faster -- which is the
        opposite of what PRESET_SLOWER is there for. */
-    if (el.classList.contains('preset-name')) slide *= PRESET_SLOWER;
-    else slide *= CYCLE_TRIM;
+    if (isPreset) slide *= PRESET_SLOWER; else slide *= CYCLE_TRIM;
+
+    /* A name that only just overflows was the worst case of all. The 2600
+       is the pauses, so a twenty-pixel overhang got very nearly the same
+       cycle as a four-hundred-pixel one -- which meant it lurched twenty
+       pixels, snapped back, and did it again a moment later. Short travel,
+       short cycle, and it never stops happening: jarring exactly because
+       there is so little of it.
+
+       So the travel gets a floor, quoted as a crawl rather than as a
+       duration: nine pixels a second, up to a ceiling so a long name is
+       not left grinding across the display for a minute. Small overhangs
+       land on the crawl and become slow enough to read past without
+       noticing; anything already slower than the crawl keeps the pace it
+       had. Nothing is faster than it was. */
+    var share = isPreset ? PRESET_TRAVEL_SHARE : TRAVEL_SHARE;
+    var travel = slide * share;
+    var crawl = Math.min(by / CRAWL_PX_PER_S * 1000, CRAWL_CEIL_MS);
+    if (crawl > travel) slide = crawl / share;
+
     var total = (steps && paceBySteps)
       ? Math.round(steps * STEP_MS / TRAVEL_SHARE)
       : Math.round(slide);
@@ -815,7 +843,12 @@
        is the runner and not the box around it. */
     var runners = runnersOf(el);
     for (var i = 0; i < runners.length; i++) {
-      runners[i].style.animationTimingFunction = steps ? 'steps(' + steps + ', end)' : '';
+      /* linear rather than the sheet's ease-in-out. The easing is applied
+         across the whole cycle, pauses included, so it was stretching and
+         squeezing the holds as well as the travel -- and on a slow crawl a
+         speed that keeps changing is the thing the eye catches. Steady
+         movement is what reads as smooth. */
+      runners[i].style.animationTimingFunction = steps ? 'steps(' + steps + ', end)' : 'linear';
     }
   }
 

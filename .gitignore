@@ -10,7 +10,15 @@ desktop.ini
 .DS_Store
 
 # A machine's own exported settings, used to seed a fresh launcher profile.
-deskside-radio-settings.json
+# The app writes .js and has since the launcher stopped being handed the run
+# of the disk: a script tag is the only way a file:// page can read a file
+# off disk. The .json this used to name was the older export and is no longer
+# written by anything, so listing it here just described a file that does not
+# come from this app any more -- while the one that does was not ignored at
+# all, and a seed dropped beside index.html to test with was staged along
+# with everything else. Committed, it would seed every clone with one
+# machine's stations.
+deskside-radio-settings.js
 # Throwaway copy of index.html with a seeded localStorage, used for
 # headless checks. It is written into the repo root because it has to
 # load the app from its own directory, and it is never a change.
