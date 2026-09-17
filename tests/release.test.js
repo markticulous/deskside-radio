@@ -448,3 +448,78 @@ test('the launcher still falls back when no browser is found', () => {
   assert.ok(/\$link\.TargetPath = \$env:TARGET;/.test(cmd),
     'the fallback should still point the shortcut at index.html');
 });
+
+test('a hidden attribute on a .ghost button actually hides it', () => {
+  /* `.ghost { display: inline-block }` is a class selector, and the rule
+     that makes `hidden` work lives in the browser's own stylesheet, which
+     every author rule outranks. So `hidden` on a .ghost did nothing at
+     all: Open app folder, which is supposed to appear only while Shift is
+     held, shipped permanently visible in 1.4.4 beside Reset to defaults --
+     which is the pairing the Shift gate exists to avoid. The pill needed
+     the identical line for the identical reason, so this guards both. */
+  const css = read('app.css');
+  assert.ok(/\.ghost\[hidden\][^{]*\{[^}]*display:\s*none/.test(css),
+    'a .ghost with the hidden attribute is still drawn');
+  assert.ok(/\.update-pill\[hidden\]\s*\{[^}]*display:\s*none/.test(css),
+    'a hidden update pill is still drawn');
+
+  /* Anything else that sets display and is ever given `hidden` in the
+     markup needs its own line, so the markup is what decides. */
+  const html = read('index.html');
+  const hiddenIds = [];
+  html.replace(/<[^>]*\bhidden\b[^>]*>/g, function (tag) {
+    const id = /id="([^"]+)"/.exec(tag);
+    const cls = /class="([^"]+)"/.exec(tag);
+    if (id && cls) hiddenIds.push([id[1], cls[1]]);
+    return tag;
+  });
+  hiddenIds.forEach(function (pair) {
+    const classes = pair[1].split(/\s+/);
+    classes.forEach(function (c) {
+      /* Does a bare class rule give it a display at all? */
+      const sets = new RegExp('(^|[,\\s])\\.' + c + '\\s*(,[^{]*)?\\{[^}]*display:', 'm').test(css);
+      if (!sets) return;
+      const guarded = new RegExp('\\.' + c + '\\[hidden\\]').test(css)
+        || new RegExp('#' + pair[0] + '\\[hidden\\]').test(css);
+      assert.ok(guarded,
+        '#' + pair[0] + ' carries hidden but .' + c + ' sets display with no [hidden] rule to beat it');
+    });
+  });
+});
+
+test('a launch asks about the version instead of trusting a stale answer', () => {
+  /* The six-hour gate was applied to the launch check too, so a machine
+     that had asked that morning -- when the running version was the newest
+     one -- went on saying "Up to date" for the rest of the day, through
+     any number of relaunches. Opening the radio is the one moment the
+     answer is wanted, so a launch uses a floor of its own.
+
+     And there was no repeat at all: a radio left open for a week checked
+     once, at launch. "Every six hours", which both readmes and the Service
+     pane promise, was only ever a rate limit on relaunching. */
+  const app = read('app.js');
+  assert.ok(/var BOOT_FLOOR = 10 \* 60 \* 1000;/.test(app),
+    'the launch check no longer has a floor of its own');
+  assert.ok(/checkVersion\(false, BOOT_FLOOR\)/.test(app),
+    'the launch check is back to waiting out the full six hours');
+  assert.ok(/setInterval\(function \(\) \{ checkVersion\(false\); \}, CHECK_EVERY\);/.test(app),
+    'nothing re-checks while the radio is left open, so "every six hours" is not true');
+  assert.ok(/function checkVersion\(force, floor\)/.test(app),
+    'checkVersion no longer takes a floor');
+
+  /* Check now must still ignore every floor. */
+  assert.ok(/checkNow'\)\.addEventListener\('click', function \(\) \{ checkVersion\(true\); \}\)/.test(app),
+    'Check now no longer forces');
+});
+
+test('the pill fades in over the span the dot fades out', () => {
+  /* Both sixty milliseconds, opposite directions and opposite easings. An
+     animation rather than a transition because the pill comes out of
+     display: none, which no transition can start from. */
+  const css = read('app.css');
+  assert.ok(/@keyframes update-pill-in/.test(css), 'the pill appears with no fade');
+  assert.ok(/\.update-pill\s*\{\s*animation: update-pill-in \.06s ease-out;\s*\}/.test(css),
+    'the pill fade is not 60ms ease-out');
+  assert.ok(/74%\s*\{ opacity: 1; animation-timing-function: ease-in; \}\s*\n\s*77%\s*\{ opacity: 0; \}/.test(css),
+    'the dot fade is no longer the 60ms this is matched to');
+});
