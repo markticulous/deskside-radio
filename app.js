@@ -3906,6 +3906,10 @@
      from disk needs. Off in one click, and then nothing is ever sent. */
   var VERSION_URL = 'https://raw.githubusercontent.com/Markticulous/deskside-radio/main/version.json';
   var RELEASES_URL = 'https://github.com/Markticulous/deskside-radio/releases/latest';
+  /* Named once. It is in the zip, so it is beside this page however the
+     page got here, and it is the one instruction that is true of every
+     install rather than only the ones the installer made. */
+  var INSTALLER_NAME = 'Win-Install-or-Update-Deskside-Radio.cmd';
   /* Six hours rather than a day. The radio is built to be left open for
      days at a time, which is the only case where the interval matters at
      all -- four requests a day to one static file against one. */
@@ -4004,9 +4008,19 @@
          a file:// page has no way to run a local script, and one that
          could would be a hole -- so it is named rather than linked,
          with the releases page left for anyone who would rather read
-         what changed first. */
+         what changed first.
+
+         The file comes first and the Start menu second, because only the
+         file is always there. An archive unzipped by hand -- a supported
+         route, and the only one on a Mac or on Linux -- has the .cmd in it
+         and no Start menu entry at all, and this line used to name only
+         the entry: an instruction to go and find something that was never
+         created. Holding Shift on this tab turns up Open app folder, which
+         is how the first half is acted on. */
       line.innerHTML = running + ' · <b>New v' + escapeHtml(state.versionLatest) + ' available</b> · ' +
-        'run <b>Update Deskside Radio</b> from the Start menu · ' +
+        'run <b>' + INSTALLER_NAME + '</b> in the app folder ' +
+        '<span class="update-hint">(hold Shift for a button to it)</span>, ' +
+        'or <b>Deskside Radio - Update</b> from the Start menu · ' +
         '<a href="' + RELEASES_URL + '" target="_blank" rel="noopener">what changed</a>';
       return;
     }
