@@ -266,7 +266,24 @@ h2 {
 .s-pill[hidden] { display: none; }
 .s-link { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; font: inherit; letter-spacing: inherit; }
 .s-link:hover { opacity: .72; }
-.s-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none; }
+/* The dot blinks, as it does in the app: lit for three quarters of every
+   two seconds, snapping on and fading off over 60ms. display: none on a
+   dismissed pill stops it, which is why there is no second switch. */
+@keyframes update-dot-blink {
+  0%   { opacity: 1; }
+  74%  { opacity: 1; animation-timing-function: ease-in; }
+  77%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+.s-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none;
+  animation: update-dot-blink 2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .s-dot { animation: none; opacity: 1; }
+}
+/* One dot held lit, for the comparison in the blink block. */
+.s-dot.is-still { animation: none; opacity: 1; }
 .s-x {
   flex: none; display: grid; place-items: center;
   width: 13px; height: 13px; padding: 0;
@@ -456,6 +473,21 @@ h2 {
       <div class="ship-foot">
         <button type="button" id="restore">Restore &mdash; as a check would</button>
         <span>The mark on the Settings control is not affected by any of this. It stays for as long as the update is there and has not been installed.</span>
+      </div>
+    </div>
+
+    <div class="opt">
+      <div class="opt-head">
+        <span class="opt-key">&bull;</span>
+        <span class="opt-name">The dot blinks</span>
+        <span class="opt-note">The pill is small, quiet and off to one side of the plate, which is what it should be &mdash; and which is also how it gets missed. The dot is the one thing on the face that moves of its own accord, so it is what catches the eye that was not looking. Two seconds a cycle, lit for three quarters of it: a marker with a pulse in it rather than an alarm. It snaps on and fades off over 60ms &mdash; the snap is what the eye catches, and a dot that eased in as well would read as something still loading.</span>
+      </div>
+      <div class="zoom" style="--bg: #2b1d14; --fg: #f0e2c8; --by-fg: #e3cf9a; --by-line: rgba(201,162,74,.55);">
+        <span class="s-pill"><a class="s-link" href="#" onclick="return false"><span class="s-dot"></span>Update available</a><button type="button" class="s-x" aria-label="Hide this until the next check"><span aria-hidden="true">&times;</span></button></span>
+        <span class="s-pill"><a class="s-link" href="#" onclick="return false"><span class="s-dot is-still"></span>Update available</a><button type="button" class="s-x" aria-label="Hide this until the next check"><span aria-hidden="true">&times;</span></button></span>
+      </div>
+      <div class="ship-foot">
+        <span>Left, as shipped. Right, what a machine set to reduced motion gets: held lit. The dot marks the notice either way &mdash; the blink is only the part that asks for the glance, and that is the part being declined.</span>
       </div>
     </div>
 

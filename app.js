@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.4.4';
+  var APP_VERSION = '1.4.5';
 
   var DEFAULTS = {
     /* The three a fresh install starts with, in this order, taken from a
