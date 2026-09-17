@@ -523,3 +523,57 @@ test('the pill fades in over the span the dot fades out', () => {
   assert.ok(/74%\s*\{ opacity: 1; animation-timing-function: ease-in; \}\s*\n\s*77%\s*\{ opacity: 0; \}/.test(css),
     'the dot fade is no longer the 60ms this is matched to');
 });
+
+test('the way to take an update names the file, not only the Start menu', () => {
+  /* The Service line used to say "run Update Deskside Radio from the Start
+     menu" and nothing else. Two problems. The entry only exists where the
+     installer created it -- unzip the archive by hand, which is supported
+     and is the only route on a Mac or on Linux, and the app was naming
+     something that had never been made. And it was called "Update Deskside
+     Radio", which files it under U in an alphabetical All apps list, so
+     somebody looking under D for their radio finds nothing and concludes
+     there is nothing there. That is not a hypothetical: it happened.
+
+     The installer now writes "Deskside Radio - Update", and every place
+     that tells somebody how to take an update leads with the filename,
+     which ships in the zip and is therefore beside index.html however the
+     folder arrived. */
+  const INSTALLER_CMD = 'Win-Install-or-Update-Deskside-Radio.cmd';
+  const NEW_LNK = 'Deskside Radio - Update';
+
+  const cmd = read(INSTALLER);
+  assert.ok(cmd.indexOf("'" + NEW_LNK + ".lnk'") !== -1,
+    INSTALLER + ' no longer writes a Start menu entry called ' + NEW_LNK);
+  assert.ok(cmd.indexOf("'Update Deskside Radio.lnk'") !== -1,
+    INSTALLER + ' no longer clears the old Start menu name, so an upgrade leaves two');
+  /* The old one goes only once the new one is confirmed written. */
+  assert.ok(/Test-Path -LiteralPath \(Join-Path \$dir 'Deskside Radio - Update\.lnk'\)\) -and \(Test-Path -LiteralPath \$old\)/.test(cmd),
+    INSTALLER + ' removes the old shortcut without confirming the new one exists');
+
+  /* The uninstaller has to catch the new name too. Its wildcard does. */
+  const un = read('Win - Uninstall Deskside Radio.cmd');
+  assert.ok(un.indexOf("-like 'Deskside Radio*.lnk'") !== -1,
+    'the uninstaller no longer sweeps the wildcard that covers ' + NEW_LNK);
+
+  /* And the app, and both readmes, name the file before the Start menu. */
+  const app = read('app.js');
+  assert.ok(app.indexOf("var INSTALLER_NAME = '" + INSTALLER_CMD + "'") !== -1,
+    'app.js no longer names the installer');
+  assert.ok(app.indexOf('INSTALLER_NAME + ') !== -1,
+    'the Service line no longer uses the installer name it declares');
+
+  ['app.js', 'index.html', 'README.md', 'README.html'].forEach(function (f) {
+    const s = read(f);
+    if (s.indexOf(NEW_LNK) === -1) return;   // not every file mentions the shortcut
+    const file = s.indexOf(INSTALLER_CMD);
+    assert.ok(file !== -1, f + ' names the Start menu entry but never the file');
+    assert.ok(file < s.indexOf(NEW_LNK),
+      f + ' puts the Start menu entry ahead of the file, which is the one that is always there');
+  });
+
+  /* Nothing may still tell somebody to run the old name. */
+  ['app.js', 'index.html', 'README.md', 'README.html'].forEach(function (f) {
+    assert.ok(!/(run|open|double-click)[^.]{0,40}<?\/?(strong|b)?>?Update Deskside Radio/i.test(read(f)),
+      f + ' still sends somebody to a Start menu entry called Update Deskside Radio');
+  });
+});

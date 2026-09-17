@@ -136,7 +136,10 @@ rem              its arguments, which is where the file:// URL sits for the
 rem              browser shortcuts. This is what catches one that was
 rem              renamed to something else entirely.
 rem   by name    Deskside Radio*.lnk and Update Deskside Radio.lnk, but
-rem              only when the thing it points at is no longer there.
+rem              only when the thing it points at is no longer there. The
+rem              wildcard covers the updater's current name, Deskside Radio
+rem              - Update.lnk; the exact one is kept for installs made
+rem              before it was renamed off the letter U.
 rem
 rem That second condition was learned the hard way. Matching on the name
 rem alone removed the Start menu entry belonging to a different install

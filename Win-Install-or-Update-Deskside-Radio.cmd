@@ -192,8 +192,19 @@ set "MSG=Desktop shortcut created"
 call :ok
 
 rem And one in the Start menu for the updater itself, because
-rem %LOCALAPPDATA% is not a folder anyone goes looking in. Type "update
-rem desk" at the Start button and it is there.
+rem %LOCALAPPDATA% is not a folder anyone goes looking in.
+rem
+rem It is called "Deskside Radio - Update" and not "Update Deskside Radio"
+rem for one reason: the All apps list is alphabetical, and the second name
+rem files it under U. Somebody looking for their radio's updater looks
+rem under D, finds nothing there, and concludes there is nothing to find --
+rem which is exactly what happened. Named this way it sits next to the
+rem radio itself. Searching "deskside" or "update" still reaches it.
+rem
+rem The old name is removed after the new one is written, and only then, so
+rem a failure leaves the working shortcut rather than none. Deleting it is
+rem safe on the very run it launched: a .lnk is read once, at launch, and
+rem nothing holds it open afterwards.
 set "SELF=%APPDIR%Win-Install-or-Update-Deskside-Radio.cmd"
 set "UPDATER="
 if exist "%SELF%" (
@@ -201,12 +212,16 @@ if exist "%SELF%" (
   "%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
     "$dir = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs';" ^
     "if (Test-Path -LiteralPath $dir) {" ^
-    "  $link = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $dir 'Update Deskside Radio.lnk'));" ^
+    "  $link = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $dir 'Deskside Radio - Update.lnk'));" ^
     "  $link.TargetPath = $env:SELF;" ^
     "  $link.IconLocation = $env:APPDIR + 'assets\favicon-dial.ico,0';" ^
     "  $link.WorkingDirectory = $env:APPROOT;" ^
     "  $link.Description = 'Check for and install a newer Deskside Radio';" ^
     "  $link.Save();" ^
+    "  $old = Join-Path $dir 'Update Deskside Radio.lnk';" ^
+    "  if ((Test-Path -LiteralPath (Join-Path $dir 'Deskside Radio - Update.lnk')) -and (Test-Path -LiteralPath $old)) {" ^
+    "    Remove-Item -LiteralPath $old -Force -ErrorAction SilentlyContinue;" ^
+    "  }" ^
     "}"
   set "MSG=Start menu entry added"
   call :ok
