@@ -524,54 +524,52 @@ test('the pill fades in over the span the dot fades out', () => {
     'the dot fade is no longer the 60ms this is matched to');
 });
 
-test('the way to take an update names the file, not only the Start menu', () => {
-  /* The Service line used to say "run Update Deskside Radio from the Start
-     menu" and nothing else. Two problems. The entry only exists where the
-     installer created it -- unzip the archive by hand, which is supported
-     and is the only route on a Mac or on Linux, and the app was naming
-     something that had never been made. And it was called "Update Deskside
-     Radio", which files it under U in an alphabetical All apps list, so
-     somebody looking under D for their radio finds nothing and concludes
-     there is nothing there. That is not a hypothetical: it happened.
+test('taking an update is one link, and that link never goes stale', () => {
+  /* Three shapes in one evening, which is worth recording. It said "run
+     Update Deskside Radio from the Start menu" -- an entry that only
+     exists where the installer made one, so an archive unzipped by hand
+     was pointed at something that had never been created, and one filed
+     under U where nobody looks for a radio. Fixing that, it named the
+     file, the Start menu entry and the way to reach the folder, all in one
+     line, which left the reader to work out which of the three was theirs.
 
-     The installer now writes "Deskside Radio - Update", and every place
-     that tells somebody how to take an update leads with the filename,
-     which ships in the zip and is therefore beside index.html however the
-     folder arrived. */
+     It is now the same link the release page gives a first-time installer.
+     Install and update stop being two procedures. The installer needs no
+     argument to do the right thing: with no index.html beside it, and
+     there is none in a Downloads folder, it targets the folder it
+     installed to. */
   const INSTALLER_CMD = 'Win-Install-or-Update-Deskside-Radio.cmd';
-  const NEW_LNK = 'Deskside Radio - Update';
+  const app = read('app.js');
 
+  const url = /var UPDATER_URL = '([^']+)'/.exec(app);
+  assert.ok(url, 'app.js no longer declares UPDATER_URL');
+  assert.ok(url[1].indexOf('/releases/latest/download/' + INSTALLER_CMD) !== -1,
+    'UPDATER_URL is ' + url[1] + ' -- it must stay on releases/latest/download or it freezes ' +
+    'at whichever release happened to write it');
+  assert.equal(/\/download\/v?\d+\.\d+/.test(url[1]), false,
+    'UPDATER_URL is pinned to a version, so it would stop pointing at the newest installer');
+  assert.ok(/'<a href="' \+ UPDATER_URL \+ '"[^\n]*Download the updater/.test(app),
+    'the Service line no longer offers the updater as a link');
+
+  /* One route in that line, not three. The folder copy and the Start menu
+     entry are cheaper -- no Mark of the Web, so no prompts -- but they
+     belong in the readme, not in the sentence somebody reads when they
+     want the new version and nothing else. */
+  const at = app.indexOf('Download the updater');
+  const line = app.slice(at - 400, at + 400);
+  assert.equal(/Deskside Radio - Update|in the app folder/.test(line), false,
+    'the Service line names more than one way to update again');
+
+  /* The Start menu entry is still made, and still under D. */
   const cmd = read(INSTALLER);
-  assert.ok(cmd.indexOf("'" + NEW_LNK + ".lnk'") !== -1,
-    INSTALLER + ' no longer writes a Start menu entry called ' + NEW_LNK);
-  assert.ok(cmd.indexOf("'Update Deskside Radio.lnk'") !== -1,
-    INSTALLER + ' no longer clears the old Start menu name, so an upgrade leaves two');
-  /* The old one goes only once the new one is confirmed written. */
+  assert.ok(cmd.indexOf("'Deskside Radio - Update.lnk'") !== -1,
+    INSTALLER + ' no longer writes a Start menu entry called Deskside Radio - Update');
   assert.ok(/Test-Path -LiteralPath \(Join-Path \$dir 'Deskside Radio - Update\.lnk'\)\) -and \(Test-Path -LiteralPath \$old\)/.test(cmd),
     INSTALLER + ' removes the old shortcut without confirming the new one exists');
+  assert.ok(read('Win - Uninstall Deskside Radio.cmd').indexOf("-like 'Deskside Radio*.lnk'") !== -1,
+    'the uninstaller no longer sweeps the wildcard that covers the renamed shortcut');
 
-  /* The uninstaller has to catch the new name too. Its wildcard does. */
-  const un = read('Win - Uninstall Deskside Radio.cmd');
-  assert.ok(un.indexOf("-like 'Deskside Radio*.lnk'") !== -1,
-    'the uninstaller no longer sweeps the wildcard that covers ' + NEW_LNK);
-
-  /* And the app, and both readmes, name the file before the Start menu. */
-  const app = read('app.js');
-  assert.ok(app.indexOf("var INSTALLER_NAME = '" + INSTALLER_CMD + "'") !== -1,
-    'app.js no longer names the installer');
-  assert.ok(app.indexOf('INSTALLER_NAME + ') !== -1,
-    'the Service line no longer uses the installer name it declares');
-
-  ['app.js', 'index.html', 'README.md', 'README.html'].forEach(function (f) {
-    const s = read(f);
-    if (s.indexOf(NEW_LNK) === -1) return;   // not every file mentions the shortcut
-    const file = s.indexOf(INSTALLER_CMD);
-    assert.ok(file !== -1, f + ' names the Start menu entry but never the file');
-    assert.ok(file < s.indexOf(NEW_LNK),
-      f + ' puts the Start menu entry ahead of the file, which is the one that is always there');
-  });
-
-  /* Nothing may still tell somebody to run the old name. */
+  /* And nothing anywhere still sends somebody to the name filed under U. */
   ['app.js', 'index.html', 'README.md', 'README.html'].forEach(function (f) {
     assert.ok(!/(run|open|double-click)[^.]{0,40}<?\/?(strong|b)?>?Update Deskside Radio/i.test(read(f)),
       f + ' still sends somebody to a Start menu entry called Update Deskside Radio');
