@@ -3910,6 +3910,12 @@
      days at a time, which is the only case where the interval matters at
      all -- four requests a day to one static file against one. */
   var CHECK_EVERY = 6 * 60 * 60 * 1000;
+  /* Opening the radio is the one moment the answer is actually wanted, so
+     a launch does not wait out the six hours. It is not a free-for-all
+     either: reopening the window four times in a minute should ask once.
+     Ten minutes is long enough to cover that and short enough that a
+     release published this morning is known about by this afternoon. */
+  var BOOT_FLOOR = 10 * 60 * 1000;
 
   // 1.2.10 is newer than 1.2.9, which a string compare gets wrong.
   function newerThan(a, b) {
@@ -4011,9 +4017,13 @@
       : running + ' · not checked yet';
   }
 
-  function checkVersion(force) {
+  /* `floor` is how long ago a check has to have been for this one to be
+     worth making. It defaults to the six hours, and a launch passes its
+     own much shorter one. `force` ignores both and is what Check now is. */
+  function checkVersion(force, floor) {
     if (!state.versionCheck) { renderUpdateLine(); return; }
-    if (!force && Date.now() - (state.versionLastCheck || 0) < CHECK_EVERY) { renderUpdateLine(); return; }
+    var wait = floor == null ? CHECK_EVERY : floor;
+    if (!force && Date.now() - (state.versionLastCheck || 0) < wait) { renderUpdateLine(); return; }
     if (typeof fetch !== 'function') return;
     checking = true;
     renderUpdateLine('Asking GitHub…');
@@ -4322,7 +4332,16 @@
     syncUpdatePill();
     // Not on the critical path: let the radio come up first.
     paintMotion();
-    setTimeout(function () { checkVersion(false); }, 3000);
+    /* Two of them, and both are needed. The first is the launch: whatever
+       the stored answer says, a window that has just been opened asks
+       again unless it asked in the last ten minutes. The second is what
+       made "every six hours" true -- there was no repeat at all before, so
+       a radio left open for a week checked exactly once, at launch, and
+       went on reporting that week-old answer as "Up to date". The
+       interval is the same six hours the gate uses, so the two can never
+       drift apart. */
+    setTimeout(function () { checkVersion(false, BOOT_FLOOR); }, 3000);
+    setInterval(function () { checkVersion(false); }, CHECK_EVERY);
     el.tuner.classList.add('is-quiet');
     meterQuiet = true;
     startMeter();

@@ -461,6 +461,15 @@
 }
 /* display: inline-flex would otherwise beat the attribute. */
 .update-pill[hidden] { display: none; }
+/* The pill arrives over sixty milliseconds -- the same span the dot takes
+   to fade off, the other way round. It is not a transition because there
+   is nothing to transition from: the pill goes straight from display:
+   none, which no transition can start out of. An animation on the base
+   rule does run at that moment, because removing display: none is what
+   starts it, and that is also why it re-runs every time the pill comes
+   back after a dismiss. */
+@keyframes update-pill-in { from { opacity: 0; } to { opacity: 1; } }
+.update-pill { animation: update-pill-in .06s ease-out; }
 .update-pill-link {
   display: inline-flex; align-items: center; gap: 6px;
   color: inherit; text-decoration: none;
@@ -2602,6 +2611,12 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .pane { padding: 18px 24px 26px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; }
 .pane[hidden] { display: none; }
 .pane-block { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+/* Same trap as .ghost further down: `display: grid` here is an author
+   rule and the one that honours `hidden` is the browser's, so the reduced
+   motion block was drawn on every machine rather than only the ones that
+   ask for reduced motion -- which is precisely the switch that reads as a
+   fault when it is offered to somebody whose names are already moving. */
+.pane-block[hidden] { display: none; }
 .pane-block + .pane-block { margin-top: 10px; padding-top: 20px; border-top: 1px solid var(--ui-line); }
 .pane-block h3 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ui-mute); }
 .drawer-form * { box-sizing: border-box; }
@@ -2833,6 +2848,13 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   text-decoration: none;   /* one of these is an <a>, and reads as a button like the rest */
 }
 .ghost:hover, .file-btn:hover { border-style: solid; }
+/* `display: inline-block` above is a class selector, and the rule that
+   makes the hidden attribute work lives in the browser's own sheet, which
+   every author rule outranks. So .ghost elements ignored `hidden`
+   outright -- Open app folder, which is supposed to appear only while
+   Shift is held, was simply always there. The pill up the sheet needed
+   the same line for the same reason. */
+.ghost[hidden], .file-btn[hidden] { display: none; }
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
 
 /* ---- pointer feedback ----
