@@ -3906,10 +3906,15 @@
      from disk needs. Off in one click, and then nothing is ever sent. */
   var VERSION_URL = 'https://raw.githubusercontent.com/Markticulous/deskside-radio/main/version.json';
   var RELEASES_URL = 'https://github.com/Markticulous/deskside-radio/releases/latest';
-  /* Named once. It is in the zip, so it is beside this page however the
-     page got here, and it is the one instruction that is true of every
-     install rather than only the ones the installer made. */
-  var INSTALLER_NAME = 'Win-Install-or-Update-Deskside-Radio.cmd';
+  /* One link, and it is the same one the release page hands a first-time
+     installer. That is the point: installing and updating stop being two
+     procedures to explain and become one sentence. `latest` and not a
+     version, or it freezes at whatever release wrote it.
+
+     The installer works out the rest. With no index.html beside it -- and
+     there is none in a Downloads folder -- it goes to the folder it
+     installed to, which is an update. */
+  var UPDATER_URL = 'https://github.com/Markticulous/deskside-radio/releases/latest/download/Win-Install-or-Update-Deskside-Radio.cmd';
   /* Six hours rather than a day. The radio is built to be left open for
      days at a time, which is the only case where the interval matters at
      all -- four requests a day to one static file against one. */
@@ -4010,17 +4015,21 @@
          with the releases page left for anyone who would rather read
          what changed first.
 
-         The file comes first and the Start menu second, because only the
-         file is always there. An archive unzipped by hand -- a supported
-         route, and the only one on a Mac or on Linux -- has the .cmd in it
-         and no Start menu entry at all, and this line used to name only
-         the entry: an instruction to go and find something that was never
-         created. Holding Shift on this tab turns up Open app folder, which
-         is how the first half is acted on. */
+         One route named, not three. It used to name the Start menu entry
+         -- which only exists where the installer made one, so an archive
+         unzipped by hand was told to go and find something that had never
+         been created -- and then, trying to fix that, it named the file in
+         the app folder and the Start menu entry and the way to reach the
+         folder, in one line, leaving the reader to work out which of the
+         three applied to them.
+
+         The copy already in the app folder is still the cheaper route: it
+         carries no Mark of the Web, so it costs no security prompts, where
+         a fresh download costs two. That belongs in the readme. It does
+         not belong in the one line somebody reads when they want the new
+         version and nothing else. */
       line.innerHTML = running + ' · <b>New v' + escapeHtml(state.versionLatest) + ' available</b> · ' +
-        'run <b>' + INSTALLER_NAME + '</b> in the app folder ' +
-        '<span class="update-hint">(hold Shift for a button to it)</span>, ' +
-        'or <b>Deskside Radio - Update</b> from the Start menu · ' +
+        '<a href="' + UPDATER_URL + '" target="_blank" rel="noopener"><b>Download the updater</b></a> and run it · ' +
         '<a href="' + RELEASES_URL + '" target="_blank" rel="noopener">what changed</a>';
       return;
     }
