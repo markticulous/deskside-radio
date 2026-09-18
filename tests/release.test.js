@@ -575,3 +575,46 @@ test('taking an update is one link, and that link never goes stale', () => {
       f + ' still sends somebody to a Start menu entry called Update Deskside Radio');
   });
 });
+
+test('an unzipped archive is not mistaken for an installed copy', () => {
+  /* The rule was "index.html sits beside me, so I am inside an install".
+     An archive unpacked into Downloads has exactly that shape, because the
+     installer ships inside the zip -- so somebody who downloaded
+     deskside-radio-1.4.5.zip, unzipped it and ran the script in it had the
+     radio installed into their Downloads folder, with the Desktop shortcut
+     and the Start menu entry both pointing there. Reported, reproduced.
+
+     An install is now marked as one. The marker is written by the script
+     and is never in the zip, which is the whole of what makes it mean
+     something: a folder holding it was installed into, a folder without it
+     was unpacked into. */
+  const MARKER = 'assets\\installed-here.txt';
+  const cmd = read(INSTALLER);
+
+  assert.ok(cmd.indexOf('set "MARKER=' + MARKER + '"') !== -1,
+    INSTALLER + ' no longer defines the marker that tells an install from an unzipped archive');
+  assert.ok(cmd.indexOf('if exist "%~dp0index.html" if exist "%~dp0%MARKER%"') !== -1,
+    INSTALLER + ' decides it is inside an install without checking for the marker, so an ' +
+    'unzipped archive is treated as one again');
+  assert.ok(/> "%APPDIR%%MARKER%" echo/.test(cmd),
+    INSTALLER + ' never writes the marker, so no install would ever be recognised as one');
+
+  /* An install already at the target is an update, wherever the script ran
+     from. Without this the occupied guard fired on the ordinary case: the
+     app tells people to download the installer and run it, and with a
+     perfectly good install in place that was refused -- with a message
+     describing an index.html check the code did not perform. */
+  assert.ok(cmd.indexOf('if not defined UPDATING if exist "%APPDIR%index.html" set "UPDATING=1"') !== -1,
+    INSTALLER + ' no longer treats an existing install at the target as an update, so ' +
+    'downloading the installer and running it is refused');
+  const occupied = cmd.slice(cmd.indexOf(':occupied'), cmd.indexOf(':occupied') + 400);
+  assert.equal(/none of them is index\.html/.test(occupied), false,
+    'the occupied message describes a check that is not made');
+
+  /* And the marker must never travel in the zip, or every unzipped archive
+     would claim to be an install and we are back where we started. */
+  assert.equal(read('tools/build-dist.js').indexOf('installed-here'), -1,
+    'the build names the install marker, which would ship it inside the zip');
+  assert.equal(fs.existsSync(path.join(ROOT, 'assets', 'installed-here.txt')), false,
+    'there is an install marker in the repository, which the build would copy into the zip');
+});

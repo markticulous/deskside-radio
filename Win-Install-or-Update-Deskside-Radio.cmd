@@ -72,18 +72,45 @@ set "ARG=%ARG:~0,-1%"
 goto :trimslash
 :trimmed
 
+rem Where this goes. "index.html sits beside me, so I am inside an install"
+rem was the rule, and it was wrong: an archive unzipped into Downloads has
+rem exactly that shape, because the installer ships inside the zip. Somebody
+rem who downloaded deskside-radio-1.4.5.zip, unpacked it and ran the script
+rem in it had the radio installed into their Downloads folder, with the
+rem Desktop shortcut and the Start menu entry both pointing there.
+rem
+rem So an install is now marked as one. assets\installed-here.txt is written
+rem at the end of every run, and it is not in the zip -- nothing but this
+rem script ever creates it, which is what makes it mean something. A folder
+rem holding it was installed into; a folder without it was unpacked into.
+set "MARKER=assets\installed-here.txt"
+
 set "UPDATING="
-if exist "%~dp0index.html" (
+if exist "%~dp0index.html" if exist "%~dp0%MARKER%" (
   set "APPDIR=%~dp0"
   set "UPDATING=1"
-) else (
-  if not defined ARG (set "APPDIR=%DEFAULT%\") else (set "APPDIR=%ARG%\")
 )
+set "UNPACKED="
+if not defined UPDATING if exist "%~dp0index.html" set "UNPACKED=1"
+if not defined UPDATING if not defined ARG set "APPDIR=%DEFAULT%\"
+if not defined UPDATING if defined ARG set "APPDIR=%ARG%\"
 call set "APPROOT=%%APPDIR:~0,-1%%"
 
+rem An install already at the target is an update, wherever the script was
+rem run from. This is the ordinary case for the route the app recommends:
+rem download the installer, double-click it in Downloads, and the folder it
+rem installed to last time is the folder it writes to now.
+rem
+rem It also has to come before the guard below, which used to fire on it.
+rem That guard tested only whether the target had anything in it, while its
+rem message said "none of them is index.html" -- so downloading the
+rem installer and running it with a perfectly good install in place was
+rem refused, and refused with an explanation of a check that was never made.
+if not defined UPDATING if exist "%APPDIR%index.html" set "UPDATING=1"
+
 rem A mistyped argument should not scatter seventeen files through
-rem someone's Documents. An existing folder is only written into if it
-rem already looks like an install.
+rem someone's Documents. An existing folder is only written into if it is
+rem empty or is an install, and by here an install has set UPDATING.
 if not defined UPDATING if exist "%APPROOT%\" (
   dir /b "%APPROOT%" 2>nul | "%FINDSTR%" /r "." >nul && goto :occupied
 )
@@ -99,6 +126,16 @@ if defined UPDATING (
   echo   account only. It needs no administrator, writes nothing to the
   echo   registry, and leaves the rest of your computer alone.
   echo.
+  rem An unzipped archive looks exactly like an install from the inside, so
+  rem say which one this was taken for. Otherwise somebody who unpacked a
+  rem zip and ran the script in it watches a folder they did not name go by
+  rem in one line and has no idea the radio went somewhere else.
+  if defined UNPACKED (
+    echo   This folder looks like an unzipped download rather than an
+    echo   installed copy, so it is not being installed into. You can
+    echo   delete it once this has finished.
+    echo.
+  )
   echo   Installing into
 )
 echo      "%APPROOT%"
@@ -146,6 +183,29 @@ set "MSG=Unpacked"
 call :ok
 
 if not exist "%APPDIR%index.html" goto :corrupt
+
+rem The mark that says this folder was installed into rather than unpacked
+rem into. Written on every run, so a folder installed by an older version
+rem gains one the first time it is updated. It goes in assets\ because the
+rem root is meant to hold only things worth double-clicking, and it is
+rem written after the unpack because the unpack is what creates assets\.
+rem
+rem Plain text and readable on purpose: anybody who opens it should be able
+rem to work out what it is for and that deleting it costs them nothing more
+rem than one confused install.
+> "%APPDIR%%MARKER%" echo This folder is a Deskside Radio installation.
+>>"%APPDIR%%MARKER%" echo.
+>>"%APPDIR%%MARKER%" echo Win-Install-or-Update-Deskside-Radio.cmd looks for this file to tell an
+>>"%APPDIR%%MARKER%" echo installed copy from an archive somebody has just unzipped -- the two
+>>"%APPDIR%%MARKER%" echo hold the same files otherwise. With it here, running that script in
+>>"%APPDIR%%MARKER%" echo this folder updates this folder. Without it, the script installs to
+>>"%APPDIR%%MARKER%" echo %%LOCALAPPDATA%%\DesksideRadio\app instead and leaves this one alone.
+>>"%APPDIR%%MARKER%" echo.
+>>"%APPDIR%%MARKER%" echo Installed at: %APPROOT%
+>>"%APPDIR%%MARKER%" echo Nothing reads it but that script. It is not a setting and holds nothing
+>>"%APPDIR%%MARKER%" echo about you; your stations live with the browser profile, not here.
+set "MSG=Marked as an installed copy"
+call :ok
 
 rem The icons used to sit in the root beside the scripts and now live in
 rem assets\. Unpacking over the top writes the new ones and cannot remove
@@ -302,8 +362,8 @@ exit /b 1
 
 :occupied
 echo.
-echo   "%APPROOT%" already has files in it and none of them is index.html,
-echo   so this is not a Deskside Radio folder.
+echo   "%APPROOT%" already has files in it and no index.html among them,
+echo   so it is not a Deskside Radio folder and not an empty one either.
 echo.
 echo   Check the path and try again. Nothing has been changed.
 echo.

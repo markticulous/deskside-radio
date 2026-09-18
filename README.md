@@ -231,6 +231,14 @@ It cannot open File Explorer: a web page cannot start a program, and the one rou
 
 It is behind Shift for the same reason the record button is: it sits next to Reset, and two ordinary-looking buttons where one of them wipes everything is a row asking for the wrong press.
 
+### How the installer knows which folder is the install
+
+`assets/installed-here.txt` is written into every folder the installer installs into, and it is never in the zip. That one file is the whole of the difference between an install and an archive somebody has just unzipped — the two hold the same files otherwise, because the installer ships inside the zip.
+
+Without it the installer read "there is an `index.html` beside me" as "I am inside an install", which is true of an unzipped download too. Unpack `deskside-radio.zip` into Downloads, run the script in it, and the radio was installed into Downloads, with the Desktop shortcut and the Start menu entry pointing there. Now that folder is recognised as an unzipped archive, the radio goes to `%LOCALAPPDATA%\DesksideRadio\app`, and the script says so before it starts.
+
+Deleting the file costs nothing except that the next run in that folder installs elsewhere instead of updating in place.
+
 ## Removing it
 
 `Win - Uninstall Deskside Radio.cmd` ships inside the zip, so it is sitting in the app folder. Double-click it and it removes that folder and every shortcut the scripts wrote — on the Desktop, in the Startup folder and in the Start menu. Shortcuts are found both by name (`Deskside Radio*.lnk`) and by where they point, so one that was renamed or copied still goes.
