@@ -914,3 +914,18 @@ test('arriving on the departures board turns the board', () => {
      would still be correct, but the comment above would be a lie. */
   assert.ok(/var SAVED_PLATE_MS = \d+;/.test(app), 'the Saved plate delay is gone');
 });
+
+test('the Saved plate and the drawer close on the same clock', () => {
+  /* Two numbers in two files that have to agree. The plate plays out and
+     the drawer leaves as it lands -- if the constant is the shorter, the
+     drawer goes while the word is still on screen; if the stylesheet is,
+     the drawer sits there after it has gone. Neither is visible in a diff
+     of one file, and on the departures theme the cost compounds: the board
+     cannot turn until the drawer has left. */
+  const js = /var SAVED_PLATE_MS = (\d+);/.exec(read('app.js'));
+  const css = /animation: save-msg-cycle ([\d.]+)s/.exec(read('app.css'));
+  assert.ok(js, 'SAVED_PLATE_MS is gone from app.js');
+  assert.ok(css, 'the save-msg-cycle duration is gone from app.css');
+  assert.equal(Number(js[1]), Math.round(parseFloat(css[1]) * 1000),
+    'SAVED_PLATE_MS is ' + js[1] + 'ms but save-msg-cycle runs for ' + css[1] + 's');
+});

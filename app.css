@@ -3533,12 +3533,16 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   /* Only this one word is set like a stamped plate; the other messages are
      sentences, and sentences in caps read as shouting. */
   letter-spacing: .12em; text-transform: uppercase;
-  /* 1.15s: 184ms up, 690ms held, 276ms down. It was 1.4s, which is long
-     enough to notice yourself waiting for the drawer. The proportions are
-     unchanged -- the hold is still the bulk of it, because the word has to
-     be readable, not merely present. commitSettings closes the drawer on
-     the same number. */
-  animation: save-msg-cycle 1.15s ease-out both;
+  /* .7s: 112ms up, 420ms held, 168ms down. It was 1.4s, then 1.15s, and
+     both were long enough to notice yourself waiting -- the drawer cannot
+     leave until this has played out, and on the departures theme the board
+     cannot turn until the drawer has left, which made the wait audible in
+     a way a confirmation should not be. The proportions are untouched at
+     each cut: the hold is still the bulk of it, because the word has to be
+     readable rather than merely present, and 420ms is comfortably that for
+     one short word in a place the eye is already resting. commitSettings
+     closes the drawer on the same number. */
+  animation: save-msg-cycle .7s ease-out both;
 }
 @keyframes save-msg-in { from { opacity: 0; transform: translateY(10px); } }
 @keyframes save-msg-cycle {
