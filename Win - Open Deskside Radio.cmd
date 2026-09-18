@@ -19,7 +19,16 @@ rem  style, which was measured before any of this was written -- and it
 rem  needs to, because the themes are not the same height.
 rem
 rem  Nothing is installed and nothing is left running. This exits as soon
-rem  as the style is set, or after a few seconds if no window ever turns up.
+rem  as the style is set, or after a minute if no window ever turns up.
+rem
+rem  A minute, and not the ten seconds this first had. At sign-in nothing is
+rem  warm -- not the disk, not the browser, not the .NET that compiles the
+rem  helper below -- and the radio has been measured taking over a minute to
+rem  appear after a reboot on a machine where it opens at once by hand. A
+rem  window that turns up after the wait has run out is left resizable and
+rem  nothing says so, which is the worst outcome available here; the cost of
+rem  waiting longer is a minimised console sitting idle in the cases where
+rem  the radio never opens at all.
 rem
 rem  Argument 1 is the browser to use, baked into the shortcut by
 rem  "Win - Create Desktop Shortcut (Chrome).cmd" so that the browser
@@ -93,8 +102,8 @@ rem cmd is holding open.
   "  '}'" ^
   ") -join [Environment]::NewLine;" ^
   "Add-Type -TypeDefinition $cs;" ^
-  "foreach ($try in 1..40) {" ^
-  "  Start-Sleep -Milliseconds 250;" ^
+  "foreach ($try in 1..120) {" ^
+  "  Start-Sleep -Milliseconds 500;" ^
   "  if ([DsWin]::Lock('Deskside Radio') -gt 0) { break }" ^
   "}"
 

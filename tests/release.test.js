@@ -707,19 +707,41 @@ test('the console peak lamp holds, falls, and is drawn above the cover', () => {
     'the peak lamp element is gone from the meter');
   assert.ok(/\.meter-peak \{ display: none; \}/.test(css),
     'the peak lamp is drawn in themes that have nowhere to put it');
-  const lamp = css.slice(css.indexOf('[data-theme="console"] .meter-peak'),
-                         css.indexOf('[data-theme="console"] .meter-peak') + 700);
+  const at = css.indexOf('[data-theme="console"] .meter-peak');
+  const lamp = css.slice(at, css.indexOf('}', at));
   assert.ok(/z-index: 1;/.test(lamp),
     'the console peak lamp is back under the cover that hides the unlit bar');
-  assert.ok(/left: calc\(var\(--vu-peak, 0\) \* 100%\);/.test(lamp),
-    'the lamp is no longer positioned from --vu-peak');
+  /* Positioned in whole cells, not in percent. A cell is snapped to whole
+     device pixels; a percentage of the bar is not, and at 125% scaling
+     that left a 1px fringe down each side of the lamp and another at the
+     cover's edge -- three hairlines nobody drew. */
+  assert.ok(/left: calc\(var\(--vu-peak-n, 0\) \* var\(--cell-dp/.test(lamp),
+    'the lamp is positioned by a fraction of the bar again, which lands between device pixels');
+  assert.ok(/transform: translateX\(calc\(var\(--lit-cells\)/.test(css),
+    'the cover is scaled again rather than slid by whole cells, so its edge splits a pixel');
+  /* Counted with one floor. Rounding to a multiple of the step and then
+     dividing by the step again returns 46.99999 as readily as 47, and a
+     cell width times that lands a third of a device pixel off -- which is
+     exactly the hairline this is here to stop. */
+  assert.ok(/--lit-cells: round\(down, calc\(var\(--vu, 0\) \/ var\(--vu-step, \.0125\)\), 1\);/.test(css),
+    'the lit cells are counted by dividing a rounded product again, which does not land on whole pixels');
+  assert.ok(/setProperty\('--vu-peak-n', s\)/.test(read('tuner-ui.js')),
+    'the meter hands the stylesheet a fraction again instead of a cell number');
+  assert.ok(/overflow: hidden;/.test(css.slice(css.indexOf('[data-theme="console"] .meter-bar {'),
+                                               css.indexOf('[data-theme="console"] .meter-bar::before'))),
+    'the console bar no longer clips, so the slid cover paints past its right edge');
+  /* And the lamp takes the colour of the band it is standing on, from the
+     same gradient the bar is painted with rather than a second copy. */
+  assert.ok(/--vu-bands: linear-gradient/.test(css), 'the band gradient is no longer named once');
+  assert.ok(/background-image: var\(--vu-bands\);/.test(lamp),
+    'the lamp has a colour of its own again instead of the segment it sits on');
   assert.ok(/\.tuner\.is-quiet \.meter-peak \{ opacity: 0; \}/.test(css),
     'the lamp stays lit over a stopped meter, holding the last loud moment for ever');
 
   /* The console bar has to be on the same grid the lamp lands on. */
   assert.ok(/\[data-theme="console"\] \.meter \{ --vu-cell: 12px; --vu-gap: 3px;/.test(css),
     'the console meter no longer declares its cell pitch, so nothing can snap to it');
-  assert.ok(/round\(down, var\(--vu, 0\), var\(--vu-step, \.0125\)\)/.test(css),
+  assert.ok(/--lit-cells: round\(down,/.test(css),
     'the console bar is no longer snapped to whole cells, so the lamp and the bar disagree');
 
   /* Ballistics, and the rule that keeps this off the hot path. */
@@ -811,8 +833,12 @@ test('the opener locks the window, and the shortcuts go through it', () => {
     OPENER + ' matches the window title exactly again, which fails as soon as a station is playing');
   assert.ok(/0x40000/.test(src) && /0x10000/.test(src),
     OPENER + ' no longer clears both the resize grip and the maximise box');
-  assert.ok(/foreach \(\$try in 1\.\.40\)/.test(src),
-    OPENER + ' waits for the window without a limit, so a launch that never opens one hangs');
+  /* A minute, not the ten seconds this started with. Nothing is warm at
+     sign-in and the radio has been measured taking over a minute to appear
+     after a reboot; a window that turns up after the wait has run out is
+     left resizable with nothing said about it. */
+  assert.ok(/foreach \(\$try in 1\.\.120\)/.test(src) && /Start-Sleep -Milliseconds 500;/.test(src),
+    OPENER + ' no longer waits about a minute for the window to appear');
   /* $args is a PowerShell automatic variable; assigning to it silently
      cost us the whole launch once. */
   assert.equal(/\$args\b/.test(src), false,

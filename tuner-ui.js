@@ -389,11 +389,16 @@
     } else if (now - t.peakAt > PEAK_HOLD) {
       t.peak = Math.max(level, t.peak - PEAK_FALL * dt);
     }
+    /* The cell number, not the fraction of the bar it works out to. The
+       stylesheet multiplies it by a cell width that has already been
+       snapped to whole device pixels, so the lamp lands on the grid
+       exactly; handing over a fraction and dividing it back cost a third
+       of a pixel and drew a hairline down each side of the lamp. */
     var cells = Math.floor(t.peak / t.step);
-    var s = cells > 0 ? (cells * t.step).toFixed(5) : '0';
+    var s = String(cells);
     if (s === t.lastPeak) return;
     t.lastPeak = s;
-    t.meter.style.setProperty('--vu-peak', s);
+    t.meter.style.setProperty('--vu-peak-n', s);
     t.meter.style.setProperty('--vu-peak-o', cells > 0 ? '1' : '0');
   }
 

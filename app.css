@@ -1124,19 +1124,45 @@
    colour is drawn over the top of it, anchored at the right and scaled
    from nothing at full level to the whole bar at silence. What moves is
    an opaque rectangle; the colours underneath never move at all. */
+/* The bands, named once. The cover paints over them, and the peak lamp
+   paints the slice of them it is standing on, so all three have to agree
+   about where green becomes amber. --bar-w is the bar's own width worked
+   back out of the two things that are already known: a cell is --cell-dp
+   wide and is --vu-step of the bar, so the bar is one divided by the
+   other. Everything below positions in whole cells of that. */
+[data-theme="console"] .meter-bar {
+  --vu-bands: linear-gradient(90deg, var(--green) 0 65.22%, var(--amber) 65.22% 86.96%, var(--red) 86.96%);
+  --bar-w: calc(var(--cell-dp, var(--vu-cell, 12px)) / var(--vu-step, .0125));
+  /* Whole cells, counted in one step. Rounding the level to a multiple
+     of --vu-step and then dividing by --vu-step again gives 46.99999 as
+     readily as 47, and a cell width multiplied by that lands a third of
+     a device pixel off -- which is what drew the hairline at the cover's
+     edge. Flooring the count itself cannot do that. */
+  --lit-cells: round(down, calc(var(--vu, 0) / var(--vu-step, .0125)), 1);
+  /* The cover and the lamp are laid out in whole cells, and a cell is a
+     whole number of device pixels, so neither edge can land on a fraction
+     of one. They both used to: at 125% scaling the cover left a 1px line
+     of lit gradient showing at its edge, and the lamp had a 1px fringe on
+     each side. Three hairlines nobody drew. */
+  overflow: hidden;
+}
 [data-theme="console"] .meter-bar::before {
   content: ""; position: absolute; inset: 0;
-  background: linear-gradient(90deg, var(--green) 0 65.22%, var(--amber) 65.22% 86.96%, var(--red) 86.96%);
+  background: var(--vu-bands);
 }
 [data-theme="console"] .meter-bar::after {
   content: ""; position: absolute; inset: 0; background: #1b1e22;
   transform-origin: right center;
   /* The smooth cover first, so a browser without round() keeps what it
-     had; then the same thing snapped to whole cells. A peak lamp sitting
-     on one segment above a bar that ends half way through another would
-     be two meters disagreeing in the same 14 pixels. */
+     had. Then the same thing slid across by a whole number of cells --
+     translate rather than scale, because scaling to a fraction of the bar
+     put the cover's edge between two device pixels and left a hairline of
+     the lit gradient showing through. A peak lamp sitting on one segment
+     above a bar that ends half way through another would be two meters
+     disagreeing in the same 14 pixels. */
   transform: scaleX(calc(1 - var(--vu, 0)));
-  transform: scaleX(calc(1 - round(down, var(--vu, 0), var(--vu-step, .0125))));
+  transform: translateX(calc(var(--lit-cells) * var(--cell-dp, var(--vu-cell, 12px))
+    + var(--cell-origin, 0px)));
 }
 /* The lamp itself: one cell wide, parked at the left edge of whichever
    segment the peak reached. The bar's own mask cuts it down to the lit
@@ -1147,9 +1173,21 @@
 [data-theme="console"] .meter-peak {
   display: block; position: absolute; top: 0; bottom: 0;
   width: var(--cell-dp, var(--vu-cell, 12px));
-  left: calc(var(--vu-peak, 0) * 100%);
+  /* In cells, not in percent, for the same reason as the cover: a whole
+     number of cells is a whole number of device pixels. */
+  left: calc(var(--vu-peak-n, 0) * var(--cell-dp, var(--vu-cell, 12px)) + var(--cell-origin, 0px));
   opacity: var(--vu-peak-o, 0);
-  background: #fff6e2;
+  /* The colour of the segment it is standing on rather than a colour of
+     its own: the band gradient again, laid out at the width of the whole
+     bar and slid left so the piece showing through this cell is the piece
+     that would be under it. Green low down, amber past 0 VU, red at the
+     top -- and it changes as the lamp falls, without anything having to
+     be told where the bands are a second time. */
+  background-image: var(--vu-bands);
+  background-repeat: no-repeat;
+  background-size: var(--bar-w) 100%;
+  background-position: calc(-1 * (var(--vu-peak-n, 0) * var(--cell-dp, var(--vu-cell, 12px))
+    + var(--cell-origin, 0px))) 0;
   /* Above the cover, which is ::after and therefore the last child and
      painted last. Without this the lamp is drawn and then hidden by the
      very thing it is meant to outlive: the cover starts at the current
