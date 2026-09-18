@@ -893,4 +893,24 @@ test('arriving on the departures board turns the board', () => {
   assert.ok(/if \(state\.theme === 'departures' && from && from !== 'departures'\)/.test(app),
     'the board turns on every save, or on none, rather than only on arriving');
   assert.ok(/TunerUI\.flapName\(el\.name\);/.test(app), 'nothing asks the board to turn');
+
+  /* And it turns where it can be watched. The theme is applied the moment
+     Save is pressed, but the drawer stays up for the whole Saved plate and
+     then takes another .19s to leave -- so flapping on the spot spent the
+     entire turn behind the modal and what you saw was a board that had
+     already finished. It waits for the dialog's close event and then for
+     display to reach none, which with allow-discrete is the end of the
+     close transition and the one honest answer to "has it gone yet". */
+  assert.ok(/function flapWhenClear\(\)/.test(app),
+    'app.js no longer waits for the drawer before turning the board');
+  assert.ok(/flapWhenClear\(\);/.test(app), 'the board is turned without waiting for the drawer');
+  const wait = app.slice(app.indexOf('function flapWhenClear'), app.indexOf('function applyLook'));
+  assert.ok(/addEventListener\('close'/.test(wait), 'the wait no longer keys off the dialog closing');
+  assert.ok(/getComputedStyle\(dlg\)\.display === 'none'/.test(wait),
+    'the wait no longer checks that the drawer has actually gone');
+  assert.ok(/\+\+frames > 90/.test(wait),
+    'the wait is uncapped, so a drawer that never reports closed would spin forever');
+  /* The plate is what makes the wait necessary; if it went to nothing this
+     would still be correct, but the comment above would be a lie. */
+  assert.ok(/var SAVED_PLATE_MS = \d+;/.test(app), 'the Saved plate delay is gone');
 });
