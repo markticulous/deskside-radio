@@ -1880,6 +1880,33 @@
      name is new to an empty readout. */
   var lookWas = null;
 
+  /* The board turns where it can be watched, which is not behind the
+     drawer. A theme is applied the moment Save is pressed, but the drawer
+     stays up for the whole of the Saved plate -- SAVED_PLATE_MS, over a
+     second -- and then takes another .19s to get out of the way. Flapping
+     on the spot spent the entire turn hidden, and what the listener saw
+     was a board that had already finished.
+
+     So: wait for the dialog's own close event, then wait for the close to
+     finish. `display` is transitioned with allow-discrete, so it flips to
+     none at the end of that transition and not before -- which makes it
+     the one honest answer to "has it gone yet". Capped in frames rather
+     than trusted, because a board that never turns is a smaller fault
+     than a loop that never ends. */
+  function flapWhenClear() {
+    var dlg = el.settings;
+    var turn = function () { TunerUI.flapName(el.name); };
+    if (!dlg || !dlg.open) { turn(); return; }
+    dlg.addEventListener('close', function () {
+      var frames = 0;
+      var look = function () {
+        if (getComputedStyle(dlg).display === 'none' || ++frames > 90) { turn(); return; }
+        requestAnimationFrame(look);
+      };
+      requestAnimationFrame(look);
+    }, { once: true });
+  }
+
   function applyLook() {
     var from = lookWas;
     lookWas = state.theme;
@@ -1901,7 +1928,7 @@
          save that leaves the theme where it was changes nothing here, and
          neither does going the other way. */
       if (state.theme === 'departures' && from && from !== 'departures') {
-        TunerUI.flapName(el.name);
+        flapWhenClear();
       }
     });
     // After the theme has painted, so the new height is the one measured.
