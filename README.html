@@ -538,6 +538,9 @@ html { scroll-behavior: smooth; }
 
         <dt><span class="path">assets/</span></dt>
         <dd>Everything the radio needs and nobody opens &mdash; one <span class="path">favicon-*.ico</span> per theme, for the shortcut, and <span class="path">LICENSE.txt</span>. The root of this folder is only the things you double-click; this is where the rest of it went.</dd>
+
+        <dt><span class="path">assets/installed-here.txt</span></dt>
+        <dd>The one file that says this folder is an <em>installed</em> copy rather than an archive somebody unzipped. It is written by the installer and is never inside the zip, which is the whole of what makes it mean anything &mdash; the two kinds of folder hold the same files otherwise, because the installer ships inside the zip. Without it the installer read &ldquo;there is an <span class="path">index.html</span> beside me&rdquo; as &ldquo;I am inside an install&rdquo;, so unzipping the archive into Downloads and running the script in it installed the radio into Downloads, shortcuts and all. Delete it and nothing breaks; the next run in this folder simply installs to <span class="path">%LOCALAPPDATA%\DesksideRadio\app</span> instead of updating here.</dd>
       </dl>
       <p>Anything starting <strong>Win -</strong> is for Windows and anything starting <strong>Linux -</strong> is for Linux; on a Mac you make the shortcut from inside the radio instead, with the button in the top bar.</p>
       <p>Keep the files together in one folder. You can put that folder anywhere: Documents, OneDrive, a USB stick.</p>
