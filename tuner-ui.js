@@ -679,6 +679,22 @@
     if (theme === 'console') vfdFlicker(nameEl); else vfdStop();
   }
 
+  /* Turn the board on request. setName flaps only when the words change,
+     which is right -- it is the arrival of a new departure that turns the
+     panels, and a theme switch leaves the same name standing. But arriving
+     on the board is itself an arrival, and the one thing a split-flap sign
+     should do when you first look at it is turn. So the drawer asks for it
+     directly when Departures is the theme somebody has just chosen.
+
+     Guarded here rather than at the call, so nothing has to remember that
+     only one theme has panels and that a listener may have asked for
+     stillness. */
+  function flapName(nameEl) {
+    if (!nameEl || themeOf(nameEl) !== 'departures') return;
+    if (root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    flapReveal(nameEl);
+  }
+
   // Widest line and total line height, taken from the lines themselves.
   function contentSize(el) {
     var w = 0, h = 0;
@@ -1062,6 +1078,6 @@
     setNeedle: setNeedle, setLevel: setLevel, refreshMeter: refreshMeter,
     scopeShowing: scopeShowing, drawBars: drawBars, clearScope: clearScope,
     setName: setName, fitName: fitName, watchName: watchName,
-    clearFit: clearFit, fitLine: fitLine
+    clearFit: clearFit, fitLine: fitLine, flapName: flapName
   };
 })(window);
