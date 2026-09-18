@@ -1874,7 +1874,15 @@
     setTimeout(fitNow, 2600);
   }
 
+  /* What the readout was wearing before this call, so arriving on a theme
+     can be told from staying on it. Null until the first look is applied,
+     which is the boot: setName flaps there of its own accord, because the
+     name is new to an empty readout. */
+  var lookWas = null;
+
   function applyLook() {
+    var from = lookWas;
+    lookWas = state.theme;
     document.documentElement.setAttribute('data-theme', state.theme);
     requestAnimationFrame(function () {
       // The meter is drawn differently by every theme, and setLevel works
@@ -1886,6 +1894,15 @@
       if (!st) return;
       TunerUI.setNeedle(el.tuner, st.band);
       TunerUI.setName(el.name, st.name);
+      /* Turning up on the departures board turns the board. setName will
+         not do it -- the name has not changed, only the cabinet around it
+         -- and a split-flap sign that arrives already settled is the one
+         thing a split-flap sign should never do. Only on the way in: a
+         save that leaves the theme where it was changes nothing here, and
+         neither does going the other way. */
+      if (state.theme === 'departures' && from && from !== 'departures') {
+        TunerUI.flapName(el.name);
+      }
     });
     // After the theme has painted, so the new height is the one measured.
     requestAnimationFrame(function () { sizeWindow(); });

@@ -863,3 +863,34 @@ test('the opener locks the window, and the shortcuts go through it', () => {
       f + ' has lost the fallback that aims straight at the browser');
   });
 });
+
+test('arriving on the departures board turns the board', () => {
+  /* setName flaps only when the words change, which is right: it is a new
+     departure that turns the panels, and a theme switch leaves the same
+     name standing. But arriving on the board is itself an arrival, and a
+     split-flap sign that turns up already settled is the one thing a
+     split-flap sign should never do.
+
+     Only on the way in. A save that leaves the theme where it was turns
+     nothing -- checked in a browser: switching to Departures and saving
+     gave 28 distinct frames of the readout, saving again on the same theme
+     gave one. */
+  const js = read('tuner-ui.js');
+  const app = read('app.js');
+
+  assert.ok(/function flapName\(nameEl\)/.test(js), 'tuner-ui.js no longer offers flapName');
+  assert.ok(/flapName: flapName/.test(js), 'flapName is not exported, so the drawer cannot ask for it');
+  /* The two conditions live in flapName, so no caller has to remember
+     that one theme has panels and that stillness may have been asked for. */
+  const at = js.indexOf('function flapName');
+  const fn = js.slice(at, js.indexOf('}', js.indexOf('flapReveal(nameEl);', at)));
+  assert.ok(/themeOf\(nameEl\) !== 'departures'/.test(fn),
+    'flapName no longer checks the theme, so it would scramble a readout with no panels');
+  assert.ok(/prefers-reduced-motion: reduce/.test(fn),
+    'flapName ignores reduced motion');
+
+  assert.ok(/var lookWas = null;/.test(app), 'app.js no longer remembers the theme it was on');
+  assert.ok(/if \(state\.theme === 'departures' && from && from !== 'departures'\)/.test(app),
+    'the board turns on every save, or on none, rather than only on arriving');
+  assert.ok(/TunerUI\.flapName\(el\.name\);/.test(app), 'nothing asks the board to turn');
+});
