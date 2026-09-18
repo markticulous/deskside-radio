@@ -1882,8 +1882,8 @@
 
   /* The board turns where it can be watched, which is not behind the
      drawer. A theme is applied the moment Save is pressed, but the drawer
-     stays up for the whole of the Saved plate -- SAVED_PLATE_MS, over a
-     second -- and then takes another .19s to get out of the way. Flapping
+     stays up for the whole of the Saved plate -- SAVED_PLATE_MS -- and
+     then takes another .19s to get out of the way. Flapping
      on the spot spent the entire turn hidden, and what the listener saw
      was a board that had already finished.
 
@@ -3798,7 +3798,7 @@
 
   /* The full length of the Saved plate: up, held, and away again. The
      drawer closes on the same number, so the two cannot drift apart. */
-  var SAVED_PLATE_MS = 1150;
+  var SAVED_PLATE_MS = 700;
 
   function commitSettings() {
     var msg = $('saveMsg');
