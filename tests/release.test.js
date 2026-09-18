@@ -359,6 +359,13 @@ test('every script announces itself in capitals before it does anything', () => 
      optional quote is the only thing the pattern has to allow for. */
   fs.readdirSync(ROOT)
     .filter(function (f) { return /\.(cmd|sh)$/i.test(f); })
+    /* One exemption, and it earns it by never being seen. The opener is
+       what the Desktop shortcut and the Startup entry point at, so it runs
+       on every launch of the radio and nobody ever double-clicks it. Its
+       console is minimised and it exits in under a second; a banner there
+       would be a greeting printed into a window put up to be ignored, on
+       the one path where the promise this test protects does not apply. */
+    .filter(function (f) { return f !== 'Win - Open Deskside Radio.cmd'; })
     .forEach(function (f) {
       const src = read(f);
       const banner = /^[ \t]*echo +"? *(DESKSIDE RADIO[^"\r\n]*?) *"?[ \t]*$/m.exec(src);
@@ -739,4 +746,94 @@ test('Save and Close are told apart by colour, not only by their word', () => {
     'the primary button no longer fades between colours');
   assert.ok(read('app.js').indexOf("btn.classList.toggle('is-dirty', dirty)") !== -1,
     'nothing puts is-dirty on the button any more');
+});
+
+test('the window is put back before the page is drawn, not after', () => {
+  /* Chrome will not restore an --app window's own bounds: relaunched on
+     the same profile it comes up at its own default, measured twice now --
+     a window last seen at 1134x742 reopened at 1266x1372. So the page has
+     to move the window, and a page can only move a window that exists,
+     which means something is always shown at the launcher's position
+     first. The only question is for how long.
+
+     It used to be the whole boot: the move lived in app.js, at the foot of
+     the body, behind five scripts and a requestAnimationFrame. Measured in
+     a real Chrome window, the move now happens at ~12ms against a first
+     paint at ~600ms, so the window is in place before anything is drawn.
+
+     This has to stay in the head, above the stylesheet, or it goes back to
+     being late. */
+  const html = read('index.html');
+  const head = html.slice(0, html.indexOf('</head>'));
+  const at = head.indexOf('windowBox');
+  assert.ok(at !== -1, 'the early window restore is gone from the head');
+  assert.ok(at < head.indexOf('app.css'),
+    'the window restore sits below the stylesheet, so it waits on a render-blocking fetch');
+  assert.ok(/window\.moveTo\(x, y\);/.test(head), 'the early restore no longer moves the window');
+  assert.ok(/window\.resizeTo\(w, h\);/.test(head), 'the early restore no longer sizes the window');
+
+  /* It must decline the same two things app.js declines, or it would move
+     somebody's ordinary browser window around. */
+  assert.ok(/Chrome\\\/\|Chromium\\\/\|Edg\\\//.test(head),
+    'the early restore no longer checks which browser it is in');
+  assert.ok(/frame > 0 && frame < 60/.test(head),
+    'the early restore no longer checks that this is the launcher window');
+  /* And it must never be able to stop the page loading. */
+  assert.ok(/try \{/.test(head) && /catch \(e\)/.test(head),
+    'the early restore is not wrapped, so a bad stored box would break the boot');
+
+  /* app.js still owns saving, and still runs the restore itself -- that is
+     what sets keepBox, without which fitWindow would resize over it. */
+  const app = read('app.js');
+  assert.ok(/if \(restoreBox\(\)\) \{ keepBox = true; mayFit = true; return; \}/.test(app),
+    'app.js no longer claims the restored box, so the window gets refitted over it');
+});
+
+test('the opener locks the window, and the shortcuts go through it', () => {
+  /* A window cannot be made non-resizable from inside the page: there is no
+     web API for it and no browser switch for it. The only way is to clear
+     WS_THICKFRAME after Windows has made the window, which needs something
+     of ours running at launch -- and a shortcut aimed straight at
+     chrome.exe leaves nothing of ours running at all. Hence the opener.
+
+     Two things about finding the window were learned by getting them
+     wrong. MainWindowTitle only reports a process's *main* window, so with
+     Chrome already running the app window was invisible to it; this walks
+     every top-level window instead. And the title is not "Deskside Radio"
+     once a station is playing -- it is "KISS 92.5 - Deskside Radio" -- so
+     an exact match never fired. It matches the tail. */
+  const OPENER = 'Win - Open Deskside Radio.cmd';
+  const src = read(OPENER);
+
+  assert.ok(/EnumWindows/.test(src),
+    OPENER + ' is back to MainWindowTitle, which cannot see a second window of a running browser');
+  assert.ok(/EndsWith\(tail\)/.test(src),
+    OPENER + ' matches the window title exactly again, which fails as soon as a station is playing');
+  assert.ok(/0x40000/.test(src) && /0x10000/.test(src),
+    OPENER + ' no longer clears both the resize grip and the maximise box');
+  assert.ok(/foreach \(\$try in 1\.\.40\)/.test(src),
+    OPENER + ' waits for the window without a limit, so a launch that never opens one hangs');
+  /* $args is a PowerShell automatic variable; assigning to it silently
+     cost us the whole launch once. */
+  assert.equal(/\$args\b/.test(src), false,
+    OPENER + ' assigns to $args, which PowerShell owns');
+
+  /* It ships, or the shortcuts point at something that is not there. */
+  assert.ok(read('tools/build-dist.js').indexOf(OPENER) !== -1,
+    OPENER + ' is not in the build, so a download would have shortcuts aimed at a missing file');
+
+  /* Both shortcut writers go through it, minimised, and fall back to the
+     browser if it is not beside them. */
+  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start With Windows.cmd'].forEach(function (f) {
+    const s = read(f);
+    assert.ok(s.indexOf('set "OPENER=%APPDIR%' + OPENER + '"') !== -1,
+      f + ' no longer names the opener');
+    assert.ok(/if not exist "%OPENER%" set "OPENER="/.test(s),
+      f + ' would write a shortcut to an opener that is not there');
+    assert.ok(/\$link\.TargetPath = \$env:OPENER;/.test(s), f + ' does not aim the shortcut at the opener');
+    assert.ok(/\$link\.WindowStyle = 7;/.test(s),
+      f + ' does not minimise the opener, so its console shows on screen at every launch');
+    assert.ok(/\} elseif \(\$env:BROWSER\) \{/.test(s),
+      f + ' has lost the fallback that aims straight at the browser');
+  });
 });

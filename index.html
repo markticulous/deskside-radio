@@ -24,6 +24,49 @@
      and the measuring passes are keyed off document.fonts, which fires
      either way. What changes is that the fallback frame is now sometimes
      visible rather than always hidden behind a white window. -->
+<!-- The window is put back where it was left before anything is drawn.
+
+     Chrome will not do this itself: relaunched on the same profile, an
+     --app window comes up at its own default -- measured again here, a
+     window last seen at 1134x742 reopened at 1266x1372 -- so the page has
+     to move it, and a page can only move a window that already exists.
+     Something is therefore always shown at the launcher's position first.
+     The question is only how long for, and that is why this sits at the
+     top of the head rather than in app.js at the foot of the body: there
+     the window was not moved until five scripts had parsed and the whole
+     radio had been laid out, so the wrong position was on screen for the
+     entire boot. Here it is a frame or two before the first paint.
+
+     Deliberately duplicated rather than shared. app.js is what saves the
+     box and remains the authority -- it runs this again later, which also
+     corrects whatever the window manager rounded -- but nothing of app.js
+     can be borrowed from here without loading it here, which is the cost
+     this is avoiding. Kept small enough to read in one go, and wrapped so
+     that a bad stored value cannot stop the page loading. -->
+<script>
+(function () {
+  try {
+    if (!/Chrome\/|Chromium\/|Edg\//.test(navigator.userAgent)) return;
+    var frame = window.outerHeight - window.innerHeight;
+    if (!(frame > 0 && frame < 60)) return;          // not the launcher's window
+    var b = (JSON.parse(localStorage.getItem('radio.v1') || '{}') || {}).windowBox;
+    if (!b || !(b.w > 200 && b.h > 200)) return;
+    /* Size only where a listener could not have set it by hand -- on
+       Windows the launcher takes the resize grip off. Elsewhere the place
+       is restored and the size is left to the radio's own fit. */
+    var uad = navigator.userAgentData;
+    var sized = uad && uad.platform ? uad.platform === 'Windows'
+      : navigator.platform ? /^win/i.test(navigator.platform)
+      : /Windows/i.test(navigator.userAgent || '');
+    var w = sized ? Math.min(b.w, screen.availWidth) : window.outerWidth;
+    var h = sized ? Math.min(b.h, screen.availHeight) : window.outerHeight;
+    var x = Math.max(0, Math.min(b.x, screen.availWidth - w));
+    var y = Math.max(0, Math.min(b.y, screen.availHeight - h));
+    if (sized) window.resizeTo(w, h);
+    window.moveTo(x, y);
+  } catch (e) { /* no stored box, no storage, or not ours to move */ }
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="app.css">
@@ -159,7 +202,7 @@
     <header class="drawer-head">
       <div class="drawer-title">
         <h2>Settings</h2>
-        <span class="app-version">Deskside Radio&nbsp;&nbsp;<i class="ver-dot" aria-hidden="true"></i>&nbsp;&nbsp;<span id="appVersion">v1.4.6</span></span>
+        <span class="app-version">Deskside Radio&nbsp;&nbsp;<i class="ver-dot" aria-hidden="true"></i>&nbsp;&nbsp;<span id="appVersion">v1.4.7</span></span>
       </div>
       <button type="button" id="drawerClose" class="drawer-x" aria-label="Close">&times;</button>
     </header>

@@ -19,6 +19,8 @@
   --rule:    #c6bfaf;
   --accent:  #b85c12;
   --amber:   #f0842a;
+  /* One colour for "look at this", the same in both themes on purpose. */
+  --alert:   #f0842a;
   --good:    #2f8a4e;
 
   --ui: "Archivo", "Helvetica Neue", Arial, sans-serif;
@@ -223,7 +225,9 @@ h2 {
   top: -2px; right: -2px;
   width: 7px; height: 7px;
   border-radius: 50%;
-  background: var(--hot);
+  /* Was var(--hot), the theme's own accent, which is what shipped first
+     and what has now been dropped: the mark reads the same on all eight. */
+  background: var(--alert);
   box-shadow: 0 0 0 2px var(--bg);
 }
 
@@ -239,7 +243,7 @@ h2 {
   box-shadow: inset 0 0 0 1px currentColor;
   flex: none;
 }
-.n-pill b { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.n-pill b { width: 5px; height: 5px; border-radius: 50%; background: var(--alert); }
 
 /* ---- the shipped pill, with its dismiss -------------------------------
    Built the way the app builds it rather than approximated: a shell with
@@ -275,8 +279,14 @@ h2 {
   77%  { opacity: 0; }
   100% { opacity: 0; }
 }
+/* One alert colour on every theme, and not the theme's own. The dot used
+   to be cut from each cabinet's byline -- brass on the dial, lime on the
+   board, phosphor amber on the console -- which gave one piece of news
+   eight faces, each in a colour that theme already uses for something
+   ordinary. An alert is the one thing on the face that should not belong
+   to the cabinet it is in. */
 .s-dot {
-  width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none;
+  width: 5px; height: 5px; border-radius: 50%; background: var(--alert); flex: none;
   animation: update-dot-blink 2s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -480,7 +490,7 @@ h2 {
       <div class="opt-head">
         <span class="opt-key">&bull;</span>
         <span class="opt-name">The dot blinks</span>
-        <span class="opt-note">The pill is small, quiet and off to one side of the plate, which is what it should be &mdash; and which is also how it gets missed. The dot is the one thing on the face that moves of its own accord, so it is what catches the eye that was not looking. Two seconds a cycle, lit for three quarters of it: a marker with a pulse in it rather than an alarm. It snaps on and fades off over 60ms &mdash; the snap is what the eye catches, and a dot that eased in as well would read as something still loading.</span>
+        <span class="opt-note">The pill is small, quiet and off to one side of the plate, which is what it should be &mdash; and which is also how it gets missed. The dot is the one thing on the face that moves of its own accord, so it is what catches the eye that was not looking. Two seconds a cycle, lit for three quarters of it: a marker with a pulse in it rather than an alarm. It snaps on and fades off over 60ms &mdash; the snap is what the eye catches, and a dot that eased in as well would read as something still loading. It is the same orange whatever theme you are in, and deliberately not the theme&rsquo;s own colour: cut from each cabinet&rsquo;s byline it was brass on the dial and lime on the board, one piece of news wearing eight faces, each in a colour that theme already uses for something ordinary.</span>
       </div>
       <div class="zoom" style="--bg: #2b1d14; --fg: #f0e2c8; --by-fg: #e3cf9a; --by-line: rgba(201,162,74,.55);">
         <span class="s-pill"><a class="s-link" href="#" onclick="return false"><span class="s-dot"></span>Update available</a><button type="button" class="s-x" aria-label="Hide this until the next check"><span aria-hidden="true">&times;</span></button></span>
@@ -510,7 +520,7 @@ h2 {
 
   <section>
     <h2>Placements</h2>
-    <p class="lede">Each row is the same mock header under a different theme skin. Colours are each theme&rsquo;s own, so you can see whether a treatment survives a walnut ground and an off-white one.</p>
+    <p class="lede">Each row is the same mock header under a different theme skin. Grounds, ink and accents are each theme&rsquo;s own, so you can see whether a treatment survives a walnut ground and an off-white one. The one exception is the alert mark itself: it is the same orange on all eight, because a piece of news should not be wearing the cabinet&rsquo;s colours.</p>
 
     <div class="opt">
       <div class="opt-head">

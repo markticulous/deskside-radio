@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.4.6';
+  var APP_VERSION = '1.4.7';
 
   var DEFAULTS = {
     /* The three a fresh install starts with, in this order, taken from a
@@ -535,9 +535,11 @@
     liveSince = Date.now();
     var st = currentStation();
     if (st && audio === corsEl) provenCors[st.url] = true;
-    /* No band means an internet-only station, and a separator with nothing
-       after it reads as something that failed to load. */
-    setStatus('live', st && st.band ? 'Live \u00b7 ' + st.band : 'Live');
+    /* Just the transport state. The frequency used to be appended here --
+       "Live \u00b7 92.5 FM" -- and it was already sitting two lines above in the
+       band readout, where it belongs and where every theme draws it. This
+       line answers one question, which is what the stream is doing. */
+    setStatus('live', 'Live');
     updateMediaSession();
   }
   wire(corsEl);
@@ -1688,19 +1690,44 @@
 
   /* Clamped to the screen in front of the user now, not the one the box
      was saved on: a second monitor that has since been unplugged would
-     otherwise put the window somewhere it cannot be reached. */
+     otherwise put the window somewhere it cannot be reached.
+
+     The clamp is also, it turns out, only for show. Chrome refuses to let
+     a page put a window partly off the screen and does the same arithmetic
+     itself, on all four edges -- measured: asking for 1900,900 at 900x700
+     on a 2560x1392 desktop lands at 1660,692, and asking for -14,-5 lands
+     at 0,0, with or without this. It is left in because it keeps the
+     numbers this function works with honest, not because it changes where
+     the window goes.
+
+     That refusal is why a window dragged hard into the top-left corner
+     cannot be restored there. Windows gives a Chrome window an invisible
+     resize border outside its visible frame -- 14px at the left and 5px at
+     the top on this machine -- so screenX reads -14 when the visible edge
+     is flush at 0, and no page is allowed to ask for -14. */
+  /* The size is only put back where the listener could not have set it by
+     hand. On Windows the launcher takes the resize grip off the window, so
+     a saved size is one the radio chose and is worth keeping. Everywhere
+     else the edges can still be dragged, and the ask was that a size got
+     that way is not remembered: the window comes back where it was left,
+     at whatever size the theme in front of it wants.
+
+     The return value says whether the size is settled. False sends
+     sizeWindow on to the fitting path, which is the same path a fresh
+     install takes. */
   function restoreBox() {
     var box = state.windowBox;
     if (!box || !windowIsOurs()) return false;
-    var w = Math.min(box.w, screen.availWidth);
-    var h = Math.min(box.h, screen.availHeight);
+    var sized = onWindows();
+    var w = sized ? Math.min(box.w, screen.availWidth) : window.outerWidth;
+    var h = sized ? Math.min(box.h, screen.availHeight) : window.outerHeight;
     var x = Math.max(0, Math.min(box.x, screen.availWidth - w));
     var y = Math.max(0, Math.min(box.y, screen.availHeight - h));
     try {
-      window.resizeTo(w, h);
+      if (sized) window.resizeTo(w, h);
       window.moveTo(x, y);
     } catch (e) { return false; }
-    return true;
+    return sized;
   }
 
   function fitWindow(pass) {

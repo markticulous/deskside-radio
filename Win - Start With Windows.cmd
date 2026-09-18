@@ -99,6 +99,19 @@ if not defined BROWSER for /f "skip=2 tokens=2,*" %%A in ('%SystemRoot%\System32
 if not defined BROWSERNAME if defined BROWSER set "BROWSERNAME=Microsoft Edge"
 
 set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile"
+rem The shortcut aims at the opener rather than at the browser. The
+rem opener starts the browser with the same flags and then takes the
+rem resize grip off the window, which cannot be done from inside the
+rem page -- there is no web API for it and no browser switch for it, so
+rem something of ours has to be running when the window appears. It
+rem exits as soon as that is done. WindowStyle 7 above keeps its console
+rem minimised, so what shows is a taskbar button for a moment rather
+rem than a black window on screen.
+set "OPENER=%APPDIR%Win - Open Deskside Radio.cmd"
+rem Without the opener beside it -- an older folder, or a copy taken
+rem apart by hand -- the shortcut goes straight at the browser as it
+rem always did, and the window is left resizable.
+if not exist "%OPENER%" set "OPENER="
 
 rem Every value reaches PowerShell as an environment variable, and every
 rem quote inside the argument string is built with [char]34. A literal " in
@@ -113,7 +126,11 @@ rem contain a space, so it needs no quoting of its own.
   "$path = Join-Path $env:STARTUP 'Deskside Radio.lnk';" ^
   "$link = (New-Object -ComObject WScript.Shell).CreateShortcut($path);" ^
   "$q = [char]34;" ^
-  "if ($env:BROWSER) {" ^
+  "if ($env:BROWSER -and $env:OPENER) {" ^
+  "  $link.TargetPath = $env:OPENER;" ^
+  "  $link.Arguments = $q + $env:BROWSER + $q;" ^
+  "  $link.WindowStyle = 7;" ^
+  "} elseif ($env:BROWSER) {" ^
   "  $url = ([Uri]$env:TARGET).AbsoluteUri;" ^
   "  $link.TargetPath = $env:BROWSER;" ^
   "  $link.Arguments = '--app=' + $q + $url + $q +" ^

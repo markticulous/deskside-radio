@@ -102,6 +102,12 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
    list as the scripts are eight wrong answers each. Sorted this way the
    root reads as a short menu. */
 ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start With Windows.cmd',
+ /* What the Desktop shortcut and the Startup entry actually point at. It
+    starts the browser and then takes the resize grip off the window, which
+    is the one thing a page cannot do for itself. Without it in the folder
+    the two scripts above fall back to aiming straight at the browser, so a
+    missing copy costs the lock and nothing else. */
+ 'Win - Open Deskside Radio.cmd',
  /* The per-browser launchers, and Linux. Named for the platform they are
     for, because a folder of double-clickable scripts is the one place a
     filename has to say what it does before anyone opens it. */

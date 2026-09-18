@@ -154,14 +154,24 @@
 .sched-chip[aria-pressed="false"] .sched-next { width: 0; opacity: 0; }
 .icon-btn     { display: inline-grid; place-items: center; width: 40px; height: 40px; position: relative; }
 /* The same news as the pill, on the control that leads to it. Drawn rather
-   than marked up, so it costs the header no extra element, and cut from
-   the theme's own byline colour like the pill is. The ring is the button's
-   own ground showing through, which is why it is currentColor at low alpha
-   rather than a background this rule would have to guess at. */
+   than marked up, so it costs the header no extra element.
+
+   One colour on all eight themes, and not the theme's own. It used to be
+   cut from the byline colour, which made it brass on the dial, lime on the
+   departures board, phosphor amber on the console -- eight different marks
+   for one piece of news, each of them a colour that theme already uses for
+   something ordinary. An alert is the one thing on the face that should
+   not belong to the cabinet it is in. This is the amber the silent-stream
+   lamp already uses, so it is the app's one colour for "look at this"
+   rather than a ninth invented for the purpose.
+
+   The ring stays the button's own ground showing through, which is why it
+   is currentColor at low alpha rather than a background this rule would
+   have to guess at. */
 #openSettings.has-update::after {
   content: ''; position: absolute; top: 6px; right: 6px;
   width: 7px; height: 7px; border-radius: 50%;
-  background: var(--by-fg, currentColor);
+  background: var(--alert, #f0842a);
   box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 22%, transparent);
 }
 .shortcut-btn { width: 30px; height: 30px; opacity: .55; transition: opacity .16s ease; }
@@ -500,7 +510,7 @@
   100% { opacity: 0; }
 }
 .update-dot {
-  width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none;
+  width: 5px; height: 5px; border-radius: 50%; background: var(--alert, #f0842a); flex: none;
   animation: update-dot-blink 2s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -612,6 +622,11 @@
    other way -- an SVG needle, a canvas -- sets this to 0 and the level
    is then not written into the DOM at all. Default 1: forgetting it
    costs a little work, turning it off wrongly would cost a meter. */
+/* One alert colour for the whole app, on every theme. The blinking dot in
+   the update pill and the mark on the Settings control are the two places
+   that use it; both are news rather than furniture, and news should look
+   the same wherever it appears. */
+:root { --alert: #f0842a; }
 .meter { --vu-live: 1; }
 /* Off unless a theme draws it. Only Console has a segmented bar it makes
    sense on; the needle themes have a needle, which is its own kind of
