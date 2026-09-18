@@ -191,7 +191,7 @@ There is no drift correction. It was written and then removed: playing at 0.5x f
 
 ## Updates
 
-The app fetches [`version.json`](version.json) from this repo a few seconds after it opens, and every six hours it is left running. A launch that asked within the last ten minutes does not ask again, so reopening the window repeatedly costs one request rather than five. When a newer version has been published it shows an **Update available** pill beside the wordmark and a dot on the Settings control, and names the version in **Settings → Service**. The dot at the head of the pill blinks — lit for three quarters of every two seconds, snapping on and fading off in sixty milliseconds. It is the only thing on the face that moves of its own accord, which is what lets a small, quiet notice still be caught out of the corner of the eye; a machine set to reduced motion gets it held lit instead. The pill carries a ⓧ: pressing it puts the pill away until the next completed check, which is a snooze rather than a mute. The dot on the Settings control is not affected by it and stays for as long as the update is outstanding. It sends no identifiers, downloads nothing, and installs nothing. The switch beside it turns the check off for good, and **Check now** beside that asks straight away rather than waiting for the interval — useful after a release, and the only way to find out without closing and reopening.
+The app fetches [`version.json`](version.json) from this repo a few seconds after it opens, and every six hours it is left running. A launch that asked within the last ten minutes does not ask again, so reopening the window repeatedly costs one request rather than five. When a newer version has been published it shows an **Update available** pill beside the wordmark and a dot on the Settings control, and names the version in **Settings → Service**. The dot at the head of the pill blinks — lit for three quarters of every two seconds, snapping on and fading off in sixty milliseconds. It is the only thing on the face that moves of its own accord, which is what lets a small, quiet notice still be caught out of the corner of the eye; a machine set to reduced motion gets it held lit instead. Both marks are the same alert orange on every theme — deliberately not the cabinet's own colour, because a piece of news should not be wearing it. The pill carries a ⓧ: pressing it puts the pill away until the next completed check, which is a snooze rather than a mute. The dot on the Settings control is not affected by it and stays for as long as the update is outstanding. It sends no identifiers, downloads nothing, and installs nothing. The switch beside it turns the check off for good, and **Check now** beside that asks straight away rather than waiting for the interval — useful after a release, and the only way to find out without closing and reopening.
 
 What the notice offers depends on what you are running it on, because the installer is a Windows batch file and naming it anywhere else is an instruction that cannot be followed.
 
@@ -232,6 +232,18 @@ Windows' **Accessibility → Visual effects → Animation effects**, off by defa
 Scrolling a name that does not fit is the one animation here that carries information rather than decorating — without it the end of the name is not slow, it is missing. So **Settings → Theme** grows a **Scroll long names anyway** switch, shown only when the system is actually asking for reduced motion. It re-enables the readout and preset marquees and nothing else; the split-flap reveal, the VFD flicker and the rest stay off.
 
 It has to be `!important` to work, which is unusual enough to explain: the reduced-motion block carries `.tuner *, .tuner *::before, .tuner *::after { animation: none !important }`, and nothing beats an `!important` on a universal selector by being more specific.
+
+## The window
+
+The radio sizes its own window to the theme, and themes are not the same height — Marconi is nearly 200px taller than Editorial — so the window changes shape when you change theme. Where it sits on screen is remembered and put back before the page is drawn.
+
+**On Windows the window cannot be resized by hand.** The Desktop shortcut and the Startup entry point at `Win - Open Deskside Radio.cmd` rather than at the browser: it starts the browser with the usual flags and then clears the window's resize grip and maximise box. That stops the edges being dragged, the title bar being double-clicked, and Win+Arrow snapping it about, while leaving the radio free to size the window itself. It runs for under a second and exits, its console minimised, and nothing is installed or left running. A folder without that file falls back to a shortcut aimed straight at the browser, and the window stays resizable.
+
+There is no way to do this from the page. No web API makes a window non-resizable and no browser switch does either, which is the whole reason a launcher script exists at all.
+
+**Everywhere else the window can still be resized, and a size set by hand is not remembered.** The radio opens where you left it, at whatever size the theme in front of it wants.
+
+A window dragged hard into the top-left corner is the one position that cannot be reproduced. Windows gives a window an invisible resize border outside its visible frame, so the corner is a negative coordinate, and a page is not allowed to place a window partly off-screen. It comes back inset by that border, which is a few pixels.
 
 ## The app folder
 
