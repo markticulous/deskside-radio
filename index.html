@@ -105,7 +105,14 @@
 
     <div class="meter" aria-hidden="true">
       <div class="meter-face"></div>
-      <div class="meter-bar"></div>
+      <!-- The peak lamp. A real peak meter leaves one segment lit at the
+           loudest thing it has seen, holds it while the bar falls away
+           underneath, and then lets it down. The bar's ::before and ::after
+           are both spoken for -- the colour band and the cover that hides
+           the unlit part -- so this is the third layer, and an element
+           rather than a pseudo because it has to be positioned on its own.
+           Drawn only where a theme asks for it. -->
+      <div class="meter-bar"><i class="meter-peak"></i></div>
       <div class="meter-scale"></div>
       <canvas class="scope"></canvas>
       <span class="meter-blind">meter off &middot; stream failed the analysed path</span>
@@ -152,7 +159,7 @@
     <header class="drawer-head">
       <div class="drawer-title">
         <h2>Settings</h2>
-        <span class="app-version">Deskside Radio&nbsp;&nbsp;<i class="ver-dot" aria-hidden="true"></i>&nbsp;&nbsp;<span id="appVersion">v1.4.5</span></span>
+        <span class="app-version">Deskside Radio&nbsp;&nbsp;<i class="ver-dot" aria-hidden="true"></i>&nbsp;&nbsp;<span id="appVersion">v1.4.6</span></span>
       </div>
       <button type="button" id="drawerClose" class="drawer-x" aria-label="Close">&times;</button>
     </header>
@@ -288,7 +295,14 @@
         </div>
         <div class="pane-block">
           <h3>Updates</h3>
-          <p class="hint">The app asks GitHub whether a newer version has been published when it opens, and every six hours it is left running, and shows a small <strong>Update available</strong> mark beside the wordmark when there is one. To take it, use the <strong>Download the updater</strong> link that appears with the notice and run what it downloads &mdash; the same file that installs the radio in the first place, and it works out that it is updating. If you would rather not go through the download prompts, the same file is already in the app folder: hold Shift on this tab for a button that opens it. Either way it replaces the files and keeps every station and setting, because those live in the browser profile rather than the app folder. The app itself sends nothing but the request, and never installs anything on its own.</p>
+          <p class="hint">The app asks GitHub whether a newer version has been published when it opens, and every six hours it is left running, and shows a small <strong>Update available</strong> mark beside the wordmark when there is one. It sends nothing but the request, and never installs anything on its own.</p>
+          <!-- The same paragraph for two platforms. Which one is drawn
+               depends on data-os, which the script stamps on the root: the
+               installer is a Windows batch file, and naming it to somebody
+               on a Mac is an instruction that cannot be followed. -->
+          <p class="hint os-win">To take an update, use the <strong>download the updater</strong> link beside the notice and run what it downloads &mdash; the same file that installs the radio in the first place, which works out on its own that it is updating. To skip the download prompts, that file is already in your app folder: hold Shift on this tab for a button that opens it.</p>
+          <p class="hint os-other">To take an update, follow the <strong>get it from GitHub</strong> link beside the notice, download <span class="path">deskside-radio.zip</span> and unpack it over your app folder.</p>
+          <p class="hint">Either way every station and setting survives, because those live in the browser profile rather than in the app folder.</p>
           <div class="switch-row">
             <label class="switch">
               <input type="checkbox" id="versionCheckOn">

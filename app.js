@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.4.5';
+  var APP_VERSION = '1.4.6';
 
   var DEFAULTS = {
     /* The three a fresh install starts with, in this order, taken from a
@@ -3913,8 +3913,29 @@
 
      The installer works out the rest. With no index.html beside it -- and
      there is none in a Downloads folder -- it goes to the folder it
-     installed to, which is an update. */
+     installed to, which is an update.
+
+     Offered only on Windows, because it is a .cmd. The radio runs just as
+     well on a Mac and on Linux, where handing somebody a batch file is
+     worse than saying nothing: it is an instruction that cannot be
+     followed, from an app that ought to know better. */
   var UPDATER_URL = 'https://github.com/Markticulous/deskside-radio/releases/latest/download/Win-Install-or-Update-Deskside-Radio.cmd';
+
+  /* Windows or not, and nothing finer. The question is only ever whether
+     to offer a .cmd, so the two answers are "yes" and "everything else".
+
+     Asked in order of how much each source can be trusted, and it defaults
+     to not-Windows whenever none of them is sure. Being wrong that way
+     costs a Windows user one extra click through a page that works; being
+     wrong the other way hands a Mac a file it cannot run. */
+  function onWindows() {
+    try {
+      var d = navigator.userAgentData;
+      if (d && d.platform) return d.platform === 'Windows';
+      if (navigator.platform) return /^win/i.test(navigator.platform);
+      return /Windows/i.test(navigator.userAgent || '');
+    } catch (e) { return false; }
+  }
   /* Six hours rather than a day. The radio is built to be left open for
      days at a time, which is the only case where the interval matters at
      all -- four requests a day to one static file against one. */
@@ -4027,10 +4048,18 @@
          carries no Mark of the Web, so it costs no security prompts, where
          a fresh download costs two. That belongs in the readme. It does
          not belong in the one line somebody reads when they want the new
-         version and nothing else. */
-      line.innerHTML = running + ' · <b>New v' + escapeHtml(state.versionLatest) + ' available</b> · ' +
-        '<a href="' + UPDATER_URL + '" target="_blank" rel="noopener"><b>Download the updater</b></a> and run it · ' +
-        '<a href="' + RELEASES_URL + '" target="_blank" rel="noopener">what changed</a>';
+         version and nothing else.
+
+         Off Windows there is no installer to offer and the releases page
+         is the whole answer, so that branch is one link rather than two --
+         the page it lands on is also the page that says what changed. */
+      var head = running + ' · <b>New v' + escapeHtml(state.versionLatest) + ' available</b> · ';
+      line.innerHTML = onWindows()
+        ? head +
+          '<a href="' + UPDATER_URL + '" target="_blank" rel="noopener"><b>download the updater</b></a> · ' +
+          '<a href="' + RELEASES_URL + '" target="_blank" rel="noopener">what changed</a>'
+        : head +
+          '<a href="' + RELEASES_URL + '" target="_blank" rel="noopener"><b>get it from GitHub</b></a>';
       return;
     }
     /* Never checked reads differently from checked and found nothing, and
@@ -4353,6 +4382,12 @@
     if (updateAvailable()) $('appVersion').classList.add('is-stale');
     // What the last check found, remembered across launches.
     syncUpdatePill();
+    /* Stamped on the root so the stylesheet can pick between the two
+       versions of a paragraph that only differ by platform, the same way
+       it picks a theme. Doing it here rather than in markup because only
+       the script can ask what it is running on. */
+    document.documentElement.setAttribute('data-os', onWindows() ? 'windows' : 'other');
+
     // Not on the critical path: let the radio come up first.
     paintMotion();
     /* Two of them, and both are needed. The first is the launch: whatever
