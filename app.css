@@ -613,6 +613,21 @@
    is then not written into the DOM at all. Default 1: forgetting it
    costs a little work, turning it off wrongly would cost a meter. */
 .meter { --vu-live: 1; }
+/* Off unless a theme draws it. Only Console has a segmented bar it makes
+   sense on; the needle themes have a needle, which is its own kind of
+   memory, and the ones without a bar have nowhere to put it. */
+.meter-peak { display: none; }
+
+/* Two versions of one paragraph, one platform each. data-os is stamped on
+   the root by the script, because only the script can ask what it is
+   running on. Neither is drawn until it has been: the installer is a
+   Windows batch file, and the worst of the two wrong answers is telling
+   somebody on a Mac to run one. So Windows has to be asserted, and
+   anything else -- including not knowing yet -- gets the plain route,
+   which works everywhere. */
+.os-win, .os-other { display: none; }
+[data-os="windows"] .os-win { display: block; }
+[data-os]:not([data-os="windows"]) .os-other { display: block; }
 [data-theme="dial"] .meter,
 [data-theme="marconi"] .meter,
 [data-theme="editorial"] .meter { --vu-live: 0; }
@@ -629,6 +644,12 @@
    layer. */
 .meter-bar::after { transition: opacity .4s ease-in; }
 .tuner.is-quiet .meter-bar::after { opacity: 0; }
+/* And the peak lamp goes out with them. It is the one part of the meter
+   that is meant to outlive the level, so left to itself it would sit lit
+   over a bar that had stopped -- the last loud moment of a station that
+   is no longer playing, held indefinitely. */
+.meter-peak { transition: opacity .4s ease-in; }
+.tuner.is-quiet .meter-peak { opacity: 0; }
 .meter-blind { display: none; }
 .tuner.is-blind .meter-face, .tuner.is-blind .meter-bar, .tuner.is-blind .scope { opacity: .4; }
 .tuner.is-blind .meter-blind { display: block; }
@@ -1059,10 +1080,20 @@
 
 [data-theme="console"] .meter { display: block; margin-top: 18px; padding: 0 12px; }
 [data-theme="console"] .meter-face { display: none; }
+/* One cell is 9px lit and 3px dark, so the pitch is 12. Authored as
+   variables rather than baked into the mask because the peak lamp has to
+   land on the same grid, and because refreshMeter rounds them to whole
+   device pixels for the screen actually in front of them -- at 125%
+   scaling a 12px pitch lands on a half pixel four times out of five, and
+   each of those cells is drawn with a thinner edge than its neighbours.
+   The authored values are what a browser without the script uses, and
+   they are the same numbers the mask always had. */
+[data-theme="console"] .meter { --vu-cell: 12px; --vu-gap: 3px; --vu-step: .0125; }
 [data-theme="console"] .meter-bar {
   position: relative; height: 14px; background: #1b1e22;
-  -webkit-mask: repeating-linear-gradient(90deg, #000 0 9px, transparent 9px 12px);
-  mask: repeating-linear-gradient(90deg, #000 0 9px, transparent 9px 12px);
+  --lit-w: calc(var(--cell-dp, var(--vu-cell, 12px)) - var(--gap-dp, var(--vu-gap, 3px)));
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 var(--lit-w), transparent var(--lit-w) var(--cell-dp, var(--vu-cell, 12px))) var(--cell-origin, 0) 0 / auto auto;
+          mask: repeating-linear-gradient(90deg, #000 0 var(--lit-w), transparent var(--lit-w) var(--cell-dp, var(--vu-cell, 12px))) var(--cell-origin, 0) 0 / auto auto;
 }
 /* The lit part of a bar meter, done with a cover rather than a clip.
 
@@ -1084,7 +1115,31 @@
 }
 [data-theme="console"] .meter-bar::after {
   content: ""; position: absolute; inset: 0; background: #1b1e22;
-  transform-origin: right center; transform: scaleX(calc(1 - var(--vu, 0)));
+  transform-origin: right center;
+  /* The smooth cover first, so a browser without round() keeps what it
+     had; then the same thing snapped to whole cells. A peak lamp sitting
+     on one segment above a bar that ends half way through another would
+     be two meters disagreeing in the same 14 pixels. */
+  transform: scaleX(calc(1 - var(--vu, 0)));
+  transform: scaleX(calc(1 - round(down, var(--vu, 0), var(--vu-step, .0125))));
+}
+/* The lamp itself: one cell wide, parked at the left edge of whichever
+   segment the peak reached. The bar's own mask cuts it down to the lit
+   part of that cell, so it can never straddle a gap. `left` is a layout
+   property, which the rest of this meter is careful to avoid -- but it is
+   written only when the peak crosses into a different segment, which at a
+   steady level is never, rather than on every frame. */
+[data-theme="console"] .meter-peak {
+  display: block; position: absolute; top: 0; bottom: 0;
+  width: var(--cell-dp, var(--vu-cell, 12px));
+  left: calc(var(--vu-peak, 0) * 100%);
+  opacity: var(--vu-peak-o, 0);
+  background: #fff6e2;
+  /* Above the cover, which is ::after and therefore the last child and
+     painted last. Without this the lamp is drawn and then hidden by the
+     very thing it is meant to outlive: the cover starts at the current
+     level and runs to the right, which is exactly where a held peak is. */
+  z-index: 1;
 }
 [data-theme="console"] .meter-scale { position: relative; height: 14px; margin-top: 5px; }
 [data-theme="console"] .meter-scale span {
@@ -2910,6 +2965,18 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .ghost.danger { color: #c0392b; border-color: #c0392b; }
 .ghost.danger:hover { background: #c0392b; color: #fff; border-style: solid; }
 .primary.danger { background: #c0392b; color: #fff; }
+/* One button does two jobs: it says Close when there is nothing to keep
+   and Save when there is. The word changed and nothing else did, which is
+   a small thing to notice on a button you are already looking past. Green
+   while there is something to save -- the drawer's own green, the one a
+   switch turns when it goes on, rather than a ninth colour.
+
+   The fade between the two comes free: .primary already transitions
+   background and colour over .13s, which is about as quick as a dissolve
+   can be and still read as one. */
+.primary.is-dirty { background: #2e9a5a; color: #fff; }
+.primary.is-dirty:hover { background: #35ad66; }
+.primary.is-dirty:active { transform: translateY(1px); background: #26824c; }
 
 
 /* ---------- theme picker ----------

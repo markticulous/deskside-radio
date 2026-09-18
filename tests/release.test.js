@@ -548,14 +548,49 @@ test('taking an update is one link, and that link never goes stale', () => {
     'at whichever release happened to write it');
   assert.equal(/\/download\/v?\d+\.\d+/.test(url[1]), false,
     'UPDATER_URL is pinned to a version, so it would stop pointing at the newest installer');
-  assert.ok(/'<a href="' \+ UPDATER_URL \+ '"[^\n]*Download the updater/.test(app),
+  assert.ok(/'<a href="' \+ UPDATER_URL \+ '"[^\n]*download the updater/.test(app),
     'the Service line no longer offers the updater as a link');
+
+  /* And the .cmd is offered only where it can be run. The radio runs on a
+     Mac and on Linux just as well, and handing either of those a Windows
+     batch file is worse than saying nothing: an instruction that cannot be
+     followed, from an app that could have checked. Windows has to be
+     asserted -- not knowing yet counts as not Windows -- because that way
+     round, being wrong costs one extra click through a page that works
+     rather than a file somebody cannot open. */
+  assert.ok(/function onWindows\(\)/.test(app), 'app.js no longer works out the platform');
+  assert.ok(/line\.innerHTML = onWindows\(\)/.test(app),
+    'the update line no longer branches on the platform, so a Mac is offered a .cmd');
+  assert.ok(/get it from GitHub/.test(app), 'there is no non-Windows wording for the update line');
+  assert.ok(/if \(d && d\.platform\) return d\.platform === 'Windows';/.test(app),
+    'the platform test no longer asks userAgentData first');
+  assert.ok(/catch \(e\) \{ return false; \}/.test(app),
+    'the platform test no longer falls back to not-Windows when it cannot tell');
+
+  /* The paragraph in the Service pane has the same two halves. */
+  const html = read('index.html');
+  const css = read('app.css');
+  assert.ok(/<p class="hint os-win">/.test(html) && /<p class="hint os-other">/.test(html),
+    'the Service pane explains updating one way for every platform again');
+  assert.ok(/\.os-win, \.os-other \{ display: none; \}/.test(css),
+    'both platform paragraphs are drawn at once');
+  assert.ok(/\[data-os\]:not\(\[data-os="windows"\]\) \.os-other/.test(css),
+    'the non-Windows paragraph is never shown');
+  assert.ok(/setAttribute\('data-os', onWindows\(\) \? 'windows' : 'other'\)/.test(app),
+    'nothing stamps the platform on the root, so neither paragraph is ever drawn');
+
+  /* And both readmes say which platform each route belongs to. */
+  ['README.md', 'README.html'].forEach(function (f) {
+    const doc = read(f);
+    assert.ok(/On Windows/.test(doc), f + ' no longer marks the Windows-only update route');
+    assert.ok(/On macOS and Linux/.test(doc), f + ' does not say how to update anywhere but Windows');
+  });
 
   /* One route in that line, not three. The folder copy and the Start menu
      entry are cheaper -- no Mark of the Web, so no prompts -- but they
      belong in the readme, not in the sentence somebody reads when they
      want the new version and nothing else. */
-  const at = app.indexOf('Download the updater');
+  const at = app.indexOf('download the updater');
   const line = app.slice(at - 400, at + 400);
   assert.equal(/Deskside Radio - Update|in the app folder/.test(line), false,
     'the Service line names more than one way to update again');
@@ -617,4 +652,91 @@ test('an unzipped archive is not mistaken for an installed copy', () => {
     'the build names the install marker, which would ship it inside the zip');
   assert.equal(fs.existsSync(path.join(ROOT, 'assets', 'installed-here.txt')), false,
     'there is an install marker in the repository, which the build would copy into the zip');
+});
+
+test('a name is measured by its ink, not by its trailing tracking', () => {
+  /* letter-spacing goes after every character, the last one included, and
+     that final gap draws nothing while still counting in scrollWidth.
+     Measured in Chrome: six characters at 10px of tracking make scrollWidth
+     60px wider, not 50. So a name whose ink ends exactly at the edge of its
+     box reported a whole unit of tracking of overflow and was scrolled.
+
+     Departures made it visible -- .05em at 52px is 2.6px of phantom
+     overflow, and its flap path rounds any overflow up to a whole cell, so
+     a name with room to its right lurched a full cell and back for ever.
+     Swept in a browser: the misread band is exactly one unit of tracking
+     wide, which is narrower than a character, so it can only be reached by
+     moving the wall rather than by adding letters. That is why one machine
+     saw it and another did not. */
+  const src = read('tuner-ui.js');
+  assert.ok(/function trailingTrack\(cs\)/.test(src),
+    'tuner-ui.js no longer works out the trailing tracking');
+  assert.ok(/var over = el\.scrollWidth - el\.clientWidth - trailingTrack\(cs\);/.test(src),
+    'fitLine is back to trusting scrollWidth, which counts a gap that draws nothing');
+  /* And it must be read before the flap branch, which is the one that
+     rounds the overflow up to a whole cell. */
+  const at = src.indexOf('function fitLine');
+  const fn = src.slice(at, at + 1200);
+  assert.ok(fn.indexOf('trailingTrack(cs)') < fn.indexOf('flap-ch'),
+    'the flap path is reached before the trailing tracking is taken off');
+});
+
+test('the console peak lamp holds, falls, and is drawn above the cover', () => {
+  /* A bar says what the level is now; a peak lamp says what the loudest
+     thing was and holds it long enough to be read. It has to sit on the
+     cell grid -- half a lit LED is not something a bank of LEDs can do --
+     and it has to be drawn over the cover that hides the unlit part of the
+     bar, because the cover runs from the current level rightwards, which is
+     exactly where a held peak is.
+
+     That last one is not theoretical. Checked by reading pixels out of a
+     screenshot: without the z-index the lamp is painted and then covered,
+     and the row of pixels where it should be is empty. */
+  const css = read('app.css');
+  const js = read('tuner-ui.js');
+  const html = read('index.html');
+
+  assert.ok(/<i class="meter-peak"><\/i>/.test(html),
+    'the peak lamp element is gone from the meter');
+  assert.ok(/\.meter-peak \{ display: none; \}/.test(css),
+    'the peak lamp is drawn in themes that have nowhere to put it');
+  const lamp = css.slice(css.indexOf('[data-theme="console"] .meter-peak'),
+                         css.indexOf('[data-theme="console"] .meter-peak') + 700);
+  assert.ok(/z-index: 1;/.test(lamp),
+    'the console peak lamp is back under the cover that hides the unlit bar');
+  assert.ok(/left: calc\(var\(--vu-peak, 0\) \* 100%\);/.test(lamp),
+    'the lamp is no longer positioned from --vu-peak');
+  assert.ok(/\.tuner\.is-quiet \.meter-peak \{ opacity: 0; \}/.test(css),
+    'the lamp stays lit over a stopped meter, holding the last loud moment for ever');
+
+  /* The console bar has to be on the same grid the lamp lands on. */
+  assert.ok(/\[data-theme="console"\] \.meter \{ --vu-cell: 12px; --vu-gap: 3px;/.test(css),
+    'the console meter no longer declares its cell pitch, so nothing can snap to it');
+  assert.ok(/round\(down, var\(--vu, 0\), var\(--vu-step, \.0125\)\)/.test(css),
+    'the console bar is no longer snapped to whole cells, so the lamp and the bar disagree');
+
+  /* Ballistics, and the rule that keeps this off the hot path. */
+  assert.ok(/var PEAK_HOLD = 1500;/.test(js), 'the peak hold is no longer 1.5s');
+  assert.ok(/var PEAK_FALL = 0\.55;/.test(js), 'the peak fall rate changed');
+  assert.ok(/if \(s === t\.lastPeak\) return;/.test(js),
+    'setPeak writes on every frame again; it runs sixty times a second');
+  assert.ok(/var cells = Math\.floor\(t\.peak \/ t\.step\);/.test(js),
+    'the lamp is no longer snapped to whole cells');
+});
+
+test('Save and Close are told apart by colour, not only by their word', () => {
+  /* One button does both jobs. Only the word changed, which is a small
+     thing to notice on a button you are already looking past. The green is
+     the drawer's own -- the one a switch turns when it goes on -- rather
+     than a ninth colour invented for this. */
+  const css = read('app.css');
+  assert.ok(/\.primary\.is-dirty \{ background: #2e9a5a; color: #fff; \}/.test(css),
+    'the Save state no longer has a colour of its own');
+  assert.ok(css.indexOf('.switch input:checked + .switch-track { background: #2e9a5a; }') !== -1,
+    'the drawer green moved, so the Save button is now a colour nothing else uses');
+  /* The dissolve comes from the shared rule; if that goes, the colour snaps. */
+  assert.ok(/\.mini, \.tab, \.ghost, \.file-btn, \.primary,[^{]*\{\s*\n\s*transition: background \.13s ease/.test(css),
+    'the primary button no longer fades between colours');
+  assert.ok(read('app.js').indexOf("btn.classList.toggle('is-dirty', dirty)") !== -1,
+    'nothing puts is-dirty on the button any more');
 });

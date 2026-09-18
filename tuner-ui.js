@@ -279,7 +279,24 @@
      A theme says so with --vu-live: 0 beside the rules that would have
      read it. The default is 1, so a new theme that forgets gets a meter
      that works rather than one that does not. */
-  var vu = { tuner: null, meter: null, needles: null, live: true, last: '', scope: null };
+  var vu = { tuner: null, meter: null, needles: null, live: true, last: '', scope: null,
+             step: 0, peak: 0, peakAt: 0, peakTs: 0, lastPeak: '' };
+
+  /* Peak hold. A bar meter says what the level is now; a peak lamp says
+     what the loudest thing was, and holds it there long enough to be read
+     after it has gone. Without one, a transient that clips is a single
+     frame nobody sees.
+
+     The numbers are the ones real meters settled on: the lamp jumps up
+     instantly, sits for a second and a half, and then falls at a rate slow
+     enough to follow with the eye. A lamp that dropped the moment the
+     level did would tell you nothing the bar was not already saying. */
+  var PEAK_HOLD = 1500;
+  var PEAK_FALL = 0.55;
+
+  var now = (root.performance && root.performance.now)
+    ? function () { return root.performance.now(); }
+    : function () { return Date.now(); };
 
   function vuTargets(tunerEl) {
     if (vu.meter && vu.tuner === tunerEl) return vu;
@@ -328,6 +345,13 @@
 
       if (cell > 0 && w > 0) vu.meter.style.setProperty('--vu-step', (cell / w).toFixed(5));
       else vu.meter.style.removeProperty('--vu-step');
+      /* Kept on the cache as a number as well, because the peak lamp is
+         snapped to the same grid and doing that in CSS would mean round()
+         across a percentage and a length. The theme's own fallback is read
+         so a meter measured before its bar has a width still lands on
+         cells rather than sliding between them. */
+      vu.step = (cell > 0 && w > 0) ? cell / w : (parseFloat(cs.getPropertyValue('--vu-step')) || 0);
+      vu.peak = 0; vu.peakAt = 0; vu.peakTs = 0; vu.lastPeak = '';
     } catch (e) { /* unreadable: write it, which is the safe way to be wrong */ }
     return vu;
   }
@@ -348,6 +372,31 @@
     return !!(t.scope && t.scope.clientWidth);
   }
 
+  /* Rise instantly, hold, then fall. Snapped to the cell grid on the way
+     out, so what is written is always the left edge of one segment and the
+     lamp is a lamp rather than a sliver sliding between two.
+
+     Only written when the segment changes, which at a steady level is
+     never -- the same care the bar itself takes, for the same reason: this
+     runs sixty times a second. */
+  function setPeak(t, level, now) {
+    if (!t.step) return;
+    var dt = t.peakTs ? Math.min((now - t.peakTs) / 1000, 0.25) : 0;
+    t.peakTs = now;
+    if (level >= t.peak) {
+      t.peak = level;
+      t.peakAt = now;
+    } else if (now - t.peakAt > PEAK_HOLD) {
+      t.peak = Math.max(level, t.peak - PEAK_FALL * dt);
+    }
+    var cells = Math.floor(t.peak / t.step);
+    var s = cells > 0 ? (cells * t.step).toFixed(5) : '0';
+    if (s === t.lastPeak) return;
+    t.lastPeak = s;
+    t.meter.style.setProperty('--vu-peak', s);
+    t.meter.style.setProperty('--vu-peak-o', cells > 0 ? '1' : '0');
+  }
+
   // Deflect every meter in the tuner to the same level (0..1).
   function setLevel(tunerEl, level) {
     var t = vuTargets(tunerEl);
@@ -355,6 +404,7 @@
       var s = level.toFixed(4);
       // Writing the same string again still counts as a mutation.
       if (s !== t.last) { t.last = s; t.meter.style.setProperty('--vu', s); }
+      setPeak(t, level, now());
     }
     var needles = t.needles;
     if (!needles.length) return;
@@ -869,9 +919,33 @@
     return w;
   }
 
+  /* letter-spacing is put after every character, the last one included, and
+     that final gap draws nothing and is counted in scrollWidth. So a name
+     whose ink ends exactly at the edge of its box reports one whole unit of
+     tracking's worth of overflow, and the box is asked to scroll something
+     that is already fully visible.
+
+     Measured rather than assumed: six characters at 10px of tracking make
+     scrollWidth 60px wider, not 50. Child spans do not help -- the last
+     span's own rect carries its trailing gap too -- so the gap is taken off
+     by value, which is exact and does not depend on the face in use.
+
+     Departures is where this showed: .05em of tracking on a name set at
+     52px is 2.6px of phantom overflow, over the 1px tolerance, and its flap
+     path rounds any overflow up to a whole cell. The result was a name with
+     visible room to its right lurching a full 55px cell and back, for ever.
+     It is latent in every theme that tracks its readout; a name only has to
+     land inside that last unit of width for it to bite, which is why one
+     machine saw it and another did not. */
+  function trailingTrack(cs) {
+    var v = parseFloat(cs.letterSpacing);
+    return v ? v : 0;
+  }
+
   function fitLine(el) {
     if (!el || !el.clientWidth) return;
-    var over = el.scrollWidth - el.clientWidth;
+    var cs = getComputedStyle(el);
+    var over = el.scrollWidth - el.clientWidth - trailingTrack(cs);
     if (over <= 1) return;
 
     /* A split-flap name has to stay on its cells, so it moves a whole flap
@@ -886,7 +960,6 @@
       return;
     }
 
-    var cs = getComputedStyle(el);
     var px = parseFloat(cs.fontSize) || 16;
     var gaps = Math.max(1, el.textContent.trim().length - 1);
     var squeeze = over / gaps;

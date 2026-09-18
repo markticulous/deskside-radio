@@ -146,6 +146,12 @@ The instrument that *does* follow the volume knob is a power meter — the pair 
 
 0 VU is referenced to -15 dBFS. That is a measured number, not a chosen one: twelve seconds each of two real stations gave medians of -18.2 and -17.9 dBFS, and with 0 VU printed at 20/23 of the way up the face, a reference of -18 parked the needle at 87% of its travel and looked pinned. At -15 the same material reads about -3 VU, with peaks touching 0 and the red left for transients that genuinely are loud.
 
+### The peak lamp
+
+The broadcast console theme holds one segment lit at the loudest thing the meter has seen. It rises the instant the level does, sits there for a second and a half, and then falls at a rate you can follow with your eye. Without it a transient that clips is a single frame nobody sees, and the bar has already moved on by the time you look up.
+
+It lands on the cell grid rather than between two cells, which is why the bar is snapped to whole segments too — a lamp sitting on one segment above a bar ending half way through another would be two meters disagreeing in the same fourteen pixels. It goes out with the rest of the meter when the radio stops, rather than holding the last loud moment of a station that is no longer playing.
+
 ## Stream types
 
 A station's URL goes straight onto an `<audio>` element, so what the browser can play, the app can play. `Directory.streamKind()` in `radio-directory.js` classifies a URL and the rest follows from that.
@@ -187,9 +193,13 @@ There is no drift correction. It was written and then removed: playing at 0.5x f
 
 The app fetches [`version.json`](version.json) from this repo a few seconds after it opens, and every six hours it is left running. A launch that asked within the last ten minutes does not ask again, so reopening the window repeatedly costs one request rather than five. When a newer version has been published it shows an **Update available** pill beside the wordmark and a dot on the Settings control, and names the version in **Settings → Service**. The dot at the head of the pill blinks — lit for three quarters of every two seconds, snapping on and fading off in sixty milliseconds. It is the only thing on the face that moves of its own accord, which is what lets a small, quiet notice still be caught out of the corner of the eye; a machine set to reduced motion gets it held lit instead. The pill carries a ⓧ: pressing it puts the pill away until the next completed check, which is a snooze rather than a mute. The dot on the Settings control is not affected by it and stays for as long as the update is outstanding. It sends no identifiers, downloads nothing, and installs nothing. The switch beside it turns the check off for good, and **Check now** beside that asks straight away rather than waiting for the interval — useful after a release, and the only way to find out without closing and reopening.
 
-To take the update, click **Download the updater** beside the notice in **Settings → Service** and run what lands in your Downloads folder. It is the same file that installs the radio from scratch — with no `index.html` beside it, it goes to the folder it installed to, which is an update — so installing and updating are one procedure rather than two.
+What the notice offers depends on what you are running it on, because the installer is a Windows batch file and naming it anywhere else is an instruction that cannot be followed.
 
-Two cheaper routes, if the download's security prompts annoy you. The same file is already in the app folder and carries no Mark of the Web, so it runs without any: hold Shift on **Settings → Service** for a button that opens the folder. Or run **Deskside Radio - Update** from the Start menu, which exists if the installer put this copy here. It is the same file that installed it, and it works out that it is being run from inside an install and updates that folder in place.
+**On Windows** the notice reads **download the updater**. Run what lands in your Downloads folder. It is the same file that installs the radio from scratch — with no `index.html` beside it, it goes to the folder it installed to, which is an update — so installing and updating are one procedure rather than two. Two cheaper routes if the download's security prompts annoy you: the same file is already in the app folder and carries no Mark of the Web, so it runs without any (hold Shift on **Settings → Service** for a button that opens the folder), or run **Deskside Radio - Update** from the Start menu, which exists if the installer put this copy here.
+
+**On macOS and Linux** the notice reads **get it from GitHub** and links to the releases page. Take `deskside-radio.zip`, unpack it over your app folder, and reopen the radio. There is no installer to run and nothing to uninstall.
+
+Either way your stations, schedule and settings are untouched — see below for why.
 
 **Nothing is downloaded or replaced until you ask for it.** There is no scheduled task, no background updater and no service; the radio only ever tells you a version exists. It cannot start the updater itself either — a `file://` page has no way to run a local script, which is a limit worth keeping.
 
