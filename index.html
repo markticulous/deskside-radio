@@ -340,12 +340,17 @@
         </div>
         <div class="pane-block">
           <h3>Updates</h3>
-          <p class="hint">The app asks GitHub whether a newer version has been published when it opens, and every six hours it is left running, and shows a small <strong>Update available</strong> mark beside the wordmark when there is one. It sends nothing but the request, and never installs anything on its own.</p>
+          <p class="hint">The app asks GitHub whether a newer version has been published when it opens, and every six hours it is left running, and shows a small <strong>Update available</strong> mark beside the wordmark when there is one. It sends nothing but the request. The page itself installs nothing and cannot &mdash; it is opened from a disk, and a page opened from a disk has no way to run a program.</p>
           <!-- The same paragraph for two platforms. Which one is drawn
                depends on data-os, which the script stamps on the root: the
                installer is a Windows batch file, and naming it to somebody
                on a Mac is an instruction that cannot be followed. -->
-          <p class="hint os-win">To take an update, use the <strong>download the updater</strong> link beside the notice and run what it downloads &mdash; the same file that installs the radio in the first place, which works out on its own that it is updating. To skip the download prompts, that file is already in your app folder: hold Shift on this tab for a button that opens it.</p>
+          <p class="hint os-win"><strong>There is nothing to do.</strong> The shortcut you open the radio with runs a small script first, and once a day that script asks the same question the app does. If the answer is yes it fetches the new version in the background while you listen, and the radio is running it the next time you open it &mdash; which is when the readout says which version that is.</p>
+          <!-- Said here because it is the promise the readmes make, and
+               this is the pane where somebody comes to check it. Nothing
+               is installed to make the updating happen: it is the opener
+               doing one more thing on its way past, and then exiting. -->
+          <p class="hint os-win">Nothing is installed to do that &mdash; no service, no scheduled task, nothing in the registry, and nothing running when the radio is not. To take an update the moment you hear about it instead of waiting, run <span class="path">Win-Install-or-Update-Deskside-Radio.cmd</span> in your app folder; hold Shift on this tab for a button that opens it. To stop the radio updating itself, run <span class="path">Win - Automatic Updates.cmd off</span> in the same folder.</p>
           <p class="hint os-other">To take an update, follow the <strong>get it from GitHub</strong> link beside the notice, download <span class="path">deskside-radio.zip</span> and unpack it over your app folder.</p>
           <p class="hint">Either way every station and setting survives, because those live in the browser profile rather than in the app folder.</p>
           <div class="switch-row">

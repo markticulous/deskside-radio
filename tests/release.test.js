@@ -619,7 +619,7 @@ test('the alert mark is one colour, and a bright one', () => {
     'the preview declares the alert colour ' + previewDecls.length + ' times, so its themes can diverge');
 });
 
-test('taking an update is one link, and that link never goes stale', () => {
+test('an update is not something to be taken, and the line says so', () => {
   /* Three shapes in one evening, which is worth recording. It said "run
      Update Deskside Radio from the Start menu" -- an entry that only
      exists where the installer made one, so an archive unzipped by hand
@@ -633,18 +633,17 @@ test('taking an update is one link, and that link never goes stale', () => {
      argument to do the right thing: with no index.html beside it, and
      there is none in a Downloads folder, it targets the folder it
      installed to. */
-  const INSTALLER_CMD = 'Win-Install-or-Update-Deskside-Radio.cmd';
   const app = read('app.js');
 
-  const url = /var UPDATER_URL = '([^']+)'/.exec(app);
-  assert.ok(url, 'app.js no longer declares UPDATER_URL');
-  assert.ok(url[1].indexOf('/releases/latest/download/' + INSTALLER_CMD) !== -1,
-    'UPDATER_URL is ' + url[1] + ' -- it must stay on releases/latest/download or it freezes ' +
-    'at whichever release happened to write it');
-  assert.equal(/\/download\/v?\d+\.\d+/.test(url[1]), false,
-    'UPDATER_URL is pinned to a version, so it would stop pointing at the newest installer');
-  assert.ok(/'<a href="' \+ UPDATER_URL \+ '"[^\n]*download the updater/.test(app),
-    'the Service line no longer offers the updater as a link');
+  /* On Windows the line stopped offering anything the day the opener began
+     fetching updates by itself. What it must not do is go back to naming a
+     download: that route costs two security prompts the copy already in the
+     app folder costs none of, and it is now also the slower of the two. */
+  assert.equal(/UPDATER_URL/.test(app), false,
+    'the update line is offering a download again -- the opener already fetches it, ' +
+    'and the copy in the app folder is the prompt-free way to have it sooner');
+  assert.ok(/head \+ 'it installs itself · '/.test(app),
+    'the Windows update line no longer says the update arrives on its own');
 
   /* And the .cmd is offered only where it can be run. The radio runs on a
      Mac and on Linux just as well, and handing either of those a Windows
@@ -685,8 +684,14 @@ test('taking an update is one link, and that link never goes stale', () => {
      entry are cheaper -- no Mark of the Web, so no prompts -- but they
      belong in the readme, not in the sentence somebody reads when they
      want the new version and nothing else. */
-  const at = app.indexOf('download the updater');
-  const line = app.slice(at - 400, at + 400);
+  /* The line itself, not the comment above it. A window of characters
+     either side of the wording used to be enough, until the comment
+     explaining why there is no second route said "in the app folder" and
+     failed the test for saying so. Anchored on the assignment, it reads
+     only what is actually rendered. */
+  const at = app.indexOf("var head = running + ' \xb7 <b class=\"new-ver\">");
+  assert.ok(at !== -1, 'the update line is no longer built where this test can read it');
+  const line = app.slice(at, app.indexOf(';', app.indexOf('line.innerHTML', at)));
   assert.equal(/Deskside Radio - Update|in the app folder/.test(line), false,
     'the Service line names more than one way to update again');
 
@@ -1812,4 +1817,187 @@ test('the readout says the version once, after an update', () => {
   assert.equal(pvGap[1], fadeMs[1],
     'the preview fades out over ' + pvGap[1] + 'ms and the app over ' + fadeMs[1]);
   assert.equal(pvGap[2], gapMs[1], 'the preview holds dark for ' + pvGap[2] + 'ms and the app for ' + gapMs[1]);
+});
+
+
+/* ---- the radio keeping itself up to date ------------------------------
+
+   All of this runs unattended, in a console nobody can see, on somebody
+   else's machine, at most once a day. Every one of these guards is a thing
+   that was wrong at some point in an afternoon of measuring it. */
+
+test('the launcher is gone before the extract can reach the launcher', () => {
+  /* The measured failure, and the reason the hand-over exists.
+
+     The zip carries the opener, so extracting replaces the file that is
+     running. cmd reads a batch file a line at a time, by byte offset, out
+     of whatever is on disk when it wants the next line -- so the opener
+     carried on at its old offset inside a different, shorter file, hit the
+     end, and stopped. It never wrote its stamp, so every launch after that
+     went out and checked again. The same offset landing mid-line in a
+     LONGER file runs whatever the rest of that line happens to say.
+
+     So: the work is handed to a script in %TEMP%, which the extract does
+     not reach, and the opener ends with `exit` and not `exit /b`. `exit /b`
+     returns to the line after the call, and finding that line means reading
+     this file again. `exit` ends cmd where it stands. */
+  const cmd = read('Win - Open Deskside Radio.cmd');
+
+  const step = /set "STEP=%TEMP%\\[^"]+\.cmd"/.test(cmd);
+  assert.ok(step, 'the update step is no longer written to %TEMP%');
+
+  const start = cmd.indexOf('start "" /b');
+  assert.ok(start !== -1, 'the launcher no longer starts the update detached');
+  assert.ok(/start "" \/b [^\n]*cmd\.exe" \/c "%STEP%"\s*\r?\nexit\s*$/m.test(cmd),
+    'the line after the hand-over is not a bare `exit` -- `exit /b`, or anything ' +
+    'else at all, means reading this file after the extract has replaced it');
+
+  assert.equal(/call "%RUNNER%"/.test(cmd.slice(start)), false,
+    'the launcher calls the installer itself again instead of handing it over');
+});
+
+test('the update stamp is written before the hand-over, not after it', () => {
+  /* There is no "after": the script has exited by then. It is also the
+     right order on its own terms -- the stamp means "looked today", not
+     "succeeded today", so a machine that cannot reach GitHub asks once a
+     day instead of at every launch. */
+  const cmd = read('Win - Open Deskside Radio.cmd');
+  const stamp = cmd.indexOf('> "%STAMP%" echo %TODAY%');
+  const hand = cmd.indexOf('start "" /b');
+  assert.ok(stamp !== -1 && hand !== -1, 'the stamp or the hand-over has moved');
+  assert.ok(stamp < hand, 'the stamp is written after the hand-over, which never happens');
+});
+
+test('the update lock is read where its value can be compared', () => {
+  /* Measured: two radios open, both updated. cmd expands %LOCKDAY% when it
+     PARSES the block, which is before any line inside the block has run --
+     so the read filled the variable and the comparison was still looking at
+     the empty string it held a moment earlier. The read has to sit on its
+     own line. The stamp check above it never had the bug because it was
+     never wrapped in a block, which is exactly why this pins the shape. */
+  const cmd = read('Win - Open Deskside Radio.cmd');
+  [['LOCKDAY', 'LOCK'], ['LAST', 'STAMP']].forEach(function (pair) {
+    const v = pair[0], f = pair[1];
+    const re = new RegExp('^if exist "%' + f + '%" set /p ' + v + '=<"%' + f + '%"$', 'm');
+    assert.ok(re.test(cmd),
+      v + ' is not read on a line of its own -- inside a parenthesised block its ' +
+      'value is expanded before the read that fills it, and the comparison is ' +
+      'always against nothing');
+  });
+});
+
+test('every way the update can fail ends at the stamp, not at a stop', () => {
+  /* The radio is already open and playing. Offline, behind a proxy, a
+     read-only folder, GitHub down, a version string that will not parse:
+     every one of them is a reason to go quiet and try again tomorrow, and
+     none of them is a reason to put something on the screen. */
+  const cmd = read('Win - Open Deskside Radio.cmd');
+  const block = cmd.slice(cmd.indexOf(':autoupdate'));
+
+  assert.equal(/^\s*(echo|pause)\b/m.test(block.replace(/^\s*echo %TODAY%$/gm, '')), false,
+    'the auto-update block says something out loud, in a console nobody opened');
+
+  const fails = block.match(/goto :stampandgo/g) || [];
+  assert.ok(fails.length >= 5,
+    'only ' + fails.length + ' failure paths reach the stamp -- one that does not ' +
+    'leaves the day unstamped, so the next launch checks again');
+});
+
+test('the unattended install asks nothing and opens nothing', () => {
+  /* Quiet mode is one variable, so the thing that runs unattended is the
+     same script that has been run by hand for months. What it must not do
+     is anything that waits for a person who is not there, or that touches
+     the radio somebody is listening to. */
+  const cmd = read('Win-Install-or-Update-Deskside-Radio.cmd');
+
+  assert.ok(/if defined DESKSIDE_QUIET set "DESKSIDE_NOPAUSE=1"/.test(cmd),
+    'quiet mode no longer implies no pausing');
+  assert.ok(/if defined DESKSIDE_QUIET goto :radioleftalone/.test(cmd),
+    'the unattended update closes the radio somebody is listening to');
+  assert.ok(/if defined DESKSIDE_QUIET goto :haveshortcut/.test(cmd),
+    'the unattended update stops to ask which browser, with nobody there');
+  assert.ok(/if not defined DESKSIDE_QUIET pause/.test(cmd),
+    'the unattended update waits for a keypress at the end');
+
+  /* And it does not go and fetch a different installer. Self-refresh is
+     right when somebody is watching -- it lets a years-old copy still do
+     the newest thing -- and wrong when nobody is: what comes back may be
+     OLDER than this file, and an installer older than auto-update knows
+     nothing of quiet mode. It would print a banner, close the playing
+     radio and stop at a pause, in a window started hidden that cannot be
+     answered or even found. */
+  const refresh = cmd.indexOf('set "NEWCMD=');
+  const guard = cmd.indexOf('if defined DESKSIDE_QUIET goto :newest');
+  assert.ok(guard !== -1 && guard < refresh,
+    'quiet mode can still replace itself with whatever is published, which may be ' +
+    'an installer that pauses in a console nobody can see');
+});
+
+test('the unattended install still checks the archive before it writes', () => {
+  /* The one thing quiet mode must NOT skip. A truncated download has to be
+     nothing having happened, not half an app -- and there is nobody there
+     to notice which. */
+  const cmd = read('Win-Install-or-Update-Deskside-Radio.cmd');
+  const list = cmd.indexOf('-tf');
+  const extract = cmd.indexOf('-xf');
+  assert.ok(list !== -1, 'the installer no longer lists the archive before extracting it');
+  assert.ok(list < extract, 'the archive is extracted before it is checked');
+  assert.equal(/if defined DESKSIDE_QUIET[^\n]*(-tf|:extract)/.test(cmd), false,
+    'quiet mode skips the archive check');
+});
+
+test('the switch the launcher reads is the file the switch script writes', () => {
+  /* Two files, one string, and nothing to make them agree. The switch is a
+     marker in the app folder rather than a setting in the app because the
+     app's settings live in the browser's storage, which a batch file has no
+     way to read -- so a typo in either name is a switch that silently does
+     nothing. */
+  const opener = read('Win - Open Deskside Radio.cmd');
+  const script = read('Win - Automatic Updates.cmd');
+  const MARK = 'assets\\auto-update-off.txt';
+
+  assert.ok(opener.indexOf(MARK) !== -1, 'the launcher no longer looks for ' + MARK);
+  assert.ok(script.indexOf(MARK) !== -1, 'the switch script no longer writes ' + MARK);
+  assert.ok(/if exist "%APPDIR%assets\\auto-update-off\.txt" exit \/b 0/.test(opener),
+    'the launcher finds the marker and carries on updating anyway');
+
+  /* Off has to leave the day unstamped as well as unchecked, or turning it
+     back on tomorrow would find today already ticked off. */
+  const off = opener.indexOf('auto-update-off.txt');
+  const stamp = opener.indexOf('set "STAMP=');
+  assert.ok(off < stamp, 'the switch is read after the stamp is set up');
+
+  /* Both directions, and neither of them installs anything. */
+  assert.ok(/:turnoff/.test(script) && /:turnon/.test(script), 'the switch only goes one way');
+  assert.equal(/reg(\.exe)? +add|schtasks/i.test(script), false,
+    'the switch writes to the registry or makes a scheduled task');
+});
+
+test('nothing in the update path installs anything that outlives it', () => {
+  /* The promise both readmes make, in those words, and the reason option C
+     was turned down in the plan: no service, no scheduled task, no Run key,
+     nothing left running. The opener does one more thing on its way past
+     and exits, which is what a scheduled task would have been for, without
+     being one -- and without being the textbook shape of persistence
+     malware, which is blocked on managed machines and deserves to be. */
+  ['Win - Open Deskside Radio.cmd', 'Win - Automatic Updates.cmd'].forEach(function (f) {
+    const src = read(f);
+    assert.equal(/schtasks|Register-ScheduledTask/i.test(src), false, f + ' makes a scheduled task');
+    assert.equal(/CurrentVersion\\Run/i.test(src), false, f + ' writes a Run key');
+  });
+});
+
+test('the readmes describe updating as it now happens', () => {
+  /* It used to promise, in bold, that nothing was downloaded or replaced
+     until you asked for it. That promise is gone, and going quiet about it
+     would be worse than having made it. */
+  ['README.md', 'README.html'].forEach(function (f) {
+    const doc = read(f);
+    assert.equal(/Nothing is downloaded or replaced until you ask for it/.test(doc), false,
+      f + ' still makes a promise the radio no longer keeps');
+    assert.ok(/Nothing is installed to make that happen/.test(doc),
+      f + ' does not say what is still true: that nothing is installed to do the updating');
+    assert.ok(/Win - Automatic Updates\.cmd/.test(doc),
+      f + ' does not say how to turn the updating off');
+  });
 });
