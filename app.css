@@ -602,16 +602,28 @@
    an update landed: the window it was announced in is gone by then, and
    the version in Settings is a place nobody looks on the way past.
 
-   Five flashes at 360ms is 1.8 seconds, which is long enough to read a
-   version number twice and short enough that nobody waiting for their
-   station is kept from it. The numbers live in app.js as well, and a
+   Five flashes at one second each, so five seconds before the station
+   comes back. It started at 360ms and went to 560, and both read as a
+   fault rather than as an announcement: fast blinking is what a thing
+   does when it has gone wrong. At a second a flash it is plainly
+   deliberate, and it is only ever seen on the one launch after an
+   update. The numbers live in app.js as well, and a
    test holds the two to each other. */
 @keyframes name-flash {
   0%, 45%   { opacity: 1; }
   50%, 95%  { opacity: 0; }
   100%      { opacity: 1; }
 }
-.display-name.is-announcing { animation: name-flash .36s linear 5; }
+/* Four snaps, and then a fifth that goes out exactly like them and
+   stays out. The blink's own off-ramp is 50ms -- 45% to 50% of a one
+   second cycle, linear -- and the last one matches it to the
+   millisecond and the easing. It was 400ms and ease-in, which was eight
+   times slower than the four before it and read as the announcement
+   winding down rather than finishing. The pause carries the ending now,
+   not the fade. forwards is what holds it dark through that pause. */
+.display-name.is-announcing { animation: name-flash 1s linear 5; }
+@keyframes name-fade-out { from { opacity: 1; } to { opacity: 0; } }
+.display-name.is-fading { animation: name-fade-out .05s linear forwards; }
 
 /* And back, at the speed the update pill arrives at. */
 @keyframes name-return { from { opacity: 0; } to { opacity: 1; } }
@@ -620,7 +632,8 @@
 @media (prefers-reduced-motion: reduce) {
   /* Held, and then simply exchanged. The announcement is information;
      the flashing is only how it asks to be looked at. */
-  .display-name.is-announcing, .display-name.is-returning { animation: none; }
+  .display-name.is-announcing, .display-name.is-fading,
+  .display-name.is-returning { animation: none; }
 }
 
    thing to move and needs no wrapper of its own. */

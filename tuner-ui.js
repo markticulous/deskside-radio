@@ -674,6 +674,17 @@
 
     var still = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (theme === 'departures' && changed && !still) flapReveal(nameEl);
+    /* And the console strikes, on the same trigger and for the same
+       reason: a new name arriving is the display being given something
+       to say, and a cell that has just been told has to light before it
+       is lit. Every name change gets it -- a preset pressed, a schedule
+       handover, a station renamed in the drawer -- not only the one that
+       follows the version announcement.
+
+       changed is what keeps it honest. Re-rendering the same name, which
+       a theme switch does, leaves the readout standing rather than
+       striking at a name that was already there. */
+    if (theme === 'console' && changed && !still) vfdReveal(nameEl);
     // Re-armed on every name, and stopped the moment another theme takes
     // the readout, or its timer would go on firing at glyphs that are gone.
     if (theme === 'console') vfdFlicker(nameEl); else vfdStop();
@@ -689,6 +700,54 @@
      Guarded here rather than at the call, so nothing has to remember that
      only one theme has panels and that a listener may have asked for
      stillness. */
+  /* The console's way of arriving at a name: the cells strike.
+
+     The first version of this ran each cell through random characters and
+     settled it, which is the split-flap board's gesture performed with
+     different glyphs -- and it read as exactly that, a thing flipping or
+     tuning itself in. A vacuum fluorescent display does not step through
+     characters on its way to one. Every cell already knows what it says;
+     what wavers is whether it is lit, because each is a cathode striking.
+
+     So the character is correct from the first frame and only the
+     brightness moves: a few uneven flickers per cell, no two cells on the
+     same clock, settling lit. Used after the version announcement hands
+     the readout back, where a name appearing whole and instantly is the
+     one thing on that face that does not look like hardware.
+
+     A run number, so a station changed mid-strike abandons the old one
+     rather than leaving a cell dark. */
+  var vfdRevealRun = 0;
+
+  function vfdReveal(nameEl) {
+    var chars = nameEl.querySelectorAll('.vfd-ch');
+    if (!chars.length) return;
+    var still = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (still) return;
+
+    var run = ++vfdRevealRun;
+    nameEl.setAttribute('data-vfd-run', run);
+
+    for (var i = 0; i < chars.length; i++) {
+      (function (ch, index) {
+        if (ch.textContent === ' ') return;
+        /* Dark, dim and half-lit, ending lit. Three to six of them, so
+           some cells settle while others are still catching. */
+        var levels = [0, 0.18, 0.5, 0.12, 0.75, 0.3];
+        var left = 3 + Math.floor(Math.random() * 4);
+        ch.style.opacity = '0';
+        var tick = function () {
+          if (nameEl.getAttribute('data-vfd-run') !== String(run)) return;
+          if (left <= 0) { ch.style.opacity = ''; return; }
+          left--;
+          ch.style.opacity = String(levels[Math.floor(Math.random() * levels.length)]);
+          setTimeout(tick, 30 + Math.floor(Math.random() * 45));
+        };
+        setTimeout(tick, index % 4 * 25);
+      })(chars[i], i);
+    }
+  }
+
   function flapName(nameEl) {
     if (!nameEl || themeOf(nameEl) !== 'departures') return;
     if (root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -1078,6 +1137,6 @@
     setNeedle: setNeedle, setLevel: setLevel, refreshMeter: refreshMeter,
     scopeShowing: scopeShowing, drawBars: drawBars, clearScope: clearScope,
     setName: setName, fitName: fitName, watchName: watchName,
-    clearFit: clearFit, fitLine: fitLine, flapName: flapName
+    clearFit: clearFit, fitLine: fitLine, flapName: flapName, vfdReveal: vfdReveal
   };
 })(window);

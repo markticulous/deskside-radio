@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.4.11';
+  var APP_VERSION = '1.4.12';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -1466,35 +1466,68 @@
     TunerUI.setName(el.name, text);
   }
 
-  var ANNOUNCE_FLASHES = 5;
-  var ANNOUNCE_STEP_MS = 360;
-  var ANNOUNCE_MS = ANNOUNCE_FLASHES * ANNOUNCE_STEP_MS;
+  /* Five blinks. The first four snap on and off; the fifth goes out the
+     same way and stays out, which is why the CSS runs the snap four
+     times and a separate rule holds the last one dark. Then the pause,
+     which is what makes the ending an ending -- it used to be carried
+     by a slow fade, and a fade eight times slower than the blinks it
+     followed read as winding down rather than finishing. A test holds
+     these numbers to the ones in app.css. */
+  var ANNOUNCE_FLASHES = 6;
+  var ANNOUNCE_STEP_MS = 1000;
+  /* The lit part of one blink, and the ramp that ends it: 45% and 5% of
+     the step, which is what the keyframes say. */
+  var ANNOUNCE_ON_MS = Math.round(ANNOUNCE_STEP_MS * 0.45);
+  var ANNOUNCE_FADE_MS = Math.round(ANNOUNCE_STEP_MS * 0.05);
+  var ANNOUNCE_GAP_MS = 900;
+  /* Four whole cycles, and then the fifth blink's own lit stretch
+     before it goes out for good.
+
+     Without that last term this fired the moment the fourth cycle
+     ended -- and a cycle ends lit, because its final 5% ramps the text
+     back up ready for the next one. So the fifth blink came on and was
+     taken away again 65 milliseconds later: a stutter, not a blink.
+     Reported off a screen recording, and visible in the trace as a
+     fade-out beginning 15ms after the flash animation finished. */
+  var ANNOUNCE_MS = (ANNOUNCE_FLASHES - 1) * ANNOUNCE_STEP_MS + ANNOUNCE_ON_MS;
   var announcing = false;
 
   function announceVersion() {
     if (!el.name) return;
     var back = function () {
       announcing = false;
-      el.name.classList.remove('is-announcing');
       var st = currentStation();
       TunerUI.setName(el.name, st ? st.name : '');
-      /* The class is put on after the name, so the fade covers the name
-         arriving rather than the one leaving. */
-      el.name.classList.remove('is-returning');
-      void el.name.offsetWidth;
+      /* Both class changes and the new name land before the next style
+         recalculation, so the readout goes straight from dark into the
+         fade. Removing the fade first and adding the return afterwards
+         in two frames would show one frame of the name at full. */
+      el.name.classList.remove('is-fading');
       el.name.classList.add('is-returning');
       setTimeout(function () { el.name.classList.remove('is-returning'); }, 400);
+      /* Nothing theme-specific here. setName strikes the console's cells
+         and turns the departures board of its own accord whenever the
+         name changes, and handing the readout back from the announcement
+         is a change like any other. */
+    };
+
+    /* The last blink, as a fade. The snaps stop here and the text goes
+       out over ANNOUNCE_FADE_MS, then holds dark for the beat. */
+    var leave = function () {
+      el.name.classList.remove('is-announcing');
+      el.name.classList.add('is-fading');
+      setTimeout(back, ANNOUNCE_FADE_MS + ANNOUNCE_GAP_MS);
     };
 
     announcing = true;
-    TunerUI.setName(el.name, 'Updated to v' + APP_VERSION);
+    TunerUI.setName(el.name, 'UPDATED TO V' + APP_VERSION);
     var still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     if (!still) {
       el.name.classList.remove('is-announcing');
       void el.name.offsetWidth;
       el.name.classList.add('is-announcing');
     }
-    setTimeout(back, ANNOUNCE_MS);
+    setTimeout(still ? back : leave, ANNOUNCE_MS);
   }
 
   function setText(node, text) {

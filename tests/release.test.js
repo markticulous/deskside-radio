@@ -1668,10 +1668,57 @@ test('the readout says the version once, after an update', () => {
   assert.ok(flashes && step, 'the announcement timings are gone from app.js');
   const anim = css.match(/\.display-name\.is-announcing \{ animation: name-flash ([\d.]+)s linear (\d+); \}/);
   assert.ok(anim, 'the flash animation is gone from app.css');
-  assert.equal(Number(flashes[1]), Number(anim[2]),
-    'app.js flashes ' + flashes[1] + ' times and the animation runs ' + anim[2]);
+  assert.equal(Number(flashes[1]) - 1, Number(anim[2]),
+    'app.js blinks ' + flashes[1] + ' times, so the snap should run ' + (Number(flashes[1]) - 1)
+      + ' and the last blink be the fade; the animation runs ' + anim[2]);
+
+  /* That last blink: a fade out, held dark by forwards through the beat
+     before the station arrives. */
+  const out = css.match(/\.display-name\.is-fading \{ animation: name-fade-out ([\d.]+)s linear forwards; \}/);
+  assert.ok(out, 'the last blink no longer goes out and stays out');
+  /* Taken from the step rather than written out, so changing the blink
+     rate carries the fade and the lit stretch with it. */
+  assert.ok(/var ANNOUNCE_FADE_MS = Math\.round\(ANNOUNCE_STEP_MS \* 0\.05\);/.test(js),
+    'the last blink no longer goes out at the same speed as the other four');
+  const gapMs = js.match(/var ANNOUNCE_GAP_MS = (\d+);/);
+  assert.ok(gapMs, 'the dark beat is gone from app.js');
+  const fadeMs = [null, String(Math.round(Number(step[1]) * 0.05))];
+  assert.ok(Number(gapMs[1]) >= Number(step[1]) * 0.5,
+    'the pause is ' + gapMs[1] + 'ms, too short to read as the end of the announcement');
+
+  /* And the fifth blink gets its own lit stretch before it goes out. A
+     flash cycle ends lit -- its last 5% ramps the text back up for the
+     next one -- so starting the fade the moment the fourth cycle ends
+     showed the fifth blink for 65ms and took it away again. A stutter,
+     reported off a screen recording. */
+  assert.ok(/var ANNOUNCE_ON_MS = Math\.round\(ANNOUNCE_STEP_MS \* 0\.45\);/.test(js),
+    'the lit part of a blink is no longer taken from the step');
+  assert.ok(/ANNOUNCE_MS = \(ANNOUNCE_FLASHES - 1\) \* ANNOUNCE_STEP_MS \+ ANNOUNCE_ON_MS;/.test(js),
+    'the last blink is cut off the instant the fourth cycle ends, which is the stutter');
+  assert.equal(Math.round(parseFloat(out[1]) * 1000), Number(fadeMs[1]),
+    'the fade-out animation is ' + out[1] + 's and app.js waits ' + fadeMs[1] + 'ms');
+  assert.ok(Number(gapMs[1]) > 0, 'there is no dark beat between the announcement and the station');
+
+  /* And the readout is never seen at full between the two: the classes are
+     exchanged in one go rather than over two frames. */
+  const backFn = js.slice(js.indexOf('var back = function () {'), js.indexOf('var leave = function () {'));
+  assert.ok(backFn.indexOf("remove('is-fading')") < backFn.indexOf("add('is-returning')"),
+    'the fade-out is dropped after the return is added');
+  assert.equal(/void el\.name\.offsetWidth;/.test(backFn), false,
+    'the hand-back forces a reflow between the two classes, which shows one frame of the name at full');
   assert.equal(Number(step[1]), Math.round(parseFloat(anim[1]) * 1000),
     'app.js steps every ' + step[1] + 'ms and the animation is ' + anim[1] + 's');
+
+  /* Capitals, like every other alert on the front. Set in the string and
+     not with text-transform: two themes build the readout a character at a
+     time -- the departures board out of flaps, the console out of segment
+     cells -- and both read the text itself rather than what CSS would have
+     painted. */
+  const said = js.match(/TunerUI\.setName\(el\.name, '([^']+)' \+ APP_VERSION\)/);
+  assert.ok(said, 'the announcement no longer names the version');
+  assert.equal(said[1], said[1].toUpperCase(), 'the announcement is not in capitals: ' + said[1]);
+  const pvSaid = read('previews/update-notice.html').match(/write\(n, '(UPDATED[^']*)'\)/);
+  assert.ok(pvSaid, 'the preview no longer shows the announcement in capitals');
 
   /* Back at the speed the pill arrives at: the two are the only things on
      the face that announce themselves. */
@@ -1693,6 +1740,35 @@ test('the readout says the version once, after an update', () => {
   /* And the preview shows it, on the same numbers. */
   const preview = read('previews/update-notice.html');
   assert.ok(/id="annName"/.test(preview), 'the preview page no longer shows the announcement');
-  assert.ok(/STEP = 360, FLASHES = 5/.test(preview),
-    'the preview runs the announcement on different timings from the app');
+  /* Read off the app rather than written out here, or slowing the flash
+     down means editing four files and remembering the fourth. */
+  const pv = preview.match(/STEP = (\d+), FLASHES = (\d+)/);
+  assert.ok(pv, 'the preview no longer runs the announcement');
+  assert.equal(pv[1], step[1],
+    'the preview flashes every ' + pv[1] + 'ms and the app every ' + step[1]);
+  assert.equal(pv[2], flashes[1],
+    'the preview flashes ' + pv[2] + ' times and the app ' + flashes[1]);
+
+  /* The preview has a second copy of the timing, in its own stylesheet,
+     and changing only the script left the page blinking at the old rate
+     while its timer waited for the new one. Both halves, or neither. */
+  const pvCss = preview.match(/\.ann-name\.is-announcing \{ animation: ann-flash ([\d.]+)s linear (\d+); \}/);
+  assert.ok(pvCss, 'the preview flash animation is gone');
+  assert.equal(Math.round(parseFloat(pvCss[1]) * 1000), Number(step[1]),
+    'the preview animates every ' + pvCss[1] + 's while its script steps every ' + step[1] + 'ms');
+  assert.equal(Number(pvCss[2]), Number(flashes[1]) - 1,
+    'the preview animation runs ' + pvCss[2] + ' times; it should snap ' + (Number(flashes[1]) - 1)
+      + ' times and fade the last');
+  assert.ok(/\.ann-name\.is-fading \{ animation: ann-fade-out/.test(preview),
+    'the preview no longer takes the last blink out and leaves it out');
+  assert.ok(/\}, STEP \* \(FLASHES - 1\) \+ ON\);/.test(preview),
+    'the preview cuts the last blink short, which is the stutter');
+  /* Read off the app, not written out here: the dark beat has already been
+     lengthened once and a hardcoded number means editing this file to do
+     it, which is how the preview fell behind the app before. */
+  const pvGap = preview.match(/FADE = (\d+), GAP = (\d+)/);
+  assert.ok(pvGap, 'the preview no longer runs the fade-out and the beat');
+  assert.equal(pvGap[1], fadeMs[1],
+    'the preview fades out over ' + pvGap[1] + 'ms and the app over ' + fadeMs[1]);
+  assert.equal(pvGap[2], gapMs[1], 'the preview holds dark for ' + pvGap[2] + 'ms and the app for ' + gapMs[1]);
 });

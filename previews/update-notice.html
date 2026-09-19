@@ -148,6 +148,13 @@ h2 {
 .opt-name { font-weight: 600; font-size: 15.5px; }
 .opt-note { color: var(--mute); font-size: 14px; flex: 1 1 24ch; min-width: 0; }
 
+/* The panel the notes sit in. It never had a rule of its own, so its text
+   ran to the border on all four sides. The same inset as the head above
+   it, which is what makes the two read as one card. */
+.opt-body { padding: 14px 18px; }
+.opt-body > :first-child { margin-top: 0; }
+.opt-body > :last-child { margin-bottom: 0; }
+
 .bars { display: grid; gap: 1px; background: var(--line); }
 
 .bar {
@@ -274,11 +281,97 @@ h2 {
   100%      { opacity: 1; }
 }
 @keyframes ann-return { from { opacity: 0; } to { opacity: 1; } }
-.ann-name.is-announcing { animation: ann-flash .36s linear 5; }
+.ann-name.is-announcing { animation: ann-flash 1s linear 5; }
+@keyframes ann-fade-out { from { opacity: 1; } to { opacity: 0; } }
+.ann-name.is-fading { animation: ann-fade-out .05s linear forwards; }
 .ann-name.is-returning  { animation: ann-return .22s ease-out; }
 @media (prefers-reduced-motion: reduce) {
-  .ann-name.is-announcing, .ann-name.is-returning { animation: none; }
+  .ann-name.is-announcing, .ann-name.is-fading,
+  .ann-name.is-returning { animation: none; }
 }
+/* Three cabinets, because two of them do not set the readout as text. The
+   console builds one segment cell per character and the departures board
+   one flap per character, so the announcement has to be looked at in both
+   rather than assumed from the dial.
+
+   Drawn rather than reproduced: the app's real board flaps each character
+   into place and the real console has a dot field and four layers of glow.
+   What is being shown here is the timing of the announcement, so these are
+   just close enough to recognise the cabinet. */
+.ann-glass.ann-departures {
+  background: #15171a;
+  border-color: #2a2c31;
+  padding: 8px 10px;
+}
+.ann-departures .ann-name {
+  display: flex; gap: 3px;
+  font-family: var(--mono); font-weight: 500; font-size: 19px;
+  color: #c7e04a; letter-spacing: 0;
+}
+/* One flap per character, with the fold seam through the middle of it --
+   which is the detail that makes a split-flap board read as one. */
+.ann-departures .ann-ch {
+  position: relative;
+  min-width: 15px; padding: 3px 0;
+  text-align: center;
+  background: #23262b;
+  border-radius: 2px;
+}
+.ann-departures .ann-ch::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 50%;
+  border-top: 1px solid rgba(0, 0, 0, .55);
+}
+.ann-departures .ann-ch.is-gap { background: transparent; min-width: 7px; }
+
+/* The console readout is a vacuum fluorescent display, and what makes one
+   look like one is not the amber: it is the undriven dot field across the
+   whole character band, so a lit character lights dots that were already
+   there, and the anode grid wires on the glass in front of them. Both are
+   drawn here in CSS rather than built per character the way the app does
+   it -- the app sets this in a real 14-segment face and glows it in four
+   layers. */
+.ann-glass.ann-console {
+  position: relative;
+  background: #050506;
+  border-color: #1d2126;
+  padding: 10px 12px;
+  overflow: hidden;
+}
+/* The dot field, and the grid wires over it. */
+.ann-glass.ann-console::before {
+  content: ""; position: absolute; inset: 0;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 176, 0, .10) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(0deg, rgba(255, 176, 0, .10) 0 1px, transparent 1px 3px);
+  pointer-events: none;
+}
+.ann-glass.ann-console::after {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, rgba(120, 150, 170, .10) 0 1px, transparent 1px 9px);
+  pointer-events: none;
+}
+/* One cell per character, so each can flicker on its own. A fixed width,
+   or the line would shuffle sideways every time a wide character stood in
+   for a narrow one on the way to settling. */
+.ann-console .ann-vfd {
+  display: inline-block;
+  width: 0.62em;
+  text-align: center;
+  /* Each cell carries its own glow, so a half-struck one dims the glow
+     with it rather than leaving a bright halo round a faint character. */
+  text-shadow: inherit;
+}
+.ann-console .ann-name {
+  position: relative; z-index: 1;
+  font-family: var(--mono); font-weight: 500; font-size: 22px;
+  color: #ffb000; letter-spacing: .14em;
+  text-shadow:
+    0 0 2px rgba(255, 214, 140, .9),
+    0 0 6px rgba(255, 190, 70, .55),
+    0 0 14px rgba(255, 176, 0, .35),
+    0 0 26px rgba(255, 150, 0, .18);
+}
+
 .ann-play {
   font: 500 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase;
   padding: 8px 12px; border: 1px solid var(--line); border-radius: 3px;
@@ -576,7 +669,21 @@ h2 {
     <div class="ann">
       <span class="t-label">dial</span>
       <div>
-        <div class="ann-glass"><div class="ann-name" id="annName">KISS 92.5</div></div>
+        <div class="ann-glass"><div class="ann-name" id="annName" data-cab="dial">KISS 92.5</div></div>
+      </div>
+    </div>
+
+    <div class="ann">
+      <span class="t-label">departures</span>
+      <div>
+        <div class="ann-glass ann-departures"><div class="ann-name" data-cab="departures">KISS 92.5</div></div>
+      </div>
+    </div>
+
+    <div class="ann">
+      <span class="t-label">console</span>
+      <div>
+        <div class="ann-glass ann-console"><div class="ann-name" data-cab="console">KISS 92.5</div></div>
       </div>
     </div>
 
@@ -584,7 +691,7 @@ h2 {
 
     <div class="opt">
       <div class="opt-body">
-        <span class="opt-note">Five flashes at 360ms is 1.8 seconds: long enough to read a version number twice, short enough that nobody waiting for their station is kept from it. Then the station comes back over 220ms, the same fade the update pill arrives with &mdash; the two are the only things on the face that announce themselves, and they should move alike. It is said once and never again: the profile records which version last ran in it, and only a change to that number brings this up. A first install says nothing at all, because nothing was updated.</span>
+        <span class="opt-note">Five blinks at a second each. It began at 360ms and then 560, and both read as a fault rather than as an announcement &mdash; fast blinking is what a thing does when it has gone wrong. The fifth blink goes out exactly like the four before it and stays out; what follows is a pause, and the pause is what makes the ending an ending. Set in capitals, like every other alert on the front. Three cabinets are shown because two of them do not set the readout as text: the console builds one segment cell per character and the departures board one flap per character. Both were checked in the app and take the announcement whole &mdash; eighteen cells and eighteen flaps, nothing clipped, nothing set scrolling. Neither is the real thing here: the board turns simply drawn flaps rather than the app&rsquo;s folded half-flaps, and the console is a dot field and grid wires behind a monospace face rather than the app&rsquo;s 14-segment one. What is being shown is the timing. The board flaps the announcement in <em>once</em> and flaps back to the station at the end; the blinking in between is the whole board going dark and light, not the flaps turning six times. Then the station comes back over 220ms, the same fade the update pill arrives with &mdash; the two are the only things on the face that announce themselves, and they should move alike. It is said once and never again: the profile records which version last ran in it, and only a change to that number brings this up. A first install says nothing at all, because nothing was updated.</span>
       </div>
     </div>
   </section>
@@ -795,25 +902,138 @@ document.querySelectorAll('.s-x').forEach(function (x) {
 /* The announcement, on the same clocks as the app: five flashes of 360ms,
    then the station back over 220ms. */
 (function () {
-  var name = document.getElementById('annName');
+  var names = [].slice.call(document.querySelectorAll('.ann-name'));
   var play = document.getElementById('annPlay');
-  if (!name || !play) return;
-  var STEP = 360, FLASHES = 5, STATION = 'KISS 92.5';
+  if (!names.length || !play) return;
+  var STEP = 1000, FLASHES = 6, FADE = 50, GAP = 900, STATION = 'KISS 92.5';
+  /* The lit part of one blink. The last blink needs its own, or it is
+     taken away in the same breath as the cycle before it hands it back. */
+  var ON = Math.round(STEP * 0.45);
   var timer = null;
+
+  /* The departures board is built a character at a time, and it turns:
+     each flap runs through glyphs and lands, one cell a little after the
+     one before it, which is what a split-flap board does and the whole
+     reason that theme exists. Drawn simply here -- the app turns a real
+     half-flap with a fold seam -- but the timing is the app's: the board
+     is still settling into the announcement while the first blink is
+     already under way.
+
+     The other two cabinets take the string as it comes. */
+  var GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789. ';
+  var FLAP_MS = 45;
+  var flapTimers = [];
+
+  function stopFlapping() {
+    flapTimers.forEach(clearInterval);
+    flapTimers = [];
+  }
+
+  function write(el, text) {
+    var cab = el.getAttribute('data-cab');
+    /* The console is built a cell at a time as well -- one per character,
+       the way a segment display is wired -- so that each can be flickered
+       on its own when the name arrives. */
+    if (cab === 'console') {
+      el.textContent = '';
+      text.split('').forEach(function (ch) {
+        var cell = document.createElement('span');
+        cell.className = 'ann-vfd';
+        cell.textContent = ch === ' ' ? '\u00a0' : ch;
+        el.appendChild(cell);
+      });
+      return;
+    }
+    if (cab !== 'departures') { el.textContent = text; return; }
+    el.textContent = '';
+    var cells = text.split('').map(function (ch) {
+      var cell = document.createElement('span');
+      cell.className = 'ann-ch' + (ch === ' ' ? ' is-gap' : '');
+      cell.textContent = ch === ' ' ? '\u00a0' : ch;
+      el.appendChild(cell);
+      return cell;
+    });
+
+    cells.forEach(function (cell, i) {
+      var want = text.charAt(i);
+      if (want === ' ') return;
+      /* Six turns for the first cell and one more for each after it, so
+         the board lands left to right rather than all at once. */
+      var left = 6 + i;
+      var t = setInterval(function () {
+        left--;
+        cell.textContent = left > 0
+          ? GLYPHS.charAt(Math.floor(Math.random() * (GLYPHS.length - 1)))
+          : want;
+        if (left <= 0) { clearInterval(t); }
+      }, FLAP_MS);
+      flapTimers.push(t);
+    });
+  }
+
+  function each(fn) { names.forEach(fn); }
+
+  /* The console's cells strike rather than flip. The board next door runs
+     its flaps through characters because that is what a split-flap panel
+     does; a vacuum fluorescent cell already knows what it says and only
+     wavers in whether it is lit. Doing it with glyphs read as tuning in,
+     which is the board's gesture wearing the console's face. Same as the
+     app: character right from the first frame, brightness uneven. */
+  var vfdTimers = [];
+
+  function stopVfd() {
+    vfdTimers.forEach(clearTimeout);
+    vfdTimers = [];
+  }
+
+  function vfdReveal(el) {
+    var cells = el.querySelectorAll('.ann-vfd');
+    for (var i = 0; i < cells.length; i++) {
+      (function (cell, index) {
+        if (cell.textContent === '\u00a0') return;
+        var levels = [0, 0.18, 0.5, 0.12, 0.75, 0.3];
+        var left = 3 + Math.floor(Math.random() * 4);
+        cell.style.opacity = '0';
+        var tick = function () {
+          if (left <= 0) { cell.style.opacity = ''; return; }
+          left--;
+          cell.style.opacity = String(levels[Math.floor(Math.random() * levels.length)]);
+          vfdTimers.push(setTimeout(tick, 30 + Math.floor(Math.random() * 45)));
+        };
+        vfdTimers.push(setTimeout(tick, index % 4 * 25));
+      })(cells[i], i);
+    }
+  }
 
   function run() {
     clearTimeout(timer);
-    name.classList.remove('is-announcing', 'is-returning');
-    name.textContent = 'Updated to v1.4.12';
-    void name.offsetWidth;
-    name.classList.add('is-announcing');
+    stopFlapping();
+    stopVfd();
+    each(function (n) {
+      n.classList.remove('is-announcing', 'is-fading', 'is-returning');
+      write(n, 'UPDATED TO V1.4.12');
+      void n.offsetWidth;
+      n.classList.add('is-announcing');
+    });
+    /* Five snaps, then the last blink out and held dark for the pause,
+       then the station. The same shape and numbers as the app. */
     timer = setTimeout(function () {
-      name.classList.remove('is-announcing');
-      name.textContent = STATION;
-      void name.offsetWidth;
-      name.classList.add('is-returning');
-      timer = setTimeout(function () { name.classList.remove('is-returning'); }, 400);
-    }, STEP * FLASHES);
+      each(function (n) {
+        n.classList.remove('is-announcing');
+        n.classList.add('is-fading');
+      });
+      timer = setTimeout(function () {
+        each(function (n) {
+          write(n, STATION);
+          n.classList.remove('is-fading');
+          n.classList.add('is-returning');
+          if (n.getAttribute('data-cab') === 'console') vfdReveal(n);
+        });
+        timer = setTimeout(function () {
+          each(function (n) { n.classList.remove('is-returning'); });
+        }, 400);
+      }, FADE + GAP);
+    }, STEP * (FLASHES - 1) + ON);
   }
 
   play.addEventListener('click', run);
