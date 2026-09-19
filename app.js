@@ -4350,10 +4350,21 @@
 
   $('checkNow').addEventListener('click', function () { checkVersion(true); });
 
+  var PILL_OUT_MS = 90;
   $('updatePillClose').addEventListener('click', function () {
     state.versionPillOff = true;
     save();
-    syncUpdatePill();
+    /* Let it be seen going. The setting is written first, so whatever
+       happens to the animation the pill is dismissed -- syncUpdatePill is
+       what actually hides it, and it is called either way. */
+    var pill = $('updatePill');
+    var still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (!pill || still) { syncUpdatePill(); return; }
+    pill.classList.add('is-going');
+    setTimeout(function () {
+      pill.classList.remove('is-going');
+      syncUpdatePill();
+    }, PILL_OUT_MS);
   });
 
   $('versionCheckOn').addEventListener('change', function () {

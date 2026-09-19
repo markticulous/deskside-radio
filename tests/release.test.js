@@ -519,16 +519,104 @@ test('a launch asks about the version instead of trusting a stale answer', () =>
     'Check now no longer forces');
 });
 
-test('the pill fades in over the span the dot fades out', () => {
-  /* Both sixty milliseconds, opposite directions and opposite easings. An
-     animation rather than a transition because the pill comes out of
-     display: none, which no transition can start from. */
+test('the pill fades in, and the dot still snaps', () => {
+  /* These were tied together at sixty milliseconds each, opposite
+     directions and opposite easings. The tie was wrong. Sixty milliseconds
+     is a snap, which is exactly right for a blink -- the snap is the part
+     the eye catches -- and wrong for an arrival, where nothing is seen to
+     happen at all. The pill's fade was asked for twice for that reason.
+
+     An animation rather than a transition, because the pill comes out of
+     display: none and no transition can start from there. */
   const css = read('app.css');
   assert.ok(/@keyframes update-pill-in/.test(css), 'the pill appears with no fade');
-  assert.ok(/\.update-pill\s*\{\s*animation: update-pill-in \.06s ease-out;\s*\}/.test(css),
-    'the pill fade is not 60ms ease-out');
+
+  const m = css.match(/\.update-pill \{ animation: update-pill-in ([\d.]+)s ease-out; \}/);
+  assert.ok(m, 'the pill fade is gone, or no longer an ease-out animation');
+  const ms = Math.round(parseFloat(m[1]) * 1000);
+  assert.ok(ms >= 150, 'the pill fade is ' + ms + 'ms, which is back to being too quick to see');
+  assert.ok(ms <= 400, 'the pill fade is ' + ms + 'ms, which is long enough to be in the way');
+
+  /* The dot is untouched by that: it still goes out in three per cent of a
+     two-second cycle. */
   assert.ok(/74%\s*\{ opacity: 1; animation-timing-function: ease-in; \}\s*\n\s*77%\s*\{ opacity: 0; \}/.test(css),
-    'the dot fade is no longer the 60ms this is matched to');
+    'the dot no longer snaps off over 60ms');
+
+  /* Neither animation runs where the machine has asked for stillness. */
+  const reduced = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)', css.indexOf('update-dot-blink')));
+  assert.ok(/\.update-dot \{ animation: none/.test(reduced) && /\.update-pill[^{]*\{ animation: none/.test(reduced),
+    'reduced motion no longer holds the dot and the pill still');
+
+  /* And the pill is seen going, not gone. It used to be set hidden on the
+     press, which is display: none in the same frame -- a control that
+     vanishes under the finger reads as a misclick. Quicker than the
+     arrival, because going is not news. */
+  const out = css.match(/\.update-pill\.is-going \{ animation: update-pill-out ([\d.]+)s ease-in forwards; \}/);
+  assert.ok(out, 'the pill is dismissed with no fade at all');
+  const outMs = Math.round(parseFloat(out[1]) * 1000);
+  assert.equal(outMs, 90, 'the dismiss fade is ' + outMs + 'ms rather than 90');
+  assert.ok(outMs < ms, 'the pill now takes longer to go than to arrive');
+
+  /* The setting is written before the animation, so a dismissal cannot be
+     lost to a timer that never fires. */
+  const js = read('app.js');
+  const close = js.slice(js.indexOf("updatePillClose"), js.indexOf("updatePillClose") + 900);
+  assert.ok(close.indexOf('state.versionPillOff = true;') < close.indexOf('is-going'),
+    'the pill is faded before the dismissal is recorded, so a lost timer would lose the press');
+  assert.ok(/PILL_OUT_MS/.test(js), 'the dismiss delay is no longer tied to one number');
+});
+
+/* One alert colour for the whole app, and brighter than the orange the
+   rest of it uses: this mark is 5px across and has to carry against eight
+   grounds, walnut through near-black. */
+test('the alert mark is one colour, and a bright one', () => {
+  const css = read('app.css');
+  const m = css.match(/:root \{ --alert: (#[0-9a-f]{6}); \}/i);
+  assert.ok(m, 'the alert colour is no longer a token on :root');
+  const hex = m[1].toLowerCase();
+
+  const rgb = [1, 3, 5].map(function (i) { return parseInt(hex.slice(i, i + 2), 16); });
+  /* Brighter than the app's ordinary orange, which is what it was cut from
+     and what it kept being mistaken for. */
+  assert.ok(rgb[0] >= 250, 'the alert orange has gone dull again (' + hex + ')');
+  assert.ok(rgb[1] > rgb[2], 'the alert colour is no longer an orange (' + hex + ')');
+
+  /* The fallbacks stand in for the token where it is not inherited, so
+     they have to be the same colour, not the old one. */
+  const fallbacks = css.match(/var\(--alert, (#[0-9a-f]{6})\)/gi) || [];
+  assert.ok(fallbacks.length >= 2, 'the alert fallbacks are gone');
+  fallbacks.forEach(function (f) {
+    assert.ok(f.toLowerCase().indexOf(hex) !== -1,
+      'an alert fallback still carries the old colour: ' + f);
+  });
+
+  /* One colour, in both places, on every theme, always. The mark used to
+     be cut from each cabinet's own byline -- brass on the dial, lime on
+     the board, phosphor amber on the console -- which gave one piece of
+     news eight faces, each in a colour that theme already uses for
+     something ordinary. The way that cannot come back is for --alert to
+     be declared once and nowhere else: a second declaration under a
+     [data-theme] block is exactly how it happened the first time. */
+  const declarations = css.match(/--alert\s*:/g) || [];
+  assert.equal(declarations.length, 1,
+    'the alert colour is declared ' + declarations.length + ' times; a theme can override it again');
+
+  /* Both places read that one token: the dot in the pill, and the mark on
+     the Settings control. */
+  assert.ok(/\.update-dot \{[^}]*background: var\(--alert/.test(css),
+    'the pill dot no longer takes the alert token');
+  assert.ok(/#openSettings\.has-update::after \{[^}]*background: var\(--alert/.test(css),
+    'the mark on the Settings control no longer takes the alert token');
+
+  /* And the preview page shows what the app does, or it is showing a
+     design that was never shipped -- including the one-declaration rule,
+     since that page carries eight theme skins of its own. */
+  const preview = read('previews/update-notice.html');
+  assert.ok(preview.toLowerCase().indexOf(hex) !== -1,
+    'previews/update-notice.html is still drawn in the old alert colour');
+  const previewDecls = preview.match(/--alert\s*:/g) || [];
+  assert.equal(previewDecls.length, 1,
+    'the preview declares the alert colour ' + previewDecls.length + ' times, so its themes can diverge');
 });
 
 test('taking an update is one link, and that link never goes stale', () => {

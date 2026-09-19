@@ -20,7 +20,7 @@
   --accent:  #b85c12;
   --amber:   #f0842a;
   /* One colour for "look at this", the same in both themes on purpose. */
-  --alert:   #f0842a;
+  --alert:   #ff8f2e;
   --good:    #2f8a4e;
 
   --ui: "Archivo", "Helvetica Neue", Arial, sans-serif;
@@ -268,6 +268,16 @@ h2 {
   letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
 }
 .s-pill[hidden] { display: none; }
+/* Arriving and going, as the app does it. The preview had neither, so
+   pressing Restore put the pills back in one frame and the page was
+   showing something that was never shipped. */
+@keyframes update-pill-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes update-pill-out { from { opacity: 1; } to { opacity: 0; } }
+.s-pill { animation: update-pill-in .22s ease-out; }
+.s-pill.is-going { animation: update-pill-out .09s ease-in forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .s-pill, .s-pill.is-going { animation: none; }
+}
 .s-link { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; font: inherit; letter-spacing: inherit; }
 .s-link:hover { opacity: .72; }
 /* The dot blinks, as it does in the app: lit for three quarters of every
@@ -490,7 +500,7 @@ h2 {
       <div class="opt-head">
         <span class="opt-key">&bull;</span>
         <span class="opt-name">The dot blinks</span>
-        <span class="opt-note">The pill is small, quiet and off to one side of the plate, which is what it should be &mdash; and which is also how it gets missed. The dot is the one thing on the face that moves of its own accord, so it is what catches the eye that was not looking. Two seconds a cycle, lit for three quarters of it: a marker with a pulse in it rather than an alarm. It snaps on and fades off over 60ms &mdash; the snap is what the eye catches, and a dot that eased in as well would read as something still loading. It is the same orange whatever theme you are in, and deliberately not the theme&rsquo;s own colour: cut from each cabinet&rsquo;s byline it was brass on the dial and lime on the board, one piece of news wearing eight faces, each in a colour that theme already uses for something ordinary.</span>
+        <span class="opt-note">The pill is small, quiet and off to one side of the plate, which is what it should be &mdash; and which is also how it gets missed. The dot is the one thing on the face that moves of its own accord, so it is what catches the eye that was not looking. Two seconds a cycle, lit for three quarters of it: a marker with a pulse in it rather than an alarm. It snaps on and fades off over 60ms &mdash; the snap is what the eye catches, and a dot that eased in as well would read as something still loading. The pill itself fades in over 220ms when it arrives &mdash; the one movement here meant to be watched rather than caught &mdash; and goes out over 90ms on the cross. Going is quicker than arriving on purpose: an arrival is news and a dismissal is not, and a control that vanishes in the frame your finger lands in reads as a misclick rather than as a thing done. It is the same orange whatever theme you are in, and deliberately not the theme&rsquo;s own colour: cut from each cabinet&rsquo;s byline it was brass on the dial and lime on the board, one piece of news wearing eight faces, each in a colour that theme already uses for something ordinary.</span>
       </div>
       <div class="zoom" style="--bg: #2b1d14; --fg: #f0e2c8; --by-fg: #e3cf9a; --by-line: rgba(201,162,74,.55);">
         <span class="s-pill"><a class="s-link" href="#" onclick="return false"><span class="s-dot"></span>Update available</a><button type="button" class="s-x" aria-label="Hide this until the next check"><span aria-hidden="true">&times;</span></button></span>
@@ -703,12 +713,22 @@ h2 {
 <script>
 /* Only what the page has to do to show the thing: hide a pill on its own
    cross, and put them all back when the button stands in for a check. */
+var PILL_OUT_MS = 90;
 document.querySelectorAll('.s-x').forEach(function (x) {
   x.addEventListener('click', function () {
     var pill = x.closest('.s-pill');
-    pill.hidden = true;
     var gone = pill.nextElementSibling;
-    if (gone && gone.classList.contains('s-gone')) gone.hidden = false;
+    var finish = function () {
+      pill.classList.remove('is-going');
+      pill.hidden = true;
+      if (gone && gone.classList.contains('s-gone')) gone.hidden = false;
+    };
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      finish();
+      return;
+    }
+    pill.classList.add('is-going');
+    setTimeout(finish, PILL_OUT_MS);
   });
 });
 document.getElementById('restore').addEventListener('click', function () {
