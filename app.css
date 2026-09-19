@@ -597,18 +597,25 @@
    preset keyframes. setName already puts every line in a .name-line, and
    that span is display:block with width:max-content, so it is the right
 /* ---- what the readout says once, after an update ----------------------
-   The version that has just been installed, flashed five times and then
+   The version that has just been installed, blinked four times and then
    given back to the station. The radio has no other way to tell anybody
    an update landed: the window it was announced in is gone by then, and
    the version in Settings is a place nobody looks on the way past.
 
-   Five flashes at one second each, so five seconds before the station
-   comes back. It started at 360ms and went to 560, and both read as a
-   fault rather than as an announcement: fast blinking is what a thing
-   does when it has gone wrong. At a second a flash it is plainly
-   deliberate, and it is only ever seen on the one launch after an
-   update. The numbers live in app.js as well, and a
-   test holds the two to each other. */
+   A second a blink. It started at 360ms and went to 560, and both read
+   as a fault rather than as an announcement -- fast blinking is what a
+   thing does when it has gone wrong. At a second it is plainly
+   deliberate.
+
+   Four of them and not six. Six held the readout for the better part of
+   seven seconds on the departures board, which flaps in and out either
+   side of the blinking, and that is a long time to keep somebody from
+   the name of their own station. It is only ever seen on the one launch
+   after an update, which is the argument for making it unmissable and
+   also the argument against making it long.
+
+   The numbers live in app.js as well, and a test holds the two to each
+   other. */
 @keyframes name-flash {
   0%, 45%   { opacity: 1; }
   50%, 95%  { opacity: 0; }
@@ -621,7 +628,7 @@
    times slower than the four before it and read as the announcement
    winding down rather than finishing. The pause carries the ending now,
    not the fade. forwards is what holds it dark through that pause. */
-.display-name.is-announcing { animation: name-flash 1s linear 5; }
+.display-name.is-announcing { animation: name-flash 1s linear 3; }
 @keyframes name-fade-out { from { opacity: 1; } to { opacity: 0; } }
 .display-name.is-fading { animation: name-fade-out .05s linear forwards; }
 

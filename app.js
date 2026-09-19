@@ -1473,7 +1473,7 @@
      by a slow fade, and a fade eight times slower than the blinks it
      followed read as winding down rather than finishing. A test holds
      these numbers to the ones in app.css. */
-  var ANNOUNCE_FLASHES = 6;
+  var ANNOUNCE_FLASHES = 4;
   var ANNOUNCE_STEP_MS = 1000;
   /* The lit part of one blink, and the ramp that ends it: 45% and 5% of
      the step, which is what the keyframes say. */

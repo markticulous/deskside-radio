@@ -281,7 +281,7 @@ h2 {
   100%      { opacity: 1; }
 }
 @keyframes ann-return { from { opacity: 0; } to { opacity: 1; } }
-.ann-name.is-announcing { animation: ann-flash 1s linear 5; }
+.ann-name.is-announcing { animation: ann-flash 1s linear 3; }
 @keyframes ann-fade-out { from { opacity: 1; } to { opacity: 0; } }
 .ann-name.is-fading { animation: ann-fade-out .05s linear forwards; }
 .ann-name.is-returning  { animation: ann-return .22s ease-out; }
@@ -691,7 +691,7 @@ h2 {
 
     <div class="opt">
       <div class="opt-body">
-        <span class="opt-note">Five blinks at a second each. It began at 360ms and then 560, and both read as a fault rather than as an announcement &mdash; fast blinking is what a thing does when it has gone wrong. The fifth blink goes out exactly like the four before it and stays out; what follows is a pause, and the pause is what makes the ending an ending. Set in capitals, like every other alert on the front. Three cabinets are shown because two of them do not set the readout as text: the console builds one segment cell per character and the departures board one flap per character. Both were checked in the app and take the announcement whole &mdash; eighteen cells and eighteen flaps, nothing clipped, nothing set scrolling. Neither is the real thing here: the board turns simply drawn flaps rather than the app&rsquo;s folded half-flaps, and the console is a dot field and grid wires behind a monospace face rather than the app&rsquo;s 14-segment one. What is being shown is the timing. The board flaps the announcement in <em>once</em> and flaps back to the station at the end; the blinking in between is the whole board going dark and light, not the flaps turning six times. Then the station comes back over 220ms, the same fade the update pill arrives with &mdash; the two are the only things on the face that announce themselves, and they should move alike. It is said once and never again: the profile records which version last ran in it, and only a change to that number brings this up. A first install says nothing at all, because nothing was updated.</span>
+        <span class="opt-note">Four blinks at a second each. It began at 360ms and then 560, and both read as a fault rather than as an announcement &mdash; fast blinking is what a thing does when it has gone wrong. The fifth blink goes out exactly like the four before it and stays out; what follows is a pause, and the pause is what makes the ending an ending. Set in capitals, like every other alert on the front. Three cabinets are shown because two of them do not set the readout as text: the console builds one segment cell per character and the departures board one flap per character. Both were checked in the app and take the announcement whole &mdash; eighteen cells and eighteen flaps, nothing clipped, nothing set scrolling. Neither is the real thing here: the board turns simply drawn flaps rather than the app&rsquo;s folded half-flaps, and the console is a dot field and grid wires behind a monospace face rather than the app&rsquo;s 14-segment one. What is being shown is the timing. The board flaps the announcement in <em>once</em> and flaps back to the station at the end; the blinking in between is the whole board going dark and light, not the flaps turning six times. Then the station comes back over 220ms, the same fade the update pill arrives with &mdash; the two are the only things on the face that announce themselves, and they should move alike. It is said once and never again: the profile records which version last ran in it, and only a change to that number brings this up. A first install says nothing at all, because nothing was updated.</span>
       </div>
     </div>
   </section>
@@ -905,7 +905,7 @@ document.querySelectorAll('.s-x').forEach(function (x) {
   var names = [].slice.call(document.querySelectorAll('.ann-name'));
   var play = document.getElementById('annPlay');
   if (!names.length || !play) return;
-  var STEP = 1000, FLASHES = 6, FADE = 50, GAP = 900, STATION = 'KISS 92.5';
+  var STEP = 1000, FLASHES = 4, FADE = 50, GAP = 900, STATION = 'KISS 92.5';
   /* The lit part of one blink. The last blink needs its own, or it is
      taken away in the same breath as the cycle before it hands it back. */
   var ON = Math.round(STEP * 0.45);

@@ -230,6 +230,21 @@ if exist "%VTXT%" set /p NEWVER=<"%VTXT%"
 del /q "%VTXT%" >nul 2>&1
 if exist "%APPDIR%assets\version.txt" set /p OLDVER=<"%APPDIR%assets\version.txt"
 
+rem A folder installed before assets\version.txt shipped has no such file,
+rem and until every install has been through one update that is most of
+rem them -- so this said "Version 1.4.13" with nothing to compare it to,
+rem which is half the sentence. The number is still there: the build
+rem inlines it into index.html, as one line of some 350 KB. A regex over
+rem that costs one PowerShell and turns a blank into the version being
+rem replaced. Only when the file is missing, so the ordinary case stays a
+rem set /p over one short line.
+set "ANSWER=%TEMP%\deskside-radio-answer.txt"
+if not defined OLDVER if exist "%APPDIR%index.html" (
+  "%PS%" -NoProfile -ExecutionPolicy Bypass -Command "try { $m = [regex]::Match((Get-Content -Raw -LiteralPath (Join-Path $env:APPROOT 'index.html')), 'APP_VERSION\s*=\s*''([0-9.]+)'''); if ($m.Success) { $m.Groups[1].Value } } catch { }" > "%ANSWER%" 2>nul
+  if exist "%ANSWER%" set /p OLDVER=<"%ANSWER%"
+)
+del /q "%ANSWER%" >nul 2>&1
+
 if defined NEWVER (
   if defined OLDVER (
     set "MSG=Version %NEWVER%, replacing %OLDVER%"
