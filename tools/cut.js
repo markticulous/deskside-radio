@@ -155,12 +155,27 @@ async function verify() {
     say(live === want, 'version.json on main', live);
   } catch (e) { say(false, 'version.json on main', 'could not fetch: ' + e.message); }
 
-  /* The tag, which is what the release hangs off. */
+  /* The tag, which is what the release hangs off -- read from the remote,
+     not from here. `gh release create` makes the tag on the server, so a
+     local list has not heard of it yet and this reported the previous
+     release as the newest one while the new release sat there published.
+     The question is what is published, so ask what is published. */
   try {
-    const tags = execFileSync('git', ['tag', '--sort=-v:refname'], { cwd: ROOT, encoding: 'utf8' })
-      .split('\n').filter(Boolean);
-    say(tags[0] === 'v' + want, 'newest git tag', tags[0]);
-  } catch (e) { say(false, 'newest git tag', e.message); }
+    const out = execFileSync('git', ['ls-remote', '--tags', '--refs', 'origin'],
+      { cwd: ROOT, encoding: 'utf8' });
+    const tags = out.split('\n')
+      .map(function (l) { return (l.split('refs/tags/')[1] || '').trim(); })
+      .filter(function (t) { return /^v\d+(\.\d+)*$/.test(t); })
+      .sort(function (a, b) {
+        const x = a.slice(1).split('.').map(Number), y = b.slice(1).split('.').map(Number);
+        for (let i = 0; i < Math.max(x.length, y.length); i++) {
+          const d = (y[i] || 0) - (x[i] || 0);
+          if (d) return d;
+        }
+        return 0;
+      });
+    say(tags[0] === 'v' + want, 'newest tag on the remote', tags[0]);
+  } catch (e) { say(false, 'newest tag on the remote', e.message); }
 
   /* The two addresses that are written into the scripts and must never go
      stale, because both are fetched by name at every check. */
