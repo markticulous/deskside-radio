@@ -319,6 +319,20 @@ One wrinkle worth knowing, because it looks odd from the outside: cmd holds a `.
 
 The handover used to be the *last* step rather than the first, which worked and could not report: by the time anything was deleted the window that would have said so was gone. If the folder could not be removed — which happens whenever the radio is still open, because the shortcut makes that folder the browser's working directory and Windows will not delete a folder something is running in — nobody was told anything at all. Now it is deleted in a window that is still there to say what happened, and says that in those words rather than leaving you with "access denied".
 
+## Cutting a release
+
+The release body is composed, not pasted:
+
+```
+node tools/release-notes.js > notes.md
+gh release create vX.Y.Z --title "Deskside Radio X.Y.Z" --notes-file notes.md \
+  deskside-radio.zip deskside-radio-X.Y.Z.zip Win-Install-or-Update-Deskside-Radio.cmd
+```
+
+`docs/release-header.md` is the block every release page opens with — download this one file, double-click it, and what to take instead on a Mac or Linux. Below the divider comes `version.json`'s own `notes`, which is the same text the radio shows in Settings when it finds an update, so the page and the app cannot describe a release differently.
+
+The standalone `.cmd` **must** be attached as a release asset. `raw.githubusercontent.com` serves it as `text/plain` with `nosniff`, so linking it there renders it in a browser tab instead of downloading it.
+
 ## Building the single-file version
 
 The source is split into a stylesheet and five modules because that is how it is worked on. What ships is one HTML file with all of it inlined:
