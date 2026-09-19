@@ -1,6 +1,6 @@
 {
-  "version": "1.4.14",
+  "version": "1.4.15",
   "released": "2026-09-19",
-  "notes": "## New features & enhancements\n\n- The downloaded-shortcut panel says the same thing in half the words.\n- Every dialog now scrolls inside itself instead of running off a short window.\n\n## Bug fixes\n\n- The shortcut button stayed on screen on machines that already had a Desktop shortcut: each update overwrote the launcher's answer with the one shipped in the archive.\n- The page read that answer once, at boot, before the launcher had written it. It now reads again until it gets one.\n- The downloaded-shortcut panel ran off the bottom of a short window, buttons and all.",
+  "notes": "## New features & enhancements\n\n- \"Turn the radio off until the next slot\" now means any stretch with nothing scheduled - a gap between two slots as much as the end of the day.\n- The next-up chip says \"Radio off\" for a gap that will go quiet, and names the station the schedule comes back with.\n\n## Bug fixes\n\n- A gap between two slots ignored that setting and carried on playing.\n- A slot ending into a gap faded the level out and straight back in on the same station, for no change at all.\n- The Schedule pane promised the switch covered gaps in one paragraph and denied it in the next.",
   "url": "https://github.com/Markticulous/deskside-radio/releases/latest"
 }
