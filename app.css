@@ -177,7 +177,26 @@
   background: var(--alert, #ff8f2e);
   box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 22%, transparent);
 }
-.shortcut-btn { width: 30px; height: 30px; opacity: .55; transition: opacity .16s ease; }
+/* Pulled in towards Settings, and by a measured amount rather than a
+   chosen one.
+
+   The row sets one 16px gap between everything in it, which is right for
+   the brand, the clock and the schedule chip. It is wrong here, because
+   the eye does not see the gap between the boxes -- it sees the gap
+   between the drawn icons, and these two boxes pad their icons
+   differently: 30px around a 15px icon here, 40px around a 20px one on
+   Settings. Equal box gaps therefore look lopsided, 21px of air on the
+   left and 31px on the right.
+
+   -10px is what puts the drawn gap at 21px on both sides. Measured, at
+   several values, on all eight themes; the only one that differs is retro,
+   which sets a tighter row gap and so lands proportionally tighter here
+   too, which is right.
+
+   Taken off this button rather than off the row, so nothing else in the
+   bar moves, and set once because no theme touches these margins -- they
+   only recolour .icon-btn. */
+.shortcut-btn { width: 30px; height: 30px; opacity: .55; transition: opacity .16s ease; margin-right: -10px; }
 /* Third time this line has been needed, for the third element, for the
    same reason: display on a class selector is an author rule and the one
    that makes the hidden attribute work is the browser's, which every
