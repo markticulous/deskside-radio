@@ -1369,7 +1369,7 @@ test('the release notes are concise, and in point form', () => {
      what was broken. Every release page is built this way, back to 1.0.0,
      so the headings are fixed rather than invented per release. A release
      that is all fixes simply has no features list. */
-  const ALLOWED = ['## New features & feature updates', '## Bug fixes'];
+  const ALLOWED = ['## New features & enhancements', '## Bug fixes'];
   assert.ok(heads.length >= 1, 'the release notes have no section heading');
   heads.forEach(function (h) {
     assert.ok(ALLOWED.indexOf(h.trim()) !== -1,
