@@ -199,6 +199,14 @@ The choice is held in memory, never saved: the master is the address the station
 
 There is no drift correction. It was written and then removed: playing at 0.5x for nine seconds did not widen `buffered.end - currentTime` by a hundredth of a second. The browser holds about 2.3s and throttles the download to maintain it, so there is never enough buffer ahead to correct into.
 
+### The shortcut button, and why it disappears
+
+The small icon in the top bar offers to put a shortcut on the Desktop, and on Windows it now hides itself once there is one. The page cannot see your Desktop — a `file://` page cannot see any of your disk — so it is told: the launcher lists the Desktop at every start and writes the answer into `assets/shortcut.js`, one line of JavaScript, which the page loads the same way it loads a settings seed.
+
+**Anything other than a clear yes leaves the button showing.** No file, an unreadable file, an error, or a machine where no launcher runs at all — which is macOS and Linux, where that file is never written and the top bar stays exactly as it always was. Hiding on ignorance would be the one failure worth avoiding: somebody whose shortcut has just gone is the person who needs the button most.
+
+The same action also lives permanently in **Settings → Service**, and that one never hides. The icon is the convenience; the drawer is the guarantee.
+
 ## Updates
 
 The app fetches [`version.json`](version.json) from this repo a few seconds after it opens, and every six hours it is left running. A launch that asked within the last ten minutes does not ask again, so reopening the window repeatedly costs one request rather than five. When a newer version has been published it shows an **Update available** pill beside the wordmark and a dot on the Settings control, and names the version in **Settings → Service**. The dot at the head of the pill blinks — lit for three quarters of every two seconds, snapping on and fading off in sixty milliseconds. It is the only thing on the face that moves of its own accord, which is what lets a small, quiet notice still be caught out of the corner of the eye; a machine set to reduced motion gets it held lit instead. Both marks are the same alert orange on every theme — deliberately not the cabinet's own colour, because a piece of news should not be wearing it. The pill carries a ⓧ: pressing it puts the pill away until the next completed check, which is a snooze rather than a mute. The dot on the Settings control is not affected by it and stays for as long as the update is outstanding. It sends no identifiers and downloads nothing; the page cannot install anything and never could. The switch beside it turns the check off for good, and **Check now** beside that asks straight away rather than waiting for the interval — useful after a release, and the only way to find out without closing and reopening.
@@ -206,6 +214,8 @@ The app fetches [`version.json`](version.json) from this repo a few seconds afte
 What the notice offers depends on what you are running it on, because the installer is a Windows batch file and naming it anywhere else is an instruction that cannot be followed.
 
 **On Windows the notice is news, not an instruction.** There is nothing to do with it. The Desktop shortcut and the Startup entry do not point at a browser; they point at `Win - Open Deskside Radio.cmd`, which opens the radio and then, once a day, asks the same question the app does. If a newer version has been published it fetches and unpacks it in the background while you listen. The radio is running it the next time you open it, and the readout says which version that is.
+
+Clicking the notice opens a small dialog rather than a releases page, and what it says depends on something only this machine knows: whether the new version has already been fetched. If it has, it offers to close the radio, because reopening is then the whole of the update. If it has not, it says so and shows the two launches — the next one collects it, the one after runs it — and offers nothing to press but **Got it**. The page works that out by reading a line the build leaves in the app folder; it is the one thing a page opened from a disk can find out about the disk it was opened from.
 
 That means the notice you see today is acted on at the next launch and visible at the one after — so a radio opened daily is current within a day or two without anybody doing anything, which is the whole point. To take one the moment you hear about it instead, run `Win-Install-or-Update-Deskside-Radio.cmd` in the app folder: it carries no Mark of the Web, so it costs none of the security prompts a fresh download does, and holding Shift on **Settings → Service** gives you a button that opens the folder. **Deskside Radio - Update** in the Start menu runs the same file, where the installer made one.
 
@@ -224,6 +234,14 @@ Three things it will not do. It never touches anything outside the app folder it
 None of this applies to macOS or Linux, where there is no installer and the launcher is a shell script that opens the browser and stops.
 
 Your stations, schedule and settings are not in the app folder. They live in the browser profile at `%LOCALAPPDATA%\DesksideRadio\profile-chrome`, so an update replaces every file in the install and loses nothing. Anything else you left beside `index.html` — a `deskside-radio-settings.js` seed, for instance — survives too: the update unpacks over the top rather than clearing the folder first.
+
+### The registry
+
+Nothing this app ships writes a registry key, and nothing ever has: every `reg.exe` in it is a *query*, asking Windows where a browser was installed. Uninstalling sweeps anyway, because an uninstall is the one moment the app can promise to leave nothing behind and "we are fairly sure we never wrote one" is not that promise.
+
+What it removes has to name **this** app — the whole name, or this install's own folder path. Never a fragment: `Deskside` on its own is somebody else's software as often as not. A `deskside` protocol key is checked rather than trusted, because no version of this app ever registered one, so whatever is there was put there by something else unless its command names the radio. Per-user keys only; the machine-wide hive is one this app could never have reached without an administrator, and it has never asked for one.
+
+The installer does a narrower pass: a dead protocol key, and a start-up entry pointing at a Deskside Radio folder that is no longer there — the same fault as the stale Startup shortcut, in the place nobody thinks to look. An entry pointing at a folder that still exists is left alone, whoever made it.
 
 ## Settings, and the three browsers
 

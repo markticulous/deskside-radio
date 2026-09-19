@@ -535,6 +535,59 @@ if exist "%STARTLNK%" (
 )
 set "DESKSIDE_NOPAUSE="
 
+rem ---- stale registry keys ----------------------------------------------
+rem Nothing here has ever written one. Every reg.exe in this repository is
+rem a query against HKLM App Paths, asking where a browser was installed,
+rem and the readmes promise in those words that nothing goes in the
+rem registry. This does not change that: it only takes things out.
+rem
+rem Narrower than the uninstaller's sweep on purpose. That one runs when
+rem the app is going away and can take everything of ours; this one runs
+rem while it is being installed, so it removes only what is provably dead:
+rem
+rem   the protocol handler   HKCU\Software\Classes\deskside, which nothing
+rem                          that shipped ever registered. It was proposed
+rem                          once, to make the update notice a real button,
+rem                          and turned down for breaking the promise
+rem                          above. Anything sitting there was done by hand
+rem                          on somebody's machine, and the app will not
+rem                          use it.
+rem   a dead Run value       one naming a Deskside Radio folder that is not
+rem                          there any more. Starting with Windows is a
+rem                          .lnk in the Startup folder and always has
+rem                          been, so a Run value is either from an
+rem                          experiment or from somebody's own hand -- and
+rem                          when the folder it points at is gone, it is a
+rem                          sign-in that fails with a file-not-found and
+rem                          no explanation. That is the same fault the
+rem                          stale Startup .lnk caused, in the place nobody
+rem                          thought to look.
+rem
+rem A Run value pointing at a folder that IS there is left alone, whoever
+rem made it: it works, and an installer is not the place to overrule
+rem somebody's own arrangement.
+"%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$name = 'Deskside Radio'; $hit = 0;" ^
+  "foreach ($p in @('HKCU:\Software\Classes\deskside', 'HKCU:\Software\Classes\deskside-radio')) {" ^
+  "  if (-not (Test-Path -LiteralPath $p)) { continue };" ^
+  "  $cmdKey = ($p + '\shell\open\command'); $says = '';" ^
+  "  if (Test-Path -LiteralPath $cmdKey) { $says = [string](Get-Item -LiteralPath $cmdKey).GetValue('') };" ^
+  "  if (-not ($says -and $says.Contains($name))) { continue };" ^
+  "  Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue; $hit++ };" ^
+  "foreach ($r in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'," ^
+  "                 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce')) {" ^
+  "  if (Test-Path -LiteralPath $r) { $k = Get-Item -LiteralPath $r;" ^
+  "    foreach ($v in $k.GetValueNames()) {" ^
+  "      $d = [string]$k.GetValue($v);" ^
+  "      if ($d -and $d.Contains($name)) {" ^
+  "        $path = $d.Trim();" ^
+  "        if ($path.StartsWith([string][char]34)) { $path = $path.Substring(1).Split([char]34)[0] };" ^
+  "        if (-not (Test-Path -LiteralPath $path)) {" ^
+  "          Remove-ItemProperty -LiteralPath $r -Name $v -Force -ErrorAction SilentlyContinue;" ^
+  "          $hit++ } } } } };" ^
+  "if ($hit -gt 0 -and -not $env:DESKSIDE_QUIET) {" ^
+  "  Write-Host ('     cleared ' + $hit + ' stale registry entr' + $(if ($hit -eq 1) { 'y' } else { 'ies' })) }"
+
 rem And one in the Start menu for the updater itself, because
 rem %LOCALAPPDATA% is not a folder anyone goes looking in.
 rem

@@ -217,6 +217,87 @@ echo   Looking for shortcuts...
 set "MSG=Shortcuts cleared"
 call :ok
 
+rem ---- the registry -----------------------------------------------------
+rem Nothing this app ships has ever written a registry key, and the scripts
+rem are built so that none of them can: every reg.exe in the repository is
+rem a query, against HKLM App Paths, to find out where a browser was
+rem installed. The promise both readmes make in those words -- nothing in
+rem the registry -- is kept by there being no code that could break it.
+rem
+rem This sweeps anyway, and it is worth saying why rather than leaving it
+rem looking like belt and braces for its own sake. An uninstall is the one
+rem moment the app can promise to leave nothing behind, and "we are fairly
+rem sure we never wrote one" is not that promise. Four things could put a
+rem key here without a line of this repository changing: a build that once
+rem did and has been forgotten, an experiment run on somebody's machine, a
+rem protocol handler registered by hand to make the notice clickable --
+rem which was proposed, and turned down, in exactly those terms -- and
+rem Windows itself, which records the path of every script it is asked to
+rem run.
+rem
+rem Matched on this folder's own path, or on the app's full name. Never on
+rem a fragment: a sweep for "desk" would take somebody's docking software
+rem with it, and a registry delete is not a thing to be approximately
+rem right about.
+rem
+rem Two rules here, and neither is negotiable.
+rem
+rem Nothing goes unless it names THIS app. Not "deskside" on its own --
+rem Dell has sold Deskside workstations for twenty years -- but the whole
+rem name, or this install's own folder path. The protocol key is not taken
+rem on its name either: what its command actually says has to name this
+rem app, because no version of this software has ever registered one. A key
+rem nothing here wrote belongs to somebody else until it proves otherwise.
+rem
+rem And the folder path is refused as a needle unless it is a real path
+rem with a folder in it. An install at a drive root would make $root "C:",
+rem and every path on the machine contains that -- one degenerate variable
+rem turning a careful match into a wildcard that takes the lot. Not
+rem hypothetical: an unset variable in a del /q once emptied this project's
+rem own root directory.
+rem
+rem HKCU only -- the per-user hive is the only one this app
+rem could ever have reached without an administrator, and it has never
+rem asked for one.
+"%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$root = $env:APPROOT; $name = 'Deskside Radio'; $hit = @();" ^
+  "if ($root) { $root = $root.Trim() };" ^
+  "if ($root -and -not ($root -match '^[A-Za-z]:\\[^\\]+')) { $root = $null };" ^
+  "function Named($s) { if (-not $s) { return $false }" ^
+  "  if ($s.Contains($name)) { return $true }" ^
+  "  if ($root -and $s.ToLower().Contains($root.ToLower())) { return $true }" ^
+  "  return $false }" ^
+  "foreach ($p in @('HKCU:\Software\Classes\deskside', 'HKCU:\Software\Classes\deskside-radio')) {" ^
+  "  if (-not (Test-Path -LiteralPath $p)) { continue };" ^
+  "  $cmdKey = ($p + '\shell\open\command'); $says = '';" ^
+  "  if (Test-Path -LiteralPath $cmdKey) { $says = [string](Get-Item -LiteralPath $cmdKey).GetValue('') };" ^
+  "  if (-not (Named $says)) { continue };" ^
+  "  Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue; $hit += $p };" ^
+  "foreach ($r in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'," ^
+  "                 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce')) {" ^
+  "  if (Test-Path -LiteralPath $r) { $k = Get-Item -LiteralPath $r;" ^
+  "    foreach ($v in $k.GetValueNames()) {" ^
+  "      if ((Named ([string]$k.GetValue($v))) -or (Named $v)) {" ^
+  "        Remove-ItemProperty -LiteralPath $r -Name $v -Force -ErrorAction SilentlyContinue;" ^
+  "        $hit += ($r + '\' + $v) } } } };" ^
+  "$un = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall';" ^
+  "if (Test-Path -LiteralPath $un) {" ^
+  "  foreach ($k in Get-ChildItem -LiteralPath $un -ErrorAction SilentlyContinue) {" ^
+  "    if ((Named ([string]$k.GetValue('DisplayName'))) -or (Named ([string]$k.GetValue('InstallLocation')))) {" ^
+  "      Remove-Item -LiteralPath $k.PSPath -Recurse -Force -ErrorAction SilentlyContinue;" ^
+  "      $hit += $k.Name } } };" ^
+  "foreach ($t in @('HKCU:\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache'," ^
+  "                 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store')) {" ^
+  "  if ((Test-Path -LiteralPath $t) -and $root) { $k = Get-Item -LiteralPath $t;" ^
+  "    foreach ($v in $k.GetValueNames()) {" ^
+  "      if ($v.ToLower().Contains($root.ToLower())) {" ^
+  "        Remove-ItemProperty -LiteralPath $t -Name $v -Force -ErrorAction SilentlyContinue;" ^
+  "        $hit += ($t + '\' + $v) } } } };" ^
+  "if ($hit.Count -eq 0) { Write-Host '     nothing of this app was in the registry' }" ^
+  "else { foreach ($h in $hit) { Write-Host ('     removed ' + $h) } }"
+set "MSG=Registry checked"
+call :ok
+
 rem ---- the settings -----------------------------------------------------
 rem Its own question, with its own answer, because this is the one part of
 rem an uninstall that reinstalling cannot undo. The default is to keep

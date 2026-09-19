@@ -152,6 +152,82 @@ h2 {
    ran to the border on all four sides. The same inset as the head above
    it, which is what makes the two read as one card. */
 .opt-body { padding: 14px 18px; }
+/* ---- the dialog the notice opens -------------------------------------
+   Drawn with the app's own interface palette and not this page's. The
+   drawer and everything in it is one fixed light set in all eight themes,
+   so unlike the bars above there is nothing here that varies by theme --
+   what follows is the same in Model One as it is in console.
+   The numbers are the shipped ones: 520px card, 22/24/20 padding, 6px
+   radius, #d6d2c9 lines, #7a7871 body, #ff8f2e for the live stop and
+   #b85c12 for its label, which is the same orange carrying enough
+   contrast to be read as words rather than seen as a mark. */
+.dlg-stage {
+  position: relative; padding: 34px 18px; overflow: hidden;
+  background: repeating-linear-gradient(90deg, #35210f 0 7px, #412a17 7px 14px);
+}
+/* The real thing dims to .40 and blurs by 2px. Both are here rather than
+   a flat colour standing in for them, so the stripes behind actually go
+   soft and the effect can be judged instead of described. */
+.dlg-scrim {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.40);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+.dlg {
+  position: relative; box-sizing: border-box; width: min(520px, 100%); margin: 0 auto;
+  padding: 22px 24px 20px; display: grid; gap: 12px; text-align: left;
+  background: #fff; color: #1d1d1b; font-family: var(--ui); font-size: 14px;
+  border: 1px solid #d6d2c9; border-radius: 6px;
+  box-shadow: 0 24px 60px -20px rgba(0,0,0,.6);
+}
+.dlg * { box-sizing: border-box; }
+.dlg h3 { margin: 0; font-size: 17px; font-weight: 600; color: #1d1d1b; letter-spacing: 0; }
+.dlg p { margin: 0; color: #7a7871; line-height: 1.5; font-size: 14px; }
+.dlg-link {
+  font: inherit; font-size: 13px; padding: 8px 14px; border: 1px dashed #d6d2c9;
+  border-radius: 6px; color: #1d1d1b; text-decoration: none;
+  justify-self: start; display: inline-block; background: none;
+}
+.dlg-link:hover { border-style: solid; }
+.dlg-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+/* Solid, where the link beside it is dashed: two real answers and one
+   aside, told apart without a word being spent on it. */
+.dlg-cancel {
+  font: inherit; font-size: 13px; padding: 8px 14px; border: 1px solid #d6d2c9;
+  border-radius: 6px; background: none; color: #1d1d1b; cursor: pointer;
+}
+.dlg-go {
+  font: inherit; font-size: 14px; font-weight: 600; padding: 10px 22px; min-width: 104px;
+  text-align: center; border: 0; border-radius: 6px; background: #1d1d1b; color: #fff; cursor: pointer;
+}
+/* The two launches, drawn. One rail, three stops, the next one lit. */
+.dlg-steps {
+  list-style: none; margin: 2px 0 0; padding: 0;
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: auto auto;
+}
+.dlg-steps li {
+  position: relative; padding: 26px 6px 0; text-align: center;
+  font-size: 12px; line-height: 1.35; color: #7a7871;
+  display: grid; grid-template-rows: subgrid; grid-row: span 2; row-gap: 3px;
+  align-content: start;
+}
+/* The rail is drawn per stop, so its two ends stop at the outer dots
+   instead of running past them. */
+.dlg-steps li::before {
+  content: ""; position: absolute; top: 8px; left: 0; right: 0; height: 2px; background: #d6d2c9;
+}
+.dlg-steps li:first-child::before { left: 50%; }
+.dlg-steps li:last-child::before { right: 50%; }
+.dlg-steps li::after {
+  content: ""; position: absolute; top: 3px; left: 50%; margin-left: -6px;
+  width: 12px; height: 12px; border-radius: 50%; box-sizing: border-box;
+  background: #fff; border: 2px solid #d6d2c9;
+}
+.dlg-steps .is-done::after { background: #7a7871; border-color: #7a7871; }
+.dlg-steps .is-next::after { background: #ff8f2e; border-color: #ff8f2e; }
+.dlg-steps b { color: #1d1d1b; font-weight: 600; }
+.dlg-steps .is-next b { color: #b85c12; }
+
 .opt-body > :first-child { margin-top: 0; }
 .opt-body > :last-child { margin-bottom: 0; }
 
@@ -663,6 +739,57 @@ h2 {
   </section>
 
   <section>
+    <h2>What the notice opens</h2>
+    <p class="lede">The pill was a link to the releases page, which is the one thing the reader could have found on their own. It now opens a dialog &mdash; on Windows, where a launcher is actually fetching things; elsewhere it stays the link it was. <strong>Which of the two states appears is decided at the moment of the click</strong>, by reading what is on disk right then: the launcher updates the folder while the radio plays, so the files can already be a version ahead of the window being looked at.</p>
+
+    <div class="opt">
+      <div class="opt-head">
+        <span class="opt-key">1</span>
+        <span class="opt-name">On disk already &mdash; one relaunch away</span>
+        <span class="opt-note">The launcher fetched it during some earlier launch and the window has been open since. This is the only state where closing the radio achieves anything, so it is the only one that offers to.</span>
+      </div>
+      <div class="dlg-stage">
+        <div class="dlg-scrim"></div>
+        <div class="dlg">
+          <h3>Update pending</h3>
+          <p>Version 1.4.13 update is pending on this machine. Close the radio and open it again to apply the update.</p>
+          <a class="dlg-link" href="#" onclick="return false">See what changed</a>
+          <div class="dlg-actions">
+            <button type="button" class="dlg-cancel">Cancel</button>
+            <button type="button" class="dlg-go">Close the radio</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="opt">
+      <div class="opt-head">
+        <span class="opt-key">2</span>
+        <span class="opt-name">Published, nothing downloaded yet</span>
+        <span class="opt-note">Nothing to close and nothing to do, so there is one button and it only says so. The three stops are here because &ldquo;runs it the time after&rdquo; reads as a fault being owned up to when it is a sentence, and as an ordinary progress bar when it is a picture &mdash; the download cannot change a window that is already open.</span>
+      </div>
+      <div class="dlg-stage">
+        <div class="dlg-scrim"></div>
+        <div class="dlg">
+          <h3>Update on the way</h3>
+          <p>Version 1.4.13 has been published on GitHub. The radio app fetches it by itself the next time you open it, and runs it the time after. Nothing to do.</p>
+          <ol class="dlg-steps">
+            <li class="is-done"><b>Published</b><span>v1.4.13 is on GitHub</span></li>
+            <li class="is-next"><b>Next time you open it</b><span>it downloads while you listen</span></li>
+            <li><b>The time after</b><span>the radio runs v1.4.13</span></li>
+          </ol>
+          <a class="dlg-link" href="#" onclick="return false">See what changed</a>
+          <div class="dlg-actions">
+            <button type="button" class="dlg-go">Got it</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="lede">It does not close on Escape and the backdrop is not a way out either: there are two answers and it is asking which. The ground behind is dimmed to 40% and blurred by two pixels &mdash; lighter than the drawer&rsquo;s other dialogs, which black out at 62%, because this one opens over a radio in the middle of playing rather than answering something the listener just did.</p>
+  </section>
+
+  <section>
     <h2>After an update, the readout says so</h2>
     <p class="lede">An update replaces the files under a closed radio, and by the time anybody sees anything the installer&rsquo;s window has gone. The version in Settings is a place nobody looks on the way past. So the radio says it once, on the part of the front that is always being read &mdash; five flashes, then it goes back to work. <strong>Press play below to watch it.</strong></p>
 
@@ -849,11 +976,11 @@ h2 {
 
   <section>
     <h2>The Service line, reworded</h2>
-    <p class="lede">What <strong>Check now</strong> reports afterwards, in the three states it can land in.</p>
+    <p class="lede">What <strong>Check now</strong> reports afterwards, in the three states it can land in. The middle one stopped naming a download the day the launcher began fetching by itself: the copy already in the app folder is both quicker and free of the two security prompts a fresh download costs, and it is named in the pane above this line rather than in the line itself.</p>
     <div class="wording">
-      <div><em>up to date &nbsp;&rarr;</em> &nbsp;Running 1.3.0 &middot; last checked 2026-09-15 &middot; <b>Up to date</b></div>
-      <div><em>newer out &nbsp;&rarr;</em> &nbsp;Running 1.3.0 &middot; <b>New v1.3.1 available</b> &middot; <u>Download it</u></div>
-      <div><em>no answer &rarr;</em> &nbsp;Could not reach GitHub just now &middot; running 1.3.0</div>
+      <div><em>up to date &nbsp;&rarr;</em> &nbsp;Running 1.4.12 &middot; last checked 2026-09-19 &middot; <b>Up to date</b></div>
+      <div><em>newer out &nbsp;&rarr;</em> &nbsp;Running 1.4.12 &middot; <b>New v1.4.13 available</b> &middot; it installs itself &middot; <u>what changed</u></div>
+      <div><em>no answer &rarr;</em> &nbsp;Could not reach GitHub just now &middot; running 1.4.12</div>
     </div>
   </section>
 

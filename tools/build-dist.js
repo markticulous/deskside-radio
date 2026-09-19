@@ -191,6 +191,36 @@ fs.copyFileSync(path.join(ROOT, 'LICENSE'), path.join(OUT, ASSETS, 'LICENSE.txt'
 fs.writeFileSync(path.join(OUT, ASSETS, 'version.txt'),
   JSON.parse(read('version.json')).version + '\r\n');
 
+/* The same number again, as a line of JavaScript, for the page rather than
+   for the batch file.
+
+   A page opened from a disk cannot fetch and cannot read a file -- but it
+   CAN load a script, which is how the settings seed beside index.html is
+   read. So this is the one channel the app has for finding out what is on
+   disk NOW, as opposed to what was on disk when it loaded. The difference
+   matters exactly once: the launcher has fetched a new version in the
+   background while the radio played, and the notice can then say that the
+   update is already here and one relaunch away, instead of guessing.
+
+   Measured rather than assumed: a second read comes back with the new
+   contents, and file:// does not even serve it from cache. The query
+   string on the request is belt and braces. */
+/* A starting answer for the shortcut button, before any launcher has had
+   a chance to write the real one. false, meaning show the button: a folder
+   just unzipped has no shortcut, and being wrong in that direction costs a
+   button nobody needed rather than hiding the one they did. The Windows
+   launcher overwrites this at every start. */
+fs.writeFileSync(path.join(OUT, ASSETS, 'shortcut.js'),
+  '/* Written by the build, then by the launcher at each start. Whether a\r\n'
+  + '   shortcut for this radio is on the Desktop right now. */\r\n'
+  + 'window.DESKSIDE_HAS_SHORTCUT = false;\r\n');
+
+fs.writeFileSync(path.join(OUT, ASSETS, 'version.js'),
+  '/* Written by the build. What is on disk, which is not always what is\r\n'
+  + '   running: the launcher replaces these files underneath a window that\r\n'
+  + '   is already open. */\r\n'
+  + 'window.DESKSIDE_ON_DISK = ' + JSON.stringify(JSON.parse(read('version.json')).version) + ';\r\n');
+
 /* Forward slashes, because these names become zip entry names and that is
    what the format uses on every platform. */
 function walk(dir, prefix) {

@@ -283,9 +283,24 @@ test('the installer never deletes the folder it installs into', () => {
      beside index.html survives an update without being saved and restored.
      A wipe would also turn a failed extraction into an empty app folder. */
   const cmd = read(INSTALLER);
-  [/\brd\s+\/s/i, /\brmdir\s+\/s/i, /Remove-Item[^\n]*-Recurse/i].forEach(function (re) {
+  [/\brd\s+\/s/i, /\brmdir\s+\/s/i].forEach(function (re) {
     assert.equal(re.test(cmd), false,
       INSTALLER + ' deletes a directory tree; it is meant to extract over the top');
+  });
+
+  /* Remove-Item -Recurse is allowed on exactly one kind of thing: a
+     registry key, which cannot be removed any other way once it has a
+     subkey under it -- a protocol handler is a key with shell\open\command
+     inside it. Every such line has to say HKCU on the face of it, so a
+     folder delete can never arrive wearing the exemption. */
+  const lines = cmd.split('\n');
+  lines.forEach(function (ln, i) {
+    if (!/Remove-Item[^\n]*-Recurse/i.test(ln)) return;
+    const near = lines.slice(Math.max(0, i - 10), i + 1).join('\n');
+    assert.ok(/HKCU:/.test(near),
+      INSTALLER + ' removes a tree that is not a registry key: ' + ln.trim());
+    assert.equal(/APPDIR|APPROOT|TARGET|%TEMP%/.test(ln), false,
+      INSTALLER + ' recursively removes something built from a folder path: ' + ln.trim());
   });
 });
 
@@ -469,6 +484,12 @@ test('a hidden attribute on a .ghost button actually hides it', () => {
     'a .ghost with the hidden attribute is still drawn');
   assert.ok(/\.update-pill\[hidden\]\s*\{[^}]*display:\s*none/.test(css),
     'a hidden update pill is still drawn');
+  /* Named rather than found, because this one is never written in the
+     markup: the shortcut button is hidden from script, after the launcher
+     reports that a Desktop shortcut already exists, so the scan below --
+     which reads the HTML for a hidden attribute -- cannot see it coming. */
+  assert.ok(/\.icon-btn\[hidden\]\s*\{[^}]*display:\s*none/.test(css),
+    'a hidden .icon-btn is still drawn, so the shortcut button never goes away');
 
   /* Anything else that sets display and is ever given `hidden` in the
      markup needs its own line, so the markup is what decides. */
@@ -1856,16 +1877,23 @@ test('the launcher is gone before the extract can reach the launcher', () => {
     'the launcher calls the installer itself again instead of handing it over');
 });
 
-test('the update stamp is written before the hand-over, not after it', () => {
-  /* There is no "after": the script has exited by then. It is also the
-     right order on its own terms -- the stamp means "looked today", not
-     "succeeded today", so a machine that cannot reach GitHub asks once a
-     day instead of at every launch. */
+test('the launcher looks at every launch, with nothing that can decline', () => {
+  /* There was a daily stamp here and it had to go, because of what it did
+     on the one day it mattered. The app notices a release at noon; the
+     listener clicks the notice, is offered "close the radio and open it
+     again to apply the update", does exactly that -- and nothing happens,
+     because the launcher looked this morning and considers the day done.
+     An offer that quietly declines is worse than no offer.
+
+     So: no stamp, no interval, nothing that remembers having asked. It
+     costs about a kilobyte per launch and is self-limiting anyway, since
+     once the update is in there is nothing left to fetch. */
   const cmd = read('Win - Open Deskside Radio.cmd');
-  const stamp = cmd.indexOf('> "%STAMP%" echo %TODAY%');
-  const hand = cmd.indexOf('start "" /b');
-  assert.ok(stamp !== -1 && hand !== -1, 'the stamp or the hand-over has moved');
-  assert.ok(stamp < hand, 'the stamp is written after the hand-over, which never happens');
+  assert.equal(/STAMP|last-update-check/.test(cmd), false,
+    'the launcher remembers having checked again -- which makes the dialog\'s ' +
+    'offer to close the radio a thing that sometimes does nothing');
+  assert.equal(/--retry/.test(cmd), false,
+    'the fetch retries within a launch, when the next launch is already the retry');
 });
 
 test('the update lock is read where its value can be compared', () => {
@@ -1876,17 +1904,15 @@ test('the update lock is read where its value can be compared', () => {
      own line. The stamp check above it never had the bug because it was
      never wrapped in a block, which is exactly why this pins the shape. */
   const cmd = read('Win - Open Deskside Radio.cmd');
-  [['LOCKDAY', 'LOCK'], ['LAST', 'STAMP']].forEach(function (pair) {
-    const v = pair[0], f = pair[1];
-    const re = new RegExp('^if exist "%' + f + '%" set /p ' + v + '=<"%' + f + '%"$', 'm');
-    assert.ok(re.test(cmd),
-      v + ' is not read on a line of its own -- inside a parenthesised block its ' +
-      'value is expanded before the read that fills it, and the comparison is ' +
-      'always against nothing');
-  });
+  assert.ok(/^if exist "%LOCK%" set \/p LOCKDAY=<"%LOCK%"$/m.test(cmd),
+    'LOCKDAY is not read on a line of its own -- inside a parenthesised block its ' +
+    'value is expanded before the read that fills it, and the comparison is ' +
+    'always against nothing');
+  assert.ok(/^if "%LOCKDAY%"=="%TODAY%" exit \/b 0$/m.test(cmd),
+    'the lock is no longer compared against today, so a crash wedges it shut for good');
 });
 
-test('every way the update can fail ends at the stamp, not at a stop', () => {
+test('every way the update can fail ends quietly, not at a stop', () => {
   /* The radio is already open and playing. Offline, behind a proxy, a
      read-only folder, GitHub down, a version string that will not parse:
      every one of them is a reason to go quiet and try again tomorrow, and
@@ -1897,10 +1923,12 @@ test('every way the update can fail ends at the stamp, not at a stop', () => {
   assert.equal(/^\s*(echo|pause)\b/m.test(block.replace(/^\s*echo %TODAY%$/gm, '')), false,
     'the auto-update block says something out loud, in a console nobody opened');
 
-  const fails = block.match(/goto :stampandgo/g) || [];
+  const fails = block.match(/goto :nothingtodo/g) || [];
   assert.ok(fails.length >= 5,
-    'only ' + fails.length + ' failure paths reach the stamp -- one that does not ' +
-    'leaves the day unstamped, so the next launch checks again');
+    'only ' + fails.length + ' failure paths reach the quiet exit -- one that does ' +
+    'not leaves the lock behind, and the lock is dated, so nothing updates again today');
+  assert.ok(/^:nothingtodo$[\s\S]*?del \/q "%LOCK%"/m.test(block),
+    'the quiet exit no longer drops the lock, so one failure blocks the rest of the day');
 });
 
 test('the unattended install asks nothing and opens nothing', () => {
@@ -1961,11 +1989,12 @@ test('the switch the launcher reads is the file the switch script writes', () =>
   assert.ok(/if exist "%APPDIR%assets\\auto-update-off\.txt" exit \/b 0/.test(opener),
     'the launcher finds the marker and carries on updating anyway');
 
-  /* Off has to leave the day unstamped as well as unchecked, or turning it
-     back on tomorrow would find today already ticked off. */
+  /* Read before anything else in the block, so off costs one Test-Path and
+     not a network request. */
   const off = opener.indexOf('auto-update-off.txt');
-  const stamp = opener.indexOf('set "STAMP=');
-  assert.ok(off < stamp, 'the switch is read after the stamp is set up');
+  const feed = opener.indexOf('set "FEED=');
+  assert.ok(off !== -1 && feed !== -1 && off < feed,
+    'the switch is read after the fetch is set up, so off still goes to the network');
 
   /* Both directions, and neither of them installs anything. */
   assert.ok(/:turnoff/.test(script) && /:turnon/.test(script), 'the switch only goes one way');
@@ -2000,4 +2029,307 @@ test('the readmes describe updating as it now happens', () => {
     assert.ok(/Win - Automatic Updates\.cmd/.test(doc),
       f + ' does not say how to turn the updating off');
   });
+});
+
+
+test('the page can read what is on disk, which is not what is running', () => {
+  /* The one thing the notice could not know before, and the thing that
+     decides what it should say. The launcher fetches a new version while
+     the radio plays, so the files on disk run ahead of the page reading
+     them until the radio is opened again.
+
+     file:// blocks fetch and XHR and allows a script tag -- the same door
+     the settings seed comes through -- so the build writes the number as
+     JavaScript as well as the text line the batch file reads. Both, from
+     one source, or they drift and the dialog starts lying in the other
+     direction. */
+  const build = read('tools/build-dist.js');
+  assert.ok(/version\.js/.test(build), 'the build no longer writes assets/version.js');
+  assert.ok(/window\.DESKSIDE_ON_DISK = /.test(build),
+    'the probe no longer sets the global the page reads');
+
+  const both = build.match(/JSON\.parse\(read\('version\.json'\)\)\.version/g) || [];
+  assert.ok(both.length >= 2,
+    'version.txt and version.js no longer come from the same place, so they can drift');
+
+  const app = read('app.js');
+  assert.ok(/s\.src = 'assets\/version\.js\?' \+ Date\.now\(\)/.test(app),
+    'the probe is no longer read fresh -- a cached read reports the version this ' +
+    'window loaded with, which is the one case it exists to tell apart');
+  assert.ok(/s\.onerror = function \(\) \{ s\.remove\(\); res\(null\); \}/.test(app),
+    'a folder with no version.js throws instead of reading as nothing pending');
+});
+
+test('the update dialog says a different thing in each of its two states', () => {
+  /* Pending on this machine and published but not yet fetched need
+     different answers, and giving both the same one is what the dialog was
+     built to stop. */
+  const app = read('app.js');
+  const html = read('index.html');
+
+  assert.ok(/id="updateReady"/.test(html), 'the update dialog is gone');
+  assert.ok(/update is pending on this machine/.test(app),
+    'the pending wording is gone');
+  assert.ok(/has been published on GitHub/.test(app),
+    'the not-yet-fetched wording is gone');
+  /* The launch-later part is the one that reads as a fault unless it is
+     accounted for, and it is accounted for as a picture rather than a
+     sentence: published, fetched next launch, running the launch after. */
+  assert.ok(/id="updateSteps"/.test(html),
+    'the dialog no longer shows why the new version runs a launch later, which ' +
+    'reads as a fault rather than a design');
+  assert.ok(/\.update-steps\[hidden\] \{ display: none; \}/.test(read('app.css')),
+    'the steps set display in an author rule with nothing to restore hidden, so ' +
+    'they are drawn in the state that has no steps to show');
+  assert.ok(/\$\('updateSteps'\)\.hidden = true;/.test(app) &&
+            /\$\('updateSteps'\)\.hidden = false;/.test(app),
+    'the steps are not turned off again for the already-on-this-machine state, ' +
+    'where there is nothing left to wait for');
+
+  /* The button only appears where closing the radio actually achieves
+     something. */
+  const at = app.indexOf('function openUpdateNotice');
+  const fn = app.slice(at, app.indexOf('\n  }\n', at));
+  assert.ok(/go\.value = 'close'/.test(fn) && /go\.value = 'ok'/.test(fn),
+    'both states offer the same button, so one of them offers to close the radio ' +
+    'for an update that has not been downloaded');
+  assert.ok(/cancel\.hidden = true/.test(fn),
+    'the not-yet-fetched state still offers a Cancel beside a button that does nothing');
+
+  /* And only on Windows, where a launcher is actually fetching. */
+  assert.ok(/if \(!onWindows\(\)\) return;/.test(app),
+    'the dialog opens off Windows, where nothing fetches anything and the releases ' +
+    'page is the whole answer');
+  assert.ok(/if \(this\.returnValue !== 'close'\) return;\s*\n\s*window\.close\(\);/.test(app),
+    'the dialog no longer closes the radio on the one value that asks for it');
+});
+
+
+test('the preview draws the dialog the app actually shows', () => {
+  /* This page has drifted from the app more than once, always the same
+     way: a value is tuned in one of them and read back from the other.
+     So the guard is not "the preview has a dialog in it" -- it is that
+     every sentence and every number in the drawing is the one the app
+     uses, taken from the app and looked for in the preview.
+
+     The dialog's palette is the drawer's, which is one fixed light set in
+     all eight themes, so unlike the theme bars further up that page there
+     is nothing here that is allowed to differ. */
+  const app = read('app.js');
+  const css = read('app.css');
+  const preview = read('previews/update-notice.html');
+
+  /* Both sentences, lifted out of the app rather than typed again here. */
+  const said = [
+    /'Version ' \+ disk \+ ' (update is pending on this machine\. )'/,
+    /'(Close the radio and open it again to apply the update\.)'/,
+    /' (has been published on GitHub\. )'/,
+    /'(The radio app fetches it by itself the next time you open it, and runs )'/,
+    /'(it the time after\. Nothing to do\.)'/
+  ].map(function (re) {
+    const m = re.exec(app);
+    assert.ok(m, 'the app no longer says ' + re + ' -- if the wording changed, the ' +
+      'preview and this test change with it');
+    return m[1].trim();
+  });
+  said.forEach(function (line) {
+    assert.ok(preview.indexOf(line) !== -1,
+      'the preview does not say "' + line + '" -- it is drawing wording the app dropped');
+  });
+
+  /* The three stops, and which one is lit. */
+  ['Published', 'Next time you open it', 'The time after',
+   'it downloads while you listen'].forEach(function (label) {
+    assert.ok(read('index.html').indexOf(label) !== -1, 'the app dropped the step "' + label + '"');
+    assert.ok(preview.indexOf(label) !== -1, 'the preview dropped the step "' + label + '"');
+  });
+  assert.ok(/class="is-next"/.test(preview) && /class="is-next"/.test(read('index.html')),
+    'the preview and the app no longer agree on which stop is the live one');
+
+  /* And the numbers behind the ground it sits on. Read out of app.css,
+     looked for in the preview, so tuning one and not the other fails here
+     rather than being noticed in a screenshot weeks later. */
+  const dim = /#updateReady::backdrop \{\s*background: (rgba\([^)]*\));/.exec(css);
+  assert.ok(dim, 'the dialog no longer sets its own backdrop');
+  assert.ok(preview.indexOf(dim[1].replace(/\s+/g, ' ')) !== -1,
+    'the preview dims to something other than ' + dim[1]);
+
+  const blur = /#updateReady::backdrop[\s\S]*?[^-]backdrop-filter: (blur\([^)]*\))/.exec(css);
+  assert.ok(blur, 'the dialog no longer blurs what is behind it');
+  assert.ok(preview.indexOf(blur[1]) !== -1,
+    'the preview blurs by something other than ' + blur[1]);
+
+  /* Solid Cancel, dashed aside. The difference is the whole point of it. */
+  assert.ok(/#updateReadyCancel \{ border-style: solid; \}/.test(css),
+    'the dialog Cancel went back to the dashed outline the asides use');
+  assert.ok(/\.dlg-cancel \{[\s\S]*?border: 1px solid/.test(preview),
+    'the preview Cancel is not drawn solid');
+  assert.ok(/\.dlg-link \{[\s\S]*?border: 1px dashed/.test(preview),
+    'the preview aside is not drawn dashed');
+});
+
+
+test('no cell glow reaches the character next to it', () => {
+  /* The console readout is drawn one span per character so a single grid
+     can stumble without the rest being repainted. The cost, which took a
+     while to see: an inline box paints its shadow and then its glyph, so
+     each cell's shadow lands on top of every glyph to its left. With a
+     fall reaching 72px that is thirteen washes of amber over every
+     character, and the whole readout goes soft and pale -- measured
+     against the same words as one text run, which is what it used to be.
+
+     So the near layers stay on the cells, where they dim with the grid,
+     and the wide falls live on the readout as a filter, which paints once
+     from the finished result and sits behind all of it.
+
+     The number that matters is the widest blur on a cell. Anything much
+     past the width of a character is on its neighbour. */
+  const css = read('app.css');
+
+  const cell = /\[data-theme="console"\] \.display-name \.vfd-ch \{[\s\S]*?\n\}/.exec(css);
+  assert.ok(cell, 'the console cell rule has moved or gone');
+  const blurs = (cell[0].match(/0 0 (\d+)px/g) || []).map(function (m) {
+    return parseInt(/(\d+)px/.exec(m)[1], 10);
+  });
+  assert.ok(blurs.length, 'the cells have no glow at all');
+  const widest = Math.max.apply(null, blurs);
+  assert.ok(widest <= 12,
+    'a cell glow blurs by ' + widest + 'px, which reaches the characters either ' +
+    'side of it and paints over them -- that is what made the readout look soft ' +
+    'and pale. The wide fall belongs on .display-name as a filter.');
+
+  /* And it is actually there, rather than having been dropped, which
+     would leave the readout crisp but flat -- type on black instead of
+     something behind glass. */
+  const name = /\[data-theme="console"\] \.display-name \{[\s\S]*?\n\}/.exec(css);
+  assert.ok(name, 'the console readout rule has moved or gone');
+  const falls = (name[0].match(/drop-shadow\(/g) || []).length;
+  assert.ok(/filter:/.test(name[0]) && falls >= 2,
+    'the two wide falls are gone from the readout -- the cells are crisp but the ' +
+    'glass has stopped glowing');
+});
+
+
+test('the scripts only ever read the registry, and only ever delete from it', () => {
+  /* The promise both readmes make, in those words: nothing goes in the
+     registry. It is kept by there being no code that could break it --
+     every reg.exe in the repository is a query, against HKLM App Paths,
+     asking where a browser was installed.
+
+     The sweeps added to the installer and the uninstaller do not change
+     that. They remove and never write, and this is what says so. A future
+     edit that adds a `reg add`, or a Set-ItemProperty, or a New-Item
+     against a registry path, fails here -- which is the point, because
+     that edit would also quietly make both readmes wrong. */
+  const fs2 = require('node:fs');
+  fs2.readdirSync(ROOT)
+    .filter(function (f) { return /\.cmd$/i.test(f); })
+    .forEach(function (f) {
+      const src = read(f);
+      assert.equal(/reg(\.exe)?\s+add\b/i.test(src), false, f + ' writes a registry key with reg add');
+      assert.equal(/New-ItemProperty[^\n]*HK/i.test(src), false, f + ' writes a registry value');
+      assert.equal(/Set-ItemProperty[^\n]*HK/i.test(src), false, f + ' sets a registry value');
+      assert.equal(/New-Item[^\n]*HKCU:/i.test(src), false, f + ' creates a registry key');
+      /* reg.exe is only ever asked a question. */
+      src.split('\n')
+        .filter(function (ln) { return !/^\s*rem\b/i.test(ln) && /reg\.exe/i.test(ln); })
+        .forEach(function (ln) {
+          assert.ok(/\bquery\b/.test(ln),
+            f + ' uses reg.exe for something other than a query: ' + ln.trim());
+        });
+    });
+});
+
+test('the uninstaller takes this app out of the registry, and nothing else', () => {
+  /* An uninstall is the one moment the app can promise to leave nothing
+     behind, and "we are fairly sure we never wrote one" is not that
+     promise. Four things could put a key there without a line of this
+     repository changing: a build that once did, an experiment on somebody's
+     machine, a protocol handler registered by hand to make the update
+     notice clickable -- proposed, and turned down, for breaking the
+     readmes' promise -- and Windows itself, which records the path of
+     every script it is asked to run.
+
+     What matters far more than the sweep existing is what it matches on.
+     A fragment would be a disaster: "desk" reaches somebody's docking
+     software, and a registry delete is not a thing to be approximately
+     right about. Verified against planted keys and against decoys named
+     DeskDock and Desktop Goose, which survived. */
+  const un = read('Win - Uninstall Deskside Radio.cmd');
+
+  assert.ok(/HKCU:\\Software\\Classes\\deskside'/.test(un),
+    'the uninstaller no longer removes the protocol handler');
+  ['CurrentVersion\\\\Run', 'CurrentVersion\\\\Uninstall', 'MuiCache', 'Compatibility Assistant']
+    .forEach(function (where) {
+      assert.ok(new RegExp(where).test(un),
+        'the uninstaller no longer looks in ' + where.replace(/\\\\/g, '\\'));
+    });
+
+  /* HKCU only. The per-user hive is the only one this app could have
+     reached without an administrator, and it has never asked for one --
+     so a sweep of HKLM could only ever delete somebody else's software,
+     and would need a prompt to do it. */
+  assert.equal(/HKLM:/.test(un), false,
+    'the uninstaller reaches into the machine-wide hive, which this app never wrote to');
+
+  /* Matched on the whole name or on this install's own path. Never on a
+     fragment of either. */
+  assert.ok(/\$name = 'Deskside Radio'/.test(un),
+    'the uninstaller matches on something other than the full app name');
+  assert.equal(/'[Dd]eskside'\s*\)/.test(un.replace(/Classes\\deskside'/g, '')), false,
+    'the uninstaller matches a bare fragment of the name somewhere');
+});
+
+
+test('a registry sweep never touches what is not this app', () => {
+  /* The standing rule, and the two ways the first draft of these sweeps
+     broke it. Both were caught by reading the code against the rule rather
+     than by anything failing, which is why they are pinned here.
+
+     One: the protocol key was removed on its name alone. No version of
+     this software has ever registered one -- it was proposed to make the
+     update notice a real button and turned down for breaking the promise
+     that nothing goes in the registry -- so a key sitting at that name was
+     put there by somebody else. "Deskside" is also a word other people
+     use; Dell has sold Deskside workstations for twenty years. The key now
+     has to say what it opens, and that has to name this app.
+
+     Two: the match used the install folder as a needle without checking
+     it was a folder. An app installed at a drive root makes it "C:", and
+     every path on the machine contains that -- one degenerate variable
+     turning a careful match into a wildcard. Measured against a real hive:
+     129 MuiCache values would have gone. The same shape of bug as the
+     unset variable in a del /q that once emptied this project's own root. */
+  const sweeps = {
+    'Win - Uninstall Deskside Radio.cmd': true,
+    'Win-Install-or-Update-Deskside-Radio.cmd': true
+  };
+
+  Object.keys(sweeps).forEach(function (f) {
+    const src = read(f);
+    if (!/Classes\\deskside/.test(src)) return;   // no sweep in this one
+
+    /* The key is read before it is removed, and what it says decides. */
+    const looks = src.indexOf('shell\\open\\command');
+    const kills = src.indexOf('Remove-Item -LiteralPath $p -Recurse');
+    assert.ok(looks !== -1,
+      f + ' removes the protocol key without reading what it opens -- on that name ' +
+      'alone it is somebody else\'s software');
+    assert.ok(looks < kills,
+      f + ' removes the protocol key before checking whose it is');
+    assert.ok(/if \(-not \(Named \$says\)\) \{ continue \}/.test(src) ||
+              /if \(-not \(\$says -and \$says\.Contains\(\$name\)\)\) \{ continue \}/.test(src),
+      f + ' does not require the protocol key to name this app before removing it');
+  });
+
+  /* And the folder path is refused unless it is a real path with a folder
+     in it. Only the uninstaller matches on the path at all. */
+  const un = read('Win - Uninstall Deskside Radio.cmd');
+  assert.ok(/\$root -match '\^\[A-Za-z\]:/.test(un),
+    'the uninstaller uses the install folder as a search needle without checking ' +
+    'it is a real path -- at a drive root that matches every path on the machine');
+  const guard = un.indexOf("$root -match");
+  const uses = un.indexOf('$root.ToLower()');
+  assert.ok(guard !== -1 && guard < uses,
+    'the install folder is used as a needle before it has been checked');
 });
