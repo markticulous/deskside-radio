@@ -80,6 +80,10 @@
        and which version of the app wrote it. */
     seedStamp: null,
     seedFrom: null,
+    /* The version that last ran in this profile. Absent means nobody has
+       run one yet, which is a first install rather than an update -- and
+       a first install has nothing to announce. */
+    ranVersion: null,
     bass: 0,
     treble: 0,
     lastGood: null,
@@ -1437,6 +1441,62 @@
     save();
   }
 
+  /* ---- the version, said once ----------------------------------------
+     An update replaces the files under a closed radio. By the time the
+     listener sees anything, the installer's window has gone -- so the
+     only place left to say which version they are now running is the
+     radio itself, on the one part of it that is always being read.
+
+     Five flashes and then the station, which is the shape of a thing
+     that has something to say and then gets out of the way. The timings
+     are here and in app.css both, and a test holds them together: a
+     flash count that disagrees with the animation is a readout that
+     either goes dark or cuts itself off. */
+  /* Everything that puts a station name on the readout goes through
+     here, so something that has taken the readout over cannot be
+     written round by a path that did not know about it. There were
+     four such paths and guarding one of them was not enough: the
+     announcement was replaced three milliseconds after it appeared, by
+     applyLook, which sets the name as part of dressing a theme.
+
+     The announcement itself calls TunerUI.setName directly. That is
+     the only thing that may. */
+  function showName(text) {
+    if (announcing) return;
+    TunerUI.setName(el.name, text);
+  }
+
+  var ANNOUNCE_FLASHES = 5;
+  var ANNOUNCE_STEP_MS = 360;
+  var ANNOUNCE_MS = ANNOUNCE_FLASHES * ANNOUNCE_STEP_MS;
+  var announcing = false;
+
+  function announceVersion() {
+    if (!el.name) return;
+    var back = function () {
+      announcing = false;
+      el.name.classList.remove('is-announcing');
+      var st = currentStation();
+      TunerUI.setName(el.name, st ? st.name : '');
+      /* The class is put on after the name, so the fade covers the name
+         arriving rather than the one leaving. */
+      el.name.classList.remove('is-returning');
+      void el.name.offsetWidth;
+      el.name.classList.add('is-returning');
+      setTimeout(function () { el.name.classList.remove('is-returning'); }, 400);
+    };
+
+    announcing = true;
+    TunerUI.setName(el.name, 'Updated to v' + APP_VERSION);
+    var still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (!still) {
+      el.name.classList.remove('is-announcing');
+      void el.name.offsetWidth;
+      el.name.classList.add('is-announcing');
+    }
+    setTimeout(back, ANNOUNCE_MS);
+  }
+
   function setText(node, text) {
     if (node.textContent !== text) node.textContent = text;
   }
@@ -1535,6 +1595,10 @@
 
   // ---------- rendering ----------
   function renderStation(st) {
+    /* The readout is spoken for while the version is being announced.
+       Everything else here still runs -- the band, the tagline, the
+       presets, the needle -- and the name is set by the announcement
+       when it hands back, from whatever station is current by then. */
     /* The tone belongs to the station, so the sliders and the graph follow
        it here -- at the one point every path passes through when a new
        station arrives on the front.
@@ -1548,7 +1612,7 @@
        one. */
     loadTone(st);
     el.band.textContent = st.band || 'Internet stream';
-    TunerUI.setName(el.name, st.name);
+    showName(st.name);
     el.tag.textContent = st.tag || '';
     el.tuner.style.setProperty('--station', st.color || '#10307a');
     TunerUI.setNeedle(el.tuner, st.band);
@@ -2022,7 +2086,7 @@
       var st = currentStation();
       if (!st) return;
       TunerUI.setNeedle(el.tuner, st.band);
-      TunerUI.setName(el.name, st.name);
+      showName(st.name);
       /* Turning up on the departures board turns the board. setName will
          not do it -- the name has not changed, only the cabinet around it
          -- and a split-flap sign that arrives already settled is the one
@@ -2782,7 +2846,7 @@
       refreshSaveBtn();
       document.documentElement.setAttribute('data-theme', draft.theme);
       var cur = currentStation();
-      if (cur) TunerUI.setName(el.name, cur.name);
+      if (cur) showName(cur.name);
     }
   });
 
@@ -4715,6 +4779,15 @@
     }
     tick();
     startTicking();
+    /* Said once, on the first launch after an update. A profile with no
+       version recorded has never run one, which is a first install and
+       has nothing to announce -- it is stamped quietly instead. */
+    var ranBefore = state.ranVersion;
+    if (ranBefore !== APP_VERSION) {
+      state.ranVersion = APP_VERSION;
+      save();
+      if (ranBefore) announceVersion();
+    }
     $('appVersion').textContent = 'v' + APP_VERSION;
     if (updateAvailable()) $('appVersion').classList.add('is-stale');
     // What the last check found, remembered across launches.

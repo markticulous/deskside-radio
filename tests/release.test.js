@@ -1638,3 +1638,61 @@ test('a profile that could not be renamed is still used', () => {
       f + ' falls back to the old profile before trying to rename it');
   });
 });
+
+/* An update replaces the files under a closed radio, so by the time
+   anybody sees anything the installer's window has gone. The readout is
+   the one place left to say which version is now running, and it says it
+   once: five flashes, then back to the station.
+
+   Traced in a browser from document-start: the text appears at 24ms, goes
+   dark at 206, 572, 922, 1289 and 1656, and the station returns at 1839
+   with the fade running. */
+test('the readout says the version once, after an update', () => {
+  const js = read('app.js');
+  const css = read('app.css');
+
+  /* Which version last ran here. Absent is a first install, which has
+     nothing to announce -- the number is stamped quietly instead. */
+  assert.ok(/ranVersion: null,/.test(js), 'nothing records which version last ran');
+  const boot = js.slice(js.indexOf('var ranBefore = state.ranVersion;'), js.indexOf('var ranBefore = state.ranVersion;') + 320);
+  assert.ok(/if \(ranBefore\) announceVersion\(\);/.test(boot),
+    'a first install would announce an update that never happened');
+  assert.ok(boot.indexOf('state.ranVersion = APP_VERSION;') < boot.indexOf('announceVersion'),
+    'the version is announced before it is recorded, so a crash would repeat it for ever');
+
+  /* The timings are in two files and have to agree: a flash count that
+     disagrees with the animation is a readout that either goes dark or
+     cuts itself off mid-word. */
+  const flashes = js.match(/var ANNOUNCE_FLASHES = (\d+);/);
+  const step = js.match(/var ANNOUNCE_STEP_MS = (\d+);/);
+  assert.ok(flashes && step, 'the announcement timings are gone from app.js');
+  const anim = css.match(/\.display-name\.is-announcing \{ animation: name-flash ([\d.]+)s linear (\d+); \}/);
+  assert.ok(anim, 'the flash animation is gone from app.css');
+  assert.equal(Number(flashes[1]), Number(anim[2]),
+    'app.js flashes ' + flashes[1] + ' times and the animation runs ' + anim[2]);
+  assert.equal(Number(step[1]), Math.round(parseFloat(anim[1]) * 1000),
+    'app.js steps every ' + step[1] + 'ms and the animation is ' + anim[1] + 's');
+
+  /* Back at the speed the pill arrives at: the two are the only things on
+     the face that announce themselves. */
+  const back = css.match(/\.display-name\.is-returning \{ animation: name-return ([\d.]+)s ease-out; \}/);
+  const pill = css.match(/\.update-pill \{ animation: update-pill-in ([\d.]+)s ease-out; \}/);
+  assert.ok(back && pill, 'the return fade or the pill fade is gone');
+  assert.equal(back[1], pill[1], 'the readout and the pill no longer arrive at the same speed');
+
+  /* One way in to the readout. Guarding renderStation alone was not
+     enough: applyLook sets the name too, and replaced the announcement
+     three milliseconds after it appeared. */
+  assert.ok(/function showName\(text\) \{\s*\n\s*if \(announcing\) return;/.test(js),
+    'the readout has no single guarded way in');
+  const direct = js.match(/TunerUI\.setName\(el\.name,/g) || [];
+  assert.equal(direct.length, 3,
+    'there are ' + direct.length + ' direct writes to the readout; only three may exist -- showName itself,'
+      + ' the announcement, and the hand-back that ends it');
+
+  /* And the preview shows it, on the same numbers. */
+  const preview = read('previews/update-notice.html');
+  assert.ok(/id="annName"/.test(preview), 'the preview page no longer shows the announcement');
+  assert.ok(/STEP = 360, FLASHES = 5/.test(preview),
+    'the preview runs the announcement on different timings from the app');
+});

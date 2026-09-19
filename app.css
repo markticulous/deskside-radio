@@ -596,6 +596,33 @@
 /* The readout scrolls by moving its line, for the reason given above the
    preset keyframes. setName already puts every line in a .name-line, and
    that span is display:block with width:max-content, so it is the right
+/* ---- what the readout says once, after an update ----------------------
+   The version that has just been installed, flashed five times and then
+   given back to the station. The radio has no other way to tell anybody
+   an update landed: the window it was announced in is gone by then, and
+   the version in Settings is a place nobody looks on the way past.
+
+   Five flashes at 360ms is 1.8 seconds, which is long enough to read a
+   version number twice and short enough that nobody waiting for their
+   station is kept from it. The numbers live in app.js as well, and a
+   test holds the two to each other. */
+@keyframes name-flash {
+  0%, 45%   { opacity: 1; }
+  50%, 95%  { opacity: 0; }
+  100%      { opacity: 1; }
+}
+.display-name.is-announcing { animation: name-flash .36s linear 5; }
+
+/* And back, at the speed the update pill arrives at. */
+@keyframes name-return { from { opacity: 0; } to { opacity: 1; } }
+.display-name.is-returning { animation: name-return .22s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Held, and then simply exchanged. The announcement is information;
+     the flashing is only how it asks to be looked at. */
+  .display-name.is-announcing, .display-name.is-returning { animation: none; }
+}
+
    thing to move and needs no wrapper of its own. */
 .display-name.can-scroll { text-overflow: clip; }
 .display-name.can-scroll .name-line {
