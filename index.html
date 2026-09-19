@@ -543,15 +543,15 @@
 <dialog class="confirm" id="shortcutHelp">
   <form method="dialog" class="confirm-box">
     <h2>Shortcut downloaded</h2>
-    <p>Windows makes this harder than it needs to be, so the easy way is first.</p>
+    <p>A browser cannot save a shortcut under its own name, so yours arrived as <code>Deskside&nbsp;Radio.download</code> and needs finishing. There is a quicker way.</p>
     <ol class="help-steps">
-      <li><strong>Run the helper instead.</strong> Double-click <code>Win&nbsp;-&nbsp;Create&nbsp;Desktop&nbsp;Shortcut.cmd</code> in the app folder, or paste this:
+      <li><strong>Quicker &mdash; run the helper.</strong> Double-click <code>Win&nbsp;-&nbsp;Create&nbsp;Desktop&nbsp;Shortcut.cmd</code> in the app folder, or paste this:
         <span class="help-path"><code id="shortcutCmd"></code></span>
-        It writes the shortcut straight to the Desktop, already named, already carrying the icon, and without any of the trouble below. You can delete the file that was just downloaded.
+        It puts the shortcut on the Desktop, named and with its icon, and no warning. Then delete the download.
       </li>
-      <li><strong>Or finish the downloaded one by hand.</strong> Your browser will not save a shortcut under its own name &mdash; a shortcut can point anywhere, so it arrives as <code>Deskside Radio.download</code>. Rename it to <code>Deskside&nbsp;Radio.url</code> and drag it to the Desktop. Then <strong>right-click it &rarr; Properties &rarr; tick <em>Unblock</em> &rarr; OK</strong>, or opening it brings up a security warning every time.</li>
+      <li><strong>Or finish this one.</strong> Rename it to <code>Deskside&nbsp;Radio.url</code>, drag it to the Desktop, then <strong>right-click &rarr; Properties &rarr; tick <em>Unblock</em> &rarr; OK</strong>. Without that it warns you every time you open it.</li>
     </ol>
-    <p class="hint">That warning is not about this file in particular. Anything a browser downloads is tagged with where it came from, and a page opened from your own disk has no address the tagger understands, so it is filed under <em>restricted</em> &mdash; the most suspicious setting there is. Unblocking removes the tag. The helper never adds one, because it builds the shortcut on the spot rather than downloading it.</p>
+    <p class="hint">Windows tags everything a browser downloads with where it came from, and a page opened from your own disk has no address it recognises &mdash; so it assumes the worst. Unblocking clears the tag. The helper never adds one.</p>
     <figure class="help-icon">
       <img id="shortcutIcon" width="48" height="48" alt="">
       <figcaption>Either way the Desktop icon looks like this &mdash; the <span id="shortcutTheme"></span> theme you have on now.</figcaption>

@@ -2754,14 +2754,41 @@
   function hideShortcutIfOneExists() {
     var btn = $('makeShortcut');
     if (!btn) return;
-    var s = document.createElement('script');
-    s.src = 'assets/shortcut.js?' + Date.now();
-    s.onload = function () {
-      s.remove();
-      if (window.DESKSIDE_HAS_SHORTCUT === true) btn.hidden = true;
-    };
-    s.onerror = function () { s.remove(); };
-    document.head.appendChild(s);
+
+    /* Read more than once, because the launcher writes this file a moment
+       AFTER it starts the browser -- deliberately, so that a directory
+       listing never sits between a double-click and the radio. The page
+       can therefore win the race and read yesterday's answer, or on the
+       launch after an update, no answer at all. One read at boot left the
+       button on screen for the whole session on a machine that had a
+       shortcut the entire time.
+
+       A few tries, widening, and then it stops. Also on the first focus,
+       which is the cheap way to catch a window that was opened while the
+       launcher was still going. */
+    var tries = 0;
+    function look() {
+      var s = document.createElement('script');
+      s.src = 'assets/shortcut.js?' + Date.now();
+      s.onload = function () {
+        s.remove();
+        btn.hidden = window.DESKSIDE_HAS_SHORTCUT === true;
+        again();
+      };
+      s.onerror = function () { s.remove(); again(); };
+      document.head.appendChild(s);
+    }
+    function again() {
+      if (btn.hidden || tries >= 3) return;
+      tries++;
+      setTimeout(look, tries * 1600);
+    }
+    look();
+    window.addEventListener('focus', function () {
+      if (btn.hidden) return;
+      tries = 0;
+      look();
+    });
   }
   hideShortcutIfOneExists();
 
