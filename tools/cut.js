@@ -142,7 +142,7 @@ async function verify() {
   console.log('\nchecking what is actually published, against ' + want + '\n');
   let bad = 0;
   const say = (ok, label, detail) => {
-    console.log((ok ? '  .  ' : ' !!  ') + label.padEnd(46) + (detail || ''));
+    console.log((ok ? '  .  ' : ' !!  ') + label.padEnd(48) + (detail || ''));
     if (!ok) bad++;
   };
 
@@ -168,8 +168,8 @@ async function verify() {
     const url = 'https://github.com/markticulous/deskside-radio/releases/latest/download/' + name;
     try {
       const r = await fetch(url, { redirect: 'follow' });
-      say(r.ok, 'releases/latest/download/' + name, r.status);
-    } catch (e) { say(false, 'releases/latest/download/' + name, e.message); }
+      say(r.ok, 'asset ' + name, r.status);
+    } catch (e) { say(false, 'asset ' + name, e.message); }
   }
 
   /* And the manual inside the published zip, which is the artefact people
