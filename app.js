@@ -1104,28 +1104,38 @@
     paintFade();
   }
 
-  /* The fade is a multiplier over the fader and still never writes to it:
-     where the volume was left is where it stays, which is the whole point
-     of doing it this way. But a listener watching a handover should see the
-     control move -- sound going away with nothing on screen accounting for
-     it reads as a fault rather than as a handover.
+  /* The fade is a multiplier over the fader and still never writes to the
+     setting: state.volume is where the listener left it, and that is what
+     is stored and what comes back. But a handover should be visible. Sound
+     going away with nothing on screen accounting for it reads as a fault
+     rather than as a changeover.
 
-     So the fader is *drawn* at the level being heard, and the number beside
-     it is left alone. The number is the setting, and the setting has not
-     changed.
+     So the control is moved, exactly as if a hand were on it: the slider
+     travels down over the last seconds of a slot and back up when the next
+     station is playing, and the number beside it counts with it.
 
-     Read off the input's own value rather than state.volume, so a fader
-     being dragged through a fade shows where it is being dragged to and
-     the two never fight over the thumb.
+     This used to set --turn alone, which is the number a theme drawn as a
+     knob turns its cap by. That left every theme whose fader is an ordinary
+     slider with nothing moving at all, because a range input's thumb is
+     placed by its value and the fade never touched the value. The knob
+     themes moved; the dial, the console and the rest did not.
 
-     --turn is what every theme builds its thumb or knob from, so this is
-     one property and no theme has to know about it. */
+     While a finger is on the fader nothing is written to it, or the thumb
+     would be dragged out from under it -- the drag is the listener's and
+     wins for as long as it lasts. */
+  var draggingFader = false;
+
   function paintFade() {
     var input = el.volume;
     if (!input) return;
     var lo = +input.min, hi = +input.max;
+    if (!draggingFader) {
+      var shown = Math.max(lo, Math.min(hi, Math.round(state.volume * fadeMul)));
+      if (+input.value !== shown) input.value = shown;
+    }
+    if (el.volumeOut) el.volumeOut.value = input.value;
     var at = hi > lo ? (+input.value - lo) / (hi - lo) : 0;
-    (input.parentElement || input).style.setProperty('--turn', (at * fadeMul).toFixed(4));
+    (input.parentElement || input).style.setProperty('--turn', at.toFixed(4));
   }
 
   /* Ramped on a timer rather than with the Web Audio scheduler, because
@@ -1147,10 +1157,11 @@
   function setVolume(v, silent) {
     v = Math.max(0, Math.min(100, Math.round(v)));
     state.volume = v;
+    /* applyGain ends in paintFade, which is the one place the control is
+       drawn. Writing the value here as well would stamp the setting over a
+       fade in progress, a frame at a time, and the fader would sit still
+       through every handover. */
     applyGain();
-    el.volume.value = v;
-    el.volumeOut.value = v;
-    markFader(el.volume);
     if (!silent) save();
   }
 
@@ -2109,7 +2120,18 @@
   function stopGlide(input) {
     if (input._glide) { cancelAnimationFrame(input._glide); input._glide = 0; }
   }
-  el.volume.addEventListener('pointerdown', function () { stopGlide(el.volume); });
+  /* A finger on the fader owns it until it is lifted. pointercancel counts
+     as lifted, and so does losing the pointer altogether -- without that a
+     drag that ends off the control would leave the fade unable to move it
+     again. */
+  el.volume.addEventListener('pointerdown', function () { draggingFader = true; stopGlide(el.volume); });
+  ['pointerup', 'pointercancel'].forEach(function (ev) {
+    window.addEventListener(ev, function () {
+      if (!draggingFader) return;
+      draggingFader = false;
+      paintFade();
+    });
+  });
   el.bass.addEventListener('pointerdown', function () { stopGlide(el.bass); });
   el.treble.addEventListener('pointerdown', function () { stopGlide(el.treble); });
 

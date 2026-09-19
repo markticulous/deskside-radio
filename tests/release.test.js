@@ -1433,3 +1433,38 @@ test('the tone controls follow the station, playing or stopped', () => {
   assert.ok(/window\.addEventListener\('pagehide', rememberBox\);/.test(app),
     'the window box is no longer written on the way out');
 });
+
+/* A handover fades the sound down and back up, and the control it belongs
+   to should be seen doing it -- sound going away with nothing on screen
+   accounting for it reads as a fault rather than as a changeover.
+
+   This was written once and only half worked. It set --turn, which is the
+   number a theme drawn as a knob turns its cap by, and left the value
+   alone -- so the knob themes moved and every theme whose fader is an
+   ordinary slider did not, because a range input's thumb is placed by its
+   value. Reported as "I don't see this happening", which it mostly was. */
+test('the volume control moves with a scheduled fade', () => {
+  const app = read('app.js');
+  const paint = app.slice(app.indexOf('function paintFade'), app.indexOf('/* Ramped on a timer'));
+
+  assert.ok(/state\.volume \* fadeMul/.test(paint),
+    'the fader is no longer drawn at the level being heard');
+  assert.ok(/input\.value = shown/.test(paint),
+    'paintFade sets a custom property but never moves the control, so a slider theme shows nothing');
+  assert.ok(/setProperty\('--turn'/.test(paint),
+    'the knob themes have lost the number they turn their cap by');
+
+  /* The setting is not the fade. What is stored, and what comes back, is
+     where the listener left it. */
+  const setv = app.slice(app.indexOf('function setVolume'), app.indexOf('function markFader'));
+  assert.equal(/el\.volume\.value = v;/.test(setv), false,
+    'setVolume writes the control again, which stamps the setting over a fade in progress');
+  assert.ok(/state\.volume = v;/.test(setv), 'setVolume no longer records the setting');
+
+  /* And a finger on the fader wins while it is there. */
+  assert.ok(/var draggingFader = false;/.test(app), 'nothing tracks a drag, so a fade would fight the thumb');
+  assert.ok(/if \(!draggingFader\) \{/.test(paint),
+    'a fade can move the thumb out from under a drag');
+  assert.ok(/'pointerup', 'pointercancel'/.test(app),
+    'a drag that ends off the control would leave the fader stuck to the pointer');
+});
