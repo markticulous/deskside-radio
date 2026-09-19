@@ -1572,3 +1572,69 @@ test('the volume control moves with a scheduled fade', () => {
   assert.ok(/'pointerup', 'pointercancel'/.test(app),
     'a drag that ends off the control would leave the fader stuck to the pointer');
 });
+
+/* The installer closes the radio before it writes, and opens it again
+   after. Unpacking over a running radio mostly works -- Chrome reads
+   index.html at load and does not hold it -- but Windows will not move a
+   folder a running browser sits in, so the profile rename failed silently
+   and the next launch started an empty profile: the radio came up with
+   none of the listener's stations. That is the outcome this prevents.
+
+   What it may close is the narrow thing, and the narrowness is the whole
+   safety argument: three browser names, and only where the process's own
+   command line names this app's profile folder. Measured on a machine
+   with 37 browser processes running: 10 selected (the radio and its own
+   children), 27 ordinary Chrome left alone. */
+test('the installer closes the radio, and nothing else', () => {
+  const src = read(INSTALLER);
+  const block = src.slice(src.indexOf('close the radio first'), src.indexOf('put it in place'));
+
+  assert.ok(/Stop-Process -Id \$p\.ProcessId -Force/.test(block), 'the installer no longer closes the radio');
+  /* By name AND by profile path. Either alone is wrong: the name alone
+     closes somebody's browser, and the path alone would match anything
+     that happened to mention the folder -- this script included, which is
+     why it is a .cmd and not one of these three. */
+  assert.ok(/'chrome\.exe', 'msedge\.exe', 'firefox\.exe'/.test(block),
+    'the set of things that may be closed is no longer three browsers');
+  assert.ok(/\$names -contains \$_\.Name/.test(block) && /CommandLine -like '\*DesksideRadio.profile\*'/.test(block),
+    'the installer no longer requires BOTH the browser name and this app\'s profile path');
+
+  /* After the download, so a failed download never costs somebody the
+     window they were listening to. */
+  assert.ok(src.indexOf('close the radio first') > src.indexOf('Downloaded and checked'),
+    'the radio is closed before the download is known to be good');
+
+  /* And opened again, because closing it and leaving it closed is worse
+     than not having closed it. */
+  assert.ok(/call :reopen/.test(src) && /^:reopen$/m.test(src), 'a closed radio is never reopened');
+  assert.ok(/Invoke-Item -LiteralPath \$p/.test(src),
+    'the radio is reopened by some other route than its own shortcut');
+  assert.ok(/if \/i "%CLOSEDB%"=="F" set "RELNK=Deskside Radio \(Firefox\).lnk"/.test(src),
+    'a Firefox radio would come back in the wrong browser');
+
+  /* Inside a quoted -Command line cmd does not process the caret, so ^|
+     arrives at PowerShell as a literal caret and the block dies with
+     "Unexpected token". That is what had the 1.4.2 uninstaller reporting
+     success while removing nothing, and it would silently disable this. */
+  const bad = src.match(/"[^"\n]*\^\|/g) || [];
+  assert.equal(bad.length, 0,
+    'a pipe is escaped as ^| inside a quoted -Command line: ' + JSON.stringify(bad[0] || ''));
+});
+
+/* And the other half: when the rename cannot happen anyway -- something
+   still in the old folder, or a launch that never went through the
+   installer -- the launcher keeps using the old profile rather than
+   starting an empty one. An empty profile is the alarming outcome: the
+   radio comes up with no stations and nothing says why. */
+test('a profile that could not be renamed is still used', () => {
+  ['Win - Open Deskside Radio.cmd', 'Win - Create Desktop Shortcut (Chrome).cmd',
+   'Win - Start With Windows.cmd'].forEach(function (f) {
+    const s = read(f);
+    assert.ok(/if not exist "%PROFILE%\\" if exist "%LOCALAPPDATA%\\DesksideRadio\\profile\\" set "PROFILE=%LOCALAPPDATA%\\DesksideRadio\\profile"/.test(s),
+      f + ' starts an empty profile when the rename could not happen');
+    /* The fallback has to come after the move, or it reads the old folder
+       before the move has had its chance. */
+    assert.ok(s.indexOf('move "%LOCALAPPDATA%') < s.lastIndexOf('set "PROFILE=%LOCALAPPDATA%\\DesksideRadio\\profile"'),
+      f + ' falls back to the old profile before trying to rename it');
+  });
+});

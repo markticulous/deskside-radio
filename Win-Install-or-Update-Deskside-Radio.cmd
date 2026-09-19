@@ -239,6 +239,64 @@ if defined NEWVER (
   call :ok
 )
 
+rem ---- close the radio first --------------------------------------------
+rem
+rem Unpacking over a running radio usually works -- Chrome reads
+rem index.html at load and does not hold it open -- but two things after
+rem it do not. Windows will not move a folder a running browser is
+rem sitting in, so the profile rename below fails silently and the next
+rem launch points at a folder that is not there and starts an empty one:
+rem the radio comes up with none of your stations, which looks exactly
+rem like losing them. And the trim skips whatever is locked.
+rem
+rem So the radio is closed here, by this script, with nothing asked.
+rem
+rem What is closed is the narrow thing: a process named chrome.exe,
+rem msedge.exe or firefox.exe **whose own command line names this app's
+rem profile folder**. An ordinary browser window has no such argument and
+rem is not touched -- somebody's tabs are not ours to close, and a script
+rem that shut down Chrome to update a radio would deserve everything said
+rem about it. Nothing else on the machine matches, including this script,
+rem which is a .cmd and not in that list of three.
+rem
+rem After the download, so a failed download never costs you the window
+rem you were listening to, and before the first write.
+rem
+rem The pipes below are bare | and not ^|. Inside a quoted -Command line
+rem cmd does not process the caret, so ^| reaches PowerShell as a literal
+rem caret and the whole block dies with "Unexpected token '^'" -- which
+rem is the fault that had the 1.4.2 uninstaller reporting success while
+rem removing nothing. A literal pipe in the output is built with
+rem [char]124 for the same reason.
+set "CLOSED="
+set "ANSWER=%TEMP%\deskside-radio-answer.txt"
+"%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$names = 'chrome.exe', 'msedge.exe', 'firefox.exe';" ^
+  "$mine = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {" ^
+  "  $names -contains $_.Name -and $_.CommandLine -and" ^
+  "  $_.CommandLine -like '*DesksideRadio\profile*' };" ^
+  "$key = 'C';" ^
+  "if ($mine | Where-Object { $_.Name -eq 'firefox.exe' }) { $key = 'F' }" ^
+  "elseif ($mine | Where-Object { $_.Name -eq 'msedge.exe' }) { $key = 'E' }" ^
+  "$n = 0;" ^
+  "foreach ($p in $mine) {" ^
+  "  Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue;" ^
+  "  $n++;" ^
+  "}" ^
+  "if ($n -gt 0) { Start-Sleep -Milliseconds 900 }" ^
+  "$n.ToString() + [char]124 + $key" > "%ANSWER%" 2>nul
+if exist "%ANSWER%" set /p CLOSED=<"%ANSWER%"
+del /q "%ANSWER%" >nul 2>&1
+rem How many, and which browser it was, so the same one can be opened
+rem again at the end.
+set "CLOSEDN=0"
+set "CLOSEDB=C"
+for /f "tokens=1,2 delims=|" %%A in ("%CLOSED%") do set "CLOSEDN=%%A" & set "CLOSEDB=%%B"
+if not "%CLOSEDN%"=="0" (
+  set "MSG=Closed the radio, so its files and profile are free"
+  call :ok
+)
+
 rem ---- put it in place --------------------------------------------------
 rem Extracted over the top, never wiped first. tar replaces the files it
 rem carries and leaves everything else alone, so a settings seed sitting
@@ -476,7 +534,14 @@ if defined UPDATING (
   set "MSG=Updated"
   call :ok
   echo.
-  echo   Close the radio and open it again to see the new version.
+  rem Closed by this script a moment ago, so this script puts it back.
+  rem Shutting somebody's radio to update it and leaving it shut is
+  rem worse than not having closed it at all.
+  if not "%CLOSEDN%"=="0" (
+    call :reopen
+  ) else (
+    echo   Close the radio and open it again to see the new version.
+  )
   echo.
   echo   Your stations and settings were not touched. They live with the
   echo   browser profile rather than in the app folder, which is why an
@@ -498,6 +563,26 @@ if defined UPDATING (
 )
 echo.
 pause
+exit /b 0
+
+rem ---- open it again ----------------------------------------------------
+rem Through the Desktop shortcut rather than by starting a browser, so it
+rem comes back the way it always opens: its own window, its own profile,
+rem autoplay lifted, and the window lock applied by the opener.
+rem
+rem The one that was closed, where that can be told: a Firefox radio
+rem should not come back in Chrome. Falling back to the plain shortcut,
+rem which is the one nearly everybody has.
+:reopen
+set "RELNK=Deskside Radio.lnk"
+if /i "%CLOSEDB%"=="E" set "RELNK=Deskside Radio (Edge).lnk"
+if /i "%CLOSEDB%"=="F" set "RELNK=Deskside Radio (Firefox).lnk"
+"%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$d = [Environment]::GetFolderPath('Desktop');" ^
+  "$p = Join-Path $d $env:RELNK;" ^
+  "if (-not (Test-Path -LiteralPath $p)) { $p = Join-Path $d 'Deskside Radio.lnk' }" ^
+  "if (Test-Path -LiteralPath $p) { Invoke-Item -LiteralPath $p }"
+echo   The radio was closed for the update, and is opening again.
 exit /b 0
 
 rem ---- one desktop shortcut ---------------------------------------------

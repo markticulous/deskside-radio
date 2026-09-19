@@ -52,6 +52,11 @@ rem new one, so the stations and the schedule inside it come along.
 if not exist "%PROFILE%\" if exist "%LOCALAPPDATA%\DesksideRadio\profile\" (
   move "%LOCALAPPDATA%\DesksideRadio\profile" "%PROFILE%" >nul 2>&1
 )
+rem If the move could not happen -- something is still sitting in the old
+rem folder -- go on using the old one rather than starting an empty new
+rem one. An empty profile is the alarming outcome here: the radio comes up
+rem with none of your stations, and nothing on screen says why.
+if not exist "%PROFILE%\" if exist "%LOCALAPPDATA%\DesksideRadio\profile\" set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile"
 
 rem ---------------------------------------------------------------------
 rem  The flags that keep the profile small.
