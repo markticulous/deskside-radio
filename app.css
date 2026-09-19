@@ -822,7 +822,10 @@
   color: #fff3dc; background: linear-gradient(#cf5330, #a3341b);
   box-shadow: 0 0 14px rgba(205,80,42,.55), inset 0 1px 0 rgba(255,255,255,.35);
 }
-[data-theme="dial"] .needle { background: var(--red); border-radius: 1px; box-shadow: 0 0 9px rgba(193,64,47,.8); }
+/* A pixel off the top, and the dial only. The base needle overhangs the
+   scale at both ends; on this face the upper overhang reads as a hair
+   too long against the glass. The other needle themes are unchanged. */
+[data-theme="dial"] .needle { top: -11px; background: var(--red); border-radius: 1px; box-shadow: 0 0 9px rgba(193,64,47,.8); }
 
 [data-theme="dial"] .meter { grid-area: meter; display: block; width: 252px; align-self: start; position: relative; }
 /* The spill. On the face itself rather than the whole meter, so the blind
@@ -3133,12 +3136,12 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   color: #7c5f26; font-weight: 700;
 }
 .theme-thumb[data-theme="dial"] .tt-glass {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 16' preserveAspectRatio='none'%3E%3Crect x='.55' y='.55' width='22.9' height='14.9' rx='2.2' fill='none' stroke='%236b5324' stroke-width='1.1'/%3E%3Cpath d='M2.5 13.5 A11.5 11.5 0 0 1 21.5 13.5' fill='none' stroke='%236b5324' stroke-width='1.1'/%3E%3Cpath d='M6.5 7.6 L7.6 8.9 M12 5.6 L12 7.3 M17.5 7.6 L16.4 8.9' stroke='%236b5324' stroke-width='.9'/%3E%3Cline x1='12' y1='14' x2='16.8' y2='7.4' stroke='%23c1402f' stroke-width='1.1'/%3E%3Ccircle cx='12' cy='14' r='1.2' fill='%233a2a12'/%3E%3C/svg%3E") right 7px top 4px / 26px 17px no-repeat, linear-gradient(#f3e8c6, #ddc99a);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 16' preserveAspectRatio='none'%3E%3Crect x='.55' y='.55' width='22.9' height='14.9' rx='2.2' fill='none' stroke='%236b5324' stroke-width='1.1'/%3E%3Cpath d='M2.5 13.5 A11.5 11.5 0 0 1 21.5 13.5' fill='none' stroke='%236b5324' stroke-width='1.1'/%3E%3Cpath d='M6.5 7.6 L7.6 8.9 M12 5.6 L12 7.3 M17.5 7.6 L16.4 8.9' stroke='%236b5324' stroke-width='.9'/%3E%3Cline x1='12' y1='14' x2='16.8' y2='7.4' stroke='%23c1402f' stroke-width='1.1'/%3E%3Ccircle cx='12' cy='14' r='1.2' fill='%233a2a12'/%3E%3C/svg%3E") right 10px top 7px / 26px 17px no-repeat, linear-gradient(#f3e8c6, #ddc99a);
 }
 /* Stops clear of the VU movement, so the two right-hand edges keep the
    gap they were drawn with when the movement moved. */
 .theme-thumb[data-theme="dial"] .tt-glass::before {
-  content: ""; position: absolute; left: 5px; right: 36px; bottom: 7px; height: 6px;
+  content: ""; position: absolute; left: 5px; right: 39px; bottom: 7px; height: 6px;
   border-bottom: 1px solid #6b5324;
   background: repeating-linear-gradient(90deg, #6b5324 0 1px, transparent 1px 4px) bottom / 100% 4px no-repeat;
 }

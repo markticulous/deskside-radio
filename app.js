@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.4.9';
+  var APP_VERSION = '1.4.10';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -1524,6 +1524,18 @@
 
   // ---------- rendering ----------
   function renderStation(st) {
+    /* The tone belongs to the station, so the sliders and the graph follow
+       it here -- at the one point every path passes through when a new
+       station arrives on the front.
+
+       It used to be done in tune(), which meant it was done only when the
+       radio was playing. Choosing a station on a stopped set never reaches
+       tune(), so the controls went on showing the station before it: the
+       reading was wrong, and the next nudge of either slider was worse
+       than wrong, because rememberTone writes both values through to the
+       current station and so copied the old station's tone onto the new
+       one. */
+    loadTone(st);
     el.band.textContent = st.band || 'Internet stream';
     TunerUI.setName(el.name, st.name);
     el.tag.textContent = st.tag || '';
@@ -4665,9 +4677,8 @@
     var onDisplay = resolveTarget();
     if (onDisplay.station) {
       state.currentStationId = onDisplay.station.id;
+      // renderStation loads this station's tone on the way past.
       renderStation(onDisplay.station);
-      // The sliders showed the tone left in place rather than this station's.
-      loadTone(onDisplay.station);
     }
     tick();
     startTicking();

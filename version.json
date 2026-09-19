@@ -1,6 +1,6 @@
 {
-  "version": "1.4.9",
+  "version": "1.4.10",
   "released": "2026-09-19",
-  "notes": "### Fixed\n\n- **A scrollbar down the side of the radio, a launch after updating.** A saved window size only means anything alongside the face it was measured against: the console theme sits at 700 pixels, the dial wants 744.\n- A settings file names a theme and is read before the window is put back, so the height of one theme came back under another. The saved size now records which theme it was taken under, and is used only there.\n- **A window that does not hold the radio no longer stays that way.** Whatever the cause, a page overrunning its window is re-fitted once the fonts land. A window that fits is still never resized out from under you.\n- The size is no longer saved while Settings has the window on loan.",
+  "notes": "### Fixed\n\n- **Bass and treble follow the station again on a stopped set.** They are kept per station and always were, but they were only loaded when the radio was playing, so choosing a station while stopped left the sliders showing the station before it.\n- That reading was wrong and acting on it was worse: one nudge of either slider wrote both displayed values through to the new station, quietly replacing its own.\n- The volume is remembered as it always was, and still is. It was checked alongside these.\n\n### Analogue dial\n\n- A pixel off the top of the tuning needle.\n- The VU movement on the theme thumbnail sits lower and further left.",
   "url": "https://github.com/Markticulous/deskside-radio/releases/latest"
 }

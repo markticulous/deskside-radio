@@ -1408,3 +1408,28 @@ test('a remembered window size knows which theme it was measured against', () =>
   assert.ok(/keepBox = false;\s*\n\s*fitWindow\(\);/.test(size),
     'an overrunning window is never refitted');
 });
+
+/* The tone belongs to the station, and was only ever loaded by tune() --
+   which runs when the radio is playing. Choosing a station on a stopped
+   set takes a different path entirely, so the sliders went on showing the
+   station before it. That reading was wrong, and acting on it was worse:
+   rememberTone writes both values through to the current station, so one
+   nudge of the bass copied the previous station's treble onto this one. */
+test('the tone controls follow the station, playing or stopped', () => {
+  const app = read('app.js');
+  const render = app.slice(app.indexOf('function renderStation'), app.indexOf('function renderPresets'));
+  assert.ok(/loadTone\(st\);/.test(render),
+    'renderStation no longer loads the station tone, so a stopped set keeps the previous tone');
+
+  /* rememberTone writes to whichever station is current, which is only
+     safe while the sliders are known to be showing that station. */
+  const remember = app.slice(app.indexOf('function rememberTone'), app.indexOf('function loadTone'));
+  assert.ok(/st\.bass = state\.bass;/.test(remember) && /st\.treble = state\.treble;/.test(remember),
+    'the tone is no longer written through to the station it belongs to');
+
+  /* And the level is saved, debounced, rather than per input event. */
+  assert.ok(/volumeSaveTimer = setTimeout\(save, 250\);/.test(app),
+    'the volume is no longer written to storage after a drag settles');
+  assert.ok(/window\.addEventListener\('pagehide', rememberBox\);/.test(app),
+    'the window box is no longer written on the way out');
+});
