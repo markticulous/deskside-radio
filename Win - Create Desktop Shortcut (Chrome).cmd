@@ -82,20 +82,64 @@ if not defined BROWSER if exist "%ProgramFiles%\Microsoft\Edge\Application\msedg
 if not defined BROWSER for /f "skip=2 tokens=2,*" %%A in ('%SystemRoot%\System32\reg.exe query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe" /ve 2^>nul') do if exist "%%B" set "BROWSER=%%B"
 if not defined BROWSERNAME if defined BROWSER set "BROWSERNAME=Microsoft Edge"
 
-set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile"
+set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile-chrome"
+set "APPROOT=%APPDIR:~0,-1%"
+
+rem The Chrome profile used to be the only one of the three not named
+rem after its browser. Moved rather than remade, so what is in it -- the
+rem stations, the schedule, the theme -- comes along.
+if not exist "%PROFILE%\" if exist "%LOCALAPPDATA%\DesksideRadio\profile\" (
+  move "%LOCALAPPDATA%\DesksideRadio\profile" "%PROFILE%" >nul 2>&1
+)
+
+rem The flags that keep the profile from filling with things a browser
+rem showing one local file will never consult. Word for word the line in
+rem "Win - Open Deskside Radio.cmd"; a test holds the copies together.
+set "LEAN= --disable-background-networking --disable-component-update --disable-breakpad --disable-domain-reliability --disable-sync --no-pings --disable-features=OptimizationHints,OptimizationGuideModelDownloading,SegmentationPlatform,MediaRouter --disk-cache-size=16777216 --media-cache-size=16777216"
+
+rem Where this profile saves a download: the app folder, not Downloads.
+rem
+rem Export settings writes deskside-radio-settings.js, and that file is
+rem the only thing the three browser profiles can all see -- each keeps
+rem its own storage, and none of them can read another's. Left in the
+rem Downloads folder it seeds nothing; sitting beside index.html it is
+rem picked up by every shortcut at its next launch. Chrome has no flag
+rem for the download folder, so it is written into the profile before
+rem Chrome has one of its own. Only when absent: a profile already in
+rem use has a Preferences file full of its own state, and the installer
+rem is the thing that edits one of those.
+%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$d = Join-Path $env:PROFILE 'Default';" ^
+  "$f = Join-Path $d 'Preferences';" ^
+  "if (-not (Test-Path -LiteralPath $f)) {" ^
+  "  New-Item -ItemType Directory -Path $d -Force | Out-Null;" ^
+  "  $j = @{ download = @{ default_directory = $env:APPROOT; prompt_for_download = $false };" ^
+  "         savefile = @{ default_directory = $env:APPROOT } } | ConvertTo-Json -Depth 4;" ^
+  "  Set-Content -LiteralPath $f -Value $j -Encoding ASCII;" ^
+  "}"
 rem The shortcut aims at the opener rather than at the browser. The
 rem opener starts the browser with the same flags and then takes the
 rem resize grip off the window, which cannot be done from inside the
 rem page -- there is no web API for it and no browser switch for it, so
 rem something of ours has to be running when the window appears. It
-rem exits as soon as that is done. WindowStyle 7 above keeps its console
-rem minimised, so what shows is a taskbar button for a moment rather
-rem than a black window on screen.
-set "OPENER=%APPDIR%Win - Open Deskside Radio.cmd"
-rem Without the opener beside it -- an older folder, or a copy taken
-rem apart by hand -- the shortcut goes straight at the browser as it
-rem always did, and the window is left resizable.
+rem exits as soon as that is done.
+rem Started through wscript.exe and a four-line .vbs rather than by
+rem aiming the shortcut at the .cmd. A .cmd is run by cmd.exe, cmd.exe
+rem gets a console, and WindowStyle 7 only minimises that console after
+rem Windows has already drawn it -- which is the black rectangle and the
+rem taskbar button that flash at launch. Run with a window style of 0
+rem from the .vbs, the console is never created.
+set "WSCRIPT=%SystemRoot%\System32\wscript.exe"
+set "OPENER=%APPDIR%Win - Open Deskside Radio.vbs"
+set "OPENERCMD=%APPDIR%Win - Open Deskside Radio.cmd"
+rem An app folder from before the .vbs still has the .cmd, and that is
+rem better than nothing: the flash comes back, the locked window does
+rem not go away. With neither of them -- an older folder still, or a
+rem copy taken apart by hand -- the shortcut goes straight at the
+rem browser as it always did, and the window is left resizable.
 if not exist "%OPENER%" set "OPENER="
+if not exist "%OPENERCMD%" set "OPENERCMD="
+if not exist "%WSCRIPT%" set "OPENER="
 
 rem Every value reaches PowerShell as an environment variable, and every
 rem quote inside the argument string is built with [char]34. A literal " in
@@ -112,7 +156,10 @@ rem contain a space, so it needs no quoting of its own.
   "$link = (New-Object -ComObject WScript.Shell).CreateShortcut($path);" ^
   "$q = [char]34;" ^
   "if ($env:BROWSER -and $env:OPENER) {" ^
-  "  $link.TargetPath = $env:OPENER;" ^
+  "  $link.TargetPath = $env:WSCRIPT;" ^
+  "  $link.Arguments = $q + $env:OPENER + $q + ' ' + $q + $env:BROWSER + $q;" ^
+  "} elseif ($env:BROWSER -and $env:OPENERCMD) {" ^
+  "  $link.TargetPath = $env:OPENERCMD;" ^
   "  $link.Arguments = $q + $env:BROWSER + $q;" ^
   "  $link.WindowStyle = 7;" ^
   "} elseif ($env:BROWSER) {" ^
@@ -122,7 +169,7 @@ rem contain a space, so it needs no quoting of its own.
   "    ' --autoplay-policy=no-user-gesture-required' +" ^
   "    ' --window-size=1133,741' +" ^
   "    ' --user-data-dir=' + $q + $env:PROFILE + $q +" ^
-  "    ' --no-first-run --no-default-browser-check';" ^
+  "    ' --no-first-run --no-default-browser-check' + $env:LEAN;" ^
   "} else {" ^
   "  $link.TargetPath = $env:TARGET;" ^
   "}" ^

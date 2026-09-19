@@ -256,12 +256,14 @@
             <div class="finder-fields">
               <label class="finder-field">
                 <span>City</span>
-                <input class="in" type="text" id="cityInput" placeholder="Toronto" autocomplete="off">
+                <input class="in" type="text" id="cityInput" placeholder="Toronto" autocomplete="off"
+                       title="The town or city to search near. Type two letters and pick one from the list that drops down.">
                 <ul class="finder-menu" id="cityMenu" hidden></ul>
               </label>
               <label class="finder-field">
                 <span>Station name or frequency</span>
-                <input class="in" type="text" id="stationInput" placeholder="1010, KISS, CBC" autocomplete="off">
+                <input class="in" type="text" id="stationInput" placeholder="1010, KISS, CBC" autocomplete="off"
+                       title="A station name or a frequency. Leave it empty to list everything near the city.">
               </label>
             </div>
             <p class="finder-status" id="finderStatus">Pick a city, then search by name or frequency.</p>
@@ -330,7 +332,7 @@
         </div>
         <div class="pane-block">
           <h3>Backup</h3>
-          <p class="hint">A settings file holds the stations, the schedule, the theme and the sound settings. Nothing else leaves this machine.</p>
+          <p class="hint">A settings file holds the stations, the schedule, the theme and the sound settings. Nothing else leaves this machine. It is saved beside <code>index.html</code>, and every shortcut &mdash; Chrome, Edge, Firefox &mdash; reads it when it next opens: each browser keeps its own storage, and this file is the only thing all of them can see. So exporting is how settings move between them, and the most recent export is the one they all take.</p>
           <div class="btn-row">
             <button type="button" class="ghost" id="exportBtn">Export settings</button>
             <label class="ghost file-btn">Import settings <input type="file" id="importFile" accept=".js,.json,application/json,text/javascript" hidden></label>
@@ -438,6 +440,11 @@
   <form method="dialog" class="confirm-box">
     <h2>Reset to defaults?</h2>
     <p>Every station you have added goes, along with the whole schedule, the remembered city, and your volume and tone settings. NewsTalk 1010 and KISS 92.5 come back. This cannot be undone.</p>
+    <!-- Said because it is the one thing people expect a reset to do and
+         it cannot: a page opened from disk has no way to delete a file,
+         and the Startup entry is a file. Naming the script is the
+         difference between a limitation and a dead end. -->
+    <p class="hint os-win">Two things are outside this page and stay as they are: the shortcuts on your Desktop, and whether the radio starts with Windows. To stop it starting, run <code>Win&nbsp;-&nbsp;Start&nbsp;With&nbsp;Windows.cmd&nbsp;off</code> in the app folder. Uninstalling removes both.</p>
     <div class="confirm-actions">
       <button type="submit" value="cancel" class="ghost">Cancel</button>
       <button type="submit" value="reset" class="primary danger">Reset everything</button>

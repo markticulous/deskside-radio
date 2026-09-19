@@ -35,6 +35,7 @@ echo   DESKSIDE RADIO - INSTALL OR UPDATE
 echo.
 
 set "ZIPURL=https://github.com/markticulous/deskside-radio/releases/latest/download/deskside-radio.zip"
+set "CMDURL=https://github.com/markticulous/deskside-radio/releases/latest/download/Win-Install-or-Update-Deskside-Radio.cmd"
 set "DEFAULT=%LOCALAPPDATA%\DesksideRadio\app"
 
 rem curl and tar have both shipped with Windows since 10 version 1803.
@@ -115,6 +116,44 @@ if not defined UPDATING if exist "%APPROOT%\" (
   dir /b "%APPROOT%" 2>nul | "%FINDSTR%" /r "." >nul && goto :occupied
 )
 
+rem ---- run the published installer, not this one ------------------------
+rem
+rem This script is shipped inside the zip, so after the first install a
+rem copy sits in the app folder and every update replaces it. That copy is
+rem always one release behind the thing it is about to install -- and it
+rem is the copy that runs. A change made here to fix something about
+rem installing can therefore never reach the run that needs it: whoever
+rem has the bug has the old script, and the old script is what executes.
+rem
+rem So the newest one is fetched first and, if it differs from this file
+rem by a single byte, handed the job. It is 20 KB and one request, before
+rem anything has been written. The child is told where to install, because
+rem it runs from %TEMP% and the "am I in an install folder" rule above
+rem would otherwise give it a different answer from the one worked out
+rem here; and it is told not to do this again, so there is exactly one
+rem hand-over and no way to loop.
+rem
+rem Nothing is trusted that was not already being trusted: the file comes
+rem from the same release, over the same https, as the zip full of code
+rem this is about to unpack and run.
+rem
+rem Offline, the check fails and this copy carries on -- and then fails at
+rem the download a moment later, with a message about the network rather
+rem than about itself.
+if defined DESKSIDE_FRESH goto :newest
+set "NEWCMD=%TEMP%\deskside-radio-installer.cmd"
+"%CURL%" -fsL --retry 2 -o "%NEWCMD%" "%CMDURL%"
+if errorlevel 1 goto :newest
+if not exist "%NEWCMD%" goto :newest
+"%SystemRoot%\System32\fc.exe" /b "%NEWCMD%" "%~f0" >nul 2>&1
+if not errorlevel 1 goto :newest
+echo   A newer installer has been published. Running that one instead.
+echo.
+set "DESKSIDE_FRESH=1"
+call "%NEWCMD%" "%APPROOT%"
+exit /b %errorlevel%
+:newest
+
 echo.
 if defined UPDATING (
   echo   Updating the copy in
@@ -162,6 +201,43 @@ if errorlevel 1 goto :corrupt
 for %%A in ("%ZIP%") do set /a ZIPKB=%%~zA/1024
 set "MSG=Downloaded and checked  (%ZIPKB% KB)"
 call :ok
+
+rem ---- which version -----------------------------------------------
+rem The number was never said out loud, and after a run of releases cut
+rem on one version number there was no way to tell from this window
+rem whether what had just landed was the build you wanted.
+rem
+rem Read out of the zip rather than off the network: the archive is
+rem already on this disk, so it costs no request, and it is the version of
+rem the files actually about to be written rather than of whatever the
+rem release page says. The installed one is read here, before the unpack,
+rem because the unpack overwrites it.
+rem
+rem assets\version.txt is one line holding one number, written by the
+rem build for this. Not version.json, which is not in the download at all,
+rem and not index.html, where the number the app shows lives inlined in a
+rem single 240 KB line. One line and no punctuation means set /p reads it:
+rem no JSON parser, no PowerShell, nothing to quote.
+rem
+rem A folder installed before this existed has no such file, so OLDVER
+rem stays empty and the line simply does not name what it replaced.
+set "NEWVER="
+set "OLDVER="
+set "VTXT=%TEMP%\deskside-radio-version.txt"
+if exist "%VTXT%" del /q "%VTXT%" >nul 2>&1
+"%TAR%" -xOf "%ZIP%" assets/version.txt > "%VTXT%" 2>nul
+if exist "%VTXT%" set /p NEWVER=<"%VTXT%"
+del /q "%VTXT%" >nul 2>&1
+if exist "%APPDIR%assets\version.txt" set /p OLDVER=<"%APPDIR%assets\version.txt"
+
+if defined NEWVER (
+  if defined OLDVER (
+    set "MSG=Version %NEWVER%, replacing %OLDVER%"
+  ) else (
+    set "MSG=Version %NEWVER%"
+  )
+  call :ok
+)
 
 rem ---- put it in place --------------------------------------------------
 rem Extracted over the top, never wiped first. tar replaces the files it
@@ -234,6 +310,50 @@ if exist "%APPDIR%Win-Install-or-Update-Deskside-Radio.cmd" (
   )
 )
 
+rem ---- the browser profile ---------------------------------------------
+rem
+rem Three things, all of them to the profile rather than to the app.
+rem
+rem The rename: the Chrome profile was the only one of the three not
+rem named after its browser, which made it the one nobody could identify.
+rem Moved, never remade, so the stations and schedule inside it come
+rem along -- they live in that folder and nowhere else.
+rem
+rem The trim: a stock profile collects some thirty folders of background
+rem downloads -- safe browsing lists, hyphenation dictionaries, captcha
+rem providers, on-device suggestion models. A browser showing one local
+rem file consults none of them. The launchers now start the browser with
+rem the flags that stop them arriving; this removes the ones that already
+rem did. Every name in the list is something the browser fetched and can
+rem fetch again. Local Storage, where the settings are, is not among them
+rem and is never touched.
+rem
+rem The download folder: export writes deskside-radio-settings.js, and
+rem that file beside index.html is the only thing all three profiles can
+rem see. Landing in Downloads it seeds nothing, which is why settings
+rem exported from Chrome never appeared in Edge. Chrome has no flag for
+rem it, so it is written into the profile's Preferences, with the old
+rem file kept beside it in case the rewrite is not to the browser's
+rem liking.
+set "PROFROOT=%LOCALAPPDATA%\DesksideRadio"
+if not exist "%PROFROOT%\profile-chrome\" if exist "%PROFROOT%\profile\" (
+  move "%PROFROOT%\profile" "%PROFROOT%\profile-chrome" >nul 2>&1
+  set "MSG=Profile renamed to profile-chrome"
+  call :ok
+)
+
+set "FREED="
+set "ANSWER=%TEMP%\deskside-radio-answer.txt"
+if exist "%APPDIR%assets\trim-profile.ps1" (
+  "%PS%" -NoProfile -ExecutionPolicy Bypass -File "%APPDIR%assets\trim-profile.ps1" > "%ANSWER%" 2>nul
+  if exist "%ANSWER%" set /p FREED=<"%ANSWER%"
+)
+del /q "%ANSWER%" >nul 2>&1
+if defined FREED (
+  set "MSG=Browser profile trimmed  (%FREED%)"
+  call :ok
+)
+
 rem ---- the shortcut -----------------------------------------------------
 rem Made by the script that has always made it, which is now guaranteed to
 rem be sitting right there. One copy of the WScript.Shell block, the
@@ -245,11 +365,74 @@ rem echo is there for one release only: the script being called came out of
 rem the zip that was just downloaded, so until a release ships that carries
 rem the guard, the copy on disk is an older one that pauses regardless. The
 rem pipe answers that keypress. Harmless once it is no longer needed.
+rem Which browser, and which shortcuts to rewrite.
+rem
+rem Rewriting matters as much as creating: a .lnk holds the full path to
+rem the app folder, so an install that moved leaves every shortcut aimed
+rem at where the folder used to be. That is not hypothetical -- a Startup
+rem entry made from an unzipped copy in Downloads went on opening
+rem file:///C:/Users/.../Downloads/deskside-radio/index.html at every
+rem sign-in long after that folder was gone, and what the listener saw at
+rem sign-in was Chrome's "Your file couldn't be accessed".
+rem
+rem So: every shortcut that exists is rewritten, whichever browser it is
+rem for. Only when there are none at all is there a question to ask, and
+rem then it is asked rather than answered on the listener's behalf.
+rem Asked for rather than guessed at: the Desktop is not always under
+rem %USERPROFILE%. OneDrive moves it, and so does any machine with folder
+rem redirection, which is most managed ones.
+set "DESK="
+set "ANSWER=%TEMP%\deskside-radio-answer.txt"
+"%PS%" -NoProfile -ExecutionPolicy Bypass -Command "[Environment]::GetFolderPath('Desktop')" > "%ANSWER%" 2>nul
+if exist "%ANSWER%" set /p DESK=<"%ANSWER%"
+del /q "%ANSWER%" >nul 2>&1
+
+rem One flag each rather than letters in a string. The string version
+rem tested for a letter with %%WANT:C=%%, which cmd leaves untouched when
+rem the variable is not set -- so the comparison became two pieces of
+rem literal text and the line after it was read as a command.
+set "WANT="
+set "DOC="
+set "DOE="
+set "DOF="
+if defined DESK if exist "%DESK%\Deskside Radio.lnk" set "DOC=1"
+if defined DESK if exist "%DESK%\Deskside Radio (Edge).lnk" set "DOE=1"
+if defined DESK if exist "%DESK%\Deskside Radio (Firefox).lnk" set "DOF=1"
+if defined DOC set "WANT=1"
+if defined DOE set "WANT=1"
+if defined DOF set "WANT=1"
+if defined WANT goto :haveshortcut
+
+echo.
+echo   There is no Deskside Radio shortcut on your Desktop yet.
+echo   Which browser should it open in?
+echo.
+echo      C   Chrome, or Edge if Chrome is not installed
+echo      E   Edge
+echo      F   Firefox   ^(no app window: a tab strip and an address bar^)
+echo.
+set "PICK="
+set /p "PICK=  Type C, E or F and press Enter, or just Enter for C: "
+if /i "%PICK%"=="E" set "DOE=1"
+if /i "%PICK%"=="F" set "DOF=1"
+if not defined DOE if not defined DOF set "DOC=1"
+echo.
+
+:haveshortcut
 set "DESKSIDE_NOPAUSE=1"
-echo.| call "%APPDIR%Win - Create Desktop Shortcut (Chrome).cmd"
+if defined DOC call :shortcut "Win - Create Desktop Shortcut (Chrome).cmd" "Chrome or Edge"
+if defined DOE call :shortcut "Win - Create Desktop Shortcut (Edge).cmd" "Edge"
+if defined DOF call :shortcut "Win - Create Desktop Shortcut (Firefox).cmd" "Firefox"
+
+rem The Startup entry, if there is one, for the same reason: it holds the
+rem same stale path and nothing else ever rewrites it.
+set "STARTLNK=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Deskside Radio.lnk"
+if exist "%STARTLNK%" (
+  call "%APPDIR%Win - Start With Windows.cmd" >nul 2>&1
+  set "MSG=Start-up entry repointed at this folder"
+  call :ok
+)
 set "DESKSIDE_NOPAUSE="
-set "MSG=Desktop shortcut created"
-call :ok
 
 rem And one in the Start menu for the updater itself, because
 rem %LOCALAPPDATA% is not a folder anyone goes looking in.
@@ -315,6 +498,17 @@ if defined UPDATING (
 )
 echo.
 pause
+exit /b 0
+
+rem ---- one desktop shortcut ---------------------------------------------
+rem The piped echo answers the pause in a copy of the called script old
+rem enough not to know about DESKSIDE_NOPAUSE. Harmless once every copy
+rem in the field is newer than that.
+:shortcut
+if not exist "%APPDIR%%~1" exit /b 0
+echo.| call "%APPDIR%%~1"
+set "MSG=Desktop shortcut: %~2"
+call :ok
 exit /b 0
 
 rem ---- saying a thing went right ----------------------------------------

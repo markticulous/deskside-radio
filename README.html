@@ -462,7 +462,7 @@ html { scroll-behavior: smooth; }
   <span class="byline">
     <span class="byline-by">A</span><span class="byline-name">Markticulous</span><span class="byline-suffix">build</span>
   </span>
-  <span class="ver" id="verChip">v1.4.7</span>
+  <span class="ver" id="verChip">v1.4.8</span>
 </p>
 
 <header class="masthead">
@@ -502,6 +502,8 @@ html { scroll-behavior: smooth; }
         <li>Press play.</li>
       </ol>
       <p>That&rsquo;s all &mdash; it installs the radio, puts a shortcut on your Desktop and opens it.</p>
+      <p>If there is no shortcut on your Desktop yet it asks which browser to open in: <strong>C</strong> for Chrome (or Edge, where Chrome is not installed), <strong>E</strong> for Edge, <strong>F</strong> for Firefox. Pressing Enter takes Chrome. If shortcuts are already there it asks nothing and repoints the ones you have.</p>
+      <p>It also tells you which version it is putting in, and which one that replaces.</p>
       <p>If you are reading this inside a folder you unzipped yourself, double-click <span class="path">Win&nbsp;-&nbsp;Create Desktop Shortcut (Chrome).cmd</span> instead and it works the same way from where it stands.</p>
       <p>Everything below is detail you can come back for. On a Mac or on Linux, see <a href="#browser">Choosing a browser</a>.</p>
     </section>
@@ -595,7 +597,8 @@ html { scroll-behavior: smooth; }
         <li><strong>Settings → Service → Export settings.</strong></li>
         <li>Leave the downloaded <span class="path">deskside-radio-settings.js</span> beside <span class="path">index.html</span>.</li>
       </ol>
-      <p>The next launch reads it once and keeps its own settings from then on. This is also how you set up a second machine.</p>
+      <p>The next launch reads it, and so does every launch after that &mdash; but only when the file has changed since that browser last took it. So settings you change here and do not export are left alone, and exporting again is what tells every other shortcut to catch up. This is also how you set up a second machine.</p>
+      <p>Export now saves the file into the app folder, beside <span class="path">index.html</span>, rather than into your Downloads folder. That is the whole of step 3 done for you.</p>
     </section>
 
     <section id="browser">
@@ -615,7 +618,9 @@ html { scroll-behavior: smooth; }
           <div class="cmd">chmod +x "Linux - Create Desktop Shortcut.sh"</div>
         </dd>
       </dl>
-      <p>Each shortcut has a browser profile of its own, so stations and settings do not carry across between them. Export from <strong>Settings → Service</strong> to move a setup from one to another.</p>
+      <p>Each shortcut has a browser profile of its own, and no profile can read another&rsquo;s storage. The settings file beside <span class="path">index.html</span> is the only thing all of them can see, so that is how a setup moves from one to another: <strong>Export settings</strong> in <strong>Settings → Service</strong> saves it there, and every shortcut reads it the next time it opens.</p>
+      <p>It used to save into your Downloads folder, where nothing ever read it &mdash; which is why settings exported from Chrome never appeared in Edge. Each profile is now told to save into the app folder instead.</p>
+      <p>The file is taken only when it has changed since that browser last took it. <strong>Whoever exported last wins.</strong></p>
 
       <h3>On a Mac</h3>
       <p>Open <span class="path">index.html</span> in Chrome, Edge or Safari. There is no script for it; the shortcut button next to Settings hands you a <span class="path">.fileloc</span> file instead, which you drag from Downloads to the Desktop. If Finder refuses to open it, drag the address out of your browser’s address bar onto the Desktop — that always works.</p>
@@ -680,7 +685,8 @@ html { scroll-behavior: smooth; }
       <p>Streams drop. The radio watches for silence and dropped connections and reconnects on its own, backing off from two seconds to thirty, and returns to whatever the schedule says or the last station that worked.</p>
 
       <h3>Backup</h3>
-      <p><strong>Settings → Service</strong> exports everything to one file and imports it back.</p>
+      <p><strong>Settings → Service</strong> exports everything to one file and imports it back. Everything means everything: the stations, the schedule, whether the schedule is switched on, the theme, the volume and the tone. The file is saved beside <span class="path">index.html</span>, which is also how settings move between browsers &mdash; see <a href="#browser">Choosing a browser</a>.</p>
+      <p>Each file records the version that wrote it and the date and time, to the second, so two of them on a desktop can be told apart. Importing says which version it came from. A file written by an older version is read and brought forward without asking.</p>
     </section>
 
     <section id="recording">
@@ -731,6 +737,7 @@ html { scroll-behavior: smooth; }
       <p>What the notice offers depends on what you are running it on. The installer is a Windows batch file, so naming it on a Mac or on Linux would be an instruction that cannot be followed; the radio checks and says the right thing for the machine it is on.</p>
       <p><strong>On Windows</strong> the notice reads <strong>download the updater</strong>. Run what lands in your Downloads folder. It is the same file that installs the radio from scratch, and with no <code>index.html</code> beside it, it goes to the folder it installed to &mdash; so installing and updating are one procedure rather than two things to remember. Windows asks once whether to run a downloaded file. Two cheaper routes if you would rather skip that: the same file is already in the app folder and carries no Mark of the Web, so it runs with no prompt at all (hold Shift on <strong>Settings &rarr; Service</strong> and a button appears that opens the folder), or run <strong>Deskside Radio - Update</strong> from the Start menu, which is there if the installer put this copy here.</p>
       <p><strong>On macOS and Linux</strong> the notice reads <strong>get it from GitHub</strong> and takes you to the releases page. Download <span class="path">deskside-radio.zip</span>, unpack it over your app folder, and reopen the radio. There is no installer to run and nothing to uninstall. It works out that it is being run from inside an install, fetches the new version and unpacks it over the old one. Close the radio and open it again to see it.</p>
+      <p>The installer checks for a newer copy of <em>itself</em> before it does anything else, and hands the job over if there is one. It ships inside the zip, so the copy in your app folder is always one release behind the version it is about to install &mdash; which would mean a fix to the way installing works could never reach the install that needed it.</p>
       <p><strong>Nothing is downloaded or replaced until you ask for it.</strong> There is no scheduled task, no background updater, and nothing running when the radio is not. The radio only ever tells you that a version exists; it cannot start the updater itself, because a page opened from a disk has no way to run a program &mdash; and that is a limit worth keeping.</p>
       <p>An update replaces every file in the app folder and loses nothing, because your stations, schedule and settings are not in it &mdash; they are in the browser profile. Anything else you left beside <span class="path">index.html</span>, such as a settings seed, survives as well: the update unpacks over the top rather than clearing the folder out first.</p>
       <p><strong>Check now</strong>, next to that switch, asks straight away instead of waiting for the day to turn over. It says <em>Up to date</em> when there is nothing new, names the version when there is, and goes quiet while the switch is off.</p>
