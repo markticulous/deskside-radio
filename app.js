@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.4.12';
+  var APP_VERSION = '1.4.13';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -2737,6 +2737,38 @@
      and the File System Access API blocks the extension too. So the file is
      downloaded, and a panel says what to rename it to, with the helper
      script offered as the way round it. macOS has no such rule. */
+  /* Whether there is a shortcut on the Desktop, which only something
+     outside the page can know. The Windows launcher writes the answer into
+     assets/shortcut.js at every start, the same door the settings seed and
+     the version probe come through.
+
+     Read once, at boot, and deliberately not re-read: it is a cosmetic
+     toggle on an icon, and the launcher may still be writing the file as
+     this loads. One launch behind is the worst it gets.
+
+     Anything other than a clear yes leaves the button showing. Missing
+     file, unreadable file, an error, or any platform where no launcher
+     runs -- which is macOS and Linux, where this file will never exist and
+     the top bar therefore stays exactly as it was. Never hide on not
+     knowing: somebody whose shortcut has gone needs the button most. */
+  function hideShortcutIfOneExists() {
+    var btn = $('makeShortcut');
+    if (!btn) return;
+    var s = document.createElement('script');
+    s.src = 'assets/shortcut.js?' + Date.now();
+    s.onload = function () {
+      s.remove();
+      if (window.DESKSIDE_HAS_SHORTCUT === true) btn.hidden = true;
+    };
+    s.onerror = function () { s.remove(); };
+    document.head.appendChild(s);
+  }
+  hideShortcutIfOneExists();
+
+  $('makeShortcutPane').addEventListener('click', function () {
+    $('makeShortcut').click();
+  });
+
   $('makeShortcut').addEventListener('click', function () {
     var here = location.href.split('#')[0];
     var mac = isMac();
@@ -4323,6 +4355,92 @@
     return !!(state.versionLatest && newerThan(state.versionLatest, APP_VERSION));
   }
 
+  /* What is on disk, as against what is running.
+
+     Those come apart exactly once, and it is the case worth knowing about:
+     the launcher has fetched a new version in the background while this
+     window carried on playing the old one. Until the radio is opened again
+     the files on disk are ahead of the page reading them.
+
+     A page opened from a disk cannot fetch and cannot read a file. It can
+     load a script, which is the same door the settings seed beside
+     index.html comes through, so the build writes the number out as a line
+     of JavaScript as well as the line of text the batch file reads.
+
+     Measured rather than hoped for: a second read comes back with the new
+     contents, and file:// does not serve it from cache. The query string
+     is belt and braces for anything that would.
+
+     null for a folder with no assets/version.js -- an install older than
+     this, or an archive taken apart by hand. Not knowing reads as nothing
+     pending, which is the safe way round: the reader is told the update
+     will arrive on its own, which is true, rather than being sent to close
+     a radio for an update that is not there. */
+  function readDiskVersion() {
+    return new Promise(function (res) {
+      var s = document.createElement('script');
+      s.src = 'assets/version.js?' + Date.now();
+      s.onload = function () { s.remove(); res(window.DESKSIDE_ON_DISK || null); };
+      s.onerror = function () { s.remove(); res(null); };
+      document.head.appendChild(s);
+    });
+  }
+
+  /* Asked at the moment of the click and never cached, because the whole
+     point is that it changes under a window left open all afternoon. */
+  function openUpdateNotice() {
+    var box = $('updateReady');
+    if (!box) return;
+    var changes = $('updateReadyChanges');
+    if (changes) changes.href = RELEASES_URL;
+
+    readDiskVersion().then(function (disk) {
+      var pending = !!(disk && newerThan(disk, APP_VERSION));
+      var cancel = $('updateReadyCancel');
+      var go = $('updateReadyGo');
+
+      if (pending) {
+        $('updateReadyTitle').textContent = 'Update pending';
+        $('updateReadyBody').textContent =
+          'Version ' + disk + ' update is pending on this machine. ' +
+          'Close the radio and open it again to apply the update.';
+        $('updateSteps').hidden = true;
+        cancel.hidden = false;
+        go.textContent = 'Close the radio';
+        go.value = 'close';
+      } else {
+        $('updateReadyTitle').textContent = 'Update on the way';
+        /* The number comes from the same check that put the notice on the
+           screen, so it is always there in practice. Named anyway, because
+           "Version  has been published" is what the missing case reads
+           like and it is one word to avoid. */
+        $('updateReadyBody').textContent =
+          (state.versionLatest ? 'Version ' + state.versionLatest : 'A newer version') +
+          ' has been published on GitHub. ' +
+          'The radio app fetches it by itself the next time you open it, and runs ' +
+          'it the time after. Nothing to do.';
+        /* The "time after" is the part that reads as a fault rather than a
+           design unless the reason is given, and it is given as a picture:
+           published, fetched at the next launch, running at the one after. */
+        var v = state.versionLatest || '';
+        $('stepVerA').textContent = v;
+        $('stepVerB').textContent = v;
+        $('updateSteps').hidden = false;
+        cancel.hidden = true;
+        go.textContent = 'Got it';
+        go.value = 'ok';
+      }
+      box.showModal();
+      /* Focus put where the answer is, not where the tab order happens to
+         start. showModal focuses the first focusable thing it finds, which
+         is the "See what changed" link -- so the link wore the focus ring,
+         looked like the default action, and WAS the default action: Enter
+         opened a releases page instead of doing the thing the dialog is
+         asking about. */
+      go.focus();
+    });
+  }
+
   /* True only while a request is actually out. The button reads its state
      from this rather than being switched on and off by hand at each call
      site, which is how one of them ends up forgetting. */
@@ -4476,6 +4594,35 @@
   $('checkNow').addEventListener('click', function () { checkVersion(true); });
 
   var PILL_OUT_MS = 90;
+  /* On Windows the notice opens the dialog rather than the releases page,
+     because the dialog can say something the releases page cannot: whether
+     this machine already has the new version. Off Windows nothing fetches
+     anything on its own, so the link is the whole answer and is left as it
+     is.
+
+     Modified clicks are left alone in both. Ctrl-click means "open in a
+     tab" everywhere else on the machine and has to go on meaning it here,
+     which is the same guard the station links use. */
+  $('updatePillLink').addEventListener('click', function (e) {
+    if (!onWindows()) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+    e.preventDefault();
+    openUpdateNotice();
+  });
+
+  /* Locked. Escape is how a window gets dismissed by somebody who has not
+     read it, and this one is asking which of two things to do -- closing it
+     unanswered leaves the reader exactly where they were, holding the same
+     question. A dialog element treats Escape as a cancel event, so refusing
+     the cancel is the whole of it. The backdrop is not a dismiss either;
+     dialog never made it one. */
+  $('updateReady').addEventListener('cancel', function (e) { e.preventDefault(); });
+
+  $('updateReady').addEventListener('close', function () {
+    if (this.returnValue !== 'close') return;
+    window.close();
+  });
+
   $('updatePillClose').addEventListener('click', function () {
     state.versionPillOff = true;
     save();

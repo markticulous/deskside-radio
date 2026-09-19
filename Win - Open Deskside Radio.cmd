@@ -145,6 +145,42 @@ rem cmd is holding open.
   "  if ([DsWin]::Lock('Deskside Radio') -gt 0) { break }" ^
   "}"
 
+rem ---- is there a shortcut on the Desktop -------------------------------
+rem The page has a button offering to make one, and no way on earth to find
+rem out whether it is needed. A page opened from a disk cannot look at the
+rem disk. It can load a script, though -- the same door the settings seed
+rem and the version probe come through -- so the answer is left where it
+rem can read it.
+rem
+rem Written after the browser has been told to start, not before: this is
+rem a directory listing and a PowerShell launch, and neither belongs
+rem between a double-click and the radio. The page usually takes longer to
+rem load than this takes to run, and on the occasion it does not, the file
+rem still holds what was true at the last launch. A cosmetic button being
+rem one launch behind is not worth a slower start.
+rem
+rem Absent or unreadable means show the button. Never hide on not knowing:
+rem a listener whose shortcut is gone needs that button more than anyone,
+rem and the same rule is what leaves macOS and Linux exactly as they were,
+rem since nothing of ours runs at launch there to write this at all.
+rem
+rem Asked for by name, and only by the full name. "Deskside Radio*.lnk"
+rem covers the Edge and Firefox ones, which carry the browser in brackets.
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command ^
+  "try {" ^
+  "  $d = [Environment]::GetFolderPath('Desktop');" ^
+  "  $has = $false;" ^
+  "  if ($d -and (Test-Path -LiteralPath $d)) {" ^
+  "    $found = @(Get-ChildItem -LiteralPath $d -Filter 'Deskside Radio*.lnk' -ErrorAction SilentlyContinue);" ^
+  "    $has = ($found.Count -gt 0) };" ^
+  "  $out = Join-Path $env:APPROOT 'assets';" ^
+  "  if (Test-Path -LiteralPath $out) {" ^
+  "    $line = '/* Written by the launcher at each start. Whether a shortcut for' + [Environment]::NewLine" ^
+  "      + '   this radio is on the Desktop right now. */' + [Environment]::NewLine" ^
+  "      + 'window.DESKSIDE_HAS_SHORTCUT = ' + $has.ToString().ToLower() + ';' + [Environment]::NewLine;" ^
+  "    Set-Content -LiteralPath (Join-Path $out 'shortcut.js') -Value $line -Encoding ASCII -NoNewline }" ^
+  "} catch { }"
+
 rem ---------------------------------------------------------------------
 rem  Keeping the radio up to date, without anybody having to do anything
 rem
@@ -182,15 +218,22 @@ rem "Win - Automatic Updates.cmd off" leaves a marker here and this looks
 rem for it, the same shape as the Startup entry being a file in a folder.
 if exist "%APPDIR%assets\auto-update-off.txt" exit /b 0
 
-rem Once a day. The stamp is written whether or not there was anything to
-rem fetch, so a machine that is opened twenty times a day asks once.
-set "STAMP=%APPDIR%assets\last-update-check.txt"
+rem At every launch, and there used to be a stamp here that made it once a
+rem day. It went because of what it did on the day it mattered: the app
+rem notices a release at noon, the listener closes the radio and opens it
+rem again to take it, and nothing happens -- the launcher looked this
+rem morning and considers the day done. The notice now offers to close the
+rem radio for exactly that purpose, so a check that might quietly decline
+rem would make the offer a lie.
+rem
+rem It costs about a kilobyte. And it is self-limiting: once the update is
+rem in, version.txt matches the feed and there is nothing to fetch, so
+rem asking again costs the question and never the answer.
+rem
+rem The date is still worked out, because the lock below is dated.
 set "TODAY="
 for /f %%A in ('%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -Command "(Get-Date).ToString('yyyy-MM-dd')"') do set "TODAY=%%A"
 if not defined TODAY exit /b 0
-set "LAST="
-if exist "%STAMP%" set /p LAST=<"%STAMP%"
-if "%LAST%"=="%TODAY%" exit /b 0
 
 rem One updater at a time. Two open radios mean two of these; whoever gets
 rem the lock does the work and the other goes away. The lock carries the
@@ -211,13 +254,13 @@ rem What is here, and what is published. version.txt is one line written by
 rem the build; the feed is the same file the radio itself reads.
 set "HAVE="
 if exist "%APPDIR%assets\version.txt" set /p HAVE=<"%APPDIR%assets\version.txt"
-if not defined HAVE goto :stampandgo
+if not defined HAVE goto :nothingtodo
 
 set "FEED=%TEMP%\deskside-radio-feed.json"
 if exist "%FEED%" del /q "%FEED%" >nul 2>&1
-"%SystemRoot%\System32\curl.exe" -fsL --retry 1 --max-time 20 -o "%FEED%" "https://raw.githubusercontent.com/markticulous/deskside-radio/main/version.json"
-if errorlevel 1 goto :stampandgo
-if not exist "%FEED%" goto :stampandgo
+"%SystemRoot%\System32\curl.exe" -fsL --max-time 8 -o "%FEED%" "https://raw.githubusercontent.com/markticulous/deskside-radio/main/version.json"
+if errorlevel 1 goto :nothingtodo
+if not exist "%FEED%" goto :nothingtodo
 
 rem Newer, not merely different. Compared component by component, so 1.4.10
 rem is newer than 1.4.9 -- which a string comparison gets backwards.
@@ -226,7 +269,7 @@ set "ANSWER=%TEMP%\deskside-radio-answer.txt"
 "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command "try { $f = (Get-Content -Raw -LiteralPath $env:FEED | ConvertFrom-Json).version; $a = [version]$f; $b = [version]$env:HAVE; if ($a -gt $b) { $f } } catch { }" > "%ANSWER%" 2>nul
 if exist "%ANSWER%" set /p NEWER=<"%ANSWER%"
 del /q "%ANSWER%" "%FEED%" >nul 2>&1
-if not defined NEWER goto :stampandgo
+if not defined NEWER goto :nothingtodo
 
 rem Run from a copy -- and that goes for this file too.
 rem
@@ -247,16 +290,10 @@ rem install finished and never wrote its stamp, so every launch checked
 rem again. That is the mild version. The same offset landing mid-line in a
 rem longer file runs whatever the rest of that line happens to say.
 set "SRC=%APPDIR%Win-Install-or-Update-Deskside-Radio.cmd"
-if not exist "%SRC%" goto :stampandgo
+if not exist "%SRC%" goto :nothingtodo
 set "RUNNER=%TEMP%\deskside-radio-autoupdate.cmd"
 copy /y "%SRC%" "%RUNNER%" >nul 2>&1
-if not exist "%RUNNER%" goto :stampandgo
-
-rem Stamped before the hand-over rather than after it, because after it
-rem there is no "after": this script is gone by then. It is the same stamp
-rem either way -- written whether or not the install works, so a machine
-rem that cannot reach GitHub asks once a day and not at every launch.
-> "%STAMP%" echo %TODAY%
+if not exist "%RUNNER%" goto :nothingtodo
 
 rem Four lines in %TEMP%, because nothing of ours can still be running in
 rem the app folder once the extract starts. This does the install, then
@@ -267,7 +304,7 @@ set "STEP=%TEMP%\deskside-radio-update-step.cmd"
 >>"%STEP%" echo call "%RUNNER%" "%APPROOT%"
 >>"%STEP%" echo del /q "%LOCK%" ^>nul 2^>^&1
 >>"%STEP%" echo del /q "%RUNNER%" ^>nul 2^>^&1
-if not exist "%STEP%" goto :stampandgo
+if not exist "%STEP%" goto :nothingtodo
 
 rem Quiet: asks nothing, says nothing, opens nothing, and leaves the
 rem playing radio alone. It still checks the archive before it writes a
@@ -286,9 +323,8 @@ rem nothing left to do anyway.
 start "" /b "%SystemRoot%\System32\cmd.exe" /c "%STEP%"
 exit
 
-:stampandgo
-rem Stamped even when the check failed or found nothing, so a machine that
-rem is offline for a week asks once a day rather than at every launch.
-> "%STAMP%" echo %TODAY%
+:nothingtodo
+rem Offline, blocked, nothing published, a version that will not parse: all
+rem the same answer. Drop the lock so the next launch may try, and go.
 del /q "%LOCK%" >nul 2>&1
 exit /b 0

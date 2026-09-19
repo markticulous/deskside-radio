@@ -339,6 +339,19 @@
           </div>
         </div>
         <div class="pane-block">
+          <h3>Desktop shortcut</h3>
+          <p class="hint">Opens the radio in its own window, tuned and playing, with no browser furniture around it &mdash; and on Windows it is also what keeps the app up to date, because the shortcut runs a small script that does the checking.</p>
+          <!-- The same action as the icon in the top bar, which hides
+               itself once a shortcut exists. This one never hides. The icon
+               can only know what the launcher last told it, and a listener
+               who has just deleted their shortcut is exactly the person who
+               needs the button back -- so the convenience is up there and
+               the guarantee is here. -->
+          <div class="btn-row">
+            <button type="button" class="ghost" id="makeShortcutPane">Put a shortcut on the Desktop</button>
+          </div>
+        </div>
+        <div class="pane-block">
           <h3>Updates</h3>
           <p class="hint">The app asks GitHub whether a newer version has been published when it opens, and every six hours it is left running, and shows a small <strong>Update available</strong> mark beside the wordmark when there is one. It sends nothing but the request. The page itself installs nothing and cannot &mdash; it is opened from a disk, and a page opened from a disk has no way to run a program.</p>
           <!-- The same paragraph for two platforms. Which one is drawn
@@ -453,6 +466,52 @@
     <div class="confirm-actions">
       <button type="submit" value="cancel" class="ghost">Cancel</button>
       <button type="submit" value="reset" class="primary danger">Reset everything</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Clicking the update notice, on Windows.
+
+     This is not an installer and cannot become one: a page opened from a
+     disk has no way to run a program. What it can do is answer the one
+     question nobody else can, and which decides what the reader should do
+     next -- is the new version already sitting on this machine, fetched
+     while the radio played, or has nothing been downloaded yet? Those have
+     different answers, and before this the notice gave the same one to
+     both.
+
+     The button really does close the radio. Measured: a Chrome --app=
+     window closes when a script asks, because its session history holds a
+     single entry. Where it does not -- a tab, a window with history behind
+     it -- nothing happens and the radio stays open, which is the right way
+     for it to fail. -->
+<dialog class="confirm" id="updateReady">
+  <form method="dialog" class="confirm-box">
+    <h2 id="updateReadyTitle">Update pending</h2>
+    <p id="updateReadyBody"></p>
+    <!-- Why the new version starts a launch after the one that fetched
+         it, drawn instead of explained. The sentence that used to sit here
+         said the same thing and read as a fault being owned up to; three
+         steps with the middle one lit is a shape people already know from
+         a parcel, and it is over in a glance. -->
+    <ol class="update-steps" id="updateSteps" hidden>
+      <li class="is-done">
+        <b>Published</b>
+        <span>v<span id="stepVerA"></span> is on GitHub</span>
+      </li>
+      <li class="is-next">
+        <b>Next time you open it</b>
+        <span>it downloads while you listen</span>
+      </li>
+      <li>
+        <b>The time after</b>
+        <span>the radio runs v<span id="stepVerB"></span></span>
+      </li>
+    </ol>
+    <a class="ghost" id="updateReadyChanges" target="_blank" rel="noopener">See what changed</a>
+    <div class="confirm-actions">
+      <button type="submit" value="cancel" class="ghost" id="updateReadyCancel">Cancel</button>
+      <button type="submit" value="close" class="primary" id="updateReadyGo">Close the radio</button>
     </div>
   </form>
 </dialog>

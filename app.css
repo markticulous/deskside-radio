@@ -178,6 +178,12 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 22%, transparent);
 }
 .shortcut-btn { width: 30px; height: 30px; opacity: .55; transition: opacity .16s ease; }
+/* Third time this line has been needed, for the third element, for the
+   same reason: display on a class selector is an author rule and the one
+   that makes the hidden attribute work is the browser's, which every
+   author rule outranks. Without it the shortcut button sets hidden, the
+   property is genuinely true, and the button stays on screen anyway. */
+.icon-btn[hidden] { display: none; }
 .shortcut-btn:hover { opacity: 1; }
 .shortcut-btn svg { width: 15px; height: 15px; }
 .icon-btn svg { width: 20px; height: 20px; }
@@ -1109,16 +1115,29 @@
      not have gets a synthetic one, which smears them. */
   font-family: "VFD Nova", "Barlow Condensed", "Arial Narrow", sans-serif;
   font-weight: 400; font-size: clamp(46px, 6.4vw, 82px); line-height: 1.02; letter-spacing: .02em; text-transform: uppercase;
-  /* Phosphor, in four layers: a near-white core where the segment is
-     driven hardest, then amber, then two wide falls of it into the glass.
-     A single shadow gives a sticker with a halo; the stack is what reads
-     as something actually glowing behind glass. */
+  /* Phosphor in two parts, and they are split for a reason that only
+     shows up once the name is drawn a character at a time.
+
+     Each cell is its own inline box, and an inline box paints its shadow
+     and then its glyph. So cell 2's shadow paints OVER cell 1's glyph,
+     cell 3's over both, and with a fall reaching 72px every character
+     ended up under a wash of amber from every character to its right.
+     Measured against the same words as a single run: softer edges and a
+     paler face, which is exactly what it looked like.
+
+     The near part stays on the cells, where it has to be, because it is
+     what dims when a grid stumbles. The two wide falls move here as a
+     filter, which paints from the finished readout and sits behind all of
+     it -- one haze for the whole name instead of thirteen overlapping
+     ones. Checked at a name long enough to be clipped: the filter does
+     not put a glow on the cut edge. */
   text-shadow:
     0 0 1px rgba(255,232,186,.95),
     0 0 3px rgba(255,190,70,.9),
-    0 0 12px rgba(255,176,0,.5),
-    0 0 34px rgba(255,150,0,.3),
-    0 0 72px rgba(255,130,0,.16);
+    0 0 12px rgba(255,176,0,.5);
+  filter:
+    drop-shadow(0 0 17px rgba(255,150,0,.55))
+    drop-shadow(0 0 36px rgba(255,130,0,.32));
   white-space: nowrap; overflow: hidden;
   /* Its own stacking context, so the unlit field below sits behind the
      glyphs and not behind the whole display. */
@@ -1142,12 +1161,18 @@
      so the segment itself has to fall with it, and the colour goes toward
      the dark of the glass rather than toward grey. */
   color: color-mix(in srgb, var(--amber) calc(var(--lit) * 100%), #241a08);
+  /* The near layers only. The two wide falls are on the readout itself,
+     for the reason given up there -- a fall this wide, repeated per cell,
+     lands on every neighbour and takes the edge off all of them. What is
+     left is close enough to the glyph to dim with it and not wide enough
+     to reach the character next door.
+     A cell that stumbles keeps its share of the ambient haze, which is
+     right anyway: the glass does not stop glowing because one grid is
+     weak. */
   text-shadow:
     0 0 1px rgba(255,232,186,calc(.95 * var(--lit))),
     0 0 3px rgba(255,190,70,calc(.9 * var(--lit))),
-    0 0 12px rgba(255,176,0,calc(.5 * var(--lit))),
-    0 0 34px rgba(255,150,0,calc(.3 * var(--lit))),
-    0 0 72px rgba(255,130,0,calc(.16 * var(--lit)));
+    0 0 12px rgba(255,176,0,calc(.5 * var(--lit)));
   transition: text-shadow .05s linear, color .05s linear;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -3490,6 +3515,68 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 
 .confirm { border: 0; padding: 0; background: transparent; max-width: none; max-height: none; position: fixed; inset: 0; width: auto; height: auto; }
 .confirm::backdrop { background: rgba(0,0,0,.62); }
+/* Lighter than the rest, and blurred, because this one is not answering
+   anything the listener just did -- it opens over a radio in the middle of
+   playing. Dimmed enough to put the dialog in front, soft enough that the
+   cabinet is plainly still there and still working.
+   backdrop-filter is unsupported nowhere that matters, and where it is the
+   dimming alone is the whole effect. */
+#updateReady::backdrop {
+  background: rgba(0,0,0,.40);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+/* Wider than the other confirms, because three steps across a 440px card
+   is four words to a column. */
+#updateReady .confirm-box { width: min(520px, calc(100% - 32px)); }
+/* Solid where the rest of the ghosts are dashed. Dashed is what this app
+   uses for the half-present -- the folder button that appears while Shift
+   is held -- and this Cancel is a plain answer to a plain question. */
+#updateReadyCancel { border-style: solid; }
+
+/* The two launches, drawn. One rail, three stops, and the one that happens
+   next lit in the same orange as the notice that opened the dialog, so the
+   reader is looking at where they are rather than reading about it. */
+.update-steps {
+  list-style: none; margin: 2px 0 0; padding: 0;
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: auto auto;
+}
+/* display: grid above is an author rule, and the one that makes the hidden
+   attribute work is the browser's, which every author rule outranks. The
+   same line the .ghost buttons and the pill both needed. */
+.update-steps[hidden] { display: none; }
+/* Two rows shared across all three, so the second lines start level even
+   when one heading wraps and the others do not. Without it the middle
+   heading took two lines, pushed its own second line down, and the three
+   stops stopped looking like one row of anything. subgrid is the only way
+   to make a row in one column know how tall the same row is in the next;
+   where it is unsupported the columns simply fall back to their own
+   heights, which is what this looked like before. */
+.update-steps li {
+  position: relative; padding: 26px 6px 0; text-align: center;
+  font-size: 12px; line-height: 1.35; color: var(--ui-mute);
+  display: grid; grid-template-rows: subgrid; grid-row: span 2; row-gap: 3px;
+  align-content: start;
+}
+/* The rail is drawn per stop rather than as one line behind them, so the
+   two ends stop at the outer dots instead of running past them. */
+.update-steps li::before {
+  content: ""; position: absolute; top: 8px; left: 0; right: 0;
+  height: 2px; background: var(--ui-line);
+}
+.update-steps li:first-child::before { left: 50%; }
+.update-steps li:last-child::before { right: 50%; }
+.update-steps li::after {
+  content: ""; position: absolute; top: 3px; left: 50%; margin-left: -6px;
+  width: 12px; height: 12px; border-radius: 50%; box-sizing: border-box;
+  background: var(--ui-bg); border: 2px solid var(--ui-line);
+}
+.update-steps .is-done::after { background: var(--ui-mute); border-color: var(--ui-mute); }
+.update-steps .is-next::after { background: var(--alert); border-color: var(--alert); }
+.update-steps b { color: var(--ui-fg); font-weight: 600; }
+/* The darker orange, not the dot's: this is text, and the dot's orange is
+   2.28:1 on white -- fine for a mark, not for a word. */
+.update-steps .is-next b { color: var(--alert-ink); }
 .confirm-box {
   box-sizing: border-box; width: min(440px, calc(100% - 32px)); margin: 18vh auto 0;
   padding: 22px 24px 20px; display: grid; gap: 12px;
