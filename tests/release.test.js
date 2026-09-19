@@ -811,6 +811,9 @@ test('the window is put back before the page is drawn, not after', () => {
     'app.js no longer claims the restored box, so the window gets refitted over it');
 });
 
+const OPENER = 'Win - Open Deskside Radio.cmd';
+const VBS = 'Win - Open Deskside Radio.vbs';
+
 test('the opener locks the window, and the shortcuts go through it', () => {
   /* A window cannot be made non-resizable from inside the page: there is no
      web API for it and no browser switch for it. The only way is to clear
@@ -824,7 +827,6 @@ test('the opener locks the window, and the shortcuts go through it', () => {
      every top-level window instead. And the title is not "Deskside Radio"
      once a station is playing -- it is "KISS 92.5 - Deskside Radio" -- so
      an exact match never fired. It matches the tail. */
-  const OPENER = 'Win - Open Deskside Radio.cmd';
   const src = read(OPENER);
 
   assert.ok(/EnumWindows/.test(src),
@@ -848,19 +850,103 @@ test('the opener locks the window, and the shortcuts go through it', () => {
   assert.ok(read('tools/build-dist.js').indexOf(OPENER) !== -1,
     OPENER + ' is not in the build, so a download would have shortcuts aimed at a missing file');
 
-  /* Both shortcut writers go through it, minimised, and fall back to the
-     browser if it is not beside them. */
+  /* Both shortcut writers go through it -- by way of the .vbs, which is
+     what keeps a console from ever being created -- and fall back, first to
+     the .cmd and then to the browser. */
   ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start With Windows.cmd'].forEach(function (f) {
     const s = read(f);
-    assert.ok(s.indexOf('set "OPENER=%APPDIR%' + OPENER + '"') !== -1,
-      f + ' no longer names the opener');
+    assert.ok(s.indexOf('set "OPENER=%APPDIR%' + VBS + '"') !== -1,
+      f + ' no longer names the .vbs opener');
+    assert.ok(s.indexOf('set "OPENERCMD=%APPDIR%' + OPENER + '"') !== -1,
+      f + ' has lost the .cmd fallback for a folder older than the .vbs');
     assert.ok(/if not exist "%OPENER%" set "OPENER="/.test(s),
       f + ' would write a shortcut to an opener that is not there');
-    assert.ok(/\$link\.TargetPath = \$env:OPENER;/.test(s), f + ' does not aim the shortcut at the opener');
+    assert.ok(/if not exist "%WSCRIPT%" set "OPENER="/.test(s),
+      f + ' would aim a shortcut at wscript.exe without checking it is there');
+    assert.ok(/\$link\.TargetPath = \$env:WSCRIPT;/.test(s),
+      f + ' does not start the opener through wscript, so the console flashes again');
+    assert.ok(/\$link\.Arguments = \$q \+ \$env:OPENER \+ \$q \+ ' ' \+ \$q \+ \$env:BROWSER \+ \$q;/.test(s),
+      f + ' does not hand the .vbs the browser to use');
     assert.ok(/\$link\.WindowStyle = 7;/.test(s),
-      f + ' does not minimise the opener, so its console shows on screen at every launch');
+      f + ' no longer minimises the .cmd on the fallback path, so its console shows');
     assert.ok(/\} elseif \(\$env:BROWSER\) \{/.test(s),
       f + ' has lost the fallback that aims straight at the browser');
+  });
+});
+
+/* A .cmd is run by cmd.exe and cmd.exe gets a console. WindowStyle 7 only
+   minimises that console once Windows has drawn it, which is the black
+   rectangle and the taskbar button that flash at launch -- both visible on
+   a screen recording of a clean 1.4.7 install. Run from a .vbs with a
+   window style of 0, the console is never created at all. */
+test('the launcher opens without a console window', () => {
+  const src = read(VBS);
+
+  assert.ok(/CreateObject\("WScript\.Shell"\)/.test(src), VBS + ' does not use WScript.Shell to start anything');
+  assert.ok(src.indexOf(OPENER) !== -1, VBS + ' no longer starts ' + OPENER);
+  assert.ok(/sh\.Run line, 0, False/.test(src),
+    VBS + ' does not run with window style 0, which is the whole reason it exists');
+  assert.ok(/ScriptFullName/.test(src),
+    VBS + ' does not work out its own folder, so a moved app folder would break it');
+  /* Nothing but the launch. Logic here is logic that cannot be read or run
+     on its own, and the .cmd is the file people are meant to be able to
+     open and understand. */
+  assert.ok(src.split('\n').filter(function (l) {
+    const t = l.trim();
+    return t && t.charAt(0) !== "'" && !/^Option Explicit$/.test(t);
+  }).length < 14, VBS + ' has grown logic of its own; it is meant to be a launcher and nothing else');
+
+  assert.ok(read('tools/build-dist.js').indexOf(VBS) !== -1,
+    VBS + ' is not in the build, so a download would have shortcuts aimed at a missing file');
+});
+
+/* One line of flags, in four scripts, that has to be the same line in all
+   four: the shortcut bakes it into a .lnk, the opener passes it when it
+   starts the browser, and a profile started with one set and reopened with
+   another is a profile that fetches the lot again. */
+test('the profile-trimming flags are the same wherever they are written', () => {
+  const FLAGS = ['Win - Open Deskside Radio.cmd', 'Win - Create Desktop Shortcut (Chrome).cmd',
+    'Win - Create Desktop Shortcut (Edge).cmd', 'Win - Start With Windows.cmd'];
+  const lines = FLAGS.map(function (f) {
+    const m = read(f).match(/^set "LEAN=.*$/m);
+    assert.ok(m, f + ' no longer sets the lean-profile flags');
+    return m[0];
+  });
+  lines.forEach(function (l, i) {
+    assert.equal(l, lines[0], FLAGS[i] + ' has drifted from ' + FLAGS[0] + "'s flags");
+  });
+
+  /* The ones that matter, named so that removing one is a decision rather
+     than an edit. Background networking is the big one: it is what fetches
+     most of the thirty-odd folders. */
+  ['--disable-background-networking', '--disable-component-update', '--disable-breakpad',
+   '--no-pings', 'OptimizationHints', 'SegmentationPlatform'].forEach(function (flag) {
+    assert.ok(lines[0].indexOf(flag) !== -1, 'the lean-profile flags no longer pass ' + flag);
+  });
+  /* Not the shader caches. They are small and they are what stops every
+     launch recompiling the same shaders. */
+  assert.equal(/disable-gpu-shader-disk-cache/.test(lines[0]), false,
+    'the lean-profile flags disable the shader cache, which costs time at every launch to save a few MB once');
+});
+
+/* The Chrome profile was the only one of the three not named after its
+   browser. Renaming it is a move, never a fresh folder: the stations, the
+   schedule and the theme live in it and nowhere else. */
+test('the chrome profile is named after chrome, and is moved rather than remade', () => {
+  ['Win - Open Deskside Radio.cmd', 'Win - Create Desktop Shortcut (Chrome).cmd',
+   'Win - Start With Windows.cmd'].forEach(function (f) {
+    const s = read(f);
+    assert.ok(s.indexOf('set "PROFILE=%LOCALAPPDATA%\\DesksideRadio\\profile-chrome"') !== -1,
+      f + ' still points at the unnamed profile folder');
+    assert.ok(/move "%LOCALAPPDATA%\\DesksideRadio\\profile" "%PROFILE%"/.test(s),
+      f + ' does not carry the old profile across, so renaming it would lose the stations');
+  });
+  /* And the uninstaller has to know about every one of them, or an
+     uninstall leaves settings behind that reinstalling picks up again. */
+  const un = read('Win - Uninstall Deskside Radio.cmd');
+  ['profile', 'profile-chrome', 'profile-edge', 'profile-firefox'].forEach(function (name) {
+    assert.ok(new RegExp('PROFILES=[^\\n]*\\b' + name + '\\b').test(un),
+      'the uninstaller does not know about ' + name);
   });
 });
 
@@ -928,4 +1014,312 @@ test('the Saved plate and the drawer close on the same clock', () => {
   assert.ok(css, 'the save-msg-cycle duration is gone from app.css');
   assert.equal(Number(js[1]), Math.round(parseFloat(css[1]) * 1000),
     'SAVED_PLATE_MS is ' + js[1] + 'ms but save-msg-cycle runs for ' + css[1] + 's');
+});
+
+/* ------------------------------------------------------------------ *
+   The installer runs the published installer, not itself.
+
+   This file ships inside the zip, so after the first install a copy sits
+   in the app folder and every update replaces it -- and that copy is
+   always one release behind the thing it is about to install. A fix made
+   to installing can therefore never reach the run that needs it: whoever
+   has the bug has the old script, and the old script is what executes.
+ * ------------------------------------------------------------------ */
+test('the installer hands over to the published copy of itself', () => {
+  const src = read(INSTALLER);
+
+  assert.ok(src.indexOf('releases/latest/download/Win-Install-or-Update-Deskside-Radio.cmd') !== -1,
+    INSTALLER + ' does not fetch the published installer, or has pinned it to a version');
+  assert.equal(/CMDURL=[^\n]*releases\/download\/v/.test(src), false,
+    INSTALLER + ' pins the installer URL to one release, which freezes every future update');
+
+  /* Exactly one hand-over. Without the guard this is a script that
+     downloads itself and runs itself, for ever. */
+  assert.ok(/if defined DESKSIDE_FRESH goto :newest/.test(src),
+    INSTALLER + ' has no guard against handing over to itself again');
+  assert.ok(/set "DESKSIDE_FRESH=1"/.test(src) && /call "%NEWCMD%"/.test(src),
+    INSTALLER + ' never actually runs the newer copy');
+  assert.ok(/fc\.exe" \/b "%NEWCMD%" "%~f0"/.test(src),
+    INSTALLER + ' does not compare the published installer with itself, so it would hand over every time');
+  /* The child runs from %TEMP%, where the "am I inside an install" rule
+     gives a different answer, so it is told where to install. */
+  assert.ok(/call "%NEWCMD%" "%APPROOT%"/.test(src),
+    INSTALLER + ' hands over without saying where to install, so the child would pick the default');
+});
+
+/* After a run of releases cut on one version number there was no way to
+   tell from the installer's own window whether what had landed was the
+   build you wanted. It says so now -- read out of the zip already on this
+   disk, so it costs no request and describes the files actually about to
+   be written rather than whatever the release page claims. */
+test('the installer says which version it is installing', () => {
+  const src = read(INSTALLER);
+
+  assert.ok(/"%TAR%" -xOf "%ZIP%" assets\/version\.txt/.test(src),
+    INSTALLER + ' does not read the version out of the downloaded archive');
+  /* version.json is not in the download, and the number the app shows is
+     inlined into a single 240 KB line of index.html. Neither is readable
+     from a batch file, which is why the build writes one line. */
+  assert.equal(/-xOf "%ZIP%" version\.json/.test(src), false,
+    INSTALLER + ' reads version.json out of the zip, which has never been in it');
+  assert.ok(read('tools/build-dist.js').indexOf("ASSETS, 'version.txt'") !== -1,
+    'the build does not write assets/version.txt, so the installer has nothing to read');
+  assert.ok(/set "MSG=Version %NEWVER%, replacing %OLDVER%"/.test(src),
+    INSTALLER + ' does not say which version it is replacing on an update');
+  assert.ok(/set "MSG=Version %NEWVER%"/.test(src),
+    INSTALLER + ' does not say which version a fresh install is getting');
+  /* Before the unpack, because the unpack overwrites the file it reads. */
+  assert.ok(src.indexOf('set "OLDVER="') < src.indexOf('"%TAR%" -xf "%ZIP%" -C "%APPROOT%"'),
+    INSTALLER + ' reads the installed version after unpacking over it, so it can only ever report the new one');
+});
+
+/* A .lnk holds the full path to the app folder, so an install that moved
+   leaves every shortcut aimed at where the folder used to be. That is not
+   hypothetical: a Startup entry made from a copy unzipped into Downloads
+   went on opening file:///C:/Users/.../Downloads/deskside-radio/index.html
+   at every sign-in, long after that folder was gone. */
+test('the installer rewrites the shortcuts that exist, and asks when there are none', () => {
+  const src = read(INSTALLER);
+
+  ['Deskside Radio.lnk', 'Deskside Radio (Edge).lnk', 'Deskside Radio (Firefox).lnk'].forEach(function (lnk) {
+    assert.ok(src.indexOf(lnk) !== -1, INSTALLER + ' does not look for ' + lnk);
+  });
+  assert.ok(/set \/p "PICK=/.test(src), INSTALLER + ' never asks which browser to use');
+  assert.ok(/if defined WANT goto :haveshortcut/.test(src),
+    INSTALLER + ' asks the question even when there is already a shortcut to refresh');
+  ['Chrome', 'Edge', 'Firefox'].forEach(function (b) {
+    assert.ok(src.indexOf('call :shortcut "Win - Create Desktop Shortcut (' + b + ').cmd"') !== -1,
+      INSTALLER + ' cannot make the ' + b + ' shortcut');
+  });
+  /* And the Startup entry, which nothing else ever rewrites. */
+  assert.ok(/Startup\\Deskside Radio\.lnk/.test(src) && /Win - Start With Windows\.cmd/.test(src),
+    INSTALLER + ' leaves a stale Startup entry pointing at the old folder');
+
+  /* Every one of those is called quietly, or the installer's own account
+     of what it did arrives in pieces around three other banners. */
+  ['Win - Create Desktop Shortcut (Edge).cmd', 'Win - Create Desktop Shortcut (Firefox).cmd',
+   'Win - Start With Windows.cmd'].forEach(function (f) {
+    const s = read(f);
+    assert.ok(/if not defined DESKSIDE_NOPAUSE pause/.test(s),
+      f + ' pauses even when the installer is calling it, so an install stops dead waiting for a keypress');
+    assert.ok(/if not defined DESKSIDE_NOPAUSE \(/.test(s),
+      f + ' prints its own banner in the middle of the installer output');
+  });
+});
+
+/* The trim is the one thing here that deletes anything of the listener's,
+   so what it can reach is written out by hand and tested by name. */
+test('trimming the profile cannot reach the settings', () => {
+  const src = read('assets/trim-profile.ps1');
+
+  /* Where the stations, the schedule and the theme actually are. */
+  assert.equal(/Local Storage|Local State|leveldb/i.test(src.replace(/^#.*$/gm, '')), false,
+    'trim-profile.ps1 names the storage the settings live in; it must never be able to reach it');
+  /* Under the app's own folder, and nowhere else. */
+  assert.ok(/Join-Path \$env:LOCALAPPDATA 'DesksideRadio'/.test(src),
+    'trim-profile.ps1 does not root itself at the app\'s own folder');
+  assert.equal(/Remove-Item[^\n]*\$root\b/.test(src), false,
+    'trim-profile.ps1 can remove the whole folder rather than named parts of it');
+  /* The list is a list, not a pattern. A wildcard here would delete
+     whatever Chrome invents next, sight unseen. */
+  assert.ok(/\$junk = @\(/.test(src), 'trim-profile.ps1 no longer keeps an explicit list of what it may delete');
+  assert.equal(/Get-ChildItem[^\n]*-Directory/.test(src), false,
+    'trim-profile.ps1 deletes by listing the folder rather than by name');
+  /* Preferences is the browser's own file. Kept, before it is rewritten. */
+  assert.ok(/Copy-Item -LiteralPath \$prefs -Destination \(\$prefs \+ '\.dsr-bak'\)/.test(src),
+    'trim-profile.ps1 rewrites Preferences without keeping the original');
+  assert.ok(/ConvertTo-Json -Depth 100/.test(src),
+    'trim-profile.ps1 rewrites Preferences at the default depth, which flattens most of it into strings');
+
+  assert.ok(read('tools/build-dist.js').indexOf('ps1') !== -1,
+    'trim-profile.ps1 is not in the build, so the installer would call a file that is not there');
+});
+
+/* Each shortcut opens its own browser profile and no profile can read
+   another's storage. The settings file beside index.html is the only thing
+   all three can see, so where a download lands decides whether settings can
+   cross between them at all. Landing in Downloads, they cannot. */
+test('an export lands beside index.html, where the other browsers can read it', () => {
+  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Create Desktop Shortcut (Edge).cmd'].forEach(function (f) {
+    const s = read(f);
+    assert.ok(/default_directory = \$env:APPROOT/.test(s),
+      f + ' does not point the profile\'s downloads at the app folder');
+    assert.ok(/prompt_for_download = \$false/.test(s),
+      f + ' leaves the browser asking where to save, so an export can still land anywhere');
+    /* Only on a profile that has none. One already in use has a
+       Preferences file full of its own state, and the installer is what
+       edits one of those. */
+    assert.ok(/if \(-not \(Test-Path -LiteralPath \$f\)\) \{/.test(s),
+      f + ' overwrites an existing Preferences file every time it runs');
+  });
+
+  const ff = read('Win - Create Desktop Shortcut (Firefox).cmd');
+  assert.ok(/browser\.download\.folderList", 2/.test(ff),
+    'the Firefox profile still saves downloads wherever Firefox defaults to');
+  assert.ok(/browser\.download\.dir/.test(ff), 'the Firefox profile is not told which folder to save into');
+});
+
+/* ------------------------------------------------------------------ *
+   The settings file: what it carries, and who reads it.
+ * ------------------------------------------------------------------ */
+
+/* An export that leaves a setting out is a backup that quietly changes it.
+   The schedule switch was written into the file and thrown away on the way
+   back in, so a schedule exported switched on came back switched off and
+   the drawer looked as though it had forgotten. The level and the tone
+   travelled the same way. */
+test('an export carries every setting, and an import reads every one back', () => {
+  const src = read('app.js');
+  const exp = src.match(/window\.DESKSIDE_SEED = ' \+ JSON\.stringify\(\{[^}]*\}/);
+  assert.ok(exp, 'the export payload has moved; this test can no longer see it');
+
+  ['schedulerEnabled', 'volume', 'bass', 'treble', 'theme', 'stations', 'schedule',
+   'scheduleEnds', 'autoplay'].forEach(function (k) {
+    assert.ok(exp[0].indexOf(k + ':') !== -1, 'an export no longer carries ' + k);
+  });
+
+  /* And the reader takes them. Exported-but-never-imported is the exact
+     shape of the bug this is here for. */
+  const imp = src.slice(src.indexOf('function importSettingsInto'), src.indexOf('function parseExport'));
+  ['schedulerEnabled', 'volume', 'bass', 'treble'].forEach(function (k) {
+    assert.ok(imp.indexOf('data.' + k) !== -1, 'importSettingsInto ignores ' + k + ', so an export loses it');
+  });
+  /* The drawer is where an import lands, so the draft has to carry them
+     too, or the Save that follows writes the old values back. */
+  const snap = src.slice(src.indexOf('function draftSnapshot'), src.indexOf('function draftIsDirty'));
+  ['schedulerEnabled', 'volume', 'bass', 'treble'].forEach(function (k) {
+    assert.ok(snap.indexOf(k) !== -1, 'the draft does not carry ' + k + ', so importing one changes nothing');
+  });
+
+  /* An empty schedule cannot run, whichever door the settings came in by. */
+  assert.ok(/if \(!target\.schedule\.weekday\.length && !target\.schedule\.weekend\.length\) target\.schedulerEnabled = false;/.test(src),
+    'an import can switch the schedule on with no slots in it');
+});
+
+/* Which version wrote a file, and when. Every older format is read and
+   brought forward without asking -- what cannot be brought forward is the
+   listener's memory of which file they just picked. */
+test('an export says what wrote it and when', () => {
+  const src = read('app.js');
+
+  assert.ok(/var SEED_APP = 'deskside-radio';/.test(src), 'exports no longer carry a name of their own');
+  assert.ok(/appVersion: APP_VERSION/.test(src), 'exports no longer say which version wrote them');
+  assert.ok(/exportedAt: stampNow\(\)/.test(src), 'exports no longer carry the time they were written');
+  /* Local time, to the second: this is read by somebody deciding which of
+     two files on their desktop is the one they meant. */
+  assert.ok(/pad\(d\.getHours\(\)\) \+ ':' \+ pad\(d\.getMinutes\(\)\) \+ ':' \+ pad\(d\.getSeconds\(\)\)/.test(src),
+    'the export stamp no longer records the time to the second in local time');
+
+  /* Unstamped files are older exports and are accepted. Somebody else's
+     JSON, which says plainly it is not ours, is not. */
+  assert.ok(/if \(data\.app && data\.app !== SEED_APP\) throw/.test(src),
+    'an import reads any file with a stations array in it');
+  assert.ok(/Imported from v' \+ from/.test(src), 'an import no longer says which version the file came from');
+  assert.ok(/older than v1\.4\.8/.test(src), 'an import says nothing about a file too old to carry a version');
+});
+
+/* Each shortcut opens its own browser profile and no profile can read
+   another's storage, so the file beside index.html is the only thing all
+   of them can see. Read once per profile, "export from Chrome" changed
+   nothing in Edge no matter how many times it was done. */
+test('the settings file is read at every launch, once per version of it', () => {
+  const src = read('app.js');
+
+  assert.ok(/^  seedSettings\(boot\);$/m.test(src),
+    'the settings file is read only when storage is empty again, so it cannot carry settings between browsers');
+  assert.equal(/if \(stored === null\) seedSettings\(boot\); else boot\(\);/.test(src), false,
+    'the first-run-only seed is back');
+
+  /* The stamp is what stops it fighting the drawer: a file that has not
+     changed is not read back over settings changed since. */
+  assert.ok(/function stampOf\(text\)/.test(src), 'there is no fingerprint, so the file would be imported at every launch');
+  assert.ok(/if \(stored === null \|\| state\.seedStamp !== stamp\)/.test(src),
+    'the seed is taken without checking whether this profile has already taken it');
+
+  /* A used profile keeps what is not in the file -- where its window is,
+     whether it checks for updates -- so the import goes into the state
+     rather than over it. */
+  assert.ok(/var into = stored === null \? clone\(DEFAULTS\) : state;/.test(src),
+    'a seed on a used profile resets everything, including the things the file does not carry');
+
+  /* And a reset must not be undone by the next launch reading the same
+     file straight back over the defaults. */
+  const reset = src.slice(src.indexOf('function resetEverything'), src.indexOf('var resetAnim;'));
+  assert.ok(/state\.seedStamp = seenSeed;/.test(reset),
+    'resetting forgets which settings file was read, so the next launch imports it again');
+});
+
+/* Three things can be about to happen and the chip named two of them. A
+   gap in the middle of the day is not the end of the day: the setting that
+   can turn the radio off does not apply and whatever is on keeps playing.
+   Calling that "Free play" -- the name of the other setting, word for word
+   -- made a five-minute gap between two slots look like the drawer lying
+   about being set to turn off. */
+test('the next-up chip does not call a gap free play', () => {
+  const src = read('app.js');
+  const fn = src.slice(src.indexOf('function renderNext'), src.indexOf("el.schedToggle.addEventListener('click'"));
+
+  assert.ok(/text = 'Gap at ' \+ when \+ day \+ ' · radio stays on';/.test(fn),
+    'a mid-day gap no longer says what it is, or no longer says the radio keeps playing');
+  assert.ok(/if \(!Scheduler\.dayIsOver\(state\.schedule, n\.at\)\)/.test(fn),
+    'the chip no longer tells a gap from the end of the day');
+  /* Free play is said only when the day has ended and the setting is Keep
+     playing. Radio off only when it is the other one. */
+  assert.ok(/ends\[group\] === 'off' \? 'Radio off' : 'Free play'/.test(fn),
+    'the end-of-day wording no longer follows the setting');
+
+  /* The default was a dead letter: absent was read as "keep playing" on
+     the way in, so a profile that had never touched the setting was handed
+     the opposite of what DEFAULTS said. */
+  assert.ok(/return DEFAULTS\.scheduleEnds\[g\];/.test(src),
+    'a missing scheduleEnds is read as a value again rather than as the default');
+});
+
+/* The directory has no city field -- only a region and a country, which are
+   too coarse to tell two stations in the same province apart. The city that
+   was searched for is the one worth printing. */
+test('a found station is labelled format, bitrate, city', () => {
+  const D = require('../radio-directory.js');
+
+  assert.equal(D.taglineFor({ codec: 'AAC+', bitrate: 48, state: 'Ontario', country: 'Canada' }, 'Toronto'),
+    'AAC+ · 48 kbps · Toronto');
+  /* Searching by name alone has no city, so it falls back rather than
+     saying nothing. */
+  assert.equal(D.taglineFor({ codec: 'MP3', bitrate: 128, state: 'Ontario', country: 'Canada' }, ''),
+    'MP3 · 128 kbps · Ontario');
+  assert.equal(D.taglineFor({ codec: 'MP3', bitrate: 128, country: 'Canada' }, ''), 'MP3 · 128 kbps · Canada');
+  /* Unknown is what the directory says when it does not know, and it is
+     not a format. Empty parts are dropped, not left as gaps. */
+  assert.equal(D.taglineFor({ codec: 'UNKNOWN', bitrate: 0 }, 'Toronto'), 'Toronto');
+  assert.equal(D.taglineFor({}, ''), '');
+  assert.equal(D.taglineFor(null, 'Toronto'), 'Toronto');
+
+  assert.ok(/opts\.cityName = finder\.city\.name \|\|/.test(read('app.js')),
+    'the city the listener searched for is not handed to the directory, so it cannot reach the tagline');
+});
+
+/* A placeholder shows the shape of the answer; a tooltip says what the box
+   is for. Every box somebody types into gets both, except the two whose
+   shape the browser draws itself. */
+test('every box in the drawer says what it is for', () => {
+  const app = read('app.js');
+  const html = read('index.html');
+
+  [['name', 'Station name'], ['band', '1010 AM'], ['url', 'https://stream.example.com/live.mp3'],
+   ['tag', 'AAC+']].forEach(function (pair) {
+    const re = new RegExp('data-k="' + pair[0] + '"[^>]*placeholder="' + pair[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    assert.ok(re.test(app), 'the ' + pair[0] + ' box has lost its placeholder');
+  });
+  ['name', 'band', 'url', 'tag', 'color', 'start', 'end'].forEach(function (k) {
+    const i = app.indexOf('data-k="' + k + '"');
+    assert.ok(i !== -1, 'the ' + k + ' box is gone');
+    assert.ok(app.slice(i, i + 400).indexOf('title="') !== -1,
+      'the ' + k + ' box has no tooltip saying what it is for');
+  });
+  ['cityInput', 'stationInput'].forEach(function (id) {
+    const i = html.indexOf('id="' + id + '"');
+    assert.ok(i !== -1, id + ' is gone');
+    assert.ok(html.slice(i - 200, i + 300).indexOf('title="') !== -1, id + ' has no tooltip');
+    assert.ok(html.slice(i - 200, i + 300).indexOf('placeholder="') !== -1, id + ' has no placeholder');
+  });
 });

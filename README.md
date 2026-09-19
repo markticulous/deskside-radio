@@ -10,11 +10,21 @@ Download **Win-Install-or-Update-Deskside-Radio.cmd** from the [latest release](
 
 That's all — it installs the radio, puts a shortcut on your Desktop and opens it.
 
+If there is no Deskside Radio shortcut on the Desktop yet it asks which browser to open in — **C** for Chrome (or Edge where Chrome is not installed), **E** for Edge, **F** for Firefox — and pressing Enter takes Chrome. If there are already shortcuts it asks nothing and rewrites the ones that are there, which matters more than it sounds: a `.lnk` holds the full path to the app folder, so an install that moved leaves every shortcut, and the Startup entry, aimed at where the folder used to be.
+
+It also says which version it is putting in, and which one that replaces, read out of the archive it just downloaded rather than off the release page.
+
 If you are reading this inside a folder you unzipped yourself, double-click **Win - Create Desktop Shortcut (Chrome).cmd** instead and it works the same way from where it stands.
 
 It unpacks into `%LOCALAPPDATA%\DesksideRadio\app`. Windows asks once whether to run a downloaded file; after that there are no prompts, on this run or on any update.
 
 It needs no administrator, which is why it does not go in Program Files: that would cost a UAC prompt every time, including every update.
+
+### It runs the published installer, not itself
+
+The installer ships inside the zip, so after the first install a copy sits in the app folder and every update replaces it — and that copy is always one release behind the thing it is about to install. A fix to the way installing works could therefore never reach the run that needed it: whoever has the bug has the old script, and the old script is what executes.
+
+So the first thing it does is fetch the published one and compare it with itself, byte for byte. If they differ it hands the whole job over — passing the folder it had worked out, because the fresh copy runs from `%TEMP%` where the "am I inside an install" rule would answer differently — and sets `DESKSIDE_FRESH` so there is exactly one hand-over and no way to loop. It is 20 KB and one request, before anything has been written, and it trusts nothing that was not already being trusted: the file comes from the same release, over the same https, as the zip full of code it is about to unpack and run. Offline, the check fails quietly and the download that follows reports the network rather than the installer.
 
 The old way still works and is unchanged — download `deskside-radio.zip`, unzip it anywhere, open `index.html`. The app itself installs nothing and runs from wherever it sits.
 
@@ -82,7 +92,7 @@ Each has its own browser profile, so stations and settings do not carry between 
 
 ### Starting when you sign in
 
-`Win - Start With Windows.cmd` writes the same shortcut into the Startup folder, and `Win - Start With Windows.cmd off` removes it. Nothing touches the registry and nothing runs as a service; it is one `.lnk` in a folder the user can open with `shell:startup`. The browser detection in it is a deliberate copy of the one in `Win - Create Desktop Shortcut (Chrome).cmd` rather than shared with it — these are files people double-click, often one without ever having run the other, so each has to stand alone.
+`Win - Start With Windows.cmd` writes the same shortcut into the Startup folder, and `Win - Start With Windows.cmd off` removes it. The installer rewrites that entry too whenever one exists, because nothing else ever did: an entry made from a copy unzipped into Downloads went on opening `file:///C:/Users/.../Downloads/deskside-radio/index.html` at every sign-in long after that folder was gone, and what the listener saw at sign-in was Chrome's *Your file couldn't be accessed*. Nothing touches the registry and nothing runs as a service; it is one `.lnk` in a folder the user can open with `shell:startup`. The browser detection in it is a deliberate copy of the one in `Win - Create Desktop Shortcut (Chrome).cmd` rather than shared with it — these are files people double-click, often one without ever having run the other, so each has to stand alone.
 
 macOS has no equivalent script here. A `.fileloc` saved from the shortcut button can be added under **System Settings → General → Login Items**, but it opens in the default browser, so the autoplay-policy lift the Windows shortcut relies on is not available and the first play needs a click.
 
@@ -203,7 +213,35 @@ Either way your stations, schedule and settings are untouched — see below for 
 
 **Nothing is downloaded or replaced until you ask for it.** There is no scheduled task, no background updater and no service; the radio only ever tells you a version exists. It cannot start the updater itself either — a `file://` page has no way to run a local script, which is a limit worth keeping.
 
-Your stations, schedule and settings are not in the app folder. They live in the browser profile at `%LOCALAPPDATA%\DesksideRadio\profile`, so an update replaces every file in the install and loses nothing. Anything else you left beside `index.html` — a `deskside-radio-settings.js` seed, for instance — survives too: the update unpacks over the top rather than clearing the folder first.
+Your stations, schedule and settings are not in the app folder. They live in the browser profile at `%LOCALAPPDATA%\DesksideRadio\profile-chrome`, so an update replaces every file in the install and loses nothing. Anything else you left beside `index.html` — a `deskside-radio-settings.js` seed, for instance — survives too: the update unpacks over the top rather than clearing the folder first.
+
+## Settings, and the three browsers
+
+Each shortcut opens a browser profile of its own, and no profile can read another's storage. So the settings file beside `index.html` is the only thing all of them can see, and moving a setup between browsers means putting one there.
+
+Two things make that work rather than nearly work.
+
+**Export lands in the app folder.** It used to land in Downloads, where nothing ever read it — which is why settings exported from Chrome never turned up in Edge. Chrome has no command-line flag for the download folder, so the launchers write it into the profile's `Preferences` before Chrome has one of its own, and the installer amends an existing profile in place, keeping the old file beside it. Firefox gets the same through `user.js`.
+
+**The file is read at every launch, not only on a fresh profile.** It is imported whenever its contents differ from the last version that profile took — a fingerprint of the file is kept in `seedStamp`. That is what stops it fighting the drawer: settings changed in one browser and not exported leave the file alone, so nothing is read back over them. Exporting is the deliberate act that says this file is now the word. **Whoever exported last wins**, which is the only rule that can be stated in one sentence.
+
+A reset keeps the stamp deliberately. Otherwise the next launch would see the same file as new and import it straight back over the defaults.
+
+### What an export carries
+
+Everything, now. The schedule switch was written into the file and thrown away on the way back in, so a schedule exported switched on came back switched off — silently, with the drawer looking as though it had forgotten. The level and the tone travelled the same way. Every field the file holds is read back.
+
+Each export also carries `app`, `appVersion`, `seedV` and `exportedAt` — the last in local time to the second, because it is read by a person deciding which of two files on their desktop is the one they meant. Importing says which version wrote the file, or that it is older than 1.4.8 if it carries no stamp. Older formats are all brought forward without asking; `app` is also the only honest way to refuse somebody else's JSON, since an array called `stations` is not a rare thing to find in a file.
+
+## The browser profile
+
+A stock Chrome profile collects some thirty folders of things fetched in the background — safe browsing lists, hyphenation dictionaries, captcha providers, on-device suggestion models, optimisation hints for pages that will never be loaded. This is a browser showing one local file with no address bar. None of it applies.
+
+The launchers now start it with `--disable-background-networking --disable-component-update --disable-breakpad --disable-domain-reliability --disable-sync --no-pings`, a `--disable-features` list covering the optimisation-guide and segmentation downloads, and modest cache sizes. One line, in four scripts, held to the same wording by a test: a profile started with one set of flags and reopened with another fetches the lot again. The shader caches are deliberately left alone — they are small, and they are what stops every launch recompiling the same shaders.
+
+The installer removes the ones already there, from a list written out by hand. Every name in it is something the browser downloaded and can download again; `Local Storage`, where the settings actually are, is not in the list and is never touched. That is the whole safety argument, and it is why the list is a list rather than a wildcard.
+
+The Chrome profile is also now called `profile-chrome` rather than `profile`, so that the one folder of the three that did not say which browser it was for no longer exists. It is moved, never remade.
 
 ## What the download looks like
 
@@ -263,9 +301,9 @@ Deleting the file costs nothing except that the next run in that folder installs
 
 ## Removing it
 
-`Win - Uninstall Deskside Radio.cmd` ships inside the zip, so it is sitting in the app folder. Double-click it and it removes that folder and every shortcut the scripts wrote — on the Desktop, in the Startup folder and in the Start menu. Shortcuts are found both by name (`Deskside Radio*.lnk`) and by where they point, so one that was renamed or copied still goes.
+`Win - Uninstall Deskside Radio.cmd` ships inside the zip, so it is sitting in the app folder. Double-click it and it removes that folder and every shortcut the scripts wrote — on the Desktop, in the Startup folder and in the Start menu. Shortcuts are found three ways: by name (`Deskside Radio*.lnk`), by where they point, and by whether their target, working directory or arguments name a Deskside Radio folder at all. That third test was added for the stale Startup entry above — its target was `chrome.exe`, which very much exists, and the folder it pointed into was not this one, so neither of the first two reached it and it survived every uninstall.
 
-Your stations, schedule and settings are in the browser profile, not the app folder, so they survive by default. It asks about them separately at the end, and the answer you get by pressing Enter is to keep them — that is the one part of this that reinstalling cannot undo.
+Your stations, schedule and settings are in the browser profile, not the app folder, so they survive by default. All four profile names are checked — `profile`, `profile-chrome`, `profile-edge`, `profile-firefox` — named rather than wildcarded, because this is the line that deletes somebody's stations and it should be possible to read it and know exactly what it can reach. It asks about them separately at the end, and the answer you get by pressing Enter is to keep them — that is the one part of this that reinstalling cannot undo.
 
 When the install was in its default place it also removes `%LOCALAPPDATA%\DesksideRadio` itself, the folder the app and the profile sit side by side in. That is the whole point of putting them there: everything the radio ever writes is under one folder, and an uninstall that leaves that folder standing has not finished. It is removed with `rd` and no `/s`, which only works on an empty directory — so keeping your settings simply makes the call fail quietly and the folder stays, holding the profile. It is only ever attempted at the default path: an install at `D:\Radio` has `D:\` above it, and that is emphatically not ours to remove.
 

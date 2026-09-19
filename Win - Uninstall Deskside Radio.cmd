@@ -43,7 +43,13 @@ rem Set above the handover, not below it: the copy in %TEMP% jumps straight
 rem to :worker and would otherwise arrive with no PS to call and no idea
 rem where the profile lives.
 set "DEFAULT=%LOCALAPPDATA%\DesksideRadio\app"
-set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile"
+set "PROFROOT=%LOCALAPPDATA%\DesksideRadio"
+rem There are up to four of these now -- one per browser, plus the name
+rem the Chrome one had before it was told to say which browser it was for.
+rem Naming them rather than wildcarding: this is the line that deletes
+rem somebody's stations, and it should be possible to read it and know
+rem exactly what it can reach.
+set "PROFILES=profile profile-chrome profile-edge profile-firefox"
 
 rem Full paths, for the same reason the other scripts use them: a
 rem double-clicked .cmd runs with its own folder as the current directory
@@ -141,6 +147,15 @@ rem              wildcard covers the updater's current name, Deskside Radio
 rem              - Update.lnk; the exact one is kept for installs made
 rem              before it was renamed off the letter U.
 rem
+rem   by content  a .lnk of ours whose target, working directory or
+rem               arguments name a Deskside Radio folder -- any of them,
+rem               not only this one. A Startup entry made from a copy
+rem               unzipped into Downloads goes on opening
+rem               file:///C:/Users/.../Downloads/deskside-radio/index.html
+rem               at every sign-in; its target is chrome.exe, which very
+rem               much exists, so neither of the two tests above reached
+rem               it and it survived every uninstall.
+rem
 rem That second condition was learned the hard way. Matching on the name
 rem alone removed the Start menu entry belonging to a different install
 rem that was not being uninstalled and was still perfectly good. A
@@ -186,7 +201,9 @@ echo   Looking for shortcuts...
   "        ($s.WorkingDirectory -and $s.WorkingDirectory -like ($root + '*')) -or" ^
   "        ($s.Arguments -and $s.Arguments -like ('*' + $root + '*')));" ^
   "      $dead = -not ($s.TargetPath) -or -not (Test-Path -LiteralPath $s.TargetPath);" ^
-  "      $take = $mine -or ($named -and $dead);" ^
+  "      $ours = ($s.TargetPath -like '*eskside*adio*') -or ($s.WorkingDirectory -like '*eskside*adio*')" ^
+  "        -or ($s.Arguments -like '*eskside*adio*') -or ($s.Arguments -like '*eskside-radio*');" ^
+  "      $take = $mine -or ($named -and ($dead -or $ours));" ^
   "    } catch { $take = $named }" ^
   "    if ($take) { $hit += $_.FullName }" ^
   "  }" ^
@@ -205,10 +222,12 @@ rem Its own question, with its own answer, because this is the one part of
 rem an uninstall that reinstalling cannot undo. The default is to keep
 rem them: somebody uninstalling to fix something, or to move the install,
 rem wants their stations there afterwards.
-if not exist "%PROFILE%\" goto :folder
+set "HAVEPROF="
+for %%P in (%PROFILES%) do if exist "%PROFROOT%\%%P\" set "HAVEPROF=1"
+if not defined HAVEPROF goto :folder
 echo.
 echo   Your stations, schedule and settings are in
-echo      "%PROFILE%"
+for %%P in (%PROFILES%) do if exist "%PROFROOT%\%%P\" echo      "%PROFROOT%\%%P"
 echo.
 echo   Keep them and they are picked up again if you ever reinstall. This
 echo   is the one part of an uninstall that reinstalling cannot undo.
@@ -218,8 +237,10 @@ if /i not "%WIPE%"=="D" (
   set "MSG=Settings kept"
   call :ok
 ) else (
-  rd /s /q "%PROFILE%" 2>nul
-  if exist "%PROFILE%\" (
+  set "LEFT="
+  for %%P in (%PROFILES%) do rd /s /q "%PROFROOT%\%%P" 2>nul
+  for %%P in (%PROFILES%) do if exist "%PROFROOT%\%%P\" set "LEFT=1"
+  if defined LEFT (
     echo      Could not remove them - close any Deskside Radio window and run this again.
   ) else (
     set "MSG=Settings deleted"

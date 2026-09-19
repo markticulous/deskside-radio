@@ -26,9 +26,14 @@ rem the others.
 
 title Deskside Radio - desktop shortcut (Firefox)
 
-echo.
-echo   DESKSIDE RADIO - DESKTOP SHORTCUT (FIREFOX)
-echo.
+rem The installer calls this one and prints its own account around it,
+rem and a banner in the middle of somebody else's output is not a
+rem banner. DESKSIDE_NOPAUSE already means "you are being called".
+if not defined DESKSIDE_NOPAUSE (
+  echo.
+  echo   DESKSIDE RADIO - DESKTOP SHORTCUT (FIREFOX)
+  echo.
+)
 
 set "APPDIR=%~dp0"
 set "TARGET=%APPDIR%index.html"
@@ -67,6 +72,9 @@ if not defined BROWSER (
 )
 
 set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile-firefox"
+rem A Firefox preference file is JavaScript, so the path inside it needs
+rem its backslashes doubled. Done here, once, rather than in the echo.
+set "APPROOT=%APPDIR:~0,-1%"
 
 rem ---- the profile, and the one preference that matters --------------------
 rem user.js is applied at every startup, so this survives Firefox rewriting
@@ -81,6 +89,15 @@ if not exist "%PROFILE%" mkdir "%PROFILE%"
 >> "%PROFILE%\user.js" echo // Skip the import wizard and the what's-new tab on a fresh profile.
 >> "%PROFILE%\user.js" echo user_pref("browser.shell.checkDefaultBrowser", false);
 >> "%PROFILE%\user.js" echo user_pref("browser.startup.homepage_override.mstone", "ignore");
+rem Downloads go to the app folder rather than to Downloads. Export
+rem settings writes deskside-radio-settings.js, and beside index.html
+rem that file is read by every shortcut at its next launch -- which is
+rem the only way settings cross between browser profiles, since none of
+rem them can read another's storage. folderList 2 means "the folder
+rem named below" rather than Downloads or the desktop.
+>> "%PROFILE%\user.js" echo user_pref("browser.download.folderList", 2);
+>> "%PROFILE%\user.js" echo user_pref("browser.download.useDownloadDir", true);
+>> "%PROFILE%\user.js" echo user_pref("browser.download.dir", "%APPROOT:\=\\%");
 
 %SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
   "$desktop = [Environment]::GetFolderPath('Desktop');" ^
@@ -116,4 +133,6 @@ echo   Autoplay is switched on for this profile only, in user.js.
 echo   To bring your stations across, export them from Settings - Service
 echo   and leave deskside-radio-settings.js beside index.html.
 echo.
-pause
+rem Only the success path. The pauses above sit on error paths and
+rem stop whoever is calling, which is what an error is for.
+if not defined DESKSIDE_NOPAUSE pause

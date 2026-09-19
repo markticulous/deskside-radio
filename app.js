@@ -9,7 +9,13 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.4.7';
+  var APP_VERSION = '1.4.8';
+  /* Stamped into every export. SEED_APP is what makes "is this one of
+     ours" a question with an answer; SEED_V is the shape of the file,
+     bumped only if a future version has to read an old one differently
+     from how it reads its own. */
+  var SEED_APP = 'deskside-radio';
+  var SEED_V = 1;
 
   var DEFAULTS = {
     /* The three a fresh install starts with, in this order, taken from a
@@ -67,6 +73,13 @@
        whether or not anybody looks. Play on launch itself stays off. */
     autoplayStationId: null,
     lastCity: null,
+    /* The settings file beside index.html is read at every launch and is
+       the only thing the separate browser profiles can all see. These two
+       say which version of it this profile has already taken, so it is
+       taken once rather than read back over the drawer at every launch,
+       and which version of the app wrote it. */
+    seedStamp: null,
+    seedFrom: null,
     bass: 0,
     treble: 0,
     lastGood: null,
@@ -185,11 +198,19 @@
         });
         merged.scheduleV = 2;
       }
+      /* Absent is not the same answer as "play". Reading it that way is
+         what made the default above a dead letter: every profile that had
+         never touched the setting was handed "keep playing" on the way in,
+         whatever DEFAULTS said, so the deliberate choice of silence
+         outside the hours somebody set never once took effect. Only the
+         two values it can hold are taken from the file; anything else,
+         missing included, falls back to the default. */
       var ends = (s && s.scheduleEnds && typeof s.scheduleEnds === 'object') ? s.scheduleEnds : {};
-      merged.scheduleEnds = {
-        weekday: ends.weekday === 'off' ? 'off' : 'play',
-        weekend: ends.weekend === 'off' ? 'off' : 'play'
-      };
+      function endsFor(g) {
+        if (ends[g] === 'off' || ends[g] === 'play') return ends[g];
+        return DEFAULTS.scheduleEnds[g];
+      }
+      merged.scheduleEnds = { weekday: endsFor('weekday'), weekend: endsFor('weekend') };
       if (!Array.isArray(merged.stations)) merged.stations = clone(DEFAULTS.stations);
       merged.stations = merged.stations.map(cleanStation).filter(Boolean);
       if (!merged.stations.length) merged.stations = clone(DEFAULTS.stations);
@@ -1466,16 +1487,31 @@
        tick() answers at the changeover, and the chip has to answer it the
        same way or it promises music where there is about to be silence.
        The group that decides is the one the ending slot belongs to, not
-       the day it ends on. */
-    var label = st ? st.name : 'Free play';
-    if (!st) {
-      var ending = Scheduler.activeSlot(state.schedule, now);
+       the day it ends on.
+
+       Three things can be about to happen and the chip used to name only
+       two of them. A gap in the middle of the day is not the end of the
+       day: the setting that can turn the radio off does not apply to it
+       and whatever is on keeps playing. The chip called that "Free play"
+       -- which is the name of the other setting, word for word -- so five
+       minutes between two slots was enough to make the drawer look like
+       it was lying about being set to turn off. "Free play" is now said
+       only when the day really has ended and the setting really is Keep
+       playing; a gap says so, and says what it means for the sound. */
+    var text;
+    if (st) {
+      text = st.name + ' at ' + when + day;
+    } else {
       var ends = state.scheduleEnds || {};
-      if (ending && Scheduler.dayIsOver(state.schedule, n.at) && ends[groupOfSlot(ending)] === 'off') {
-        label = 'Radio off';
+      var ending = Scheduler.activeSlot(state.schedule, now);
+      var group = ending ? groupOfSlot(ending) : Scheduler.dayGroup(n.at);
+      if (!Scheduler.dayIsOver(state.schedule, n.at)) {
+        text = 'Gap at ' + when + day + ' · radio stays on';
+      } else {
+        text = (ends[group] === 'off' ? 'Radio off' : 'Free play') + ' at ' + when + day;
       }
     }
-    setNextUp(label + ' at ' + when + day);
+    setNextUp(text);
   }
 
   el.schedToggle.addEventListener('click', function () {
@@ -2331,10 +2367,15 @@
   }
 
   function openSettings() {
+    /* The last four are not edited anywhere in the drawer. They are here
+       because Import writes into the draft, and a field the draft does not
+       carry is a field the import quietly loses. */
     draft = clone({
       stations: state.stations, schedule: state.schedule,
       scheduleEnds: state.scheduleEnds, scheduleV: state.scheduleV || 2, theme: state.theme,
-      autoplay: state.autoplay, autoplayStationId: state.autoplayStationId
+      autoplay: state.autoplay, autoplayStationId: state.autoplayStationId,
+      schedulerEnabled: !!state.schedulerEnabled,
+      volume: state.volume, bass: state.bass, treble: state.treble
     });
     slotGroup = 'weekday';
     clearFieldMarks();
@@ -2593,7 +2634,9 @@
     return JSON.stringify({
       stations: draft.stations, schedule: draft.schedule,
       scheduleEnds: draft.scheduleEnds, theme: draft.theme,
-      autoplay: !!draft.autoplay, autoplayStationId: draft.autoplayStationId || null
+      autoplay: !!draft.autoplay, autoplayStationId: draft.autoplayStationId || null,
+      schedulerEnabled: !!draft.schedulerEnabled,
+      volume: draft.volume, bass: draft.bass, treble: draft.treble
     });
   }
   function draftIsDirty() { return draftClean !== null && draftSnapshot() !== draftClean; }
@@ -2964,11 +3007,16 @@
                that holds the grid cell, so the message goes under its own
                field and pushes the row down instead of being parked at the
                bottom of the card away from what it is about. */
-            '<div class="fw fw-name"><input class="in" data-k="name" placeholder="Station name" aria-label="Name"></div>' +
-            '<div class="fw fw-band"><input class="in in-band" data-k="band" placeholder="1010 AM" aria-label="Frequency"></div>' +
-            '<input class="in in-color" data-k="color" type="color" aria-label="Colour">' +
-            '<div class="fw fw-url"><input class="in in-url" data-k="url" placeholder="https://stream.example.com/live.mp3" aria-label="Stream URL"></div>' +
-            '<input class="in in-tag" data-k="tag" placeholder="Tagline (optional)" aria-label="Tagline">' +
+            '<div class="fw fw-name"><input class="in" data-k="name" placeholder="Station name" aria-label="Name"' +
+            ' title="What the radio shows in large letters. Any name you like."></div>' +
+            '<div class="fw fw-band"><input class="in in-band" data-k="band" placeholder="1010 AM" aria-label="Frequency"' +
+            ' title="The frequency printed on the tuning scale, e.g. 92.5 FM. Leave it empty for a stream with no dial position."></div>' +
+            '<input class="in in-color" data-k="color" type="color" aria-label="Colour"' +
+            ' title="The colour this station is drawn in. The editorial and departures themes use it; the others ignore it.">' +
+            '<div class="fw fw-url"><input class="in in-url" data-k="url" placeholder="https://stream.example.com/live.mp3" aria-label="Stream URL"' +
+            ' title="The direct address of the audio itself. MP3 and AAC play here; a .pls or .m3u is a list of streams rather than one and will not."></div>' +
+            '<input class="in in-tag" data-k="tag" placeholder="AAC+ \u00b7 48 kbps \u00b7 Toronto" aria-label="Tagline"' +
+            ' title="The small line under the name. Found stations arrive with the format, the bitrate and the city; yours can say anything.">' +
           '</div>' +
         '</div>' +
         '</div>';
@@ -3329,9 +3377,11 @@
         '<div class="card-body">' +
           '<div class="slot-inner">' +
             '<div class="slot-when">' +
-              '<input class="in in-time" data-k="start" type="time" aria-label="Start" required>' +
+              '<input class="in in-time" data-k="start" type="time" aria-label="Start" required' +
+              ' title="When this slot starts.">' +
               '<span class="to">to</span>' +
-              '<input class="in in-time" data-k="end" type="time" aria-label="End" required>' +
+              '<input class="in in-time" data-k="end" type="time" aria-label="End" required' +
+              ' title="When this slot ends and hands over. The same time at both ends means all day.">' +
               '<select class="in" data-k="stationId" aria-label="Station"></select>' +
             '</div>' +
             '<p class="slot-note"></p>' +
@@ -3637,6 +3687,10 @@
       opts.region = finder.city.region;
       opts.countryCode = finder.city.countryCode;
       opts.radiusKm = 60;
+      /* The city goes in every found station's tagline. A city remembered
+         by a version that did not keep the bare name has only the label,
+         "Toronto, Ontario, Canada", whose first part is the city. */
+      opts.cityName = finder.city.name || String(finder.city.label || '').split(',')[0].trim();
     }
     if (!opts.name && !finder.city) {
       $('finderResults').innerHTML = '';
@@ -3826,6 +3880,19 @@
     state.theme = draft.theme;
     state.autoplay = !!draft.autoplay;
     state.autoplayStationId = draft.autoplayStationId;
+
+    /* Nothing in the drawer edits these, so the only way they can differ
+       is that a file was imported. The schedule switch lives outside the
+       drawer, on the chip, and has to be told. */
+    if (!!draft.schedulerEnabled !== !!state.schedulerEnabled) {
+      state.schedulerEnabled = !!draft.schedulerEnabled;
+      el.schedToggle.setAttribute('aria-pressed', state.schedulerEnabled);
+      el.schedLabel.textContent = state.schedulerEnabled ? 'Schedule on' : 'Schedule off';
+    }
+    state.bass = draft.bass;
+    state.treble = draft.treble;
+    if (draft.volume !== state.volume) setVolume(draft.volume, true);
+
     if (!station(state.currentStationId)) state.currentStationId = state.stations[0].id;
     if (state.lastGood && !station(state.lastGood.stationId)) state.lastGood = null;
     save(); applyLook(); renderPresets(); renderStation(currentStation());
@@ -3942,8 +4009,16 @@
 
   function resetEverything() {
     if (state.intendedPlaying) stopPlayback();
+    /* Which settings file this profile has already read is not a setting,
+       and clearing it would undo the reset at the next launch: the export
+       beside index.html would look new again and be imported straight back
+       over the defaults. Reset means forget what I chose, not forget that
+       I have seen that file. */
+    var seenSeed = state.seedStamp, seenFrom = state.seedFrom;
     try { localStorage.removeItem(KEY); } catch (e) { /* storage unavailable */ }
     state = clone(DEFAULTS);
+    state.seedStamp = seenSeed;
+    state.seedFrom = seenFrom;
     noCors = {};
     provenCors = {};
     save();
@@ -3952,7 +4027,11 @@
     setVolume(state.volume, true);
     applyTone();
     el.schedToggle.setAttribute('aria-pressed', state.schedulerEnabled);
-    el.schedLabel.textContent = 'Schedule on';
+    /* Read off the state rather than written out. It said "Schedule on"
+       while the switch it labels was being set to off, because the default
+       is off -- so a reset left the chip claiming the opposite of what it
+       was doing, until something else happened to redraw it. */
+    el.schedLabel.textContent = state.schedulerEnabled ? 'Schedule on' : 'Schedule off';
     var st = currentStation();
     if (st) renderStation(st);
     lastSlot = null; seenOnce = false;
@@ -4298,7 +4377,11 @@
        scripts -- where reading the same bytes as data would need the
        browser opened with the run of the disk. Import reads it either
        way, so an older .json export still works. */
-    var body = 'window.DESKSIDE_SEED = ' + JSON.stringify({ stations: state.stations, schedule: state.schedule, scheduleEnds: state.scheduleEnds, scheduleV: state.scheduleV || 2, theme: state.theme, volume: state.volume, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId }, null, 2) + ';\n';
+    /* app and appVersion go first so the first line of the file says what
+       it is and what wrote it, readable without knowing the format. app
+       is also the only honest way to refuse somebody else's JSON: an
+       array called stations is not a rare thing to find in a file. */
+    var body = 'window.DESKSIDE_SEED = ' + JSON.stringify({ app: SEED_APP, appVersion: APP_VERSION, seedV: SEED_V, exportedAt: stampNow(), stations: state.stations, schedule: state.schedule, scheduleEnds: state.scheduleEnds, scheduleV: state.scheduleV || 2, schedulerEnabled: !!state.schedulerEnabled, theme: state.theme, volume: state.volume, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId }, null, 2) + ';\n';
     var blob = new Blob([body], { type: 'text/javascript' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -4309,8 +4392,33 @@
   /* One reading of an export file, shared by the Import button and the seed
      that a fresh profile picks up off disk. Throws on anything that is not
      one of ours, which is what both callers want to hear about. */
+  /* When the export was written, in the local time of the machine that
+     wrote it, to the second. Deliberately not a UTC timestamp: this is
+     read by a person deciding which of two files on their desktop is the
+     one they meant, and 19:42:07 is what their clock said. Sortable as
+     text for the same length of string, which is all the sorting anyone
+     needs of it. */
+  function stampNow() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+      + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  /* Which version of the app wrote an export, or null for one written
+     before the stamp existed -- which is any file older than 1.4.8. */
+  function versionOfExport(data) {
+    var v = data && data.appVersion;
+    return (typeof v === 'string' && /^\d+\.\d+\.\d+$/.test(v)) ? v : null;
+  }
+
   function importSettingsInto(target, data) {
-    if (!data || !Array.isArray(data.stations)) throw new Error('no stations');
+    if (!data || typeof data !== 'object') throw new Error('not an export');
+    /* Unstamped is the ordinary case for a file written before 1.4.8 and
+       is accepted. Stamped with somebody else's name is not: that is a
+       file that says plainly it is not ours, and reading it anyway would
+       be the app insisting it knows better. */
+    if (data.app && data.app !== SEED_APP) throw new Error('not an export');
+    if (!Array.isArray(data.stations)) throw new Error('no stations');
     target.stations = data.stations.map(cleanStation).filter(Boolean);
     if (!target.stations.length) throw new Error('no stations');
     var sched = (data.schedule && typeof data.schedule === 'object') ? data.schedule : {};
@@ -4339,11 +4447,33 @@
       target.schedule[g] = r.slots;
       r.changes.forEach(function (c) { target.importFixes.push(c.text); });
     });
+    /* A file old enough to have no scheduleEnds is read as "keep playing"
+       rather than as the default. The difference matters here and nowhere
+       else: importing a file written before the setting existed must not
+       be able to switch a radio off at the end of the day on its own. */
     var e = (data.scheduleEnds && typeof data.scheduleEnds === 'object') ? data.scheduleEnds : {};
     target.scheduleEnds = {
       weekday: e.weekday === 'off' ? 'off' : 'play',
       weekend: e.weekend === 'off' ? 'off' : 'play'
     };
+
+    /* Everything the file carries, not merely the parts that show in a
+       list. Whether the schedule was running is a setting like any other
+       and was being written into the export and thrown away on the way
+       back in: a schedule exported switched on came back switched off,
+       silently, and the drawer then looked as though it had forgotten it.
+       The level and the tone travelled the same way. An older export has
+       none of these fields, and an absent field leaves what is there --
+       so importing one of those still changes nothing it did not mean to.
+       An empty schedule cannot run, which is the same rule load() keeps. */
+    if (typeof data.schedulerEnabled === 'boolean') target.schedulerEnabled = data.schedulerEnabled;
+    if (!target.schedule.weekday.length && !target.schedule.weekend.length) target.schedulerEnabled = false;
+    if (typeof data.volume === 'number' && isFinite(data.volume)) {
+      target.volume = Math.max(0, Math.min(100, Math.round(data.volume)));
+    }
+    if (typeof data.bass === 'number') target.bass = clampTone(data.bass);
+    if (typeof data.treble === 'number') target.treble = clampTone(data.treble);
+
     if (THEMES.indexOf(data.theme) !== -1) target.theme = data.theme;
     target.autoplay = !!data.autoplay;
     target.autoplayStationId = data.autoplayStationId || null;
@@ -4363,13 +4493,25 @@
     var r = new FileReader();
     r.onload = function () {
       try {
-        importSettingsInto(draft, parseExport(r.result));
+        var data = parseExport(r.result);
+        /* Said rather than assumed. Every older format is read here -- a
+           schedule written under the old reading of equal times, a file
+           with no scheduleEnds, one from before the schedule switch was
+           exported at all -- and all of it is brought forward without
+           asking. What cannot be brought forward is the listener's memory
+           of which file they just picked, so the version that wrote it is
+           named. An unstamped file is any export older than 1.4.8. */
+        var from = versionOfExport(data);
+        importSettingsInto(draft, data);
         renderDrawer();
         refreshSaveBtn();
         var fixes = draft.importFixes || [];
+        var when = (typeof data.exportedAt === 'string' && data.exportedAt) ? ', exported ' + data.exportedAt : '';
+        var src = (from === APP_VERSION ? 'Imported' : from ? 'Imported from v' + from
+          : 'Imported from a file older than v1.4.8') + when;
         $('saveMsg').textContent = fixes.length
-          ? 'Imported, with ' + fixes.length + ' schedule fix' + (fixes.length === 1 ? '' : 'es') + '. Press Save to keep it.'
-          : 'Imported. Press Save to keep it.';
+          ? src + ', with ' + fixes.length + ' schedule fix' + (fixes.length === 1 ? '' : 'es') + '. Press Save to keep it.'
+          : src + '. Press Save to keep it.';
         $('saveMsg').className = 'save-msg good';
         /* No Undo offered: the only thing to go back to is a schedule that
            does not work. The file said one thing, the schedule can only be
@@ -4393,8 +4535,24 @@
 
   /* A launcher-made shortcut opens the radio in its own browser profile,
      which starts with empty storage: no stations, no schedule, default
-     theme. So on a first run only, look for an export sitting beside
-     index.html and take the settings from that.
+     theme. So look for an export sitting beside index.html and take the
+     settings from that.
+
+     Read on every launch, not only on the first one. Each shortcut has a
+     profile of its own and storage cannot cross between them, so the file
+     beside index.html is the only thing all of them can see -- and while
+     it was read once per profile and never again, "export from Chrome"
+     changed nothing in Edge or Firefox no matter how many times it was
+     done. Now the file is read every time and imported whenever its
+     contents differ from the last version this profile took, which is
+     what makes an export the way to move settings between browsers.
+
+     The stamp is what stops it fighting the drawer: settings changed in
+     this browser and not exported leave the file alone, so nothing is
+     read back over them. Exporting is the deliberate act that says this
+     file is now the word, and the next launch of every other shortcut
+     agrees. Whoever exported last wins, which is the only rule that can
+     be stated in one sentence.
 
      It is loaded as a script rather than read as data, which is why the
      export writes one. Reading a file off disk from a file:// page needs
@@ -4405,6 +4563,16 @@
      for a convenience that runs once per profile. A script tag needs no
      flag, because a page has always been allowed to load its own
      scripts. A missing file is the ordinary case and is not an error. */
+  /* Enough of a fingerprint to tell one export from the next. Not a
+     checksum against tampering -- a file anyone can edit cannot be
+     defended by a number sitting next to it -- only an answer to "is this
+     the same file I read last time". djb2 over the serialised seed. */
+  function stampOf(text) {
+    var h = 5381;
+    for (var i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+    return text.length + '.' + h.toString(36);
+  }
+
   function seedSettings(done) {
     var tag = document.createElement('script');
     var finished = false;
@@ -4414,12 +4582,23 @@
       tag.remove();
       try {
         if (window.DESKSIDE_SEED) {
-          var seeded = normalise(importSettingsInto(clone(DEFAULTS), window.DESKSIDE_SEED));
-          state = seeded;
-          if (!station(state.currentStationId)) state.currentStationId = state.stations[0].id;
-          save();
+          var stamp = stampOf(JSON.stringify(window.DESKSIDE_SEED));
+          /* A profile with nothing stored takes the file whatever it says,
+             because there is nothing of its own to lose. One that has been
+             used takes it only when the file has changed since it last
+             did -- otherwise every launch would read the same settings
+             back over whatever had been changed since. */
+          if (stored === null || state.seedStamp !== stamp) {
+            var into = stored === null ? clone(DEFAULTS) : state;
+            var seeded = normalise(importSettingsInto(into, window.DESKSIDE_SEED));
+            seeded.seedStamp = stamp;
+            seeded.seedFrom = versionOfExport(window.DESKSIDE_SEED);
+            state = seeded;
+            if (!station(state.currentStationId)) state.currentStationId = state.stations[0].id;
+            save();
+          }
         }
-      } catch (e) { /* not one of ours: carry on with defaults */ }
+      } catch (e) { /* not one of ours: carry on with what is stored */ }
       try { delete window.DESKSIDE_SEED; } catch (e) { window.DESKSIDE_SEED = null; }
       done();
     }
@@ -4497,9 +4676,12 @@
   }
 
   /* Nothing stored means either a first run or a fresh profile, and the
-     second is what the launcher makes. Look for a settings file before
-     drawing anything, so the radio comes up already itself. */
+     second is what the launcher makes. Either way, look for a settings
+     file before drawing anything, so the radio comes up already itself.
+     Declared with var above its use in seedSettings on purpose: it is
+     read there, and hoisting is what lets the reader of that function
+     see the answer it is given. */
   var stored = null;
   try { stored = localStorage.getItem(KEY); } catch (e) { /* storage unavailable */ }
-  if (stored === null) seedSettings(boot); else boot();
+  seedSettings(boot);
 })();

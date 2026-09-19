@@ -40,8 +40,40 @@ rem ---------------------------------------------------------------------
 set "PS=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
 set "APPDIR=%~dp0"
 set "TARGET=%APPDIR%index.html"
-set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile"
+set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile-chrome"
 set "BROWSER=%~1"
+
+rem The profile used to be called plainly "profile", while the Edge and
+rem Firefox ones carried their browser's name -- so the one folder that
+rem did not say which browser it was for was the one there are three of.
+rem The installer renames it; this is the same rename for a folder the
+rem installer has not reached. It moves the folder rather than starting a
+rem new one, so the stations and the schedule inside it come along.
+if not exist "%PROFILE%\" if exist "%LOCALAPPDATA%\DesksideRadio\profile\" (
+  move "%LOCALAPPDATA%\DesksideRadio\profile" "%PROFILE%" >nul 2>&1
+)
+
+rem ---------------------------------------------------------------------
+rem  The flags that keep the profile small.
+rem
+rem  A stock Chrome profile fills with some thirty folders of things it
+rem  fetched in the background and this radio will never consult: safe
+rem  browsing lists, hyphenation dictionaries, captcha providers,
+rem  on-device suggestion models, optimisation hints for pages it is
+rem  never going to load. It is a browser showing one local file, with no
+rem  address bar to type anywhere else into. None of it applies.
+rem
+rem  The same flags shorten the first launch, which is where they were
+rem  first noticed: a brand new profile spends that time fetching them,
+rem  and that is the white window somebody sees after a clean install.
+rem
+rem  The shader caches are deliberately NOT disabled. They are small, and
+rem  they are the reason every launch is not recompiling the same shaders.
+rem
+rem  This exact line also appears in the two shortcut scripts, which build
+rem  their own command lines. A test holds the three to the same wording.
+rem ---------------------------------------------------------------------
+set "LEAN= --disable-background-networking --disable-component-update --disable-breakpad --disable-domain-reliability --disable-sync --no-pings --disable-features=OptimizationHints,OptimizationGuideModelDownloading,SegmentationPlatform,MediaRouter --disk-cache-size=16777216 --media-cache-size=16777216"
 
 if not exist "%TARGET%" (
   echo.
@@ -70,7 +102,7 @@ rem cmd is holding open.
   "  ' --autoplay-policy=no-user-gesture-required' +" ^
   "  ' --window-size=1133,741' +" ^
   "  ' --user-data-dir=' + $q + $env:PROFILE + $q +" ^
-  "  ' --no-first-run --no-default-browser-check';" ^
+  "  ' --no-first-run --no-default-browser-check' + $env:LEAN;" ^
   "Start-Process -FilePath $env:BROWSER -ArgumentList $flags;" ^
   "$cs = @(" ^
   "  'using System; using System.Text; using System.Collections.Generic;'," ^

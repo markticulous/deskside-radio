@@ -15,9 +15,14 @@ rem too: stations and settings do not carry across between them.
 
 title Deskside Radio - desktop shortcut (Edge)
 
-echo.
-echo   DESKSIDE RADIO - DESKTOP SHORTCUT (EDGE)
-echo.
+rem The installer calls this one and prints its own account around it,
+rem and a banner in the middle of somebody else's output is not a
+rem banner. DESKSIDE_NOPAUSE already means "you are being called".
+if not defined DESKSIDE_NOPAUSE (
+  echo.
+  echo   DESKSIDE RADIO - DESKTOP SHORTCUT (EDGE)
+  echo.
+)
 
 set "APPDIR=%~dp0"
 set "TARGET=%APPDIR%index.html"
@@ -58,6 +63,33 @@ if not defined BROWSER (
 rem A profile of its own, so this shortcut and the Chrome one do not fight
 rem over one set of stored settings.
 set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile-edge"
+set "APPROOT=%APPDIR:~0,-1%"
+
+rem The flags that keep the profile from filling with things a browser
+rem showing one local file will never consult. Word for word the line in
+rem "Win - Open Deskside Radio.cmd"; a test holds the copies together.
+set "LEAN= --disable-background-networking --disable-component-update --disable-breakpad --disable-domain-reliability --disable-sync --no-pings --disable-features=OptimizationHints,OptimizationGuideModelDownloading,SegmentationPlatform,MediaRouter --disk-cache-size=16777216 --media-cache-size=16777216"
+
+rem Where this profile saves a download: the app folder, not Downloads.
+rem
+rem Export settings writes deskside-radio-settings.js, and that file is
+rem the only thing the three browser profiles can all see -- each keeps
+rem its own storage, and none of them can read another's. Left in the
+rem Downloads folder it seeds nothing; sitting beside index.html it is
+rem picked up by every shortcut at its next launch. Chrome has no flag
+rem for the download folder, so it is written into the profile before
+rem Chrome has one of its own. Only when absent: a profile already in
+rem use has a Preferences file full of its own state, and the installer
+rem is the thing that edits one of those.
+%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$d = Join-Path $env:PROFILE 'Default';" ^
+  "$f = Join-Path $d 'Preferences';" ^
+  "if (-not (Test-Path -LiteralPath $f)) {" ^
+  "  New-Item -ItemType Directory -Path $d -Force | Out-Null;" ^
+  "  $j = @{ download = @{ default_directory = $env:APPROOT; prompt_for_download = $false };" ^
+  "         savefile = @{ default_directory = $env:APPROOT } } | ConvertTo-Json -Depth 4;" ^
+  "  Set-Content -LiteralPath $f -Value $j -Encoding ASCII;" ^
+  "}"
 
 rem Every value reaches PowerShell as an environment variable, and every
 rem quote inside the argument string is built with [char]34. A literal " in
@@ -77,7 +109,7 @@ rem before it looks along PATH.
   "  ' --autoplay-policy=no-user-gesture-required' +" ^
   "  ' --window-size=1133,741' +" ^
   "  ' --user-data-dir=' + $q + $env:PROFILE + $q +" ^
-  "  ' --no-first-run --no-default-browser-check';" ^
+  "  ' --no-first-run --no-default-browser-check' + $env:LEAN;" ^
   "$link.IconLocation = $env:ICON + ',0';" ^
   "$link.WorkingDirectory = $env:APPDIR;" ^
   "$link.Description = 'Deskside Radio (Edge)';" ^
@@ -101,4 +133,6 @@ echo   That profile starts empty: to bring your stations across, export them
 echo   from Settings - Service and leave deskside-radio-settings.js beside
 echo   index.html. It is read once, the first time that profile opens.
 echo.
-pause
+rem Only the success path. The pauses above sit on error paths and
+rem stop whoever is calling, which is what an error is for.
+if not defined DESKSIDE_NOPAUSE pause

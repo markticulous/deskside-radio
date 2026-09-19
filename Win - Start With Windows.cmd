@@ -23,9 +23,14 @@ rem Settings and pick a station, or set up a schedule.
 
 title Deskside Radio - start with Windows
 
-echo.
-echo   DESKSIDE RADIO - START WITH WINDOWS
-echo.
+rem The installer calls this one and prints its own account around it,
+rem and a banner in the middle of somebody else's output is not a
+rem banner. DESKSIDE_NOPAUSE already means "you are being called".
+if not defined DESKSIDE_NOPAUSE (
+  echo.
+  echo   DESKSIDE RADIO - START WITH WINDOWS
+  echo.
+)
 
 set "APPDIR=%~dp0"
 set "TARGET=%APPDIR%index.html"
@@ -98,20 +103,40 @@ if not defined BROWSER if exist "%ProgramFiles%\Microsoft\Edge\Application\msedg
 if not defined BROWSER for /f "skip=2 tokens=2,*" %%A in ('%SystemRoot%\System32\reg.exe query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe" /ve 2^>nul') do if exist "%%B" set "BROWSER=%%B"
 if not defined BROWSERNAME if defined BROWSER set "BROWSERNAME=Microsoft Edge"
 
-set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile"
+set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile-chrome"
+
+rem The one profile of the three that was not named after its browser.
+rem Moved rather than remade, so what is in it comes along.
+if not exist "%PROFILE%\" if exist "%LOCALAPPDATA%\DesksideRadio\profile\" (
+  move "%LOCALAPPDATA%\DesksideRadio\profile" "%PROFILE%" >nul 2>&1
+)
+
+rem The flags that keep the profile from filling with things a browser
+rem showing one local file will never consult. Word for word the line in
+rem "Win - Open Deskside Radio.cmd"; a test holds the copies together.
+set "LEAN= --disable-background-networking --disable-component-update --disable-breakpad --disable-domain-reliability --disable-sync --no-pings --disable-features=OptimizationHints,OptimizationGuideModelDownloading,SegmentationPlatform,MediaRouter --disk-cache-size=16777216 --media-cache-size=16777216"
+
 rem The shortcut aims at the opener rather than at the browser. The
 rem opener starts the browser with the same flags and then takes the
 rem resize grip off the window, which cannot be done from inside the
 rem page -- there is no web API for it and no browser switch for it, so
 rem something of ours has to be running when the window appears. It
-rem exits as soon as that is done. WindowStyle 7 above keeps its console
-rem minimised, so what shows is a taskbar button for a moment rather
-rem than a black window on screen.
-set "OPENER=%APPDIR%Win - Open Deskside Radio.cmd"
-rem Without the opener beside it -- an older folder, or a copy taken
-rem apart by hand -- the shortcut goes straight at the browser as it
-rem always did, and the window is left resizable.
+rem exits as soon as that is done.
+rem
+rem Started through wscript.exe and a four-line .vbs rather than aimed at
+rem the .cmd. A .cmd is run by cmd.exe, cmd.exe gets a console, and
+rem WindowStyle 7 only minimises that console after Windows has drawn it
+rem -- the black rectangle and the taskbar button that flash at sign-in.
+rem Run with a window style of 0 from the .vbs, no console is created.
+set "WSCRIPT=%SystemRoot%\System32\wscript.exe"
+set "OPENER=%APPDIR%Win - Open Deskside Radio.vbs"
+set "OPENERCMD=%APPDIR%Win - Open Deskside Radio.cmd"
+rem Without either of them -- an older folder, or a copy taken apart by
+rem hand -- the shortcut goes straight at the browser as it always did,
+rem and the window is left resizable.
 if not exist "%OPENER%" set "OPENER="
+if not exist "%OPENERCMD%" set "OPENERCMD="
+if not exist "%WSCRIPT%" set "OPENER="
 
 rem Every value reaches PowerShell as an environment variable, and every
 rem quote inside the argument string is built with [char]34. A literal " in
@@ -127,7 +152,10 @@ rem contain a space, so it needs no quoting of its own.
   "$link = (New-Object -ComObject WScript.Shell).CreateShortcut($path);" ^
   "$q = [char]34;" ^
   "if ($env:BROWSER -and $env:OPENER) {" ^
-  "  $link.TargetPath = $env:OPENER;" ^
+  "  $link.TargetPath = $env:WSCRIPT;" ^
+  "  $link.Arguments = $q + $env:OPENER + $q + ' ' + $q + $env:BROWSER + $q;" ^
+  "} elseif ($env:BROWSER -and $env:OPENERCMD) {" ^
+  "  $link.TargetPath = $env:OPENERCMD;" ^
   "  $link.Arguments = $q + $env:BROWSER + $q;" ^
   "  $link.WindowStyle = 7;" ^
   "} elseif ($env:BROWSER) {" ^
@@ -137,7 +165,7 @@ rem contain a space, so it needs no quoting of its own.
   "    ' --autoplay-policy=no-user-gesture-required' +" ^
   "    ' --window-size=1133,741' +" ^
   "    ' --user-data-dir=' + $q + $env:PROFILE + $q +" ^
-  "    ' --no-first-run --no-default-browser-check';" ^
+  "    ' --no-first-run --no-default-browser-check' + $env:LEAN;" ^
   "} else {" ^
   "  $link.TargetPath = $env:TARGET;" ^
   "}" ^
@@ -145,7 +173,7 @@ rem contain a space, so it needs no quoting of its own.
   "$link.WorkingDirectory = $env:APPDIR;" ^
   "$link.Description = 'Deskside Radio';" ^
   "$link.Save();" ^
-  "Write-Host ''; Write-Host ('  Set to start with Windows: ' + $path)"
+  "if (-not $env:DESKSIDE_NOPAUSE) { Write-Host ''; Write-Host ('  Set to start with Windows: ' + $path) }"
 
 if errorlevel 1 (
   echo.
@@ -168,4 +196,6 @@ echo.
 echo   To stop it starting: run this script again with off
 echo     "Win - Start With Windows.cmd" off
 echo.
-pause
+rem Only the success path. The pauses above sit on error paths and
+rem stop whoever is calling, which is what an error is for.
+if not defined DESKSIDE_NOPAUSE pause

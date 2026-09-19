@@ -179,7 +179,29 @@
     return listHlsVariants(text, masterUrl)[0] || '';
   }
 
-  function normalizeStation(result, index) {
+  /* The tagline a found station arrives with: what it sounds like, then
+     how good it is, then where it is from.
+
+         AAC+ · 48 kbps · Toronto
+
+     The place is the city that was searched for, because the directory
+     has no city field of its own -- only a region and a country, which
+     are what this used to show and are too coarse to tell two stations
+     apart. Searching by name alone has no city to name, so it falls back
+     to the region and then the country rather than saying nothing. Empty
+     parts are dropped rather than left as gaps between separators. */
+  function taglineFor(result, cityName) {
+    var bits = [];
+    var codec = String((result && result.codec) || '').trim();
+    if (codec && !/^unknown$/i.test(codec)) bits.push(codec.toUpperCase());
+    if (result && result.bitrate) bits.push(result.bitrate + ' kbps');
+    var place = String(cityName || '').trim() || String((result && result.state) || '').trim()
+      || String((result && result.country) || '').trim();
+    if (place) bits.push(place);
+    return bits.join(' · ');
+  }
+
+  function normalizeStation(result, index, cityName) {
     if (!result) return null;
     var resolved = String(result.url_resolved || '').trim();
     var raw = String(result.url || '').trim();
@@ -191,18 +213,13 @@
 
     var name = cleanName(result.name);
     var kind = streamKind(url, result.hls);
-    var bits = [];
-    if (result.codec && !/^unknown$/i.test(result.codec)) bits.push(result.codec);
-    if (result.bitrate) bits.push(result.bitrate + ' kbps');
-    if (result.state) bits.push(result.state);
-    else if (result.country) bits.push(result.country);
 
     return {
       id: 'rb_' + (result.stationuuid || Math.random().toString(36).slice(2, 10)),
       name: name,
       band: bandFrom(result),
       callSign: callSignFrom(result),
-      tag: bits.join(' · '),
+      tag: taglineFor(result, cityName),
       url: url,
       colour: pickColour(index || 0),
       kind: kind,
@@ -370,6 +387,7 @@
         return {
           label: [r.name, r.admin1, r.country].filter(Boolean).join(', '),
           lat: r.latitude, lon: r.longitude,
+          name: r.name || '',
           region: r.admin1 || '', countryCode: r.country_code || ''
         };
       });
@@ -392,7 +410,8 @@
     var url = searchUrl(query);
     if (!url) return Promise.resolve([]);
     return getJson(url, signal).then(function (rows) {
-      var list = dedupe((rows || []).map(function (r, i) { return normalizeStation(r, i); }));
+      var city = String(opts.cityName || '').trim();
+      var list = dedupe((rows || []).map(function (r, i) { return normalizeStation(r, i, city); }));
       return rankByPlace(list, place);
     });
   }
@@ -402,7 +421,8 @@
     geocodeUrl: geocodeUrl, searchUrl: searchUrl,
     streamKind: streamKind, parsePlaylist: parsePlaylist,
     pickHlsVariant: pickHlsVariant, listHlsVariants: listHlsVariants,
-    bandFromName: bandFromName, callSignFrom: callSignFrom, bandFrom: bandFrom, normalizeStation: normalizeStation, dedupe: dedupe,
+    bandFromName: bandFromName, callSignFrom: callSignFrom, bandFrom: bandFrom, normalizeStation: normalizeStation,
+    taglineFor: taglineFor, dedupe: dedupe,
     haversineKm: haversineKm, rankByPlace: rankByPlace,
     placeStation: placeStation, dominantColour: dominantColour, logoColour: logoColour,
     hopelessReason: hopelessReason,

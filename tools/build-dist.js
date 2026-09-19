@@ -108,6 +108,12 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
     the two scripts above fall back to aiming straight at the browser, so a
     missing copy costs the lock and nothing else. */
  'Win - Open Deskside Radio.cmd',
+ /* And the four lines that start it without a console. A .cmd is run by
+    cmd.exe and cmd.exe gets a console window, which Windows draws before
+    a minimised shortcut can hide it -- the black rectangle that flashes
+    at launch. Missing, the two scripts above fall back to the .cmd and
+    the flash comes back; nothing else is lost. */
+ 'Win - Open Deskside Radio.vbs',
  /* The per-browser launchers, and Linux. Named for the platform they are
     for, because a folder of double-clickable scripts is the one place a
     filename has to say what it does before anyone opens it. */
@@ -131,7 +137,7 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
    download -- there is one string, and it cannot drift. */
 fs.mkdirSync(path.join(OUT, ASSETS), { recursive: true });
 fs.readdirSync(path.join(ROOT, ASSETS))
-  .filter(function (f) { return /\.ico$/i.test(f); })
+  .filter(function (f) { return /\.(?:ico|ps1)$/i.test(f); })
   .forEach(function (f) {
     fs.copyFileSync(path.join(ROOT, ASSETS, f), path.join(OUT, ASSETS, f));
   });
@@ -165,6 +171,21 @@ fs.writeFileSync(path.join(OUT, 'README.html'), manual);
    the repository, where it is the file GitHub and every licence scanner
    goes looking for. */
 fs.copyFileSync(path.join(ROOT, 'LICENSE'), path.join(OUT, ASSETS, 'LICENSE.txt'));
+
+/* The version, on one line, for the installer to read.
+
+   It says which version it is about to write and which one it is
+   replacing, and it has to learn both from files rather than from the
+   network: the archive is already on the disk, and the folder being
+   replaced is right there. version.json is not in the download -- the
+   version the app shows is inlined into index.html, which is one
+   240 KB line and no way to read a number out of from a batch file.
+
+   So: one line, no punctuation, read with `set /p`. No JSON parser, no
+   PowerShell, nothing to quote. The release notes stay out of it; the
+   installer wants the number and nothing else. */
+fs.writeFileSync(path.join(OUT, ASSETS, 'version.txt'),
+  JSON.parse(read('version.json')).version + '\r\n');
 
 /* Forward slashes, because these names become zip entry names and that is
    what the format uses on every platform. */
