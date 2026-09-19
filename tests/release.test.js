@@ -1365,6 +1365,22 @@ test('the release notes are concise, and in point form', () => {
   assert.equal(points.length + heads.length, lines.length,
     'the release notes carry loose prose outside the points and headings');
 
+  /* Two lists, and the reader picks the one they came for: what is new, or
+     what was broken. Every release page is built this way, back to 1.0.0,
+     so the headings are fixed rather than invented per release. A release
+     that is all fixes simply has no features list. */
+  const ALLOWED = ['## New features & feature updates', '## Bug fixes'];
+  assert.ok(heads.length >= 1, 'the release notes have no section heading');
+  heads.forEach(function (h) {
+    assert.ok(ALLOWED.indexOf(h.trim()) !== -1,
+      'unexpected release-note heading ' + JSON.stringify(h.trim())
+        + '; the two are ' + JSON.stringify(ALLOWED));
+  });
+  /* And in that order where both are there: what is new leads. */
+  if (heads.length === 2) {
+    assert.equal(heads[0].trim(), ALLOWED[0], 'the bug fixes are listed before the new features');
+  }
+
   /* Concise means a point, not a paragraph folded into a bullet. */
   points.forEach(function (p) {
     assert.ok(p.length <= 320, 'this point has become a paragraph: ' + p.slice(0, 60) + '...');

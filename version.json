@@ -1,6 +1,6 @@
 {
-  "version": "1.4.10",
+  "version": "1.4.11",
   "released": "2026-09-19",
-  "notes": "### Fixed\n\n- **Bass and treble follow the station again on a stopped set.** They are kept per station and always were, but they were only loaded when the radio was playing, so choosing a station while stopped left the sliders showing the station before it.\n- That reading was wrong and acting on it was worse: one nudge of either slider wrote both displayed values through to the new station, quietly replacing its own.\n- The volume is remembered as it always was, and still is. It was checked alongside these.\n\n### Analogue dial\n\n- A pixel off the top of the tuning needle.\n- The VU movement on the theme thumbnail sits lower and further left.",
+  "notes": "## Bug fixes\n\n- **The volume control now moves with a scheduled fade, on every theme.** It travels down over the last seconds of a slot and back up when the next station is playing, with the number beside it counting along.\n- It only ever worked on the two themes that draw the fader as a knob. Every other theme places its slider thumb by value, which the fade never touched — so on most themes nothing moved at all.\n- The stored setting is still never written by a fade, and a finger on the fader still wins while it is there.",
   "url": "https://github.com/Markticulous/deskside-radio/releases/latest"
 }
