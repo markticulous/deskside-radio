@@ -277,7 +277,7 @@
       </section>
 
       <section class="pane" id="paneSchedule" role="tabpanel" aria-labelledby="tabSchedule" hidden>
-        <p class="hint">A slot plays one station between two times, handing over at its end. Slots never overlap: stretch one across another and the other is trimmed to fit, with an Undo. Give a slot the same time at both ends and it runs all day. A slot that runs past midnight belongs to the day it starts on. Between slots the radio keeps playing whatever is on, unless you turn it off below.</p>
+        <p class="hint">A slot plays one station between two times, handing over at its end. Slots never overlap: stretch one across another and the other is trimmed to fit, with an Undo. Give a slot the same time at both ends and it runs all day. A slot that runs past midnight belongs to the day it starts on. Between slots the radio keeps playing whatever is on, unless you set it below to switch off instead.</p>
         <div class="tabs" role="tablist" aria-label="Day group">
           <button type="button" class="tab is-active" data-group="weekday" role="tab" aria-selected="true">Weekdays <span class="tab-n" id="countWeekday"></span></button>
           <button type="button" class="tab" data-group="weekend" role="tab" aria-selected="false">Weekend <span class="tab-n" id="countWeekend"></span></button>
@@ -293,13 +293,13 @@
         <div class="cards" id="slotRows"></div>
         <button type="button" class="ghost" id="addSlot">+ Add time slot</button>
         <label class="row end-row">
-          <span class="row-label">When the day's last slot ends</span>
+          <span class="row-label">When a slot ends and nothing follows it</span>
           <select class="in" id="dayEnd">
             <option value="play">Keep playing (free play)</option>
             <option value="off">Turn the radio off until the next slot</option>
           </select>
         </label>
-        <p class="hint">Set for weekdays and the weekend separately, so the weekdays can end at bedtime while the weekend carries on. The radio comes back on by itself when the next slot starts. A gap in the middle of the day is not the end of it.</p>
+        <p class="hint">Applies to any stretch with nothing scheduled &mdash; a gap between two slots as much as the end of the day. The radio comes back on by itself when the next slot starts. Set for weekdays and the weekend separately, so the weekdays can end at bedtime while the weekend carries on.</p>
       </section>
 
       <section class="pane" id="paneLook" role="tabpanel" aria-labelledby="tabLook" hidden>

@@ -1434,14 +1434,20 @@ test('the next-up chip does not call a gap free play', () => {
   const cap = read('app.css').match(/width: var\(--next-w, (\d+)ch\); max-width: (\d+)ch;/);
   assert.ok(cap, 'the next-up chip has lost its width cap');
   assert.equal(cap[1], cap[2], 'the chip default width and its cap disagree');
-  assert.ok(Number(cap[2]) >= 36,
+  /* Four more characters than it used to need: "Radio off" is six
+     longer than "Gap", and a gap now says it when the setting says so. */
+  assert.ok(Number(cap[2]) >= 40,
     'the chip caps at ' + cap[2] + 'ch, which cuts the station name out of the longer wording');
-  assert.ok(/if \(!Scheduler\.dayIsOver\(state\.schedule, n\.at\)\)/.test(fn),
+  assert.ok(/var over = Scheduler\.dayIsOver\(state\.schedule, n\.at\);/.test(fn),
     'the chip no longer tells a gap from the end of the day');
-  /* Free play is said only when the day has ended and the setting is Keep
-     playing. Radio off only when it is the other one. */
-  assert.ok(/ends\[group\] === 'off' \? 'Radio off' : 'Free play'/.test(fn),
-    'the end-of-day wording no longer follows the setting');
+
+  /* The setting picks the first word for both cases now that it governs
+     both. Free play is still said only when the day has ended and the
+     setting is Keep playing -- calling a gap that, when the gap is five
+     minutes and the words are the name of the other setting, is what made
+     the drawer look like it was lying. */
+  assert.ok(/head = ends\[group\] === 'off' \? 'Radio off' : \(over \? 'Free play' : 'Gap'\)/.test(fn),
+    'the wording no longer follows the setting');
 
   /* The default was a dead letter: absent was read as "keep playing" on
      the way in, so a profile that had never touched the setting was handed
@@ -2365,4 +2371,50 @@ test('a registry sweep never touches what is not this app', () => {
   const uses = un.indexOf('$root.ToLower()');
   assert.ok(guard !== -1 && guard < uses,
     'the install folder is used as a needle before it has been checked');
+});
+
+
+test('nothing scheduled and set to off means off, gap or not', () => {
+  /* It used to mean it only at the end of the day. A gap in the middle of
+     one went on playing whatever was on, whatever the setting said -- so
+     two slots with two minutes between them faded out at the first end and
+     faded straight back in on the same station, which is indistinguishable
+     from a fault. The option reads "turn the radio off until the next
+     slot", and in a gap the next slot is the thing two minutes away.
+
+     The pane said both things at once, too: its opening paragraph promised
+     the switch covered gaps while the line under the switch said a gap in
+     the middle of the day is not the end of it. */
+  const src = read('app.js');
+  const html = read('index.html');
+
+  const at = src.indexOf('if (!slot && !first && state.intendedPlaying)');
+  assert.ok(at !== -1, 'the branch that handles nothing being scheduled has moved');
+  const branch = src.slice(at, src.indexOf('if (slot && !first', at));
+
+  assert.ok(/if \(ends\[groupOfSlot\(ended\)\] === 'off'\)/.test(branch),
+    'the setting is gated on something again -- it applies whenever nothing is scheduled');
+  assert.equal(/dayIsOver/.test(branch), false,
+    'the end of the day decides this again, so a gap ignores the setting');
+
+  /* Which group's setting applies is the group of the slot that just
+     ended, not of the day it ended on: a Friday night slot running into
+     Saturday morning is a weekday slot. */
+  assert.ok(/groupOfSlot\(ended\)/.test(branch),
+    'the group is taken from the day rather than from the slot that ended');
+
+  /* And no pointless dip. The fade exists so a change of station is a
+     segue; a gap that keeps playing changes nothing, so fading down and
+     back up only made a slot ending sound like a fault. */
+  const hand = src.slice(src.indexOf('function updateHandover'), src.indexOf('function tick()'));
+  assert.ok(/var staysOn = !n\.slot &&/.test(hand),
+    'the handover fades into a gap that carries on, dipping a station that never changed');
+  assert.ok(/status === 'live' && !staysOn/.test(hand),
+    'the fade no longer checks whether anything is actually changing');
+
+  /* The two sentences that disagreed. */
+  assert.equal(/A gap in the middle of the day is not the end of it/.test(html), false,
+    'the drawer still says a gap is exempt, which it no longer is');
+  assert.ok(/nothing follows it/.test(html),
+    'the control still says it is about the day\'s last slot only');
 });

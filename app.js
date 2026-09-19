@@ -1313,7 +1313,16 @@
 
     if (left <= HANDOVER_FADE_MS && !el.schedToggle.classList.contains('is-handing')) {
       el.schedToggle.classList.add('is-handing');
-      if (state.intendedPlaying && status === 'live') fadeGain(0, Math.max(300, left));
+      /* Not into a gap that carries on. The fade is there so a change of
+         station is a segue rather than a cut, and a gap set to keep
+         playing is not a change of anything: the same station goes on
+         playing. Fading it down and straight back up made a slot ending
+         sound like a fault, and it was the thing that looked broken when
+         a gap failed to turn the radio off. Nothing changes, so nothing
+         moves. */
+      var staysOn = !n.slot &&
+        (state.scheduleEnds || {})[groupOfSlot(Scheduler.activeSlot(state.schedule, now))] !== 'off';
+      if (state.intendedPlaying && status === 'live' && !staysOn) fadeGain(0, Math.max(300, left));
     }
   }
 
@@ -1347,10 +1356,21 @@
          the branch below for a day that simply ended. */
       if (!first) disarmHandover(false);
 
-      /* Nothing is in force. Whether that is the end of the day or a gap
-         in the middle of it is the difference between turning the radio
-         off and leaving it alone -- the setting says "when the day's last
-         slot ends", and a midday gap is not that.
+      /* Nothing is in force, and the setting says what that means.
+
+         It used to mean it only at the end of the day: a gap in the
+         middle of one went on playing whatever was on, whatever the
+         setting said. Two things were wrong with that. The option reads
+         "turn the radio off until the next slot", and during a gap the
+         next slot is the thing two minutes away -- so somebody who set it
+         and left a gap heard the radio come straight back on and had
+         every reason to call that broken. And the pane's own opening
+         paragraph promised the switch covered gaps while the line under
+         the switch said it did not.
+
+         One rule now: nothing scheduled and set to off means off, whether
+         the next slot is in two minutes or tomorrow morning. It is also
+         the shorter sentence, which is usually the sign.
 
          Which group's setting applies is the group of the slot that just
          ended, not the group of the day it ended on: a Friday night slot
@@ -1358,8 +1378,7 @@
          weekday setting that decides what happens when it stops. */
       if (!slot && !first && state.intendedPlaying) {
         var ends = state.scheduleEnds || {};
-        var over = Scheduler.dayIsOver(state.schedule, now);
-        if (over && ends[groupOfSlot(ended)] === 'off') {
+        if (ends[groupOfSlot(ended)] === 'off') {
           stopPlayback();
           scheduleStopped = true;
         } else if (fadeMul !== 1) fadeGain(1, RETURN_FADE_MS);
@@ -1634,13 +1653,18 @@
          away and often tomorrow, where the station is a detail and the
          question is when the schedule picks up at all -- so that one
          names the time and leaves the station to the drawer. */
-      if (!Scheduler.dayIsOver(state.schedule, n.at)) {
-        text = 'Gap at ' + when + day
-          + (back ? ' · ' + back.name + ' at ' + rt + rday : ' · radio stays on');
-      } else {
-        text = (ends[group] === 'off' ? 'Radio off' : 'Free play') + ' at ' + when + day
-          + (back ? ' · back ' + rt + rday : '');
-      }
+      /* The setting picks the first word, now that it applies to both.
+         What follows it is still chosen by which of the two this is: a
+         gap is minutes away and the station is the useful part, being the
+         next thing that will be heard; the end of the day is hours away
+         and often tomorrow, where the station is a detail and the
+         question is when the schedule picks up at all. */
+      var over = Scheduler.dayIsOver(state.schedule, n.at);
+      var head = ends[group] === 'off' ? 'Radio off' : (over ? 'Free play' : 'Gap');
+      var tail = '';
+      if (back) tail = over ? ' · back ' + rt + rday : ' · ' + back.name + ' at ' + rt + rday;
+      else if (!over) tail = ' · radio stays on';
+      text = head + ' at ' + when + day + tail;
     }
     setNextUp(text);
   }
