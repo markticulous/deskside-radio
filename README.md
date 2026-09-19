@@ -329,6 +329,8 @@ gh release create vX.Y.Z --title "Deskside Radio X.Y.Z" --notes-file notes.md \
   deskside-radio.zip deskside-radio-X.Y.Z.zip Win-Install-or-Update-Deskside-Radio.cmd
 ```
 
+The notes themselves are two lists and only two: **New features & feature updates**, then **Bug fixes**. A release that is all fixes has no features list. Every release page back to 1.0.0 is built that way, and a test holds the headings to those two words for word.
+
 `docs/release-header.md` is the block every release page opens with — download this one file, double-click it, and what to take instead on a Mac or Linux. Below the divider comes `version.json`'s own `notes`, which is the same text the radio shows in Settings when it finds an update, so the page and the app cannot describe a release differently.
 
 The standalone `.cmd` **must** be attached as a release asset. `raw.githubusercontent.com` serves it as `text/plain` with `nosniff`, so linking it there renders it in a browser tab instead of downloading it.
