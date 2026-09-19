@@ -205,15 +205,17 @@ fs.writeFileSync(path.join(OUT, ASSETS, 'version.txt'),
    Measured rather than assumed: a second read comes back with the new
    contents, and file:// does not even serve it from cache. The query
    string on the request is belt and braces. */
-/* A starting answer for the shortcut button, before any launcher has had
-   a chance to write the real one. false, meaning show the button: a folder
-   just unzipped has no shortcut, and being wrong in that direction costs a
-   button nobody needed rather than hiding the one they did. The Windows
-   launcher overwrites this at every start. */
-fs.writeFileSync(path.join(OUT, ASSETS, 'shortcut.js'),
-  '/* Written by the build, then by the launcher at each start. Whether a\r\n'
-  + '   shortcut for this radio is on the Desktop right now. */\r\n'
-  + 'window.DESKSIDE_HAS_SHORTCUT = false;\r\n');
+/* assets/shortcut.js is deliberately NOT written here.
+
+   It says whether a Desktop shortcut exists, and only the launcher can
+   know that. Shipping a starting answer looked harmless -- false means
+   show the button, which is right for a folder just unzipped -- but tar
+   replaces the files it carries, so every update overwrote a true with a
+   false and the button came back on a machine that had a shortcut all
+   along. Leaving the file out of the archive means an update does not
+   touch it, and the only thing that ever writes it is the thing that
+   checked. Absent is already the right default: the page shows the button
+   when it cannot find out. */
 
 fs.writeFileSync(path.join(OUT, ASSETS, 'version.js'),
   '/* Written by the build. What is on disk, which is not always what is\r\n'

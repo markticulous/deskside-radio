@@ -3599,6 +3599,12 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .confirm-box {
   box-sizing: border-box; width: min(440px, calc(100% - 32px)); margin: 18vh auto 0;
   padding: 22px 24px 20px; display: grid; gap: 12px;
+  /* Whatever is in it, it ends on screen. The shortcut panel outgrew a
+     short window and simply ran off the bottom edge, buttons and all --
+     with nothing to scroll, because the dialog was as tall as its content
+     and the content was taller than the screen. The cap is what is left
+     after the 18vh it is pushed down by, less a little air underneath. */
+  max-height: calc(82vh - 24px); overflow-y: auto;
   background: var(--ui-bg); color: var(--ui-fg); font-family: var(--ui-font); font-size: 14px;
   border: 1px solid var(--ui-line); border-radius: var(--ui-radius);
   box-shadow: 0 24px 60px -20px rgba(0,0,0,.6);
