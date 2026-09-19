@@ -30,9 +30,23 @@ rem   "Win-Install-or-Update-Deskside-Radio.cmd" D:\Radio   somewhere else
 
 title Deskside Radio - install or update
 
-echo.
-echo   DESKSIDE RADIO - INSTALL OR UPDATE
-echo.
+rem ---- quiet mode -------------------------------------------------------
+rem DESKSIDE_QUIET is set by the launcher, which updates the radio in the
+rem background at most once a day while it is playing. In that mode this
+rem script asks nothing, says nothing, pauses at nothing, and leaves the
+rem running radio alone -- no closing it, no reopening it, no opening a
+rem window of any kind. It still downloads, still checks the archive before
+rem it writes, and still refreshes the shortcuts.
+rem
+rem Every difference is in this one variable, so the thing that runs
+rem unattended is the same script that has been run by hand for months.
+if defined DESKSIDE_QUIET set "DESKSIDE_NOPAUSE=1"
+
+if not defined DESKSIDE_QUIET (
+  echo.
+  echo   DESKSIDE RADIO - INSTALL OR UPDATE
+  echo.
+)
 
 set "ZIPURL=https://github.com/markticulous/deskside-radio/releases/latest/download/deskside-radio.zip"
 set "CMDURL=https://github.com/markticulous/deskside-radio/releases/latest/download/Win-Install-or-Update-Deskside-Radio.cmd"
@@ -140,6 +154,7 @@ rem
 rem Offline, the check fails and this copy carries on -- and then fails at
 rem the download a moment later, with a message about the network rather
 rem than about itself.
+if defined DESKSIDE_QUIET goto :newest
 if defined DESKSIDE_FRESH goto :newest
 set "NEWCMD=%TEMP%\deskside-radio-installer.cmd"
 "%CURL%" -fsL --retry 2 -o "%NEWCMD%" "%CMDURL%"
@@ -283,7 +298,15 @@ rem caret and the whole block dies with "Unexpected token '^'" -- which
 rem is the fault that had the 1.4.2 uninstaller reporting success while
 rem removing nothing. A literal pipe in the output is built with
 rem [char]124 for the same reason.
+rem Not in quiet mode. The whole point of updating from the launcher is
+rem that the radio goes on playing; closing it to replace files under it
+rem would be worse than the download it saves. The profile rename and the
+rem trim are what needed a closed radio, and both are one-time work that
+rem has already happened by the time this route is in use.
 set "CLOSED="
+set "CLOSEDN=0"
+set "CLOSEDB=C"
+if defined DESKSIDE_QUIET goto :radioleftalone
 set "ANSWER=%TEMP%\deskside-radio-answer.txt"
 "%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
   "$names = 'chrome.exe', 'msedge.exe', 'firefox.exe';" ^
@@ -311,6 +334,7 @@ if not "%CLOSEDN%"=="0" (
   set "MSG=Closed the radio, so its files and profile are free"
   call :ok
 )
+:radioleftalone
 
 rem ---- put it in place --------------------------------------------------
 rem Extracted over the top, never wiped first. tar replaces the files it
@@ -475,6 +499,10 @@ if defined DOC set "WANT=1"
 if defined DOE set "WANT=1"
 if defined DOF set "WANT=1"
 if defined WANT goto :haveshortcut
+rem Nobody is there to answer. A launcher-driven update is by definition
+rem running for somebody who already has a shortcut, so there is nothing
+rem to work out and nothing to ask.
+if defined DESKSIDE_QUIET goto :haveshortcut
 
 echo.
 echo   There is no Deskside Radio shortcut on your Desktop yet.
@@ -544,6 +572,7 @@ if exist "%SELF%" (
 )
 
 rem ---- done -------------------------------------------------------------
+if defined DESKSIDE_QUIET exit /b 0
 echo.
 if defined UPDATING (
   set "MSG=Updated"
@@ -577,7 +606,7 @@ if defined UPDATING (
     "if (Test-Path -LiteralPath $p) { Invoke-Item -LiteralPath $p }"
 )
 echo.
-pause
+if not defined DESKSIDE_QUIET pause
 exit /b 0
 
 rem ---- open it again ----------------------------------------------------

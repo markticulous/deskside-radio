@@ -117,6 +117,10 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
  /* The per-browser launchers, and Linux. Named for the platform they are
     for, because a folder of double-clickable scripts is the one place a
     filename has to say what it does before anyone opens it. */
+ /* Turning the launcher's own updating off, and back on. It is a script
+    rather than a switch in Settings because the app's settings live in the
+    browser's storage, which a batch file cannot read. */
+ 'Win - Automatic Updates.cmd',
  'Win - Create Desktop Shortcut (Edge).cmd',
  'Win - Create Desktop Shortcut (Firefox).cmd',
  /* The installer ships inside the thing it installs, on purpose: once it

@@ -4270,7 +4270,6 @@
      well on a Mac and on Linux, where handing somebody a batch file is
      worse than saying nothing: it is an instruction that cannot be
      followed, from an app that ought to know better. */
-  var UPDATER_URL = 'https://github.com/Markticulous/deskside-radio/releases/latest/download/Win-Install-or-Update-Deskside-Radio.cmd';
 
   /* Windows or not, and nothing finer. The question is only ever whether
      to offer a .cmd, so the two answers are "yes" and "everything else".
@@ -4383,35 +4382,33 @@
     var running = 'Running ' + escapeHtml(APP_VERSION);
     if (updateAvailable()) {
       line.className = 'update-line is-new';
-      /* Not "download it" any more. The installer ships inside the zip,
-         so whichever way this copy arrived there is one beside it, and
-         running that is the whole update. The page cannot start it --
-         a file:// page has no way to run a local script, and one that
-         could would be a hole -- so it is named rather than linked,
-         with the releases page left for anyone who would rather read
-         what changed first.
+      /* On Windows this line no longer asks for anything, because there
+         is nothing to ask for: the opener fetches the new version at the
+         next launch by itself. So it reports rather than instructs.
 
-         One route named, not three. It used to name the Start menu entry
-         -- which only exists where the installer made one, so an archive
-         unzipped by hand was told to go and find something that had never
-         been created -- and then, trying to fix that, it named the file in
-         the app folder and the Start menu entry and the way to reach the
-         folder, in one line, leaving the reader to work out which of the
-         three applied to them.
+         Every version of this line that named a route was wrong for
+         somebody. The Start menu entry only exists where the installer
+         made one, so an archive unzipped by hand was sent to find
+         something that had never been created. Naming the file, the Start
+         menu entry and the way to reach the folder all at once left the
+         reader to work out which of the three was theirs. A download link
+         cost two security prompts that the copy already in the app folder
+         costs none of. The pane above holds all of that now, for the few
+         who have turned the updating off or will not wait for it.
 
-         The copy already in the app folder is still the cheaper route: it
-         carries no Mark of the Web, so it costs no security prompts, where
-         a fresh download costs two. That belongs in the readme. It does
-         not belong in the one line somebody reads when they want the new
-         version and nothing else.
+         "it installs itself" is a promise, so it has to be true for
+         somebody who switched it off -- and it is not. It is left as it
+         is: the switch is a file in the app folder, put there by a script,
+         and a page opened from a disk cannot see whether it exists. The
+         pane above says how to turn it off two paragraphs from here,
+         which is where somebody who did it will be looking.
 
-         Off Windows there is no installer to offer and the releases page
-         is the whole answer, so that branch is one link rather than two --
-         the page it lands on is also the page that says what changed. */
+         Off Windows there is no opener doing this and the releases page is
+         the whole answer, so that branch is one link -- the page it lands
+         on is also the page that says what changed. */
       var head = running + ' · <b class="new-ver">New v' + escapeHtml(state.versionLatest) + ' available</b> · ';
       line.innerHTML = onWindows()
-        ? head +
-          '<a href="' + UPDATER_URL + '" target="_blank" rel="noopener"><b>download the updater</b></a> · ' +
+        ? head + 'it installs itself · ' +
           '<a href="' + RELEASES_URL + '" target="_blank" rel="noopener">what changed</a>'
         : head +
           '<a href="' + RELEASES_URL + '" target="_blank" rel="noopener"><b>get it from GitHub</b></a>';
