@@ -1323,3 +1323,52 @@ test('every box in the drawer says what it is for', () => {
     assert.ok(html.slice(i - 200, i + 300).indexOf('placeholder="') !== -1, id + ' has no placeholder');
   });
 });
+
+/* Every release page opens with the same block: download this one file,
+   double-click it, and what to do instead on a Mac or on Linux. It is the
+   first thing anyone arriving at the page needs, and 1.4.8 went out
+   without it -- the body was built from version.json alone, which holds
+   what changed and nothing about how to get it. Composing the body from
+   both is what stops that being a thing anyone has to remember. */
+test('a release page always opens with how to install it', () => {
+  const header = read('docs/release-header.md');
+
+  /* The two audiences the block exists to serve. */
+  assert.ok(header.indexOf(INSTALLER) !== -1,
+    'the release header no longer names the file to download');
+  assert.ok(/macOS/.test(header) && /Linux/.test(header),
+    'the release header no longer tells a Mac or Linux reader what to take instead');
+  assert.ok(header.indexOf('deskside-radio.zip') !== -1,
+    'the release header no longer names the archive for the platforms the installer cannot serve');
+  /* It is the top of the page, so it ends before the notes begin. */
+  assert.equal(/^---$/m.test(header), false,
+    'the release header carries its own divider; release-notes.js adds one and there would be two');
+
+  /* And the body is built from it rather than typed out again. */
+  const tool = read('tools/release-notes.js');
+  assert.ok(tool.indexOf("read('docs/release-header.md')") !== -1,
+    'tools/release-notes.js no longer reads the header, so a release could go out without it');
+  assert.ok(/JSON\.parse\(read\('version\.json'\)\)\.notes/.test(tool),
+    'tools/release-notes.js no longer takes the notes from version.json, so the page and the app could disagree');
+});
+
+/* What changed, in points. The notes are read on a release page by
+   somebody deciding whether to bother updating, and a single unbroken
+   paragraph of prose is not something anybody reads standing up. */
+test('the release notes are concise, and in point form', () => {
+  const notes = JSON.parse(read('version.json')).notes;
+  const lines = notes.split('\n').filter(function (l) { return l.trim(); });
+
+  const points = lines.filter(function (l) { return l.indexOf('- ') === 0; });
+  const heads = lines.filter(function (l) { return l.indexOf('#') === 0; });
+  assert.ok(points.length >= 5, 'the release notes are not in point form');
+  assert.equal(points.length + heads.length, lines.length,
+    'the release notes carry loose prose outside the points and headings');
+
+  /* Concise means a point, not a paragraph folded into a bullet. */
+  points.forEach(function (p) {
+    assert.ok(p.length <= 320, 'this point has become a paragraph: ' + p.slice(0, 60) + '...');
+  });
+  /* And the whole thing stays readable on one screen. */
+  assert.ok(notes.length <= 3000, 'the release notes have grown back into an essay (' + notes.length + ' chars)');
+});
