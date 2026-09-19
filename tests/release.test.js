@@ -1347,8 +1347,36 @@ test('the next-up chip does not call a gap free play', () => {
   const src = read('app.js');
   const fn = src.slice(src.indexOf('function renderNext'), src.indexOf("el.schedToggle.addEventListener('click'"));
 
-  assert.ok(/text = 'Gap at ' \+ when \+ day \+ ' · radio stays on';/.test(fn),
-    'a mid-day gap no longer says what it is, or no longer says the radio keeps playing');
+  assert.ok(/' · radio stays on'/.test(fn),
+    'a mid-day gap no longer says the radio keeps playing when nothing follows it');
+
+  /* A gap names the station, because it is minutes away and is the
+     next thing that will be heard. The end of the day names only the
+     time: it is often tomorrow, the station is a detail by then, and
+     the chip has about thirty-five characters before it cuts words in
+     half. */
+  assert.ok(/back\.name \+ ' at ' \+ rt \+ rday/.test(fn),
+    'a gap no longer names the station the schedule comes back with');
+  assert.ok(/' · back ' \+ rt \+ rday/.test(fn),
+    'the end of the day no longer says when the schedule picks up');
+
+  /* And what comes after it. Saying only what stops leaves the obvious
+     question unanswered -- and then what? -- which meant opening the
+     drawer to find out when the schedule picks up again. The answer is
+     one more step along the same walk: the change after this one. */
+  assert.ok(/var after = Scheduler\.nextChange\(state\.schedule, n\.at\);/.test(fn),
+    'the chip no longer looks past the gap to the slot that follows it');
+  /* A day named only when it is not the day the gap starts on, so an
+     evening off says Mon and a lunchtime gap does not. */
+  assert.ok(/rday = after\.at\.toDateString\(\) === n\.at\.toDateString\(\) \? ''/.test(fn),
+    'the resuming slot names its day even when it is the same day');
+
+  /* And the chip is wide enough to hold it. */
+  const cap = read('app.css').match(/width: var\(--next-w, (\d+)ch\); max-width: (\d+)ch;/);
+  assert.ok(cap, 'the next-up chip has lost its width cap');
+  assert.equal(cap[1], cap[2], 'the chip default width and its cap disagree');
+  assert.ok(Number(cap[2]) >= 36,
+    'the chip caps at ' + cap[2] + 'ch, which cuts the station name out of the longer wording');
   assert.ok(/if \(!Scheduler\.dayIsOver\(state\.schedule, n\.at\)\)/.test(fn),
     'the chip no longer tells a gap from the end of the day');
   /* Free play is said only when the day has ended and the setting is Keep
@@ -1661,8 +1689,15 @@ test('the readout says the version once, after an update', () => {
      nothing to announce -- the number is stamped quietly instead. */
   assert.ok(/ranVersion: null,/.test(js), 'nothing records which version last ran');
   const boot = js.slice(js.indexOf('var ranBefore = state.ranVersion;'), js.indexOf('var ranBefore = state.ranVersion;') + 320);
-  assert.ok(/if \(ranBefore\) announceVersion\(\);/.test(boot),
-    'a first install would announce an update that never happened');
+  /* An install that has been running for weeks has no version recorded if
+     it last ran a build older than 1.4.12, because nothing before that
+     wrote the field. Treating that as a first install is what swallowed
+     the announcement on the first update that carried it. Empty storage is
+     what a first install actually looks like. */
+  assert.ok(/var wasHere = ranBefore \|\| stored !== null;/.test(boot),
+    'a profile with settings but no recorded version is taken for a first install');
+  assert.ok(/if \(wasHere\) announceVersion\(\);/.test(boot),
+    'the announcement no longer follows that test');
   assert.ok(boot.indexOf('state.ranVersion = APP_VERSION;') < boot.indexOf('announceVersion'),
     'the version is announced before it is recorded, so a crash would repeat it for ever');
 
