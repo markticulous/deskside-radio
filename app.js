@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.4.8';
+  var APP_VERSION = '1.4.9';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -1712,14 +1712,23 @@
      moved to 420,260 at 760x520 and closed reopened at 10,10 at 1265x1372. */
   function rememberBox() {
     if (!windowIsOurs()) return;
+    // The drawer has the window on loan; its height is not the radio's.
+    if (borrowedBox) return;
+    /* The theme travels with the box, because a height only means anything
+       alongside the face it was measured against: the console sits at 700
+       and the dial wants 744. Restoring one theme's height under another
+       is a scrollbar, and that is exactly what a settings file arriving
+       with a different theme in it used to produce. */
     var box = {
       x: window.screenX, y: window.screenY,
-      w: window.outerWidth, h: window.outerHeight
+      w: window.outerWidth, h: window.outerHeight,
+      t: state.theme
     };
     // Minimised, or caught mid-drag, is not a position worth keeping.
     if (!(box.w > 200 && box.h > 200)) return;
     var had = state.windowBox;
-    if (had && had.x === box.x && had.y === box.y && had.w === box.w && had.h === box.h) return;
+    if (had && had.x === box.x && had.y === box.y && had.w === box.w && had.h === box.h
+      && had.t === box.t) return;
     state.windowBox = box;
     save();
   }
@@ -1754,7 +1763,14 @@
   function restoreBox() {
     var box = state.windowBox;
     if (!box || !windowIsOurs()) return false;
-    var sized = onWindows();
+    /* The size is taken only when it was measured against the face now on
+       screen. The position is taken either way -- where the window sits is
+       the listener's, whatever it is showing.
+
+       A box with no theme on it was written before 1.4.9 and cannot say,
+       so it is trusted and checked instead: see the overflow test in
+       sizeWindow, which is what catches a wrong one on the way past. */
+    var sized = onWindows() && (box.t == null || box.t === state.theme);
     var w = sized ? Math.min(box.w, screen.availWidth) : window.outerWidth;
     var h = sized ? Math.min(box.h, screen.availHeight) : window.outerHeight;
     var x = Math.max(0, Math.min(box.x, screen.availWidth - w));
@@ -1847,9 +1863,11 @@
      ceiling never binds; the window does, at some 575 CSS pixels.
 
      So the window is borrowed: grown by just what the drawer needs and put
-     back exactly as it was when the drawer closes. Nothing here goes near
-     rememberBox, which is reached only through fitWindow, so a borrowed
-     size is never mistaken for a size the listener chose. */
+     back exactly as it was when the drawer closes.
+
+     rememberBox runs on a timer as well as at the end of a fit, so it can
+     and does see a borrowed window; it checks borrowedBox itself rather
+     than relying on when it is called. */
   var borrowedBox = null;
 
   function growForDrawer(needInner) {
@@ -1888,7 +1906,32 @@
   function sizeWindow() {
     if (sizedOnce) { keepBox = false; mayFit = true; fitWindow(); return; }
     sizedOnce = true;
-    if (restoreBox()) { keepBox = true; mayFit = true; return; }
+    if (restoreBox()) {
+      keepBox = true;
+      mayFit = true;
+      /* A restored box is left alone, which is right until it turns out
+         not to hold the radio. Then it is not a size anybody chose, it is
+         a size that no longer fits, and the listener is looking at a
+         scrollbar down the side of a cabinet.
+
+         Only when the page really does overrun, so a box that fits is
+         still never fitted over. Twice at most, on the same clocks the
+         first fit uses: once the webfonts have landed, and once more for
+         the case where they never arrive. */
+      var checkFits = function () {
+        if (borrowedBox || !keepBox || !windowIsOurs()) return;
+        if (document.documentElement.scrollHeight <= window.innerHeight + 1) return;
+        keepBox = false;
+        fitWindow();
+      };
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function () { setTimeout(checkFits, 1300); });
+      } else {
+        setTimeout(checkFits, 1300);
+      }
+      setTimeout(checkFits, 2600);
+      return;
+    }
 
     /* Nothing touches the window until the layout has stopped changing
        under it. Three things move the height during the first second --
