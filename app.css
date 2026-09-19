@@ -148,7 +148,7 @@
   /* 36ch, up from 30. The chip used to say only what was stopping, and
      now says what follows it, which is a few characters longer than the
      old cap allowed -- it was cutting station names in half. */
-  opacity: .7; width: var(--next-w, 36ch); max-width: 36ch;
+  opacity: .7; width: var(--next-w, 40ch); max-width: 40ch;
   overflow: hidden; white-space: nowrap;
   transition: width .3s cubic-bezier(.2, .8, .2, 1), opacity .16s ease;
 }
