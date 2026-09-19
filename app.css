@@ -171,7 +171,7 @@
 #openSettings.has-update::after {
   content: ''; position: absolute; top: 6px; right: 6px;
   width: 7px; height: 7px; border-radius: 50%;
-  background: var(--alert, #f0842a);
+  background: var(--alert, #ff8f2e);
   box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 22%, transparent);
 }
 .shortcut-btn { width: 30px; height: 30px; opacity: .55; transition: opacity .16s ease; }
@@ -478,8 +478,23 @@
    rule does run at that moment, because removing display: none is what
    starts it, and that is also why it re-runs every time the pill comes
    back after a dismiss. */
+/* The pill fades in when it arrives. It used to do this over 60ms, to
+   match the speed the dot fades off at -- but that is a snap, which is
+   right for a blink and wrong for an arrival: something appearing at
+   the end of the wordmark in a sixteenth of a second has simply
+   appeared, and nothing was seen to happen. Long enough to read as a
+   fade, short enough that it is never in the way. */
 @keyframes update-pill-in { from { opacity: 0; } to { opacity: 1; } }
-.update-pill { animation: update-pill-in .06s ease-out; }
+.update-pill { animation: update-pill-in .22s ease-out; }
+
+/* And out again on the cross. There was nothing here: the pill was set
+   hidden, which is display: none, and it went in the frame the press
+   landed in -- a control that vanishes under the finger reads as a
+   misclick rather than as a thing done. 90ms, ease-in, which is quicker
+   than the arrival on purpose: going is not news. forwards, because the
+   element is only hidden once the animation has run. */
+@keyframes update-pill-out { from { opacity: 1; } to { opacity: 0; } }
+.update-pill.is-going { animation: update-pill-out .09s ease-in forwards; }
 .update-pill-link {
   display: inline-flex; align-items: center; gap: 6px;
   color: inherit; text-decoration: none;
@@ -510,13 +525,15 @@
   100% { opacity: 0; }
 }
 .update-dot {
-  width: 5px; height: 5px; border-radius: 50%; background: var(--alert, #f0842a); flex: none;
+  width: 5px; height: 5px; border-radius: 50%; background: var(--alert, #ff8f2e); flex: none;
   animation: update-dot-blink 2s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   /* Held lit. The dot's job is to mark the notice; the blink is only the
      part that asks for the glance, and that is what is being declined. */
   .update-dot { animation: none; opacity: 1; }
+  /* And the pill is simply there, and simply gone, for the same reason. */
+  .update-pill, .update-pill.is-going { animation: none; }
 }
 /* A ring around the cross rather than a bare one: at this size, in a line
    of tracked-out uppercase, a lone x reads as another letter. The ring is
@@ -626,7 +643,11 @@
    the update pill and the mark on the Settings control are the two places
    that use it; both are news rather than furniture, and news should look
    the same wherever it appears. */
-:root { --alert: #f0842a; }
+/* A little brighter than the orange the rest of the app uses, and on
+   purpose: this mark has to carry at 5px against eight different
+   grounds, from walnut to near-black, and the duller orange sat into
+   the darker ones. Same hue to within half a degree. */
+:root { --alert: #ff8f2e; }
 .meter { --vu-live: 1; }
 /* Off unless a theme draws it. Only Console has a segmented bar it makes
    sense on; the needle themes have a needle, which is its own kind of
