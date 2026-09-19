@@ -4332,6 +4332,10 @@
     pill.hidden = !on || !!state.versionPillOff;
     var gear = $('openSettings');
     if (gear) gear.classList.toggle('has-update', on);
+    /* And the tab, so the mark on the gear leads somewhere rather than
+       leaving the drawer to be searched. Same fact, one level down. */
+    var tab = $('tabService');
+    if (tab) tab.classList.toggle('has-update', on);
     if (!on) return;
     var link = $('updatePillLink');
     if (link) {
@@ -4377,7 +4381,7 @@
          Off Windows there is no installer to offer and the releases page
          is the whole answer, so that branch is one link rather than two --
          the page it lands on is also the page that says what changed. */
-      var head = running + ' · <b>New v' + escapeHtml(state.versionLatest) + ' available</b> · ';
+      var head = running + ' · <b class="new-ver">New v' + escapeHtml(state.versionLatest) + ' available</b> · ';
       line.innerHTML = onWindows()
         ? head +
           '<a href="' + UPDATER_URL + '" target="_blank" rel="noopener"><b>download the updater</b></a> · ' +

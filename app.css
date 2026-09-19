@@ -695,6 +695,13 @@
    grounds, from walnut to near-black, and the duller orange sat into
    the darker ones. Same hue to within half a degree. */
 :root { --alert: #ff8f2e; }
+/* The same news in ink rather than in light. A 5px dot can be as bright
+   as it likes -- it is a shape, and brightness is what makes it carry
+   against eight different grounds. Text has to be read, and #ff8f2e on
+   the drawer's near-white ground is about 2.3:1, which is a colour you
+   notice and then squint at. This is the same hue to within a degree,
+   taken down until it clears the 4.5:1 that body text needs. */
+:root { --alert-ink: #b85c12; }
 .meter { --vu-live: 1; }
 /* Off unless a theme draws it. Only Console has a segmented bar it makes
    sense on; the needle themes have a needle, which is its own kind of
@@ -2853,6 +2860,20 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   background: var(--ui-field); color: var(--ui-mute); transition: background .18s ease, color .18s ease;
 }
 .dtab-n:empty { display: none; }
+
+/* The same mark the Settings control carries, on the tab that leads to
+   the thing itself. The gear says there is news somewhere in here; this
+   says which tab, which is the question the gear leaves open.
+
+   An ::after rather than something absolutely placed: .dtab is a flex
+   row with a 7px gap, so the dot becomes an item and is spaced and
+   centred by the same rule as the label. The empty count badge between
+   them collapses, having its own :empty rule above. */
+.dtab.has-update::after {
+  content: ''; flex: none;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--alert, #ff8f2e);
+}
 .dtab[aria-selected="true"] .dtab-n { background: var(--ui-accent); color: #fff; }
 .dtab-ink {
   position: absolute; left: 0; bottom: -1px; height: 2px; border-radius: 2px 2px 0 0;
@@ -3512,6 +3533,10 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 
 .update-line { margin: 2px 0 0; font-size: 12.5px; color: var(--ui-mute); }
 .update-line.is-new { color: var(--ui-fg); }
+/* Only the news itself. The rest of the line is what version is running
+   and where to get the new one, and those are ordinary text; colouring
+   the lot would leave nothing for the colour to point at. */
+.update-line .new-ver { color: var(--alert-ink); }
 .update-line a { color: inherit; }
 
 /* Beside the button rather than marooned at the far end of the footer,
