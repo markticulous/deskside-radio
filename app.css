@@ -145,7 +145,10 @@
    is no compositor-only way to make a flex item resize and take its
    neighbours with it. Reduced motion zeroes the duration, further down. */
 .sched-next {
-  opacity: .7; width: var(--next-w, 30ch); max-width: 30ch;
+  /* 36ch, up from 30. The chip used to say only what was stopping, and
+     now says what follows it, which is a few characters longer than the
+     old cap allowed -- it was cutting station names in half. */
+  opacity: .7; width: var(--next-w, 36ch); max-width: 36ch;
   overflow: hidden; white-space: nowrap;
   transition: width .3s cubic-bezier(.2, .8, .2, 1), opacity .16s ease;
 }

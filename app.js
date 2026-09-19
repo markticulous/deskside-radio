@@ -1606,13 +1606,40 @@
     if (st) {
       text = st.name + ' at ' + when + day;
     } else {
+      /* Nothing is starting at the next change, so the chip has been
+         saying what stops and leaving the obvious question unanswered:
+         and then what? The answer is one more step along the same walk
+         -- the change after this one, which is the next slot to start.
+         Named here so a gap or an evening off says when the schedule
+         picks up again, rather than making somebody open the drawer to
+         find out. */
       var ends = state.scheduleEnds || {};
       var ending = Scheduler.activeSlot(state.schedule, now);
       var group = ending ? groupOfSlot(ending) : Scheduler.dayGroup(n.at);
+      var after = Scheduler.nextChange(state.schedule, n.at);
+      var back = after && after.slot ? station(after.slot.stationId) : null;
+      var rt = '', rday = '';
+      if (back) {
+        rt = pad(after.at.getHours()) + ':' + pad(after.at.getMinutes());
+        rday = after.at.toDateString() === n.at.toDateString() ? ''
+          : ' ' + ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][after.at.getDay()];
+      }
+
+      /* The two cases want different things said, and the chip has room
+         for about thirty-five characters before it starts cutting words
+         in half.
+
+         A gap is minutes away, so the station is the useful part: it is
+         the next thing that will be heard. The end of the day is hours
+         away and often tomorrow, where the station is a detail and the
+         question is when the schedule picks up at all -- so that one
+         names the time and leaves the station to the drawer. */
       if (!Scheduler.dayIsOver(state.schedule, n.at)) {
-        text = 'Gap at ' + when + day + ' · radio stays on';
+        text = 'Gap at ' + when + day
+          + (back ? ' · ' + back.name + ' at ' + rt + rday : ' · radio stays on');
       } else {
-        text = (ends[group] === 'off' ? 'Radio off' : 'Free play') + ' at ' + when + day;
+        text = (ends[group] === 'off' ? 'Radio off' : 'Free play') + ' at ' + when + day
+          + (back ? ' · back ' + rt + rday : '');
       }
     }
     setNextUp(text);
@@ -4816,14 +4843,25 @@
     }
     tick();
     startTicking();
-    /* Said once, on the first launch after an update. A profile with no
-       version recorded has never run one, which is a first install and
-       has nothing to announce -- it is stamped quietly instead. */
+    /* Said once, on the first launch after an update.
+
+       A profile with no version recorded is not necessarily new. Nothing
+       before 1.4.12 wrote this field, so every install updating from an
+       older one arrives here with stations, a window box and a theme --
+       plainly an install that has been running for weeks -- and was told
+       it was a first install and given nothing. Which is what happened on
+       the first real update to carry this, where the announcement was the
+       thing being updated to.
+
+       Empty storage is what a first install actually looks like. stored
+       is what was read before any of this ran, so it answers that
+       exactly: null means nothing had ever been saved here. */
     var ranBefore = state.ranVersion;
     if (ranBefore !== APP_VERSION) {
+      var wasHere = ranBefore || stored !== null;
       state.ranVersion = APP_VERSION;
       save();
-      if (ranBefore) announceVersion();
+      if (wasHere) announceVersion();
     }
     $('appVersion').textContent = 'v' + APP_VERSION;
     if (updateAvailable()) $('appVersion').classList.add('is-stale');
