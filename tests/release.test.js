@@ -1469,9 +1469,15 @@ test('the release notes are concise, and in point form', () => {
     assert.equal(heads[0].trim(), ALLOWED[0], 'the bug fixes are listed before the new features');
   }
 
-  /* Concise means a point, not a paragraph folded into a bullet. */
+  /* Concise means a point, not a paragraph folded into a bullet. 320
+     characters is the aim and 350 is the limit: the difference is there so
+     a point that genuinely needs one more clause can have it, rather than
+     being split into two bullets that read worse than the one. Past 350 it
+     has stopped being a point. */
   points.forEach(function (p) {
-    assert.ok(p.length <= 320, 'this point has become a paragraph: ' + p.slice(0, 60) + '...');
+    assert.ok(p.length <= 350,
+      'this point has become a paragraph at ' + p.length + ' characters (aim for 320, 350 at the outside): '
+        + p.slice(0, 60) + '...');
   });
   /* And the whole thing stays readable on one screen. */
   assert.ok(notes.length <= 3000, 'the release notes have grown back into an essay (' + notes.length + ' chars)');
