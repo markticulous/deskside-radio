@@ -245,6 +245,47 @@ h2 {
 }
 .n-pill b { width: 5px; height: 5px; border-radius: 50%; background: var(--alert); }
 
+/* ---- the readout saying which version it is now -----------------------
+   The one place the radio can tell anybody an update landed. By the time
+   they see it the installer's window has gone, and the version in Settings
+   is somewhere nobody looks on the way past -- so it is said on the part
+   of the front that is always being read, five times, and then the readout
+   goes back to work.
+
+   Same numbers as the app: five flashes of 360ms, then a 220ms fade back.
+   The readout here is a plain block rather than the real marquee, because
+   what is being shown is the timing and not the typography. */
+.ann {
+  display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 14px;
+  padding: 16px; background: var(--sunk); border-radius: 4px;
+}
+.ann-glass {
+  background: linear-gradient(#f3e8c6, #ddc99a);
+  border: 1px solid #6b5324; border-radius: 3px;
+  padding: 10px 14px; overflow: hidden;
+}
+.ann-name {
+  font-family: var(--display); font-weight: 700; font-size: 26px; line-height: 1.1;
+  letter-spacing: .01em; color: #3a2a12; white-space: nowrap;
+}
+@keyframes ann-flash {
+  0%, 45%   { opacity: 1; }
+  50%, 95%  { opacity: 0; }
+  100%      { opacity: 1; }
+}
+@keyframes ann-return { from { opacity: 0; } to { opacity: 1; } }
+.ann-name.is-announcing { animation: ann-flash .36s linear 5; }
+.ann-name.is-returning  { animation: ann-return .22s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .ann-name.is-announcing, .ann-name.is-returning { animation: none; }
+}
+.ann-play {
+  font: 500 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  padding: 8px 12px; border: 1px solid var(--line); border-radius: 3px;
+  background: var(--surface); color: var(--ink); cursor: pointer;
+}
+.ann-play:hover { border-color: var(--ink); }
+
 /* ---- the shipped pill, with its dismiss -------------------------------
    Built the way the app builds it rather than approximated: a shell with
    the border, a link inside it, and a button beside the link. Each row
@@ -529,6 +570,26 @@ h2 {
   </section>
 
   <section>
+    <h2>After an update, the readout says so</h2>
+    <p class="lede">An update replaces the files under a closed radio, and by the time anybody sees anything the installer&rsquo;s window has gone. The version in Settings is a place nobody looks on the way past. So the radio says it once, on the part of the front that is always being read &mdash; five flashes, then it goes back to work. <strong>Press play below to watch it.</strong></p>
+
+    <div class="ann">
+      <span class="t-label">dial</span>
+      <div>
+        <div class="ann-glass"><div class="ann-name" id="annName">KISS 92.5</div></div>
+      </div>
+    </div>
+
+    <p style="margin-top:14px"><button type="button" class="ann-play" id="annPlay">Play it again</button></p>
+
+    <div class="opt">
+      <div class="opt-body">
+        <span class="opt-note">Five flashes at 360ms is 1.8 seconds: long enough to read a version number twice, short enough that nobody waiting for their station is kept from it. Then the station comes back over 220ms, the same fade the update pill arrives with &mdash; the two are the only things on the face that announce themselves, and they should move alike. It is said once and never again: the profile records which version last ran in it, and only a change to that number brings this up. A first install says nothing at all, because nothing was updated.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
     <h2>Placements</h2>
     <p class="lede">Each row is the same mock header under a different theme skin. Grounds, ink and accents are each theme&rsquo;s own, so you can see whether a treatment survives a walnut ground and an off-white one. The one exception is the alert mark itself: it is the same orange on all eight, because a piece of news should not be wearing the cabinet&rsquo;s colours.</p>
 
@@ -731,6 +792,35 @@ document.querySelectorAll('.s-x').forEach(function (x) {
     setTimeout(finish, PILL_OUT_MS);
   });
 });
+/* The announcement, on the same clocks as the app: five flashes of 360ms,
+   then the station back over 220ms. */
+(function () {
+  var name = document.getElementById('annName');
+  var play = document.getElementById('annPlay');
+  if (!name || !play) return;
+  var STEP = 360, FLASHES = 5, STATION = 'KISS 92.5';
+  var timer = null;
+
+  function run() {
+    clearTimeout(timer);
+    name.classList.remove('is-announcing', 'is-returning');
+    name.textContent = 'Updated to v1.4.12';
+    void name.offsetWidth;
+    name.classList.add('is-announcing');
+    timer = setTimeout(function () {
+      name.classList.remove('is-announcing');
+      name.textContent = STATION;
+      void name.offsetWidth;
+      name.classList.add('is-returning');
+      timer = setTimeout(function () { name.classList.remove('is-returning'); }, 400);
+    }, STEP * FLASHES);
+  }
+
+  play.addEventListener('click', run);
+  // Once on arrival, so the section shows what it is about without asking.
+  setTimeout(run, 400);
+})();
+
 document.getElementById('restore').addEventListener('click', function () {
   document.querySelectorAll('.s-pill').forEach(function (p) { p.hidden = false; });
   document.querySelectorAll('.s-gone').forEach(function (g) { g.hidden = true; });
