@@ -9,14 +9,47 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
-test('version.json matches the version the app reports', () => {
-  const declared = /var APP_VERSION = '([^']+)'/.exec(read('app.js'));
-  assert.ok(declared, 'APP_VERSION not found in app.js');
-  const published = JSON.parse(read('version.json')).version;
-  assert.equal(published, declared[1],
-    'version.json says ' + published + ' but app.js says ' + declared[1] +
-    ' — every running copy compares against version.json, so a mismatch either ' +
-    'hides a release or claims one that does not exist.');
+test('every place a person writes the version agrees with every other', () => {
+  /* Four files, and each one has been wrong on its own at some point.
+     index.html carried v1.0.0 through nine releases and then v1.4.7
+     through six more -- it is overwritten from APP_VERSION a moment after
+     boot, so the stale number is only on screen for an instant and nobody
+     ever caught it by looking.
+
+     The list is read out of tools/cut.js rather than written again here.
+     That script is what sets them all at a cut, so a fifth place added
+     there is checked here automatically, and a fifth place added ONLY here
+     would be a place the cut never sets -- which is the drift this is
+     supposed to stop. */
+  const cut = read('tools/cut.js');
+  const block = /const SOURCES = \[([\s\S]*?)\n\];/.exec(cut);
+  assert.ok(block, 'tools/cut.js no longer lists where the version lives');
+
+  const places = [];
+  block[1].replace(/\{\s*file:\s*'([^']+)',\s*re:\s*\/(.+?)\/,\s*what:\s*'([^']+)'\s*\}/g,
+    function (_, file, re, what) { places.push({ file: file, re: re, what: what }); return _; });
+
+  assert.ok(places.length >= 4,
+    'only ' + places.length + ' places are listed in tools/cut.js; there are at least four');
+
+  const seen = places.map(function (p) {
+    const src = read(p.file);
+    const m = new RegExp(p.re).exec(src);
+    assert.ok(m, p.file + ' has no ' + p.what + ' for the cut script to set');
+    return { file: p.file, what: p.what, version: m[1] };
+  });
+
+  const want = seen[0].version;
+  seen.forEach(function (s) {
+    assert.equal(s.version, want,
+      s.file + ' says ' + s.version + ' but ' + seen[0].file + ' says ' + want +
+      ' (' + s.what + ') — run: node tools/cut.js ' + want);
+  });
+
+  /* And the one that actually matters at runtime, said plainly: every
+     running copy compares itself against version.json, so a mismatch there
+     either hides a release or claims one that does not exist. */
+  assert.equal(JSON.parse(read('version.json')).version, want, 'version.json disagrees');
 });
 
 test('the launcher passes every flag the zero-click start depends on', () => {
