@@ -150,7 +150,7 @@ test('the settings seed is one filename, spelled the same everywhere', () => {
     'the seed loader no longer reads ' + SEED);
 
   /* Nothing anywhere may name the old one. */
-  ['.gitignore', 'app.js', 'index.html', 'README.md', 'README.html'].forEach(function (f) {
+  ['.gitignore', 'app.js', 'index.html', 'README.md', 'User Reference Guide.html'].forEach(function (f) {
     assert.equal(read(f).indexOf('deskside-radio-settings.json'), -1,
       f + ' still names deskside-radio-settings.json, which nothing writes any more');
   });
@@ -477,7 +477,7 @@ test('every script looks for the icons where they actually are', () => {
         });
       });
     });
-  ['index.html', 'README.html'].forEach(function (f) {
+  ['index.html', 'User Reference Guide.html'].forEach(function (f) {
     assert.equal(/href="favicon-/.test(read(f)), false,
       f + ' loads an icon from the root, where there is no longer one');
   });
@@ -728,7 +728,7 @@ test('an update is not something to be taken, and the line says so', () => {
     'nothing stamps the platform on the root, so neither paragraph is ever drawn');
 
   /* And both readmes say which platform each route belongs to. */
-  ['README.md', 'README.html'].forEach(function (f) {
+  ['README.md', 'User Reference Guide.html'].forEach(function (f) {
     const doc = read(f);
     assert.ok(/On Windows/.test(doc), f + ' no longer marks the Windows-only update route');
     assert.ok(/On macOS and Linux/.test(doc), f + ' does not say how to update anywhere but Windows');
@@ -759,7 +759,7 @@ test('an update is not something to be taken, and the line says so', () => {
     'the uninstaller no longer sweeps the wildcard that covers the renamed shortcut');
 
   /* And nothing anywhere still sends somebody to the name filed under U. */
-  ['app.js', 'index.html', 'README.md', 'README.html'].forEach(function (f) {
+  ['app.js', 'index.html', 'README.md', 'User Reference Guide.html'].forEach(function (f) {
     assert.ok(!/(run|open|double-click)[^.]{0,40}<?\/?(strong|b)?>?Update Deskside Radio/i.test(read(f)),
       f + ' still sends somebody to a Start menu entry called Update Deskside Radio');
   });
@@ -1199,6 +1199,30 @@ test('the installer hands over to the published copy of itself', () => {
    build you wanted. It says so now -- read out of the zip already on this
    disk, so it costs no request and describes the files actually about to
    be written rather than whatever the release page claims. */
+test('an update clears the manual under its old name', () => {
+  /* tar writes what the archive carries and leaves the rest alone, which is
+     what lets a settings seed survive an update -- and what would leave
+     README.html sitting beside User Reference Guide.html for ever on any
+     folder installed before 1.5.1 renamed it. Two manuals, one of them
+     describing a version nobody is running.
+
+     Guarded on the new file being there, so an unpack that went wrong
+     leaves the old manual rather than none. */
+  const cmd = read(INSTALLER);
+  const i = cmd.indexOf('del /q "%APPDIR%README.html"');
+  assert.ok(i !== -1, INSTALLER + ' no longer clears the manual under its old name');
+
+  const guard = cmd.slice(Math.max(0, i - 220), i);
+  assert.ok(guard.indexOf('if exist "%APPDIR%User Reference Guide.html"') !== -1,
+    'the old manual is deleted without checking the new one arrived, so a failed unpack leaves none');
+
+  /* And the app has to be able to read either, because the folder is only
+     tidied by an update that gets that far. */
+  const app = read('app.js');
+  const names = app.slice(app.indexOf('var README_NAMES'), app.indexOf('var README_NAMES') + 160);
+  assert.ok(names.indexOf("'User Reference Guide.html'") < names.indexOf("'README.html'"),
+    'the old manual name is tried first, so a tidied folder opens the stale one');
+});
 test('the installer says which version it is installing', () => {
   const src = read(INSTALLER);
 
@@ -1700,8 +1724,17 @@ test('the volume control moves with a scheduled fade', () => {
     'the fader is no longer drawn at the level being heard');
   assert.ok(/input\.value = shown/.test(paint),
     'paintFade sets a custom property but never moves the control, so a slider theme shows nothing');
-  assert.ok(/setProperty\('--turn'/.test(paint),
+  /* --turn is what a knob theme rotates its cap by, and --lit-x is which
+     lamp the 8-bit face lights. Both come from markFader, and paintFade has
+     to go through it rather than keep a copy: when it kept its own turn the
+     knobs followed a fade and the lamps did not. */
+  assert.ok(/markFader\(input\)/.test(paint),
+    'paintFade works out the mark itself again, so only some faces follow a fade');
+  const mark = app.slice(app.indexOf('function markFader'), app.indexOf('function markFader') + 1400);
+  assert.ok(/setProperty\('--turn'/.test(mark),
     'the knob themes have lost the number they turn their cap by');
+  assert.ok(/setProperty\('--lit-x'/.test(mark),
+    'the lamp faces have lost the position of the lit lamp');
 
   /* The setting is not the fade. What is stored, and what comes back, is
      where the listener left it. */
@@ -2105,7 +2138,7 @@ test('the readmes describe updating as it now happens', () => {
   /* It used to promise, in bold, that nothing was downloaded or replaced
      until you asked for it. That promise is gone, and going quiet about it
      would be worse than having made it. */
-  ['README.md', 'README.html'].forEach(function (f) {
+  ['README.md', 'User Reference Guide.html'].forEach(function (f) {
     const doc = read(f);
     assert.equal(/Nothing is downloaded or replaced until you ask for it/.test(doc), false,
       f + ' still makes a promise the radio no longer keeps');

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Deskside Radio — Read me</title>
+<title>Deskside Radio — User Reference Guide</title>
 <link rel="icon" href="assets/favicon-dial.ico">
 <meta name="color-scheme" content="light dark">
 <style>
@@ -418,6 +418,9 @@ table.themes td:last-child { color: var(--mute); padding-right: 0; }
 
 @media (max-width: 480px) {
   .toc ol { columns: 1; }
+  /* The tracking is what costs the room here, and it is decoration. */
+  .wordmark { letter-spacing: .1em; gap: 8px; }
+  .find-input { padding-right: 24px; }
   /* Below this the three of them cannot share a line honestly. The badge
      is the one that goes: the name and the version are the information. */
   .byline { display: none; }
@@ -438,7 +441,7 @@ html { scroll-behavior: smooth; }
 
 @media print {
   :root { --paper: #fff; --card: #fff; --ink: #000; --mute: #333; --line: #ccc; --rule: #999; --code-bg: #f0f0f0; }
-  .toc, .totop { display: none; }
+  .toc, .totop, .uptop { display: none; }
   /* Nothing sticks to a sheet of paper. */
   .wordmark { position: static; padding: 0 0 10px; }
   section { scroll-margin-top: 0; }
@@ -450,49 +453,107 @@ html { scroll-behavior: smooth; }
   .note, .cmd, ol.steps > li, table.themes tr { break-inside: avoid; }
   a { color: #000; }
 }
-/* Find a section.
+/* The way back up, from wherever you are.
 
-   Right of the masthead so it is the first thing in reach on a page this
-   long, and out of the way of the standfirst. It searches headings only --
-   full text would return most of the page for most words, and what somebody
-   wants from a guide is the part of it to read, not the sentence. */
-.find { position: relative; justify-self: end; width: min(320px, 100%); }
+   Bottom right, which is the corner the contents list is not in. It stays
+   out of the way until there is enough behind you to be worth the trip --
+   see the script -- and it is the search box's own orange, because the two
+   of them are the only things on the page you press. */
+.uptop {
+  position: fixed; right: 16px; bottom: 100px; z-index: 25;
+  width: 42px; height: 42px; padding: 0;
+  display: grid; place-items: center;
+  border: 1px solid color-mix(in srgb, var(--mark) 30%, transparent);
+  border-radius: 50%;
+  background: var(--card); color: var(--mark);
+  box-shadow: 0 6px 18px rgba(0,0,0,.14);
+  cursor: pointer;
+  opacity: 0; transform: translateY(6px); pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease, background .18s ease;
+}
+/* Drawn, not typed. A text arrow takes its weight from whichever font
+   in the stack carries U+2191, which is usually a fallback with one
+   weight in it -- so asking for bold did nothing. A stroke does what
+   it is told. */
+.uptop svg { width: 20px; height: 20px; }
+.uptop.is-on { opacity: 1; transform: none; pointer-events: auto; }
+.uptop:hover { background: color-mix(in srgb, var(--mark) 12%, var(--card)); }
+.uptop:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .uptop { transition: none; } }
+@media (max-width: 480px) { .uptop { right: 12px; bottom: 78px; } }
+/* Search the manual.
+
+   In the banner rather than the masthead: the banner is sticky, so it is
+   still there when you are eight sections down, which is where you are when
+   you want it. */
+/* Last in the banner and allowed to give ground: the name and the
+   version are the information, and this is a control. The banner does
+   not wrap -- it is sticky, and three other things are spaced off its
+   height -- so everything in it has to fit on one line at 360px, which
+   is as narrow as the window is allowed to be. */
+.find { position: relative; margin-left: auto; display: inline-flex; align-items: center; min-width: 0; }
 .find-input {
-  width: 100%; box-sizing: border-box;
-  font-family: var(--sans); font-size: 14px; color: var(--ink);
-  padding: 8px 12px; border: 1px solid var(--rule); border-radius: 6px;
+  width: clamp(116px, 32vw, 260px); box-sizing: border-box;
+  font-family: var(--sans); font-size: 13px; color: var(--ink);
+  padding: 5px 26px 5px 10px;
+  border: 1px solid var(--rule); border-radius: 999px;
   background: var(--paper); -webkit-appearance: none; appearance: none;
 }
+.find-input::-webkit-search-cancel-button { display: none; }
 .find-input:focus { outline: 2px solid var(--mark); outline-offset: 1px; border-color: var(--mark); }
 .find-input::placeholder { color: var(--mute); }
+/* Only ever there when there is something to clear. */
+.find-clear {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 17px; height: 17px; padding: 0; border-radius: 50%;
+  /* Pale orange, not grey: it belongs to the search rather than to the
+     page furniture, and it is the one thing in the banner you can press. */
+  background: color-mix(in srgb, var(--mark) 16%, transparent);
+  /* A hairline one shade deeper than its own fill, so the disc has an edge
+     without becoming a second button competing with the box it sits in. */
+  border: 1px solid color-mix(in srgb, var(--mark) 30%, transparent);
+  color: var(--mark);
+  cursor: pointer;
+  /* Centred by the box rather than by line-height. A multiplication sign
+     does not sit on the baseline the way a letter does, so a line-height
+     equal to the circle left it low and to the left. */
+  display: grid; place-items: center;
+  font-family: var(--sans); font-size: 10px; font-weight: 700; line-height: 1;
+}
+.find-clear[hidden] { display: none; }
+.find-clear:hover { background: color-mix(in srgb, var(--mark) 30%, transparent); }
+/* Fixed, and placed from the box's own rectangle every time it opens or
+   the page moves under it. As an absolutely-positioned child of the banner
+   it came adrift the moment the banner was scrolled -- the list stayed
+   where the banner had been rather than where it now is. */
 .find-list {
-  position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px);
+  position: fixed; z-index: 30;
+  /* No minimum: placeList sets an explicit width from what the window
+     actually has, and a minimum here would only overrule it and hang
+     the list off the edge. */
+  max-width: 360px;
   margin: 0; padding: 4px; list-style: none;
-  background: var(--card); border: 1px solid var(--rule); border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.12);
-  max-height: 320px; overflow-y: auto;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.16);
+  max-height: 60vh; overflow-y: auto; text-align: left;
 }
 .find-list[hidden] { display: none; }
 .find-list li { margin: 0; }
 .find-list button {
   display: block; width: 100%; text-align: left; cursor: pointer;
   font-family: var(--sans); font-size: 13.5px; color: var(--ink);
-  padding: 7px 10px; border: 0; border-radius: 4px; background: none;
+  padding: 7px 10px; border: 0; border-radius: 5px; background: none;
 }
+/* Enough to follow, not enough to read as a selection. */
 .find-list button:hover, .find-list button:focus,
-.find-list li.is-on button { background: var(--code-bg); outline: none; }
-.find-list .where { display: block; font-size: 11.5px; color: var(--mute); margin-top: 1px; }
-.find-none { padding: 7px 10px; font-size: 13.5px; color: var(--mute); }
+.find-list li.is-on button { background: color-mix(in srgb, var(--mark) 9%, transparent); outline: none; }
+.find-list .hits { float: right; margin-left: 10px; font-size: 11.5px; color: var(--mute); }
+.find-none { padding: 8px 10px; font-size: 13.5px; color: var(--mute); }
 
-/* The masthead becomes two columns to hold it, and one again when there is
-   not the width for two. */
-.masthead-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 28px; align-items: start; }
-.masthead-in h1, .masthead-in .standfirst { grid-column: 1; }
-.masthead-in .find { grid-column: 2; grid-row: 1 / span 3; }
-@media (max-width: 720px) {
-  .masthead-in { grid-template-columns: minmax(0, 1fr); }
-  .masthead-in .find { grid-column: 1; grid-row: auto; justify-self: stretch; width: 100%; margin-top: 14px; }
-}
+/* Every occurrence, marked where it sits. ::highlight paints a range without
+   the document being edited to show it -- which matters in a page whose own
+   script is reading the same text. */
+::highlight(dsr-find) { background: #ffe08a; color: #23211d; }
 </style>
 </head>
 <body id="top">
@@ -505,19 +566,21 @@ html { scroll-behavior: smooth; }
   <span class="byline">
     <span class="byline-by">A</span><span class="byline-name">Markticulous</span><span class="byline-suffix">build</span>
   </span>
-  <span class="ver" id="verChip">v1.5.1</span>
+  <span class="ver" id="verChip">v1.5.2</span>
+  <span class="find">
+    <input type="search" id="findInput" class="find-input" autocomplete="off" spellcheck="false"
+           placeholder="Search the manual…" aria-label="Search the manual"
+           aria-controls="findList" aria-expanded="false">
+    <button type="button" class="find-clear" id="findClear" aria-label="Clear the search" hidden>&#10005;</button>
+    <ul class="find-list" id="findList" role="listbox" hidden></ul>
+  </span>
 </p>
 
 <header class="masthead">
   <div class="masthead-in">
-    <h1>Read me</h1>
-    <div class="find">
-      <input type="search" id="findInput" class="find-input" autocomplete="off" spellcheck="false"
-             placeholder="Find a section…" aria-label="Find a section"
-             aria-controls="findList" aria-expanded="false">
-      <ul class="find-list" id="findList" role="listbox" hidden></ul>
-    </div>
+    <h1>User Reference Guide</h1>
     <p class="standfirst">A radio for the corner of your computer desktop. It plays internet streams from stations you choose, on a schedule if you want one, and it looks like a radio rather than a browser tab.</p>
+    <p class="standfirst">To find something in here, use the search box in the bar at the top: four letters or more, matched against everything below and not only the headings. It lists the sections your word appears in, with a count, and marks every one of them on the page; the &#10005; clears the search and the marks with it. Once you are well down the page an arrow appears at the bottom right to put you back at the top.</p>
     <p class="standfirst">Deskside Radio is webpage-based application. There is nothing to install, no account and no server. Nothing about you is sent anywhere; the two things that do leave your machine are the stations you play and, on each launch, a request to Google Fonts for the typefaces. Both are listed under <a href="#data">Your data</a>.</p>
   </div>
 </header>
@@ -584,7 +647,7 @@ html { scroll-behavior: smooth; }
         <dt><span class="path">Linux - Create Desktop Shortcut.sh</span></dt>
         <dd>Both of those, for Linux. Add <code>--autostart</code> for sign-in.</dd>
 
-        <dt><span class="path">README.html</span></dt>
+        <dt><span class="path">User Reference Guide.html</span></dt>
         <dd>This file &mdash; a user guide style description of the Deskside Radio app, its features and functions.</dd>
 
       <h3>The window</h3>
@@ -676,7 +739,7 @@ html { scroll-behavior: smooth; }
 
     <section id="browser">
       <h2 class="sec"><span class="n">06</span>Choosing a browser</h2>
-      <p>Chrome and Edge behave identically here — Edge is built on the same engine, and everything in this read me was checked on both. If you are on a work machine with only Edge, nothing is missing.</p>
+      <p>Chrome and Edge behave identically here — Edge is built on the same engine, and everything in this guide was checked on both. If you are on a work machine with only Edge, nothing is missing.</p>
       <p>The Chrome script takes whichever of the two it finds, so most people need nothing else. The rest are for pinning to one browser on purpose:</p>
       <dl class="defs">
         <dt><span class="path">Win - Create Desktop Shortcut (Edge).cmd</span></dt>
@@ -869,6 +932,13 @@ html { scroll-behavior: smooth; }
   </div>
 </footer>
 
+<button type="button" class="uptop" id="upTop" aria-label="Back to the top">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M12 19V6"/><path d="M5.5 12.5 12 6l6.5 6.5"/>
+  </svg>
+</button>
+
 <script>
 /* The only script here, and it does one thing: keep the contents list
    showing where you are. Everything else on the page is markup and CSS,
@@ -918,50 +988,99 @@ html { scroll-behavior: smooth; }
 </script>
 
 <script>
-/* Find a section.
+/* Search the manual.
 
-   Headings only, and only from the third character: one or two letters
-   match most of a guide this size, and a list of everything is a list of
-   nothing. Every h2 and h3 is indexed; the h3s are given ids here rather
-   than in the markup, because they are only ever jumped to from this.
+   The whole text, not the headings: a manual is mostly prose, and a search
+   that only reads the titles answers 'nothing found' to most of the words
+   actually in it. Four characters before it starts, because three still
+   matches half the page.
 
-   No dependencies and no build step -- this file is opened straight off
-   the disk, and anything it cannot do by itself it cannot do. */
+   Every occurrence is marked where it sits, using the Custom Highlight API,
+   which paints ranges without the document being edited to show them. The
+   usual alternative -- wrapping each match in an element -- rewrites the
+   page to display a search result and then has to put it all back. Where
+   the API is missing the search still works and simply does not mark.
+
+   No build step and no dependencies: this file is opened straight off the
+   disk, and whatever it cannot do by itself it cannot do. */
 (function () {
   var box = document.getElementById('findInput');
   var list = document.getElementById('findList');
+  var clear = document.getElementById('findClear');
   if (!box || !list) return;
 
-  var MIN = 3, MAX = 12;
+  var MIN = 4, MAX = 14;
+  var canMark = typeof Highlight === 'function' && window.CSS && CSS.highlights;
 
-  var items = [];
-  var seen = 0;
-  Array.prototype.forEach.call(document.querySelectorAll('h2.sec, h3'), function (h) {
-    /* The number in an h2 is furniture, not part of the name. */
+  /* Every section, with its heading and its text folded to lower case once.
+     Searching lower-cases the needle instead of the haystack. */
+  var parts = [];
+  Array.prototype.forEach.call(document.querySelectorAll('section[id]'), function (sec) {
+    var h = sec.querySelector('h2.sec');
+    if (!h) return;
     var n = h.querySelector('.n');
-    var text = (n ? h.textContent.slice(n.textContent.length) : h.textContent).trim();
-    if (!text) return;
-    var id = h.id;
-    if (!id) {
-      var sec = h.closest('section');
-      id = (h.tagName === 'H2' && sec && sec.id) ? sec.id : 'find-' + (++seen);
-      h.id = id;
-    }
-    /* Which section an h3 belongs to, so a heading like "The window" says
-       where it is rather than standing on its own. */
-    var owner = '';
-    if (h.tagName === 'H3') {
-      var s2 = h.closest('section');
-      var top = s2 ? s2.querySelector('h2.sec') : null;
-      if (top) {
-        var tn = top.querySelector('.n');
-        owner = (tn ? top.textContent.slice(tn.textContent.length) : top.textContent).trim();
-      }
-    }
-    items.push({ el: h, id: id, text: text, owner: owner, hay: (text + ' ' + owner).toLowerCase() });
+    var name = (n ? h.textContent.slice(n.textContent.length) : h.textContent).trim();
+    parts.push({ el: sec, head: h, name: name, hay: sec.textContent.toLowerCase() });
   });
 
   var shown = [], at = -1;
+
+  /* The one thing that has to work when the reader asks for the marks to go.
+     Wrapped because a registry that has already been emptied, or a browser
+     that never had one, is not a reason to stop. */
+  function unmark() {
+    if (!canMark) return;
+    try { CSS.highlights.delete('dsr-find'); } catch (e) { /* nothing to clear */ }
+  }
+
+  /* Walks the text nodes of the article and hands back a range per match.
+     Script and style are skipped, and so is the banner -- marking the word
+     inside the search box itself would be odd. */
+  function mark(q) {
+    if (!canMark) return;
+    var root = document.querySelector('.shell') || document.body;
+    var walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (n) {
+        if (!n.nodeValue || !n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+        var p = n.parentElement;
+        if (!p || p.closest('script, style, .find')) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    var ranges = [], node;
+    while ((node = walk.nextNode())) {
+      var hay = node.nodeValue.toLowerCase();
+      var from = 0, hit;
+      while ((hit = hay.indexOf(q, from)) !== -1) {
+        var r = document.createRange();
+        r.setStart(node, hit);
+        r.setEnd(node, hit + q.length);
+        ranges.push(r);
+        from = hit + q.length;
+      }
+    }
+    if (!ranges.length) { unmark(); return; }
+    // Highlight extends Set, so the ranges go in one at a time -- no spread,
+    // and no constructing it from an array it would not take anyway.
+    var hl = new Highlight();
+    ranges.forEach(function (r) { hl.add(r); });
+    CSS.highlights.set('dsr-find', hl);
+  }
+
+  /* Under the box, wherever the box is now. The banner it sits in is sticky,
+     so 'where the box is' changes as the page scrolls -- and an absolutely
+     positioned list simply stayed behind. */
+  function placeList() {
+    if (list.hidden) return;
+    var r = box.getBoundingClientRect();
+    var w = Math.max(200, Math.min(360, window.innerWidth - 16));
+    var left = Math.min(r.right - w, window.innerWidth - w - 8);
+    list.style.left = Math.round(Math.max(8, left)) + 'px';
+    list.style.top = Math.round(r.bottom + 6) + 'px';
+    list.style.width = w + 'px';
+    // Never past the foot of the window.
+    list.style.maxHeight = Math.max(120, window.innerHeight - r.bottom - 20) + 'px';
+  }
 
   function close() {
     list.hidden = true;
@@ -970,16 +1089,16 @@ html { scroll-behavior: smooth; }
     shown = []; at = -1;
   }
 
-  function go(item) {
+  function go(part) {
     close();
     box.blur();
-    /* scrollIntoView rather than the hash: the bar at the top is sticky
-       and a hash jump puts the heading underneath it. */
-    item.el.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    if (history.replaceState) history.replaceState(null, '', '#' + item.id);
+    /* scrollIntoView and not the hash: the banner is sticky, and a hash jump
+       puts the heading underneath it. */
+    part.head.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    if (history.replaceState) history.replaceState(null, '', '#' + part.el.id);
   }
 
-  function mark(i) {
+  function pick(i) {
     var was = list.querySelector('li.is-on');
     if (was) was.className = '';
     at = i;
@@ -988,63 +1107,169 @@ html { scroll-behavior: smooth; }
     if (li) { li.className = 'is-on'; li.scrollIntoView({ block: 'nearest' }); }
   }
 
-  function draw() {
-    var q = box.value.trim().toLowerCase();
-    if (q.length < MIN) { close(); return; }
+  function count(hay, q) {
+    var n = 0, from = 0, hit;
+    while ((hit = hay.indexOf(q, from)) !== -1) { n++; from = hit + q.length; }
+    return n;
+  }
 
-    /* Every word has to appear somewhere, in any order. */
-    var words = q.split(/\s+/);
-    shown = items.filter(function (it) {
-      return words.every(function (w) { return it.hay.indexOf(w) !== -1; });
-    }).slice(0, MAX);
+  function draw() {
+    var raw = box.value.trim();
+    if (clear) clear.hidden = raw.length === 0;
+
+    var q = raw.toLowerCase();
+    if (q.length < MIN) { close(); unmark(); return; }
+
+    mark(q);
+
+    shown = [];
+    parts.forEach(function (p) {
+      var n = count(p.hay, q);
+      if (n) shown.push({ part: p, n: n });
+    });
+    shown.sort(function (a, b) { return b.n - a.n; });
+    shown = shown.slice(0, MAX);
 
     list.innerHTML = '';
     if (!shown.length) {
       var none = document.createElement('li');
       none.className = 'find-none';
-      none.textContent = 'Nothing matches ' + box.value.trim();
+      none.textContent = 'Nothing in the manual says ' + raw;
       list.appendChild(none);
       list.hidden = false;
       box.setAttribute('aria-expanded', 'true');
+      placeList();
       at = -1;
       return;
     }
 
-    shown.forEach(function (it) {
+    shown.forEach(function (row) {
       var li = document.createElement('li');
       var b = document.createElement('button');
       b.type = 'button';
-      b.appendChild(document.createTextNode(it.text));
-      if (it.owner) {
-        var w = document.createElement('span');
-        w.className = 'where';
-        w.textContent = it.owner;
-        b.appendChild(w);
-      }
-      b.addEventListener('click', function () { go(it); });
+      var hits = document.createElement('span');
+      hits.className = 'hits';
+      hits.textContent = row.n === 1 ? 'once' : row.n + ' times';
+      b.appendChild(hits);
+      b.appendChild(document.createTextNode(row.part.name));
+      b.addEventListener('click', function () { go(row.part); });
       li.appendChild(b);
       list.appendChild(li);
     });
     list.hidden = false;
     box.setAttribute('aria-expanded', 'true');
-    mark(0);
+    placeList();
+    pick(0);
+  }
+
+  function wipe() {
+    box.value = '';
+    if (clear) clear.hidden = true;
+    close();
+    unmark();
+    box.focus();
   }
 
   box.addEventListener('input', draw);
   box.addEventListener('focus', draw);
+  if (clear) clear.addEventListener('click', wipe);
 
   box.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { close(); box.value = ''; return; }
+    if (e.key === 'Escape') { wipe(); return; }
     if (!shown.length) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); mark((at + 1) % shown.length); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); mark((at - 1 + shown.length) % shown.length); }
-    else if (e.key === 'Enter') { e.preventDefault(); if (shown[at]) go(shown[at]); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); pick((at + 1) % shown.length); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); pick((at - 1 + shown.length) % shown.length); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (shown[at]) go(shown[at].part); }
   });
 
-  // A click anywhere else puts the list away.
+  /* A click elsewhere puts the list away but leaves the marks up: the words
+     are still in the box, and they are still what you are looking for. */
   document.addEventListener('click', function (e) {
     if (!e.target.closest('.find')) close();
   });
+
+  /* The banner moves with the page, so the list has to be told. Passive: it
+     only reads and writes its own box. */
+  window.addEventListener('scroll', placeList, { passive: true });
+  window.addEventListener('resize', placeList);
+}());
+</script>
+
+<script>
+/* Back to the top.
+
+   Walked by hand rather than handed to scroll-behavior: smooth. The
+   browser's own easing runs in AND out, and its duration grows with the
+   distance -- so from the foot of a manual this long it is a slow ride
+   past everything you have already read. This is a fixed four hundred
+   milliseconds however far it has to go, eased out, which reads as the
+   page being put back rather than travelled.
+
+   Someone who has asked for less motion gets the jump, which is what the
+   rest of the app does in the same situation. */
+(function () {
+  var btn = document.getElementById('upTop');
+  if (!btn) return;
+
+  var MS = 280;
+  /* Far enough down that the top is out of reach and out of mind. One and
+     a half screens: less and the button is in the way on a short page. */
+  var SHOW_AT = function () { return window.innerHeight * 1.5; };
+
+  var still = function () {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  };
+
+  function sync() {
+    btn.classList.toggle('is-on', window.scrollY > SHOW_AT());
+  }
+
+  var run = null;
+
+  function toTop() {
+    if (run) cancelAnimationFrame(run);
+    var from = window.scrollY;
+    if (from <= 0) return;
+    if (still()) { window.scrollTo({ top: 0, behavior: 'instant' }); return; }
+
+    /* Started now, not on the first frame. Taking it from the first
+       callback spent that frame setting the clock and moving nothing, which
+       is a visible hesitation on a press. */
+    var t0 = (window.performance && performance.now) ? performance.now() : null;
+    var step = function (ts) {
+      /* Null only where there is no performance.now, and then the clock comes
+         off the first frame as it used to. Date.now() is NOT the fallback:
+         rAF counts from the document, Date from 1970, and the difference
+         would send k negative and the page the wrong way. */
+      if (t0 === null) t0 = ts;
+      var k = Math.min(1, (ts - t0) / MS);
+      // Away quickly, settling in.
+      var e = 1 - Math.pow(1 - k, 3);
+      /* instant, and not because it is quicker: the sheet sets
+         scroll-behavior: smooth on html, so a plain scrollTo here hands each
+         frame to the browser's own easing -- which eases IN, and is started
+         again by the next frame before it has finished. Sixty of those a
+         second is the slow ramp this was meant to avoid. */
+      window.scrollTo({ top: Math.round(from * (1 - e)), behavior: 'instant' });
+      if (k < 1) { run = requestAnimationFrame(step); return; }
+      run = null;
+      /* The heading is where the reader is going, not the pixel. Moved
+         after the scroll so nothing fights it on the way. */
+      if (history.replaceState) history.replaceState(null, '', '#top');
+    };
+    run = requestAnimationFrame(step);
+  }
+
+  btn.addEventListener('click', toTop);
+
+  /* The colophon's own link goes the same way, so there are two doors and
+     one behaviour rather than two of each. */
+  var foot = document.querySelector('.totop');
+  if (foot) foot.addEventListener('click', function (e) { e.preventDefault(); toTop(); });
+
+  window.addEventListener('scroll', sync, { passive: true });
+  window.addEventListener('resize', sync);
+  sync();
 }());
 </script>
 </body>
