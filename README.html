@@ -462,7 +462,7 @@ html { scroll-behavior: smooth; }
   <span class="byline">
     <span class="byline-by">A</span><span class="byline-name">Markticulous</span><span class="byline-suffix">build</span>
   </span>
-  <span class="ver" id="verChip">v1.4.15</span>
+  <span class="ver" id="verChip">v1.5.0</span>
 </p>
 
 <header class="masthead">
@@ -544,6 +544,22 @@ html { scroll-behavior: smooth; }
       <p>There is no way to do this from the page. No web API makes a window non-resizable and no browser switch does either, which is the only reason a launcher script exists.</p>
       <p><strong>On macOS and Linux the window can still be resized, and a size you set by hand is not kept.</strong> The radio opens where you left it, at the size the theme wants.</p>
       <p>One position cannot be reproduced: hard into the top-left corner. Windows puts an invisible resize border outside a window's visible frame, so that corner is a negative coordinate, and a page is not allowed to place a window partly off the screen. It comes back inset by a few pixels.</p>
+
+      <h3>The mini radio</h3>
+      <p>The pushpin in the top bar opens a small strip that floats above every other window &mdash; station, what it is doing, play, volume, a meter and a clock &mdash; and tucks the radio&rsquo;s own window out of sight behind it. The expand button on the strip puts the radio back. The strip&rsquo;s close button closes the radio altogether, which is why there is only one of them: Chrome&rsquo;s own back-to-tab button is turned off, so one browser control means one thing.</p>
+      <p>During a slot change the strip says what is about to happen and counts the last thirty seconds down &mdash; <em>Schedule change in 30s</em>, or <em>Schedule play ends in 30s</em>, or <em>Schedule play ends, then freeplay in 30s</em> &mdash; and its fader rides the handover fade exactly as the radio&rsquo;s own does. Double-clicking the fader slides it back to 50.</p>
+      <p>It is a picture-in-picture window, which is the only kind a browser will float above the others. So: <strong>Chrome, Edge, and Firefox 151 or newer.</strong> Safari has no such window and neither does any mobile browser, and there the pushpin is not shown at all rather than offered and broken.</p>
+
+      <h3>The window nothing can size</h3>
+      <p>A page cannot decide how big one of these windows is. Chrome ignores the size it is given &mdash; 440&times;150, 440&times;240 and 600&times;400 were each measured opening at 1119&times;700, which is simply its default for the display &mdash; and although the window can be resized afterwards, that needs a live user gesture, and the gesture that opened it was spent opening it.</p>
+      <p>So on Windows the opener starts <span class="path">strip-fit.ps1</span> beside the radio. <strong>It is the only thing this project leaves running</strong>, and the only file in the folder nobody is meant to double-click. It waits for the floating window, sets it to the right size, takes its resize grip off so it cannot be dragged to some other shape, and does nothing else. It stops when the radio&rsquo;s window goes, with a twelve-hour backstop in case it never sees that happen, and only one ever runs at a time. The uninstaller stops it before removing the folder.</p>
+      <p>It picks the right window by asking Windows which one floats. Both windows answer to the same name &mdash; Windows captions a picture-in-picture window with the title of the page that opened it, not the title of the page inside it &mdash; and only the floating one carries the always-on-top flag.</p>
+      <p><strong>Everywhere else &mdash; macOS, Linux, and Firefox anywhere &mdash; nothing is started and nothing runs.</strong> The strip opens at whatever size the browser chose and says so, in the middle of itself: <em>Click anywhere to shrink this window</em>. One click sizes it. That prompt is keyed to the window actually being too big rather than to the platform, so it never appears on Windows, and it will stop appearing anywhere a browser begins honouring the size it is asked for.</p>
+
+      <h3>Getting the radio&rsquo;s own window out of the way</h3>
+      <p>A page cannot minimise its own window &mdash; there is no API for it &mdash; and a browser will not let one be pushed off the edge of the screen either. So the radio&rsquo;s window is shrunk to a placard and parked inside the floating strip&rsquo;s own rectangle, where an always-on-top window covers it completely. That is as close to hidden as the web gets.</p>
+      <p>It follows the strip if the strip is moved, and it does that on the strip&rsquo;s clock rather than its own: a browser throttles the timers of a window it believes nobody can see, which is precisely what this window is. Run from its own window, the placard lagged far enough behind a drag to show at the edges.</p>
+      <p>If the two ever do come apart, what shows is a small placard reading <strong>Floating</strong>, and clicking it brings the radio back.</p>
 
         <dt>Settings &rarr; Service, holding Shift</dt>
         <dd>An <strong>Open app folder</strong> button appears beside Reset. It copies this folder's path and opens it for you. It cannot open File Explorer &mdash; a page is not allowed to start a program &mdash; so what opens is the browser's own listing, and the path is on your clipboard to paste wherever you want it.</dd>

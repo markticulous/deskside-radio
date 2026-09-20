@@ -1,0 +1,430 @@
+<meta charset="utf-8">
+<title>Deskside Radio — Always On Top</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Syne:wght@700;800&family=IBM+Plex+Mono:wght@400;600&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+  /* ------------------------------------------------------------------
+     Two jobs in one page.
+
+     First, the gate: does the Document Picture-in-Picture API actually
+     exist here? The whole always-on-top plan rests on it working from a
+     file:// origin inside a Chrome --app= window, which is not a thing
+     you can look up with any confidence. The report below answers it by
+     asking the browser.
+
+     Second, the choice: a purpose-built compact strip, or the whole
+     radio shrunk into a small window. Both buttons open a real PiP
+     window, so what you see is what you would get.
+     ------------------------------------------------------------------ */
+  :root {
+    --ui-bg: #ffffff; --ui-fg: #1d1d1b; --ui-mute: #77756e; --ui-line: #e2dfd8;
+    --ui-field: #f7f6f2; --ui-accent: #b5461c; --ui-radius: 8px;
+    --ui-font: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --pg-bg: #eceae4; --pg-ink: #1a1a18; --pg-mute: #6b6a64; --pg-rule: #d8d6cf;
+    --ok: #2f7d4f; --bad: #b5341c; --meh: #9a6b12;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-scheme="light"]) {
+      --ui-bg: #1b1c1a; --ui-fg: #ecebe6; --ui-mute: #9a9891; --ui-line: #33342f;
+      --ui-field: #232420; --ui-accent: #e8783f;
+      --pg-bg: #131412; --pg-ink: #ecebe6; --pg-mute: #9a9891; --pg-rule: #2c2c29;
+      --ok: #6fbd8c; --bad: #e8735a; --meh: #d9ab4e;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--pg-bg); color: var(--pg-ink);
+    font-family: var(--ui-font); line-height: 1.5;
+    padding-inline: clamp(16px, 4vw, 44px); padding-block: 40px 90px;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+
+  .intro h1 { font-family: "Syne", sans-serif; font-weight: 800; font-size: clamp(30px, 4.6vw, 48px); letter-spacing: -.03em; line-height: 1; margin: 0 0 14px; }
+  .intro p { margin: 0; max-width: 66ch; color: var(--pg-mute); font-size: 16px; }
+  .intro p + p { margin-top: 8px; }
+  .intro strong { color: var(--pg-ink); font-weight: 600; }
+
+  /* ---- the capability report ---- */
+  .gate { margin: 30px 0 0; padding: 18px 20px; border: 1px solid var(--pg-rule); border-radius: 10px; background: var(--ui-bg); }
+  .gate h2 { margin: 0 0 4px; font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--pg-mute); }
+  .gate .verdict { font-family: "Syne", sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -.02em; margin: 6px 0 14px; }
+  .gate .verdict.yes { color: var(--ok); }
+  .gate .verdict.no { color: var(--bad); }
+  .gate dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 7px 18px; font-size: 13.5px; }
+  .gate dt { color: var(--pg-mute); }
+  .gate dd { margin: 0; font-family: "IBM Plex Mono", monospace; font-size: 12.5px; word-break: break-all; color: var(--ui-fg); }
+  .gate dd b { font-weight: 600; font-family: var(--ui-font); font-size: 13.5px; }
+  .gate dd .y { color: var(--ok); } .gate dd .n { color: var(--bad); }
+
+  .caution { margin: 22px 0 0; padding: 14px 18px; border-radius: 10px; border: 1px solid var(--meh); background: color-mix(in srgb, var(--meh) 10%, transparent); font-size: 14px; max-width: 78ch; }
+  .caution b { font-weight: 600; }
+
+  /* ---- shared size control ---- */
+  .sizer { margin: 26px 0 0; padding: 16px 20px; border: 1px solid var(--pg-rule); border-radius: 10px; display: flex; flex-wrap: wrap; gap: 18px 26px; align-items: flex-end; }
+  .sizer h2 { margin: 0; flex: 1 0 100%; font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--pg-mute); }
+  .field { display: grid; gap: 5px; }
+  .field label { font-size: 12px; color: var(--pg-mute); }
+  .field input[type=number] { width: 96px; font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--ui-line); border-radius: 6px; background: var(--ui-field); color: var(--ui-fg); }
+  .presets { display: flex; gap: 8px; flex-wrap: wrap; }
+  .presets button { font: inherit; font-size: 12.5px; padding: 6px 11px; border: 1px solid var(--ui-line); border-radius: 999px; background: var(--ui-field); color: var(--ui-fg); cursor: pointer; }
+  .presets button:hover { border-color: var(--ui-accent); color: var(--ui-accent); }
+
+  /* ---- the two lanes ---- */
+  .lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(390px, 1fr)); gap: 26px; margin-top: 34px; align-items: start; }
+  .lane-head { display: grid; grid-template-columns: auto 1fr; column-gap: 14px; align-items: baseline; border-top: 2px solid var(--pg-ink); padding-top: 12px; margin-bottom: 14px; }
+  .lane-key { font-family: "Syne", sans-serif; font-weight: 800; font-size: 28px; line-height: 1; color: var(--ui-accent); }
+  .lane-title { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+  .lane-why { grid-column: 2; margin: 4px 0 0; font-size: 13px; color: var(--pg-mute); }
+  .lane-body { font-size: 14px; color: var(--pg-mute); }
+  .lane-body ul { margin: 0 0 16px; padding-left: 18px; }
+  .lane-body li + li { margin-top: 5px; }
+  .lane-body b { color: var(--pg-ink); font-weight: 600; }
+  .go { font: inherit; font-weight: 600; font-size: 15px; padding: 11px 20px; border: 0; border-radius: 8px; background: var(--ui-accent); color: #fff; cursor: pointer; }
+  .go:hover { filter: brightness(1.08); }
+  .go[disabled] { background: var(--ui-line); color: var(--pg-mute); cursor: not-allowed; filter: none; }
+  .opt { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 13.5px; color: var(--pg-mute); }
+  .opt input { accent-color: var(--ui-accent); }
+
+  /* ---- a flat still of the strip, so the page reads without clicking ---- */
+  .still { margin: 0 0 16px; border: 1px solid var(--pg-rule); border-radius: 10px; overflow: hidden; }
+  .still iframe { display: block; border: 0; width: 100%; height: 150px; }
+  .still-cap { font-size: 12px; color: var(--pg-mute); margin: -8px 0 16px; }
+  .note { margin-top: 34px; font-size: 13.5px; color: var(--pg-mute); max-width: 78ch; }
+  .note code { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; background: var(--ui-field); padding: 1px 5px; border-radius: 4px; }
+</style>
+
+<div class="wrap">
+
+  <div class="intro">
+    <h1>Always on top</h1>
+    <p>The radio gets buried the moment you click anything else. Document
+      Picture-in-Picture gives a web page a real operating-system window that
+      floats above everything — on Windows, macOS and Linux alike. It is
+      Chromium-only: Chrome and Edge have it, Firefox does not.</p>
+    <p>Two questions to settle here. First, whether the API works at all from a
+      <strong>file://</strong> page inside an app-mode window. Second, what
+      should live in that little window.</p>
+  </div>
+
+  <section class="gate">
+    <h2>Can this browser do it?</h2>
+    <div class="verdict" id="verdict">checking…</div>
+    <dl>
+      <dt>documentPictureInPicture</dt><dd id="capApi"></dd>
+      <dt>Secure context</dt><dd id="capSecure"></dd>
+      <dt>Origin</dt><dd id="capOrigin"></dd>
+      <dt>App-mode window</dt><dd id="capApp"></dd>
+      <dt>Browser</dt><dd id="capUa"></dd>
+    </dl>
+  </section>
+
+  <div class="caution">
+    <b>Before you press option B:</b> it loads a second, live copy of the radio
+    in the floating window. If <b>Play on launch</b> is on, that copy will start
+    its own stream on top of the one already playing — pause one of them. It
+    shares the same saved settings as the real app, so avoid changing anything
+    in its Settings drawer while the preview is open.
+  </div>
+
+  <section class="sizer">
+    <h2>Window size</h2>
+    <div class="field">
+      <label for="w">Width</label>
+      <input type="number" id="w" value="440" min="200" max="2000" step="10">
+    </div>
+    <div class="field">
+      <label for="h">Height</label>
+      <input type="number" id="h" value="150" min="80" max="2000" step="10">
+    </div>
+    <div class="field" style="flex:1 1 300px">
+      <label>Jump to</label>
+      <div class="presets">
+        <button type="button" data-size="440x150">Strip 440×150</button>
+        <button type="button" data-size="520x190">Strip tall 520×190</button>
+        <button type="button" data-size="566x371">Radio, half 566×371</button>
+        <button type="button" data-size="740x484">Radio, two-thirds 740×484</button>
+        <button type="button" data-size="1133x741">Radio, full 1133×741</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="lanes">
+
+    <div class="lane">
+      <div class="lane-head">
+        <div class="lane-key">A</div>
+        <h2 class="lane-title">Compact strip</h2>
+        <p class="lane-why">A small bar built for the job: station, what's on,
+          play/pause, volume, a live meter.</p>
+      </div>
+      <div class="still" id="still"></div>
+      <p class="still-cap">A still of the strip, drawn here in the page. The
+        button opens the real thing.</p>
+      <div class="lane-body">
+        <ul>
+          <li><b>Reads at any size.</b> Nothing has to survive being squashed.</li>
+          <li><b>New layout to write and theme</b> — it would need its own pass
+            across all eight looks, or a deliberate decision to stay neutral.</li>
+          <li>Loses the presets, the schedule chip and the band display.</li>
+        </ul>
+        <button class="go" id="goStrip">Open the strip, always on top</button>
+      </div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-head">
+        <div class="lane-key">B</div>
+        <h2 class="lane-title">The whole radio, shrunk</h2>
+        <p class="lane-why">The real player moved into the floating window,
+          themes and all.</p>
+      </div>
+      <div class="lane-body">
+        <ul>
+          <li><b>No new UI at all.</b> Every theme comes along for free.</li>
+          <li><b>The 1133×741 layout has to hold up small.</b> Model One is the
+            one expected to fight back — its pinned layout and speaker-as-meter
+            do not behave like ordinary flow.</li>
+          <li>Try it at each preset above and find the width where it gives out.</li>
+        </ul>
+        <label class="opt">
+          <input type="checkbox" id="scaleFit">
+          Scale the whole thing down instead of letting it reflow
+        </label>
+        <button class="go" id="goFull">Open the radio, always on top</button>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="note">Open this page the way the radio itself opens — through
+    <code>Win - Open Deskside Radio.cmd</code> or a shortcut — rather than by
+    double-clicking it, so the app-mode flags are in force and the report above
+    is telling the truth about the real conditions.</p>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var HAS = 'documentPictureInPicture' in window;
+
+  /* ---- the gate ------------------------------------------------------ */
+
+  function yn(ok, yes, no) {
+    return '<b class="' + (ok ? 'y' : 'n') + '">' + (ok ? yes : no) + '</b>';
+  }
+
+  // An --app= window has almost no chrome above the viewport. This is the
+  // same tell the app itself uses in windowIsOurs().
+  var chromeHeight = window.outerHeight - window.innerHeight;
+  var appish = chromeHeight < 60;
+
+  $('capApi').innerHTML = yn(HAS, 'present', 'missing');
+  $('capSecure').innerHTML = yn(window.isSecureContext, 'yes', 'no') +
+    ' <span style="color:var(--pg-mute)">— the API refuses to run without one</span>';
+  $('capOrigin').textContent = location.origin + ' (' + location.protocol + ')';
+  $('capApp').innerHTML = yn(appish, 'yes', 'no — looks like a normal tab') +
+    ' <span style="color:var(--pg-mute)">— ' + chromeHeight + 'px of browser above the page</span>';
+  $('capUa').textContent = (navigator.userAgentData && navigator.userAgentData.brands
+    ? navigator.userAgentData.brands.map(function (b) { return b.brand + ' ' + b.version; }).join(', ')
+    : navigator.userAgent);
+
+  var v = $('verdict');
+  if (HAS && window.isSecureContext) {
+    v.className = 'verdict yes';
+    v.textContent = 'Yes — this browser can float a window on top.';
+  } else if (!HAS) {
+    v.className = 'verdict no';
+    v.textContent = 'No — this browser has no Document Picture-in-Picture.';
+  } else {
+    v.className = 'verdict no';
+    v.textContent = 'No — the API is here but this is not a secure context.';
+  }
+
+  if (!HAS) {
+    $('goStrip').disabled = true;
+    $('goFull').disabled = true;
+  }
+
+  /* ---- size ---------------------------------------------------------- */
+
+  Array.prototype.forEach.call(document.querySelectorAll('.presets button'), function (b) {
+    b.addEventListener('click', function () {
+      var p = b.getAttribute('data-size').split('x');
+      $('w').value = p[0];
+      $('h').value = p[1];
+    });
+  });
+
+  function size() {
+    return {
+      width: Math.max(200, parseInt($('w').value, 10) || 440),
+      height: Math.max(80, parseInt($('h').value, 10) || 150)
+    };
+  }
+
+  var pip = null;
+
+  function open(fill) {
+    if (pip && !pip.closed) { pip.close(); }
+    documentPictureInPicture.requestWindow(size()).then(function (win) {
+      pip = win;
+      win.document.title = 'Deskside Radio';
+      fill(win);
+    }).catch(function (err) {
+      alert('The floating window was refused:\n\n' + err);
+    });
+  }
+
+  /* ---- A: the compact strip ------------------------------------------ */
+
+  // Written out rather than cloned, because no such element exists in the app
+  // yet. The palette follows the page's light/dark rather than any one theme:
+  // what is being judged here is whether the layout reads at this size.
+  var STRIP_CSS = [
+    '*{box-sizing:border-box}',
+    'html,body{margin:0;height:100%}',
+    'body{font-family:"Archivo","Helvetica Neue",Arial,sans-serif;background:#16171a;color:#f0efea;',
+    '  display:grid;grid-template-rows:1fr auto;overflow:hidden;user-select:none}',
+    '@media (prefers-color-scheme: light){body{background:#f4f2ec;color:#1b1b19}}',
+    '.top{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:12px 14px 8px;min-width:0}',
+    '.play{width:38px;height:38px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;',
+    '  background:#c9552a;color:#fff;flex:0 0 auto}',
+    '.play svg{width:16px;height:16px;fill:currentColor}',
+    '.who{min-width:0}',
+    '.station{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:21px;line-height:1.05;',
+    '  letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.now{font-size:12px;opacity:.62;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}',
+    '.meter{display:flex;gap:2px;align-items:flex-end;height:26px;flex:0 0 auto}',
+    '.meter i{display:block;width:3px;background:currentColor;opacity:.5;border-radius:1px;height:4px}',
+    '.bottom{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;',
+    '  padding:6px 14px 12px;font-size:11px;opacity:.7}',
+    '.vol{-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:currentColor;',
+    '  opacity:.35;width:100%}',
+    '.vol::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;',
+    '  background:#c9552a;opacity:1}',
+    '.clock{font-family:"IBM Plex Mono",monospace;font-size:11px;opacity:.8;letter-spacing:.02em}'
+  ].join('\n');
+
+  var STRIP_HTML = [
+    '<div class="top">',
+    '  <button class="play" aria-label="Pause">',
+    '    <svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>',
+    '  </button>',
+    '  <div class="who">',
+    '    <div class="station">FIP</div>',
+    '    <div class="now">Alice Coltrane — Journey in Satchidananda</div>',
+    '  </div>',
+    '  <div class="meter" id="meter"></div>',
+    '</div>',
+    '<div class="bottom">',
+    '  <span>VOL</span>',
+    '  <input class="vol" type="range" min="0" max="100" value="62" aria-label="Volume">',
+    '  <span class="clock" id="clk">--:--</span>',
+    '</div>'
+  ].join('\n');
+
+  function bars(root, doc) {
+    var m = root.getElementById ? root.getElementById('meter') : null;
+    if (!m) { return; }
+    var n = 14, i;
+    for (i = 0; i < n; i++) { m.appendChild(doc.createElement('i')); }
+    var els = m.querySelectorAll('i');
+    var phase = 0;
+    (function step() {
+      if (doc.defaultView && doc.defaultView.closed) { return; }
+      phase += 0.16;
+      for (var j = 0; j < els.length; j++) {
+        var a = Math.sin(phase + j * 0.55) * 0.5 + 0.5;
+        var b = Math.sin(phase * 1.7 + j * 0.2) * 0.5 + 0.5;
+        els[j].style.height = (4 + (a * 0.7 + b * 0.3) * 20).toFixed(1) + 'px';
+      }
+      (doc.defaultView || window).requestAnimationFrame(step);
+    })();
+  }
+
+  function clock(doc) {
+    var c = doc.getElementById('clk');
+    if (!c) { return; }
+    (function tick() {
+      if (doc.defaultView && doc.defaultView.closed) { return; }
+      var d = new Date();
+      c.textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      (doc.defaultView || window).setTimeout(tick, 15000);
+    })();
+  }
+
+  function fillStrip(win) {
+    var d = win.document;
+    // The fonts are the app's own; the strip's own rules are inline so the
+    // window is self-contained and nothing depends on app.css resolving.
+    var f = d.createElement('link');
+    f.rel = 'stylesheet';
+    f.href = 'https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&family=Barlow+Condensed:wght@600;700&display=swap';
+    d.head.appendChild(f);
+
+    var s = d.createElement('style');
+    s.textContent = STRIP_CSS;
+    d.head.appendChild(s);
+
+    d.body.innerHTML = STRIP_HTML;
+    bars(d, d);
+    clock(d);
+  }
+
+  $('goStrip').addEventListener('click', function () { open(fillStrip); });
+
+  // The same strip again, flat in the page, so the lane means something
+  // before anything is clicked. An iframe rather than a div because the
+  // strip's rules are written against html/body and would otherwise leak.
+  (function still() {
+    var f = document.createElement('iframe');
+    f.title = 'The compact strip';
+    f.srcdoc = '<meta charset="utf-8">' +
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&family=Barlow+Condensed:wght@600;700&display=swap">' +
+      '<style>' + STRIP_CSS + '</style>' + STRIP_HTML +
+      '<scr' + 'ipt>(' + bars.toString() + ')(document,document);(' +
+      clock.toString() + ')(document);</scr' + 'ipt>';
+    $('still').appendChild(f);
+  }());
+
+  /* ---- B: the whole radio -------------------------------------------- */
+
+  function fillFull(win) {
+    var d = win.document;
+    var scale = $('scaleFit').checked;
+    var box = size();
+
+    var s = d.createElement('style');
+    s.textContent = [
+      'html,body{margin:0;height:100%;overflow:hidden;background:#111}',
+      'iframe{border:0;display:block}'
+    ].join('\n');
+    d.head.appendChild(s);
+
+    var f = d.createElement('iframe');
+    f.src = '../index.html';
+
+    if (scale) {
+      // Render at the real 1133x741 and shrink the whole picture, so the
+      // layout never changes shape — only its size.
+      var k = Math.min(box.width / 1133, box.height / 741);
+      f.width = 1133;
+      f.height = 741;
+      f.style.transformOrigin = '0 0';
+      f.style.transform = 'scale(' + k + ')';
+    } else {
+      // Let the app's own CSS respond to the smaller viewport. This is the
+      // honest test of whether the layout holds up.
+      f.style.width = '100%';
+      f.style.height = '100%';
+    }
+
+    d.body.appendChild(f);
+  }
+
+  $('goFull').addEventListener('click', function () { open(fillFull); });
+}());
+</script>

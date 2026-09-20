@@ -100,6 +100,15 @@ rem One PowerShell call does the lot, because it is the only thing here
 rem that can build a file:// URL, wait on a window and call into user32.
 rem Every quote is [char]34: a literal one would close the -Command string
 rem cmd is holding open.
+rem
+rem It also starts the strip fitter. The radio can float a compact strip
+rem above every other window and cannot decide how big that window is:
+rem Chrome ignores the size asked for, and the page may only resize it
+rem while a user gesture is live -- and the gesture that opened it has
+rem already been spent opening it. From outside the browser there is no
+rem such rule. strip-fit.ps1 sizes that window once and stops itself when
+rem the radio goes; it is guarded on the file being present, so a copy
+rem installed before it existed still launches.
 "%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
   "$q = [char]34;" ^
   "$u = $q + 'user32.dll' + $q;" ^
@@ -110,6 +119,11 @@ rem cmd is holding open.
   "  ' --user-data-dir=' + $q + $env:PROFILE + $q +" ^
   "  ' --no-first-run --no-default-browser-check' + $env:LEAN;" ^
   "Start-Process -FilePath $env:BROWSER -ArgumentList $flags;" ^
+  "$fit = $env:APPROOT + '\strip-fit.ps1';" ^
+  "if (Test-Path -LiteralPath $fit) {" ^
+  "  Start-Process -FilePath $env:PS -WindowStyle Hidden" ^
+  "    -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -File ' + $q + $fit + $q);" ^
+  "}" ^
   "$cs = @(" ^
   "  'using System; using System.Text; using System.Collections.Generic;'," ^
   "  'using System.Runtime.InteropServices;'," ^

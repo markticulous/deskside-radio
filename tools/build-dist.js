@@ -132,6 +132,17 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
     somebody wants to be rid of is the folder that knows how to remove
     itself, its shortcuts and nothing else. */
  'Win - Uninstall Deskside Radio.cmd',
+ /* The one piece of this that is not double-clickable, and the only .ps1
+    in the folder. The opener starts it; nobody runs it by hand.
+
+    It sizes the floating mini radio, which is the one thing about that
+    window a page is not allowed to do for itself: Chrome decides how big
+    one of those opens and ignores what is asked for, and the page may
+    only resize it while a user gesture is live -- the gesture that opened
+    it having been spent opening it. Missing, the strip still works and
+    still floats; it just opens at whatever size Chrome chose until it is
+    clicked, which is what happens on macOS and Linux anyway. */
+ 'strip-fit.ps1',
  'Linux - Create Desktop Shortcut.sh'].forEach(function (f) {
   fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
 });
