@@ -145,6 +145,7 @@ if exist "%LINK%" (
   echo   It was not set to start with Windows, so there was nothing to remove.
 )
 echo.
+call :writestate
 rem The same guard the install path carries at the foot of the file. Without
 rem it, anything calling this with "off" gets a window waiting on a keypress
 rem that is never coming.
@@ -275,6 +276,32 @@ echo   turn on "Play on launch" in Settings and choose a station.
 echo.
 echo   To stop it starting, run this script again and press R.
 echo.
+call :writestate
+
 rem Only the success path. The pauses above sit on error paths and
 rem stop whoever is calling, which is what an error is for.
 if not defined DESKSIDE_NOPAUSE pause
+
+rem ---- tell the page ------------------------------------------------------
+rem
+rem The switch in Settings shows this, and a page opened off a disk cannot
+rem look in the Startup folder to find out. So whatever changes the entry
+rem writes down what it changed it to, and the page reads that.
+rem
+rem Called from both paths, and from the handler as well as from a
+rem double-click: run this by hand with the radio open and the switch catches
+rem up the next time the window is focused.
+rem
+rem Its own file rather than a line added to shortcut.js. That one is written
+rem by the launcher at start and describes the Desktop, which does not change
+rem while the radio runs; this changes precisely because somebody asked it to.
+:writestate
+if not exist "%APPDIR%assets\" goto :eof
+set "BOOT=false"
+if exist "%LINK%" set "BOOT=true"
+>"%APPDIR%assets\startup.js" echo /* Written whenever the start-up entry is changed,
+>>"%APPDIR%assets\startup.js" echo    and at every launch. Whether this radio is set to
+>>"%APPDIR%assets\startup.js" echo    open when you sign in. */
+>>"%APPDIR%assets\startup.js" echo window.DESKSIDE_STARTS_WITH_WINDOWS = %BOOT%;
+goto :eof
+

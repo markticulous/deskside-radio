@@ -96,6 +96,78 @@ if not defined BROWSER (
   exit /b 0
 )
 
+rem ---- is there a shortcut on the Desktop -------------------------------
+rem The page has a button offering to make one, and no way on earth to find
+rem out whether it is needed. A page opened from a disk cannot look at the
+rem disk. It can load a script, though -- the same door the settings seed
+rem and the version probe come through -- so the answer is left where it
+rem can read it.
+rem
+rem Written after the browser has been told to start, not before: this is
+rem a directory listing and a PowerShell launch, and neither belongs
+rem between a double-click and the radio. The page usually takes longer to
+rem load than this takes to run, and on the occasion it does not, the file
+rem still holds what was true at the last launch. A cosmetic button being
+rem one launch behind is not worth a slower start.
+rem
+rem Absent or unreadable means show the button. Never hide on not knowing:
+rem a listener whose shortcut is gone needs that button more than anyone,
+rem and the same rule is what leaves macOS and Linux exactly as they were,
+rem since nothing of ours runs at launch there to write this at all.
+rem
+rem Asked for by name, and only by the full name. "Deskside Radio*.lnk"
+rem covers the Edge and Firefox ones, which carry the browser in brackets.
+rem
+rem The Startup entry is checked in the same breath -- the same kind of fact,
+rem and a second PowerShell launch to learn it would cost more than the answer
+rem is worth -- but written into a file of its own. This one describes the
+rem Desktop and cannot change while the radio runs; that one changes precisely
+rem because somebody asked it to, from the switch in Settings, and the on-off
+rem script rewrites it when they do.
+rem
+rem Unlike the Desktop shortcut it is asked for by its exact name: the Startup
+rem entry is written by one script and always called "Deskside Radio.lnk", so a
+rem wildcard here would only let somebody else's shortcut answer for ours.
+rem
+rem Before the browser rather than after it, which is a change from how this
+rem was first written. The old comment argued for putting it after, so that no
+rem PowerShell launch sat between a double-click and the radio. Right instinct,
+rem wrong trade: the page reads this file while it loads, and below the block
+rem that starts Chrome and waits on its window it is written afterwards -- and
+rem where no new window ever appears, that wait runs its full sixty seconds
+rem before letting go. A switch in Settings reads this now, so it has to be
+rem true when the page asks, not true a minute later.
+rem
+rem Measured: written 0.6s after the double-click from here, and the browser
+rem start it now sits in front of costs a couple of hundred milliseconds.
+rem
+rem Detaching it with start would have cost nothing at all, and does not work:
+rem start re-parses a -Command assembled from thirty caret-joined quoted
+rem fragments, and nothing ran. Called directly, as it always was.
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command ^
+  "try {" ^
+  "  $d = [Environment]::GetFolderPath('Desktop');" ^
+  "  $has = $false;" ^
+  "  if ($d -and (Test-Path -LiteralPath $d)) {" ^
+  "    $found = @(Get-ChildItem -LiteralPath $d -Filter 'Deskside Radio*.lnk' -ErrorAction SilentlyContinue);" ^
+  "    $has = ($found.Count -gt 0) };" ^
+  "  $sf = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup';" ^
+  "  $boot = $false;" ^
+  "  if (Test-Path -LiteralPath $sf) {" ^
+  "    $boot = (Test-Path -LiteralPath (Join-Path $sf 'Deskside Radio.lnk')) };" ^
+  "  $out = Join-Path $env:APPROOT 'assets';" ^
+  "  if (Test-Path -LiteralPath $out) {" ^
+  "    $line = '/* Written by the launcher at each start. Whether a shortcut for' + [Environment]::NewLine" ^
+  "      + '   this radio is on the Desktop right now. */' + [Environment]::NewLine" ^
+  "      + 'window.DESKSIDE_HAS_SHORTCUT = ' + $has.ToString().ToLower() + ';' + [Environment]::NewLine;" ^
+  "    Set-Content -LiteralPath (Join-Path $out 'shortcut.js') -Value $line -Encoding ASCII -NoNewline;" ^
+  "    $line2 = '/* Written whenever the start-up entry is changed,' + [Environment]::NewLine" ^
+  "      + '   and at every launch. Whether this radio is set to' + [Environment]::NewLine" ^
+  "      + '   open when you sign in. */' + [Environment]::NewLine" ^
+  "      + 'window.DESKSIDE_STARTS_WITH_WINDOWS = ' + $boot.ToString().ToLower() + ';' + [Environment]::NewLine;" ^
+  "    Set-Content -LiteralPath (Join-Path $out 'startup.js') -Value $line2 -Encoding ASCII -NoNewline }" ^
+  "} catch { }"
+
 rem One PowerShell call does the lot, because it is the only thing here
 rem that can build a file:// URL, wait on a window and call into user32.
 rem Every quote is [char]34: a literal one would close the -Command string
@@ -159,56 +231,6 @@ rem installed before it existed still launches.
   "  if ([DsWin]::Lock('Deskside Radio') -gt 0) { break }" ^
   "}"
 
-rem ---- is there a shortcut on the Desktop -------------------------------
-rem The page has a button offering to make one, and no way on earth to find
-rem out whether it is needed. A page opened from a disk cannot look at the
-rem disk. It can load a script, though -- the same door the settings seed
-rem and the version probe come through -- so the answer is left where it
-rem can read it.
-rem
-rem Written after the browser has been told to start, not before: this is
-rem a directory listing and a PowerShell launch, and neither belongs
-rem between a double-click and the radio. The page usually takes longer to
-rem load than this takes to run, and on the occasion it does not, the file
-rem still holds what was true at the last launch. A cosmetic button being
-rem one launch behind is not worth a slower start.
-rem
-rem Absent or unreadable means show the button. Never hide on not knowing:
-rem a listener whose shortcut is gone needs that button more than anyone,
-rem and the same rule is what leaves macOS and Linux exactly as they were,
-rem since nothing of ours runs at launch there to write this at all.
-rem
-rem Asked for by name, and only by the full name. "Deskside Radio*.lnk"
-rem covers the Edge and Firefox ones, which carry the browser in brackets.
-rem
-rem The Startup entry is checked in the same breath and written into the
-rem same file, because it is the same kind of fact -- something only
-rem something outside the page can know -- and a second PowerShell launch
-rem to learn it would cost more than the answer is worth. The switch in
-rem Settings reads it. Unlike the Desktop one it is asked for by its exact
-rem name: the Startup entry is written by one script, always as
-rem "Deskside Radio.lnk", so a wildcard here would only let somebody
-rem else's shortcut answer for ours.
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command ^
-  "try {" ^
-  "  $d = [Environment]::GetFolderPath('Desktop');" ^
-  "  $has = $false;" ^
-  "  if ($d -and (Test-Path -LiteralPath $d)) {" ^
-  "    $found = @(Get-ChildItem -LiteralPath $d -Filter 'Deskside Radio*.lnk' -ErrorAction SilentlyContinue);" ^
-  "    $has = ($found.Count -gt 0) };" ^
-  "  $sf = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup';" ^
-  "  $boot = $false;" ^
-  "  if (Test-Path -LiteralPath $sf) {" ^
-  "    $boot = (Test-Path -LiteralPath (Join-Path $sf 'Deskside Radio.lnk')) };" ^
-  "  $out = Join-Path $env:APPROOT 'assets';" ^
-  "  if (Test-Path -LiteralPath $out) {" ^
-  "    $line = '/* Written by the launcher at each start. Two things the page' + [Environment]::NewLine" ^
-  "      + '   cannot find out for itself: whether this radio has a shortcut on' + [Environment]::NewLine" ^
-  "      + '   the Desktop, and whether it is set to open when you sign in. */' + [Environment]::NewLine" ^
-  "      + 'window.DESKSIDE_HAS_SHORTCUT = ' + $has.ToString().ToLower() + ';' + [Environment]::NewLine" ^
-  "      + 'window.DESKSIDE_STARTS_WITH_WINDOWS = ' + $boot.ToString().ToLower() + ';' + [Environment]::NewLine;" ^
-  "    Set-Content -LiteralPath (Join-Path $out 'shortcut.js') -Value $line -Encoding ASCII -NoNewline }" ^
-  "} catch { }"
 
 rem ---------------------------------------------------------------------
 rem  Keeping the radio up to date, without anybody having to do anything

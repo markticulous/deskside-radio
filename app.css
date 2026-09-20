@@ -3128,6 +3128,26 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .switch input:checked + .switch-track { background: #2e9a5a; }
 .switch input:checked + .switch-track::after { left: 18px; }
 .switch input:focus-visible + .switch-track { outline: 2px solid color-mix(in srgb, var(--ui-accent) 45%, transparent); outline-offset: 1px; }
+
+/* The button that stands in for the switch until the switch can be
+   trusted to tell the truth. Same box, same gap, same text: the only
+   visible difference is a power mark where the knob would be, and
+   nothing in the row moves when the two are swapped.
+
+   It carries .switch as well for the layout, so only the button's own
+   chrome has to be undone here. */
+.switch-go { appearance: none; border: 0; background: none; padding: 0;
+  color: inherit; font: inherit; text-align: left; }
+.switch-go[hidden], .switch[hidden] { display: none; }
+.switch-track-go { display: grid; place-items: center;
+  background: color-mix(in srgb, var(--ui-accent) 70%, var(--ui-line)); }
+.switch-track-go svg { width: 12px; height: 12px; }
+/* No knob on this one: there is nothing for it to be at either end of. */
+.switch-track-go::after { content: none; }
+.switch-go:hover .switch-track-go { background: var(--ui-accent); }
+.switch-go:focus-visible .switch-track-go { outline: 2px solid color-mix(in srgb, var(--ui-accent) 45%, transparent); outline-offset: 1px; }
+/* Asking, and not to be asked again in the meantime. */
+.switch-go[disabled] { opacity: .55; cursor: default; }
 .autoplay-pick { flex: 1 1 160px; min-width: 0; }
 .autoplay[data-on="false"] .autoplay-pick { opacity: .5; }
 

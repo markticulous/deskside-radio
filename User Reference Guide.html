@@ -570,7 +570,7 @@ html { scroll-behavior: smooth; }
   <span class="byline">
     <span class="byline-by">A</span><span class="byline-name">Markticulous</span><span class="byline-suffix">build</span>
   </span>
-  <span class="ver" id="verChip">v1.5.3</span>
+  <span class="ver" id="verChip">v1.5.4</span>
   <span class="find">
     <input type="search" id="findInput" class="find-input" autocomplete="off" spellcheck="false"
            placeholder="Search the manual…" aria-label="Search the manual"
@@ -643,7 +643,7 @@ html { scroll-behavior: smooth; }
         <dd>Opens the radio when you sign in. It is the switch as well as the installer: run it and it tells you whether it is on, and offers to turn it off again or aim it at this folder.</dd>
 
         <dt><span class="path">Win - Deskside Radio Protocol.vbs</span></dt>
-        <dd>Not one to double-click. It is what the <strong>Start with Windows</strong> switch in Settings reaches when you use it: Windows hands it the request and it runs the script above. It understands two words and ignores everything else.</dd>
+        <dd>Not one to double-click. It is what the <strong>Start when you sign in</strong> control in Settings reaches when you use it: Windows hands it the request and it runs the script above. It understands two words and ignores everything else.</dd>
 
         <dt><span class="path">Win - Automatic Updates.cmd</span></dt>
         <dd>Controls whether the radio updates itself. Nothing is installed or removed either way: it writes, or deletes, one small file in the app folder that the launcher looks for before it checks for a newer version. Run it with <code>off</code> to stop the updating; run it with no argument to start it again.</dd>
@@ -778,12 +778,15 @@ html { scroll-behavior: smooth; }
       <p>That middle line is worth reading rather than skipping. A start-up entry made from a copy you unzipped somewhere temporary keeps opening <em>that</em> copy, and once the folder has gone what greets you at sign-in is the browser&rsquo;s <em>Your file couldn&rsquo;t be accessed</em> rather than a radio. If the folder it names is not the one you are in, press <kbd>P</kbd>.</p>
       <p>Nothing runs in the background. What this puts down is one file, in a folder you can open yourself: press <kbd>Win</kbd>&nbsp;+&nbsp;<kbd>R</kbd> and enter <code>shell:startup</code>.</p>
       <h3>Or from Settings</h3>
-      <p>There is a switch for the same thing in <strong>Settings &rarr; Service &rarr; Start with Windows</strong>, and it shows you which way it is set before you touch it. The first time you use it your browser asks for permission, and what it names is <strong>Windows Based Script Host</strong> rather than the radio &mdash; that is the part of Windows that runs the small script doing the work, and it is what the browser can see. Two steps, and the order matters: <strong>first</strong> tick <strong><em>Always allow</em></strong>, <strong>then</strong> click <strong><em>Open Microsoft Windows Based Script Host</em></strong>. Clicking Open closes the dialog, so a tick made afterwards is a tick made never, and you will be asked again every time. The radio keeps a browser profile of its own, so that tick applies to the radio and to nothing else you do.</p>
+      <p>The same thing lives in <strong>Settings &rarr; Service &rarr; Start when you sign in</strong>, which shows you how it is set before you touch it.</p>
+      <p>The first time, it is a <strong>button</strong> rather than a switch, and that is deliberate. Turning this on has to leave the page and ask Windows, and your browser asks you before it will let that happen &mdash; so a switch would move the moment you clicked it, while nothing had yet happened and the dialog was still open. A button has nothing to be wrong about. Once it has worked once it becomes an ordinary switch, because by then the asking is over.</p>
+      <p>Press the button and your browser asks for permission. What it names is <strong>Windows Based Script Host</strong> rather than the radio &mdash; that is the part of Windows that runs the small script doing the work, and it is what the browser can see. Two steps, and the order matters: <strong>first</strong> tick <strong><em>Always allow</em></strong>, <strong>then</strong> click <strong><em>Open Microsoft Windows Based Script Host</em></strong>. Clicking Open closes the dialog, so a tick made afterwards is a tick made never, and you will be asked again every time. The radio keeps a browser profile of its own, so that tick applies to the radio and to nothing else you do.</p>
+      <p>The line under the control says <em>Asking Windows&hellip;</em> while it waits, and it does wait: the shortcut can take a few seconds to appear after you answer the dialog. When it does, the line says so and the button becomes a switch.</p>
       <p>If it does keep asking, that is what happened. Tick the box the next time before you press the button.</p>
-      <p>That question is worth a word, because it is the one surprising thing in the app. A page opened from a disk cannot put a file in your Startup folder &mdash; no browser allows it, and none should. So the switch asks Windows to do it, through one small registered handler that accepts two words and ignores everything else. It is the only thing this app puts in the registry, it starts nothing by itself, and uninstalling takes it out again.</p>
+      <p>That question is worth a word, because it is the one surprising thing in the app. A page opened from a disk cannot put a file in your Startup folder &mdash; no browser allows it, and none should. So the control asks Windows to do it, through one small registered handler that accepts two words and ignores everything else. It is the only thing this app puts in the registry, it starts nothing by itself, and uninstalling takes it out again.</p>
       <p>For the radio to be <em>playing</em> when you sit down rather than just open, turn on <strong>Play on launch</strong> in Settings and choose a station, or set up a schedule.</p>
 
-      <p>On a Mac or on Linux the switch in Settings is not offered, and the reason is worth a line: it works by asking Windows to do something, and there is nothing equivalent to ask. What follows is the same job done by hand, once.</p>
+      <p>On a Mac or on Linux the control in Settings is not offered, and the reason is worth a line: it works by asking Windows to do something, and there is nothing equivalent to ask. What follows is the same job done by hand, once.</p>
       <h3>macOS</h3>
       <p>Use the shortcut button next to Settings to save a <span class="path">.fileloc</span> file somewhere you will keep it, then open <strong>System Settings → General → Login Items</strong>, and add that file under <strong>Open at Login</strong>. It opens in your normal browser, so it will ask for one click before it plays — the trick the Windows shortcut uses to skip that click is a Chrome command line, and there is no equivalent to hand a login item.</p>
       <h3>Linux</h3>

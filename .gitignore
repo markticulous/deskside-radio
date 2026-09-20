@@ -7,6 +7,7 @@ dist/
 # Written by the launcher at every start, to tell the page whether a Desktop
 # shortcut exists. Belongs to the machine it was launched on, not the repo.
 assets/shortcut.js
+assets/startup.js
 
 # OS clutter
 Thumbs.db
