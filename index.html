@@ -212,7 +212,7 @@
     <header class="drawer-head">
       <div class="drawer-title">
         <h2>Settings</h2>
-        <span class="app-version">Deskside Radio&nbsp;&nbsp;<i class="ver-dot" aria-hidden="true"></i>&nbsp;&nbsp;<span id="appVersion">v1.5.3</span></span>
+        <span class="app-version">Deskside Radio&nbsp;&nbsp;<i class="ver-dot" aria-hidden="true"></i>&nbsp;&nbsp;<span id="appVersion">v1.5.4</span></span>
       </div>
       <button type="button" id="drawerClose" class="drawer-x" aria-label="Close">&times;</button>
     </header>
@@ -376,10 +376,27 @@
                script host rather than the radio, because what it can see is the
                program it is being asked to start. Met without warning that reads
                as something having gone wrong. The why is in the guide. -->
-          <p class="hint os-win"><strong>Note:</strong> The first time you turn this on, the app asks your browser for permission and pops open a Windows Based Script Host window. That is expected &mdash; (i) tick the <strong><em>Always allow</em></strong> checkbox; then (ii) click the <strong><em>Open Microsoft Windows Based Script Host</em></strong> button, and it will not ask again. See the <a href="#" class="guide-link" data-guide="signin" target="_blank" rel="noopener">guide</a> for more information.</p>
+          <p class="hint os-win" id="startupNote"><strong>IMPORTANT:</strong> The first time you turn this on, the app asks your browser for permission and pops open a Windows Based Script Host window. That is expected &mdash; (i) tick the <strong><em>Always allow</em></strong> checkbox; then (ii) click the <strong><em>Open Microsoft Windows Based Script Host</em></strong> button, and it will not ask again. See the <a href="#" class="guide-link" data-guide="signin" target="_blank" rel="noopener">guide</a> for more information.</p>
           <p class="hint os-other">The radio can open when you sign in here too, but not from this switch &mdash; the switch asks Windows to do it, and there is nothing equivalent to ask. On a Mac, save a shortcut with <strong>Put a shortcut on the Desktop</strong> above and add it under <strong>System Settings &rarr; General &rarr; Login Items</strong>. On Linux, add the shortcut to your desktop's own startup applications. Both are in the guide: <strong>Open the guide</strong>, above.</p>
           <div class="switch-row">
-            <label class="switch">
+            <!-- Two controls, one shown at a time, and the button first.
+
+                 A toggle is the wrong shape for something that has to leave the
+                 page and ask Windows for permission: the browser moves it on
+                 click, before anything has happened, so it is already wrong
+                 while the permission dialog is still up. A button has no state
+                 to be wrong about. It is the toggle's exact size so that
+                 nothing in the row shifts when the two are swapped. -->
+            <button type="button" class="switch switch-go" id="startupGo" hidden>
+              <span class="switch-track switch-track-go" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                     stroke-linecap="round" aria-hidden="true">
+                  <path d="M12 4v8"/><path d="M6.5 7.2a7.5 7.5 0 1 0 11 0"/>
+                </svg>
+              </span>
+              <span class="switch-text">Set the radio to open when I sign in</span>
+            </button>
+            <label class="switch" id="startupSwitch" hidden>
               <input type="checkbox" id="startWithWindows">
               <span class="switch-track" aria-hidden="true"></span>
               <span class="switch-text">Open the radio when I sign in</span>

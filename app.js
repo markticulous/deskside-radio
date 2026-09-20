@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.5.3';
+  var APP_VERSION = '1.5.4';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -87,6 +87,12 @@
     bass: 0,
     treble: 0,
     lastGood: null,
+    /* Whether the radio has ever been successfully set to start with
+       Windows. Not the state of the thing -- that is read off the machine
+       and never remembered -- but whether the round trip has ever worked,
+       which is also when the browser's permission was granted. Until then
+       the control is a button rather than a switch. */
+    startupUsed: false,
     versionCheck: true,
     versionLastCheck: 0,
     versionLatest: null,
@@ -3985,9 +3991,6 @@
       s.onload = function () {
         s.remove();
         btn.hidden = window.DESKSIDE_HAS_SHORTCUT === true;
-        /* The same file carries whether the radio starts with Windows.
-           One launcher, one write, one read. */
-        showStartupState();
         again();
       };
       s.onerror = function () { s.remove(); again(); };
@@ -4026,9 +4029,37 @@
      Nothing here works on macOS or Linux and the block stays hidden there. */
   var startupWanted = null;
   var startupTimer = null;
+  var startupUntil = 0;
+
+  /* How long to keep looking, and how often.
+
+     The first flip goes through a browser permission dialog that somebody has
+     to read, find the checkbox in, and answer. Forty-five seconds is not
+     generous for that; the 1200ms this replaces was shorter than the sentence
+     they are being asked to agree with, so it always reported a refusal
+     against a question nobody had answered yet.
+
+     Polling rather than waiting once, because the answer arrives out of band:
+     another process writes a file, and there is no event for that. */
+  var STARTUP_WAIT = 45000;
+  var STARTUP_EVERY = 600;
 
   function startupIsOn() {
     return window.DESKSIDE_STARTS_WITH_WINDOWS === true;
+  }
+
+  /* Which of the two controls is on screen, and where it is set.
+
+     The button stands in until a flip has actually worked once. That is the
+     same moment the browser's permission was granted, so from then on the
+     dialog is gone and a switch can behave like a switch. */
+  function showStartupControl() {
+    var go = $('startupGo'), sw = $('startupSwitch'), note = $('startupNote');
+    if (!go || !sw) return;
+    var used = !!state.startupUsed;
+    go.hidden = used;
+    sw.hidden = !used;
+    if (note) note.hidden = used;
   }
 
   function showStartupState() {
@@ -4036,6 +4067,7 @@
     if (!box) return;
     var on = startupIsOn();
     box.checked = on;
+    showStartupControl();
 
     /* Nothing was asked for, so there is nothing to report. Loose equality on
        purpose: var hoists startupWanted as undefined, and the first probe is
@@ -4043,20 +4075,38 @@
     if (startupWanted == null) return;
 
     if (on === startupWanted) {
+      stopStartupPoll();
       startupSays('startupLine', on
         ? 'Set. The radio will open when you next sign in.'
         : 'Off. The radio will not open when you sign in.');
       startupWanted = null;
+      /* It worked, so the permission behind it was granted: the dialog will
+         not be back, and the control can be a switch from here on. */
+      if (!state.startupUsed) { state.startupUsed = true; save(); showStartupControl(); }
       return;
     }
 
-    /* Asked, and it did not happen. Said plainly, with the way round it,
-       because the likeliest cause is a permission dialog that was dismissed
-       and the second likeliest is a folder that was never installed. */
+    /* Not yet is not the same as no. While there is budget left this says
+       nothing and changes nothing: the dialog may still be on screen, and the
+       script it leads to takes a moment to write. Announcing a refusal here
+       is what made the control flip back behind the dialog. */
+    if (Date.now() < startupUntil) return;
+
+    /* Budget spent. The likeliest cause is a permission dialog that was
+       dismissed, and the second likeliest a folder with no handler registered
+       in it -- one unzipped by hand rather than installed. */
+    stopStartupPoll();
     startupSays('startupLine', 'Windows did not do that. If your browser asked for '
       + 'permission and the answer was no, try again \u2014 or run '
       + '"Win - Start with Windows (On-Off).cmd" in your app folder.');
     startupWanted = null;
+  }
+
+  function stopStartupPoll() {
+    startupUntil = 0;
+    if (startupTimer) { clearInterval(startupTimer); startupTimer = null; }
+    var go = $('startupGo');
+    if (go) go.disabled = false;
   }
 
   function startupSays(id, text) {
@@ -4064,40 +4114,84 @@
     if (el) el.textContent = text;
   }
 
-  $('startWithWindows').addEventListener('change', function () {
-    var want = this.checked;
+  function askStartup(want) {
     startupWanted = want;
+    startupUntil = Date.now() + STARTUP_WAIT;
     startupSays('startupLine', want ? 'Asking Windows\u2026' : 'Removing it\u2026');
 
-    /* Two words, and the handler accepts no others. Nothing from this page
-       is interpolated into it: a registered protocol can be reached by any
-       site in any browser, so what crosses the gap is a constant. */
+    var go = $('startupGo');
+    if (go) go.disabled = true;
+
+    /* Two words, and the handler accepts no others. Nothing from this page is
+       interpolated into it: a registered protocol can be reached by any site in
+       any browser, so what crosses the gap is a constant. */
     try {
       location.href = 'desksideradio:startup-' + (want ? 'on' : 'off');
-    } catch (e) { /* no handler, and the re-read below will say so */ }
+    } catch (e) { /* no handler, and the poll will say so when it gives up */ }
 
-    /* The answer arrives out of band -- another process writes a file and
-       the launcher's note is stale until something reads it again. Focus is
-       the reliable moment: the permission dialog takes it and gives it back.
-       The timer is for the case where it never left, which is what happens
-       when the browser has been told to stop asking. */
-    if (startupTimer) clearTimeout(startupTimer);
-    startupTimer = setTimeout(reReadStartup, 1200);
+    /* The answer arrives out of band: another process writes a file, and there
+       is no event for that. Focus helps -- the dialog takes it and gives it
+       back -- but it is not enough on its own, because the script it starts is
+       still writing when focus returns, and because a browser told to stop
+       asking never takes focus at all. */
+    if (startupTimer) clearInterval(startupTimer);
+    startupTimer = setInterval(reReadStartup, STARTUP_EVERY);
+    reReadStartup();
+  }
+
+  /* The switch, once there is one. Put straight back where the machine has it:
+     the browser moved it on click, and nothing has happened yet. It moves for
+     real in showStartupState, when a read agrees. */
+  $('startWithWindows').addEventListener('change', function () {
+    var want = this.checked;
+    this.checked = startupIsOn();
+    askStartup(want);
   });
 
+  /* And the button that stands in for it the first time. Nothing to put back
+     here -- that is the whole reason it is a button. */
+  $('startupGo').addEventListener('click', function () { askStartup(true); });
+
+  /* Its own file, and not the one the shortcut button reads. That one is
+     written by the launcher at start and describes the Desktop, which does not
+     change while the radio is running. This changes precisely because somebody
+     asked it to -- so the script that changes the entry writes it, on both
+     paths, whether it was reached through the handler or double-clicked.
+
+     Reading the launcher's file here was the first version of this, and the
+     switch could never see its own work: the flip happened, nothing rewrote
+     the file, and the answer from launch came back and put the switch where it
+     had been. */
   function reReadStartup() {
     var s = document.createElement('script');
-    s.src = 'assets/shortcut.js?' + Date.now();
+    s.src = 'assets/startup.js?' + Date.now();
     s.onload = function () { s.remove(); showStartupState(); };
-    /* Unreadable means unchanged, which showStartupState will report as a
-       failure -- correctly: if the file cannot be read, nothing can be known. */
+    /* Unreadable means unchanged, which showStartupState reports as a failure
+       -- correctly: if the file cannot be read, nothing can be known. */
     s.onerror = function () { s.remove(); showStartupState(); };
     document.head.appendChild(s);
   }
 
-  window.addEventListener('focus', function () {
-    if (startupWanted !== null) reReadStartup();
-  });
+  /* At boot, and a couple more times: the launcher writes this a moment after
+     it starts the browser, deliberately, so that nothing sits between a
+     double-click and the radio. The page can win that race. */
+  var startupTries = 0;
+  function firstStartupRead() {
+    reReadStartup();
+    if (startupTries >= 2) return;
+    startupTries++;
+    setTimeout(firstStartupRead, startupTries * 1600);
+  }
+  /* Drawn before the first read comes back, or the row is empty for a moment.
+     Both controls start hidden in the markup so that neither flashes on a
+     machine where the pane does not apply at all. */
+  showStartupControl();
+  if ($('startWithWindows')) firstStartupRead();
+
+  /* On every focus, not only after a flip. Somebody who ran the on-off script
+     by hand while the radio was open should find the switch already correct
+     rather than lying until the next launch. */
+  window.addEventListener('focus', reReadStartup);
 
   $('makeShortcutPane').addEventListener('click', function () {
     $('makeShortcut').click();

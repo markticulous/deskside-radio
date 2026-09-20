@@ -2512,6 +2512,36 @@ test('the launcher writes down whether the radio starts with Windows', () => {
   const src = read(OPENER);
   assert.ok(/DESKSIDE_STARTS_WITH_WINDOWS/.test(src),
     OPENER + ' never tells the page whether the Startup entry exists, so the switch cannot show it');
+
+  /* And into a file of its own, which is the whole fix for a bug that
+     shipped in 1.5.3: the fact lived in shortcut.js, which only the launcher
+     writes and only at start. Flipping the switch removed the entry, nothing
+     rewrote the file, the answer from launch came back, and the switch put
+     itself back on and said Windows had refused.
+
+     So the rule is the round trip, not either half of it: the file the page
+     reads after a flip must be one the script that does the flipping writes.
+     A test for only one side would have passed on the broken version. */
+  const onoff = read('Win - Start with Windows (On-Off).cmd');
+  const app = read('app.js');
+
+  assert.ok(/startup\.js/.test(src), OPENER + ' does not write the start-up state file');
+  assert.ok(/startup\.js/.test(onoff),
+    'the on-off script changes the Startup entry without writing down that it did, so the switch cannot see its own work');
+  assert.ok(/assets\/startup\.js/.test(app),
+    'the switch reads some other file, which nothing rewrites when the entry changes');
+
+  /* Both paths. Turning it off and not saying so is the exact shape of the
+     bug, and the remove path is the one that had no writer. */
+  assert.ok((onoff.match(/call :writestate/g) || []).length >= 2,
+    'only one of the on-off script\'s two paths writes the state down');
+
+  /* Not the shortcut file. That one describes the Desktop and is written at
+     launch; putting a fact that changes mid-session into it is what broke. */
+  const probe = app.slice(app.indexOf('function reReadStartup'),
+                          app.indexOf('function reReadStartup') + 400);
+  assert.equal(/shortcut\.js/.test(probe), false,
+    'the switch is reading the launcher-written shortcut file again, which cannot know about a flip');
   /* By its exact name. The Desktop one is a wildcard because Edge and
      Firefox carry the browser in brackets; this one is written by a single
      script and always called the same thing, so a wildcard here would only
@@ -2599,13 +2629,47 @@ test('the switch is wired to the handler, and never saved as a setting', () => {
   assert.ok(/desksideradio:startup-/.test(src),
     'the switch never asks Windows for anything');
 
-  /* It is a fact about the machine, not a preference. Saving it would mean
-     the app remembering an answer it is not entitled to give: the shortcut
-     can be deleted by hand at any time, and then the setting is a lie. */
+  /* On or off is a fact about the machine, not a preference. Remembering it
+     would mean the app giving an answer it is not entitled to give: the
+     shortcut can be deleted by hand at any moment and the setting is then a
+     lie. So the value shown comes from the file and from nowhere else.
+
+     One thing may be remembered, and only one: whether the round trip has
+     ever worked. That is a fact about this app rather than about the machine,
+     and it is what decides whether the control is a button or a switch. */
   const mod = src.slice(src.indexOf('function showStartupState'),
                         src.indexOf('function reReadStartup'));
-  assert.equal(/state\.start/.test(mod), false,
-    'the switch is stored as a setting, so it will disagree with the machine the moment the shortcut is deleted');
+  const remembered = (mod.match(/state\.[A-Za-z]+/g) || []);
+  remembered.forEach(function (r) {
+    assert.equal(r, 'state.startupUsed',
+      'the switch remembers ' + r + ', and the only thing it may remember is whether it has ever worked');
+  });
+  assert.ok(/box\.checked = on;/.test(mod) && /startupIsOn\(\)/.test(mod),
+    'the switch is set from something other than what the launcher wrote down');
   assert.ok(/DESKSIDE_STARTS_WITH_WINDOWS/.test(src),
     'the switch never reads what the launcher wrote, so it cannot show the truth');
+
+  /* A button until it has worked once, and a switch after.
+
+     A toggle is the wrong shape for an action that leaves the page and asks
+     the browser for permission: it moves on click, before anything has
+     happened, so it is already wrong while the dialog is still up. */
+  assert.ok(/id="startupGo"/.test(html) && /id="startupSwitch"/.test(html),
+    'there is only one control, so the first use has a toggle that lies while the permission dialog is open');
+  assert.ok(/go\.hidden = used/.test(src) && /sw\.hidden = !used/.test(src),
+    'nothing swaps the button for the switch once it has worked');
+
+  /* And the switch puts itself back on click. The browser moved it; nothing
+     has happened yet. It moves for real only when a read agrees. */
+  const at = src.indexOf("$('startWithWindows').addEventListener('change'");
+  const onchange = src.slice(at, at + 300);
+  assert.ok(/this\.checked = startupIsOn\(\)/.test(onchange),
+    'the switch stays where the click put it, which is a state nothing has confirmed');
+
+  /* The wait has to outlast a person reading a permission dialog and finding
+     the checkbox in it. It was 1200ms, which reported a refusal against a
+     question that had not been answered yet. */
+  const budget = /STARTUP_WAIT = (\d+)/.exec(src);
+  assert.ok(budget && Number(budget[1]) >= 20000,
+    'the app gives up on Windows sooner than somebody can read the dialog it just opened');
 });
