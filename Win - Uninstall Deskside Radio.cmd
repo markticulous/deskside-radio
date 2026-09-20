@@ -329,6 +329,25 @@ if /i not "%WIPE%"=="D" (
   )
 )
 
+rem ---- anything of ours still running -----------------------------------
+rem The strip fitter, which the opener starts alongside the radio. It stops
+rem itself when the radio's window goes, but it only looks every fifth of a
+rem second, and a radio closed a moment ago may still have one running --
+rem with this folder as its working directory, which is by itself enough to
+rem stop the folder being removed.
+rem
+rem Matched on the script name AND on this install's own path, so a copy
+rem running out of some other folder is somebody else's and is left alone.
+rem The same rule the registry sweep below works by.
+"%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$root = $env:APPROOT;" ^
+  "if ($root) { $root = $root.Trim().ToLower();" ^
+  "  Get-CimInstance Win32_Process |" ^
+  "    Where-Object { $_.Name -eq 'powershell.exe' -and $_.CommandLine -and" ^
+  "      $_.CommandLine.Contains('strip-fit.ps1') -and" ^
+  "      $_.CommandLine.ToLower().Contains($root) } |" ^
+  "    ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } }" 2>nul
+
 rem ---- the app folder ---------------------------------------------------
 rem This copy is outside the folder, so it can simply delete it and watch
 rem what happened -- no handover, no minimised window, no guessing.

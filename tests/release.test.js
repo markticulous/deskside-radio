@@ -1604,12 +1604,37 @@ test('a remembered window size knows which theme it was measured against', () =>
   assert.ok(/window\.moveTo\(x, y\)/.test(restore),
     'the restore no longer puts the window back where it was');
 
-  /* And the net under all of it, for a box too old to name its theme. */
-  const size = app.slice(app.indexOf('function sizeWindow'), app.indexOf('function sizeWindow') + 1600);
-  assert.ok(/scrollHeight <= window\.innerHeight \+ 1/.test(size),
-    'nothing checks whether the restored box actually holds the radio');
+  /* And the net under all of it, which has to catch a box that is wrong
+     in either direction.
+
+     Too small was always caught: the page overruns and there is a
+     scrollbar down the side of the cabinet. Too big was caught by nothing,
+     and was the worse of the two, because nothing could undo it -- the box
+     is written on a timer whether or not the window was ever fitted, so a
+     launch that never got as far as fitting wrote its own wrong size down,
+     the next launch restored it and kept it (the page fits inside a window
+     that is too big), and wrote it down again. Measured: a window left
+     279px taller than the radio, permanently, with a band of dead space
+     above and below it. */
+  const size = app.slice(app.indexOf('function sizeWindow'), app.indexOf('function sizeWindow') + 2400);
+  assert.ok(/scrollHeight > window\.innerHeight \+ 1/.test(size),
+    'nothing checks whether the restored box is too small for the radio');
+  assert.ok(/window\.outerHeight - wantedBox\(\)\.h > BOX_SLACK/.test(size),
+    'nothing checks whether the restored box is too big for the radio, which nothing else can undo');
   assert.ok(/keepBox = false;\s*\n\s*fitWindow\(\);/.test(size),
-    'an overrunning window is never refitted');
+    'a window that does not match the radio is never refitted');
+
+  /* One piece of arithmetic, not two. They used to have a copy each and
+     the copies asked different questions -- what the window should be, and
+     merely whether the page overran -- which is how a window left too big
+     satisfied one and was never handed to the other. */
+  assert.ok(/function wantedBox\(\)/.test(app),
+    'the wanted size is worked out in more than one place again');
+  const fit = app.slice(app.indexOf('function fitWindow'), app.indexOf('function fitWindow') + 1200);
+  assert.ok(/var want = wantedBox\(\);/.test(fit),
+    'fitWindow measures the window itself instead of asking wantedBox');
+  assert.equal(/getComputedStyle\(document\.body\)/.test(fit), false,
+    'fitWindow has its own copy of the measurement again');
 });
 
 /* The tone belongs to the station, and was only ever loaded by tune() --

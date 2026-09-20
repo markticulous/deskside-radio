@@ -196,15 +196,15 @@
    Taken off this button rather than off the row, so nothing else in the
    bar moves, and set once because no theme touches these margins -- they
    only recolour .icon-btn. */
-.shortcut-btn { width: 30px; height: 30px; opacity: .55; transition: opacity .16s ease; margin-right: -10px; }
+.shortcut-btn, .pin-btn { width: 30px; height: 30px; opacity: .55; transition: opacity .16s ease; margin-right: -10px; }
 /* Third time this line has been needed, for the third element, for the
    same reason: display on a class selector is an author rule and the one
    that makes the hidden attribute work is the browser's, which every
    author rule outranks. Without it the shortcut button sets hidden, the
    property is genuinely true, and the button stays on screen anyway. */
 .icon-btn[hidden] { display: none; }
-.shortcut-btn:hover { opacity: 1; }
-.shortcut-btn svg { width: 15px; height: 15px; }
+.shortcut-btn:hover, .pin-btn:hover { opacity: 1; }
+.shortcut-btn svg, .pin-btn svg { width: 15px; height: 15px; }
 .icon-btn svg { width: 20px; height: 20px; }
 
 /* Crossing between AM and FM: the band label rolls up, a glint runs the
@@ -3857,6 +3857,41 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   .finder-fields { grid-template-columns: minmax(0, 1fr); }
   .controls .tone { min-width: 92px; }
 }
+/* ================================================================== */
+/* Always on top                                                      */
+/* ================================================================== */
+
+/* The floating strip's own rules are not here. That is a second document's
+   worth of page, and they are carried in app.js and written into it
+   directly -- a file:// sheet is not reliably fetched by a window whose own
+   URL is about:blank.
+
+   What is here is this window while the strip is floating: shrunk to a
+   placard and parked behind it, where an always-on-top window covers it.
+   So none of this is normally seen. It is here for the moment after the
+   strip is dragged away and before the follow catches up. */
+
+body.app.is-stowed {
+  display: grid; place-items: center;
+  padding: 0; min-height: 0; height: 100vh; overflow: hidden;
+  background: #16171a;
+}
+@media (prefers-color-scheme: light) {
+  body.app.is-stowed { background: #f4f2ec; }
+}
+body.app.is-stowed .tuner { display: none; }
+
+.dr-stub {
+  display: grid; gap: 5px; justify-items: center; text-align: center; padding: 8px;
+  font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  color: #f0efea; opacity: .72; user-select: none; cursor: pointer;
+}
+@media (prefers-color-scheme: light) { .dr-stub { color: #1b1b19; } }
+.dr-stub[hidden] { display: none; }
+.dr-stub svg { width: 18px; height: 18px; }
+.dr-stub b { font-weight: 600; font-size: 12.5px; }
+.dr-stub span { font-size: 10.5px; opacity: .72; }
+
 /* ================================================================== */
 /* Phones                                                              */
 /* ================================================================== */

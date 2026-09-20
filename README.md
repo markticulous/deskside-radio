@@ -311,6 +311,32 @@ There is no way to do this from the page. No web API makes a window non-resizabl
 
 A window dragged hard into the top-left corner is the one position that cannot be reproduced. Windows gives a window an invisible resize border outside its visible frame, so the corner is a negative coordinate, and a page is not allowed to place a window partly off-screen. It comes back inset by that border, which is a few pixels.
 
+## The mini radio
+
+The pushpin in the top bar opens a small strip that floats above every other window — station, what it is doing, play, volume, a meter and a clock — and tucks the radio's own window out of sight behind it. The expand button on the strip puts the radio back. The strip's close button closes the radio altogether, which is why there is only one of them: Chrome's own back-to-tab button is turned off, so one browser control means one thing.
+
+During a slot change the strip says what is about to happen and counts the last thirty seconds down — *Schedule change in 30s*, or *Schedule play ends in 30s*, or *Schedule play ends, then freeplay in 30s* — and its fader rides the handover fade exactly as the radio's own does. Double-clicking the fader slides it back to 50.
+
+It is a picture-in-picture window, which is the only kind a browser will float above the others. So: **Chrome, Edge, and Firefox 151 or newer.** Safari has no such window and neither does any mobile browser, and there the pushpin is not shown at all rather than offered and broken.
+
+### The window nothing can size, and the one process this project leaves running
+
+A page cannot decide how big one of these windows is. Chrome ignores the size it is given — 440×150, 440×240 and 600×400 were each measured opening at 1119×700, which is simply its default for the display — and although the window can be resized afterwards, that needs a live user gesture, and the gesture that opened it was spent opening it.
+
+So on Windows the opener starts `strip-fit.ps1` beside the radio. It is the only thing this project leaves running and the only file in the folder nobody is meant to double-click. It waits for the floating window, sets it to the right size, takes its resize grip off so it cannot be dragged to some other shape, and does nothing else. It stops when the radio's window goes, with a twelve-hour backstop in case it never sees that happen, and only one ever runs at a time.
+
+It picks the right window by asking Windows which one floats. Both windows answer to the same name — Windows captions a picture-in-picture window with the title of the page that opened it, not the title of the page inside it — and only the floating one carries the always-on-top flag.
+
+**Everywhere else — macOS, Linux, and Firefox anywhere — nothing is started and nothing runs.** The strip opens at whatever size the browser chose and says so, in the middle of itself: *Click anywhere to shrink this window*. One click sizes it. That prompt is keyed to the window actually being too big rather than to the platform, so it never appears on Windows, and it will stop appearing anywhere a browser begins honouring the size it is asked for.
+
+### Getting the radio's own window out of the way
+
+A page cannot minimise its own window — there is no API for it — and a browser will not let one be pushed off the edge of the screen either. So the radio's window is shrunk to a placard and parked inside the floating strip's own rectangle, where an always-on-top window covers it completely. That is as close to hidden as the web gets.
+
+It follows the strip if the strip is moved, and it does that on the strip's clock rather than its own: a browser throttles the timers of a window it believes nobody can see, which is precisely what this window is. Run from its own window, the placard lagged far enough behind a drag to show at the edges.
+
+If the two ever do come apart, what shows is a small placard reading **Floating**, and clicking it brings the radio back.
+
 ## The app folder
 
 Hold **Shift** on **Settings → Service** and an **Open app folder** button appears beside Reset. It copies the folder's path to the clipboard and opens the folder.

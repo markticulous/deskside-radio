@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.4.15';
+  var APP_VERSION = '1.5.0';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -670,6 +670,7 @@
     el.bass.disabled = el.treble.disabled = toneOff;
     el.bass.title = el.treble.title = toneOff ? 'This stream would not load on the analysed path, so tone control is unavailable.' : '';
     el.play.setAttribute('aria-pressed', state.intendedPlaying ? 'true' : 'false');
+    paintStrip();
   }
 
   /* A playlist file is read once, the stream address inside it replaces the
@@ -1077,6 +1078,7 @@
 
     if (!holding) level = Signal.vuBallistics(level, target, dt);
     TunerUI.setLevel(el.tuner, level);
+    paintStripLevel(lit ? target : level);
 
     // Park the indicators only once the needle has actually fallen to rest.
     var quiet = !lit && !holding && level < 0.004;
@@ -1140,6 +1142,8 @@
     if (el.volumeOut) el.volumeOut.value = input.value;
     var at = hi > lo ? (+input.value - lo) / (hi - lo) : 0;
     (input.parentElement || input).style.setProperty('--turn', at.toFixed(4));
+    // The strip's fader is the same reading, so it is drawn from the same place.
+    paintStripFade();
   }
 
   /* Ramped on a timer rather than with the Web Audio scheduler, because
@@ -1166,6 +1170,7 @@
        fade in progress, a frame at a time, and the fader would sit still
        through every handover. */
     applyGain();
+    paintStrip();
     if (!silent) save();
   }
 
@@ -1278,6 +1283,7 @@
   var armedFor = null;
 
   function disarmHandover(restore) {
+    setStripNote('');
     if (armedFor === null) return;
     armedFor = null;
     el.schedToggle.classList.remove('is-counting', 'is-handing');
@@ -1311,6 +1317,22 @@
       el.schedToggle.classList.add('is-counting');
     }
 
+    /* Thirty seconds is about as long as a countdown is worth watching, and
+       the strip has one short line to say it in. The three things that can
+       be about to happen are named the way the chip on the radio's own face
+       names them: a station starting is a change, a slot ending is an end,
+       and a slot ending into a gap the radio plays through is both. */
+    if (left <= 30000) {
+      var starting = !!n.slot;
+      var onInto = !starting &&
+        (state.scheduleEnds || {})[groupOfSlot(Scheduler.activeSlot(state.schedule, now))] !== 'off';
+      var what = starting ? 'Schedule change'
+        : (onInto ? 'Schedule play ends, then freeplay' : 'Schedule play ends');
+      setStripNote(what + ' in ' + Math.max(0, Math.ceil(left / 1000)) + 's');
+    } else {
+      setStripNote('');
+    }
+
     if (left <= HANDOVER_FADE_MS && !el.schedToggle.classList.contains('is-handing')) {
       el.schedToggle.classList.add('is-handing');
       /* Not into a gap that carries on. The fade is there so a change of
@@ -1334,6 +1356,7 @@
        same two digits it was already showing. */
     var hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
     if (el.clock.textContent !== hhmm) el.clock.textContent = hhmm;
+    paintStripClock(hhmm);
     var slot = state.schedulerEnabled ? Scheduler.activeSlot(state.schedule, now) : null;
     if (slot !== lastSlot) {
       var first = !seenOnce;
@@ -1708,6 +1731,7 @@
     }
     document.title = st.name + ' · Deskside Radio';
     updateMediaSession();
+    paintStrip();
   }
 
   function renderPresets() {
@@ -1885,6 +1909,9 @@
     if (!windowIsOurs()) return;
     // The drawer has the window on loan; its height is not the radio's.
     if (borrowedBox) return;
+    // Stowed: the window is a placard by our own doing, which is not a size
+    // the listener chose and not one to come back to.
+    if (pinnedBox) return;
     /* The theme travels with the box, because a height only means anything
        alongside the face it was measured against: the console sits at 700
        and the dial wants 744. Restoring one theme's height under another
@@ -1953,21 +1980,21 @@
     return sized;
   }
 
-  function fitWindow(pass) {
-    if (!mayFit || keepBox || !windowIsOurs() || !el.tuner) return;
-    /* Settings has the window on loan. Sizing it to the radio now would
-       shut the drawer's room out from under it, and the second pass would
-       then remember the borrowed size as the listener's own. */
-    if (borrowedBox) return;
-    pass = pass || 0;
+  /* The size the radio wants, worked out once and used by both the thing
+     that resizes and the thing that decides whether resizing is needed.
+     They used to have a copy each, and the copies were not the same
+     question: one asked what the window should be, the other only asked
+     whether the page overran. A window left too big satisfied the second
+     and was never handed to the first.
 
-    /* Measured with the scrollbar suppressed, which is what took this from
-       three resizes to one. The first measurement used to be taken with a
-       scrollbar present; that narrows the tuner, which makes it taller than
-       it will be once the bar goes, so the window was sized to a height it
-       then had to be corrected away from. Correcting it in front of the
-       user is the flicker. Take the bar out of the measurement and the
-       first answer is the right one. */
+     Measured with the scrollbar suppressed, which is what took this from
+     three resizes to one. The first measurement used to be taken with a
+     scrollbar present; that narrows the tuner, which makes it taller than
+     it will be once the bar goes, so the window was sized to a height it
+     then had to be corrected away from. Correcting it in front of the
+     listener is the flicker. Take the bar out of the measurement and the
+     first answer is the right one. */
+  function wantedBox() {
     var root = document.documentElement;
     var hadOverflow = root.style.overflow;
     root.style.overflow = 'hidden';
@@ -1985,9 +2012,28 @@
     var h = Math.min(Math.ceil(el.tuner.offsetHeight + padY) + frameH + 1, screen.availHeight);
 
     root.style.overflow = hadOverflow;
+    return { w: w, h: h };
+  }
 
-    if (Math.abs(w - window.outerWidth) > 1 || Math.abs(h - window.outerHeight) > 1) {
-      try { window.resizeTo(w, h); } catch (e) { return; }
+  /* How far out a remembered box may be before it is treated as wrong
+     rather than as somebody's choice. A fit lands within a pixel, so
+     anything past a handful is a box that no longer describes the radio
+     inside it. */
+  var BOX_SLACK = 8;
+
+  function fitWindow(pass) {
+    if (!mayFit || keepBox || !windowIsOurs() || !el.tuner) return;
+    // Stowed: this window is a placard at the moment, not the radio.
+    if (pinnedBox) return;
+    /* Settings has the window on loan. Sizing it to the radio now would
+       shut the drawer's room out from under it, and the second pass would
+       then remember the borrowed size as the listener's own. */
+    if (borrowedBox) return;
+    pass = pass || 0;
+
+    var want = wantedBox();
+    if (Math.abs(want.w - window.outerWidth) > 1 || Math.abs(want.h - window.outerHeight) > 1) {
+      try { window.resizeTo(want.w, want.h); } catch (e) { return; }
     }
 
     /* One confirming pass rather than three. A resize does not land within
@@ -2075,23 +2121,39 @@
   }
 
   function sizeWindow() {
+    if (pinnedBox) return;
     if (sizedOnce) { keepBox = false; mayFit = true; fitWindow(); return; }
     sizedOnce = true;
     if (restoreBox()) {
       keepBox = true;
       mayFit = true;
       /* A restored box is left alone, which is right until it turns out
-         not to hold the radio. Then it is not a size anybody chose, it is
-         a size that no longer fits, and the listener is looking at a
-         scrollbar down the side of a cabinet.
+         not to hold the radio -- and it can be wrong in either direction.
 
-         Only when the page really does overrun, so a box that fits is
-         still never fitted over. Twice at most, on the same clocks the
-         first fit uses: once the webfonts have landed, and once more for
-         the case where they never arrive. */
+         Too small was the case this already caught: the page overruns and
+         the listener is looking at a scrollbar down the side of a cabinet.
+
+         Too big was not caught at all, and is the worse of the two because
+         nothing could ever undo it. The box is remembered on a timer
+         whether or not the window was ever fitted, so a launch that did
+         not get as far as fitting wrote its own wrong size down; the next
+         launch restored it, kept it because the page fitted inside it, and
+         wrote it down again. A window with a band of dead space above and
+         below the radio, permanently, and no way back.
+
+         The size is only restored on Windows in the first place, where the
+         launcher takes the resize grip off the window -- so a box there is
+         never a size the listener chose by hand, and one that does not
+         describe the radio is simply wrong.
+
+         Twice at most, on the same clocks the first fit uses: once the
+         webfonts have landed, and once more for the case where they never
+         arrive. */
       var checkFits = function () {
-        if (borrowedBox || !keepBox || !windowIsOurs()) return;
-        if (document.documentElement.scrollHeight <= window.innerHeight + 1) return;
+        if (borrowedBox || !keepBox || !windowIsOurs() || !el.tuner) return;
+        var tooSmall = document.documentElement.scrollHeight > window.innerHeight + 1;
+        var tooBig = window.outerHeight - wantedBox().h > BOX_SLACK;
+        if (!tooSmall && !tooBig) return;
         keepBox = false;
         fitWindow();
       };
@@ -2192,6 +2254,802 @@
     refitTimer = setTimeout(function () { TunerUI.fitName(el.name); }, 120);
   });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { TunerUI.fitName(el.name); });
+
+
+  /* ---------- always on top ----------
+     A page cannot ask for its own window to stay above the others. The one
+     window a browser will float is a picture-in-picture window, so that is
+     what this opens, with a compact strip in it rather than a video.
+
+     The radio's own window is not touched. It stays the radio, at its own
+     size, wherever it was -- this is a second, small face for the set,
+     not a rearrangement of the first one.
+
+     Chrome and Edge have Document Picture-in-Picture, and Firefox has had
+     it since 151. Safari has not, and no mobile browser has. Where it is
+     missing the button is hidden outright rather than left to fail, which
+     is the same bargain the meter strikes when a stream will not take the
+     analysed path.
+
+     The strip is sized from outside the browser on Windows, by
+     strip-fit.ps1, which the Chrome and Edge launcher starts. Everywhere
+     else -- Firefox, macOS, Linux -- the window opens at whatever size the
+     browser chose and the first click on it brings it down; .dr-hint says
+     so when that happens. */
+
+  var PIN_W = 340, PIN_H = 88;
+
+  var PIN_BARS = 12;
+
+  var pipWin = null;
+  var strip = null;
+  var stripVolTimer;
+  /* True from the press until the window arrives or is refused, so a
+     second press in that gap does not ask for a second window. */
+  var pinPending = false;
+
+  function pinSupported() { return 'documentPictureInPicture' in window; }
+
+  var STRIP_CSS = [
+    ".dr-strip {",
+    "  --dr-bg: #16171a;",
+    "  --dr-ink: #f0efea;",
+    "  --dr-accent: #c9552a;",
+    "  /* Brighter than the play button on purpose. The same orange at 13px on a",
+    "     dark track reads as a smudge, where at 30px it reads as a button. This is",
+    "     the app's own --alert. */",
+    "  --dr-hot: #ff8f2e;",
+    "  /* The ink at half strength, as a colour rather than an opacity: the",
+    "     knob is rendered inside the track, so an opacity there fades the",
+    "     knob as well. Matches the name along the same row. */",
+    "  --dr-rail: rgba(240, 239, 234, .5);",
+    "  position: relative;",
+    "  height: 100%;",
+    "  /* Chrome may hand back a window taller than the one asked for, and the",
+    "     watcher that corrects it is Windows only. So nothing is capped and",
+    "     nothing is centred in the slack: the controls hug the top, the name",
+    "     and the fader are pushed to the bottom, and a window left too tall",
+    "     looks like a window left too tall rather than a strip adrift. */",
+    "  display: flex;",
+    "  flex-direction: column;",
+    "  overflow: hidden;",
+    "  background: var(--dr-bg);",
+    "  color: var(--dr-ink);",
+    "  font-family: \"Archivo\", \"Helvetica Neue\", Arial, sans-serif;",
+    "  user-select: none;",
+    "}",
+    ".dr-strip, .dr-strip * { box-sizing: border-box; }",
+    "@media (prefers-color-scheme: light) {",
+    "  .dr-strip { --dr-bg: #f4f2ec; --dr-ink: #1b1b19; --dr-rail: rgba(27, 27, 25, .5); }",
+    "}",
+    ".dr-top {",
+    "  display: grid;",
+    "  grid-template-columns: auto minmax(0, 1fr) auto;",
+    "  align-items: center;",
+    "  gap: 9px;",
+    "  flex: 0 0 auto;",
+    "  /* Room at the right for the corner button, which is out of the flow. */",
+    "  padding: 18px 28px 3px 9px;",
+    "}",
+    ".dr-play {",
+    "  width: 30px; height: 30px; padding: 0;",
+    "  border: 0; border-radius: 50%;",
+    "  background: var(--dr-accent); color: #fff;",
+    "  display: grid; place-items: center; cursor: pointer;",
+    "}",
+    ".dr-play svg { width: 12px; height: 12px; fill: currentColor; }",
+    ".dr-play .dr-pause { display: none; }",
+    ".dr-play[aria-pressed=\"true\"] .dr-pause { display: block; }",
+    ".dr-play[aria-pressed=\"true\"] .dr-go { display: none; }",
+    ".dr-who { min-width: 0; }",
+    ".dr-station {",
+    "  font-family: \"Barlow Condensed\", \"Archivo\", sans-serif;",
+    "  font-weight: 700; font-size: 16px; line-height: 1.05;",
+    "  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;",
+    "}",
+    ".dr-now {",
+    "  margin-top: 1px; font-size: 9.5px; opacity: .6;",
+    "  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;",
+    "}",
+    "/* The countdown, which comes and goes on its own while the transport",
+    "   text beside it stays put. Emptied only after the fade has run, so it",
+    "   goes out rather than vanishing. */",
+    ".dr-note { opacity: 0; transition: opacity .22s ease; }",
+    ".dr-strip.is-noting .dr-note { opacity: 1; }",
+    ".dr-note:not(:empty)::before { content: \"\\00a0\\00b7\\00a0\"; }",
+    "/* One number per frame, not twelve heights: --dr-vu is the level and --dr-w",
+    "   is each bar's share of it, written once when the strip is built. The same",
+    "   bargain .tuner strikes with its own --vu.",
+    "",
+    "   The shares are deliberately uneven. A smooth arch scaled by one number",
+    "   reads as a single object breathing in and out; an irregular one reads as a",
+    "   meter, which is what this is pretending to be. */",
+    ".dr-meter { display: flex; align-items: flex-end; gap: 2px; height: 20px; --dr-vu: 0; margin-right: 10px; }",
+    ".dr-meter i {",
+    "  width: 2px; border-radius: 1px; background: currentColor; opacity: .38;",
+    "  height: calc(2px + var(--dr-vu, 0) * var(--dr-w, 1) * 18px);",
+    "}",
+    ".dr-strip.is-live .dr-meter i { opacity: .85; }",
+    "/* Shown only while the window is bigger than it should be, in the band",
+    "   the extra height leaves between the controls and the foot. Takes no",
+    "   clicks: the strip underneath stays live, and the click that dismisses",
+    "   this is the same click that resizes the window. */",
+    ".dr-hint {",
+    "  position: absolute; inset: 0;",
+    "  display: none; align-items: center; justify-content: center;",
+    "  padding: 0 14px; text-align: center;",
+    "  pointer-events: none;",
+    "  font-size: 12px; font-weight: 600; letter-spacing: .01em;",
+    "  color: var(--dr-hot);",
+    "}",
+    ".dr-strip.is-roomy .dr-hint { display: flex; }",
+    "/* Out of the row and into the corner, where a window's own controls live. */",
+    ".dr-unpin {",
+    "  position: absolute; top: 3px; right: 3px;",
+    "  width: 22px; height: 22px; padding: 0;",
+    "  border: 0; background: none; cursor: pointer;",
+    "  /* The knob's orange, not the strip's ink: the two things here that",
+    "     are not the play button should read as the same kind of thing. */",
+    "  color: var(--dr-hot); opacity: .75;",
+    "  display: grid; place-items: center;",
+    "}",
+    ".dr-unpin:hover { opacity: 1; }",
+    ".dr-unpin svg { width: 13px; height: 13px; }",
+    ".dr-foot {",
+    "  display: grid;",
+    "  grid-template-columns: auto auto minmax(0, 1fr);",
+    "  align-items: center;",
+    "  gap: 7px;",
+    "  /* The space, whatever there is of it, goes above this. */",
+    "  margin-top: auto;",
+    "  padding: 0 9px 7px;",
+    "  font-size: 8.5px;",
+    "}",
+    ".dr-name { letter-spacing: .1em; text-transform: uppercase; opacity: .5; white-space: nowrap; }",
+    "/* Reads as one line with the name -- 'DESKSIDE RADIO MINI - 23:41' -- so",
+    "   the fader gets the whole of the rest of the row. */",
+    ".dr-clock::before { content: \"\\00b7\"; margin-right: 7px; font-weight: 700; opacity: .7; }",
+    ".dr-vol {",
+    "  -webkit-appearance: none; appearance: none;",
+    "  /* Tall enough to hold the knob; the rail is the track below. */",
+    "  width: 100%; height: 12px;",
+    "  /* Nothing painted here. Chrome draws the track pseudo-element over",
+    "     the input's own background, so a colour set on this rule is a",
+    "     colour nobody sees -- four attempts at it changed nothing. */",
+    "  background: none;",
+    "}",
+    "/* The rail: the ink at half strength, matching the name along the same",
+    "   row. It took four goes to get a colour onto it, so both reasons are",
+    "   written down.",
+    "",
+    "   One: the colour has to go here rather than on the input, and this",
+    "   rule needs appearance:none of its own, or Chrome paints its default",
+    "   track over whatever is set.",
+    "",
+    "   Two: it has to be a colour and not an opacity. The knob is rendered",
+    "   inside the track, so an opacity here fades the knob along with the",
+    "   rail -- which is exactly what it did. */",
+    ".dr-vol::-webkit-slider-runnable-track {",
+    "  /* Without this Chrome paints its own track over the background set",
+    "     here, which is what made every colour tried on this rule invisible. */",
+    "  -webkit-appearance: none; appearance: none;",
+    "  height: 3px; border-radius: 2px;",
+    "  background: var(--dr-rail);",
+    "}",
+    ".dr-vol::-webkit-slider-thumb {",
+    "  -webkit-appearance: none; appearance: none;",
+    "  width: 12px; height: 12px; border-radius: 50%;",
+    "  background: var(--dr-hot);",
+    "  /* Sat on a 3px rail from a 12px knob. */",
+    "  margin-top: -4.5px;",
+    "  /* A ring of the strip's own background, so the knob keeps its edge wherever",
+    "     along the track it sits. */",
+    "  box-shadow: 0 0 0 2px var(--dr-bg);",
+    "}",
+    "/* And the same two parts under the names Firefox gives them, which has",
+    "   had one of these windows since 151. Written as their own rules rather",
+    "   than added to the selector lists above: a list containing a",
+    "   pseudo-element the engine does not know is dropped whole, which would",
+    "   take the working half down with the unknown one.",
+    "",
+    "   No margin-top here. Firefox centres its thumb on the track already. */",
+    ".dr-vol::-moz-range-track {",
+    "  height: 3px; border-radius: 2px; border: 0;",
+    "  background: var(--dr-rail);",
+    "}",
+    ".dr-vol::-moz-range-thumb {",
+    "  width: 12px; height: 12px; border-radius: 50%; border: 0;",
+    "  background: var(--dr-hot);",
+    "  box-shadow: 0 0 0 2px var(--dr-bg);",
+    "}",
+    ".dr-clock { font-family: \"IBM Plex Mono\", monospace; font-size: 9.5px; letter-spacing: .02em; opacity: .5; }",
+    "/* The floating document's own page rules. There is no body.app in there to",
+    "   carry them, and this sheet is written in rather than linked: a file:// sheet",
+    "   is not reliably fetched by a document whose own URL is about:blank. */",
+    "html.dr-pip, body.dr-pip { margin: 0; height: 100%; overflow: hidden; background: #16171a; }",
+    "@media (prefers-color-scheme: light) {",
+    "  html.dr-pip, body.dr-pip { background: #f4f2ec; }",
+    "}"
+  ].join('\n');
+
+  var STRIP_HTML =
+    '<div class="dr-top">' +
+      '<button type="button" class="dr-play" aria-pressed="false" aria-label="Play">' +
+        '<svg class="dr-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>' +
+        '<svg class="dr-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>' +
+      '</button>' +
+      '<div class="dr-who">' +
+        '<div class="dr-station"></div>' +
+        '<div class="dr-now"><span class="dr-status"></span><span class="dr-note"></span></div>' +
+      '</div>' +
+      '<div class="dr-meter" aria-hidden="true"></div>' +
+    '</div>' +
+    '<button type="button" class="dr-unpin" aria-label="Expand to main radio" title="Expand to main radio">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/>' +
+      '</svg>' +
+    '</button>' +
+    '<div class="dr-foot">' +
+      /* The one place the window can be named. The bar along the top is
+         the browser's and shows the page's origin; a page is not allowed
+         to write there, which is the whole point of it. */
+      '<span class="dr-name">Deskside Radio Mini</span>' +
+      '<time class="dr-clock">--:--</time>' +
+      '<input type="range" class="dr-vol" min="0" max="100" aria-label="Volume">' +
+    '</div>' +
+    '<div class="dr-hint">Click anywhere to shrink this window</div>';
+
+  function buildStrip(doc) {
+    var s = doc.createElement('style');
+    s.textContent = STRIP_CSS;
+    doc.head.appendChild(s);
+
+    var root = doc.createElement('div');
+    root.className = 'dr-strip';
+    root.innerHTML = STRIP_HTML;
+
+    var meter = root.querySelector('.dr-meter');
+    for (var i = 0; i < PIN_BARS; i++) {
+      var bar = doc.createElement('i');
+      /* An arch, roughed up. The sine keeps the ends shorter than the
+         middle, which is what a meter looks like; the second term breaks
+         the symmetry so it does not read as one object breathing. Fixed
+         rather than random, so it is the same meter every time. */
+      var arch = 0.40 + 0.60 * Math.sin((i + 1) / (PIN_BARS + 1) * Math.PI);
+      var w = arch * (0.72 + 0.28 * Math.abs(Math.sin(i * 2.399963)));
+      bar.style.setProperty('--dr-w', w.toFixed(3));
+      meter.appendChild(bar);
+    }
+
+    var o = {
+      doc: doc, root: root, meter: meter,
+      station: root.querySelector('.dr-station'),
+      now: root.querySelector('.dr-status'),
+      note: root.querySelector('.dr-note'),
+      play: root.querySelector('.dr-play'),
+      vol: root.querySelector('.dr-vol'),
+      clock: root.querySelector('.dr-clock')
+    };
+
+    o.play.addEventListener('click', function () {
+      if (state.intendedPlaying) stopPlayback();
+      else { el.overlay.hidden = true; startPlayback(); }
+    });
+
+    /* The same bargain the radio's own fader strikes: the sound follows the
+       slider, the write to storage waits for it to settle. */
+    o.vol.addEventListener('input', function () {
+      setVolume(+o.vol.value, true);
+      clearTimeout(stripVolTimer);
+      stripVolTimer = setTimeout(save, 250);
+    });
+
+    /* Back to the middle. A fader this short is easy to knock, and there is
+       no numeric readout beside it to put right by eye. 50 because that is
+       what a fresh install starts at -- read from DEFAULTS rather than
+       written again here, so the two cannot drift apart. */
+    o.vol.addEventListener('dblclick', function () {
+      clearTimeout(stripVolTimer);
+      slideVolumeTo(DEFAULTS.volume);
+    });
+
+    root.querySelector('.dr-unpin').addEventListener('click', function () { unpin(true); });
+    return o;
+  }
+
+  /* Back to the middle, walked rather than jumped.
+
+     A range input has nothing to transition: its knob is drawn from the
+     value, and setting the value moves it at once. So the value itself is
+     eased, on the floating window's clock -- the radio's window is behind
+     it and occluded, and Chrome throttles the timers of a window it cannot
+     see, which is what made the placard lag when it followed on this
+     window's own.
+
+     The value is written straight to the input as well as through
+     setVolume: the double-click has focused it, and paintStripFade will not
+     touch a fader that has focus. */
+  var volAnim = null, volAnimWin = null;
+
+  function slideVolumeTo(target) {
+    if (!strip) return;
+    if (volAnim && volAnimWin) { volAnimWin.cancelAnimationFrame(volAnim); }
+    volAnim = null;
+    volAnimWin = (pipWin && !pipWin.closed) ? pipWin : window;
+
+    var from = state.volume;
+    if (from === target) { setVolume(target, false); return; }
+
+    var t0 = 0, MS = 190;
+    var step = function (ts) {
+      if (!t0) t0 = ts;
+      var k = Math.min(1, (ts - t0) / MS);
+      // Away quickly, settling in: the ease of a control being let go of.
+      var e = 1 - Math.pow(1 - k, 3);
+      var v = Math.round(from + (target - from) * e);
+      setVolume(v, true);
+      if (strip) strip.vol.value = v;
+      if (k < 1) { volAnim = volAnimWin.requestAnimationFrame(step); return; }
+      volAnim = null;
+      setVolume(target, false);
+      if (strip) strip.vol.value = target;
+    };
+    volAnim = volAnimWin.requestAnimationFrame(step);
+  }
+
+  function paintStrip() {
+    if (!strip) return;
+    var st = currentStation();
+    var nm = st ? st.name : '';
+    var playing = !!state.intendedPlaying;
+    if (strip.station.textContent !== nm) strip.station.textContent = nm;
+    if (strip.now.textContent !== statusText) strip.now.textContent = statusText;
+    strip.play.setAttribute('aria-pressed', playing ? 'true' : 'false');
+    strip.play.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+    strip.root.classList.toggle('is-live', status === 'live');
+    paintStripFade();
+    paintStripNote();
+    // Kept in step with the radio's, since the station can change under it.
+    if (pipWin && !pipWin.closed) pipWin.document.title = document.title;
+  }
+
+  /* The setting times the handover fade, which is what the radio's own
+     fader shows -- see paintFade. Reading only the setting meant the sound
+     dipped through a slot change while the knob stayed where it was.
+
+     Never onto the one being dragged: writing the value back would stamp
+     over the listener's thumb an event at a time. */
+  function paintStripFade() {
+    if (!strip || strip.doc.activeElement === strip.vol) return;
+    var shown = Math.max(0, Math.min(100, Math.round(state.volume * fadeMul)));
+    if (+strip.vol.value !== shown) strip.vol.value = shown;
+  }
+
+  /* What the schedule is about to do, for the last half-minute before it
+     does it. Set by updateHandover, which is the one place that knows. */
+  var stripNote = '';
+
+  function setStripNote(text) {
+    if (text === stripNote) return;
+    stripNote = text;
+    paintStripNote();
+  }
+
+  function paintStripNote() {
+    if (!strip) return;
+    if (stripNote) {
+      strip.note.textContent = stripNote;
+      strip.root.classList.add('is-noting');
+      return;
+    }
+    strip.root.classList.remove('is-noting');
+    /* The words stay until the fade has finished with them. On the floating
+       window's clock: the radio's is behind it and throttled. */
+    var w = (pipWin && !pipWin.closed) ? pipWin : window;
+    w.setTimeout(function () {
+      if (!stripNote && strip) strip.note.textContent = '';
+    }, 260);
+  }
+
+  function paintStripClock(hhmm) {
+    if (strip && strip.clock.textContent !== hhmm) strip.clock.textContent = hhmm;
+  }
+
+  /* The raw level, not the needle's. The needle is damped on purpose -- a
+     VU movement is meant to be read, not watched -- but twelve bars two
+     pixels wide have no such duty, and following the ballistics made them
+     look stuck. The curve is there because ordinary programme material
+     sits low on a VU scale, and a meter that never leaves the bottom third
+     of its travel is not telling anybody anything. */
+  function paintStripLevel(v) {
+    if (!strip) return;
+    var shown = Math.pow(Math.max(0, Math.min(1, v)), 0.6);
+    strip.meter.style.setProperty('--dr-vu', shown.toFixed(3));
+  }
+
+  /* Chrome will not open the floating window at the size asked for --
+     measured on a profile with nothing remembered, 440x150, 440x240 and
+     600x400 all came back 1119x700, which is the opener's own viewport.
+     resizeTo does work on one of these windows, but wants a live user
+     activation, and requestWindow spends the one that opened it.
+
+     So the size is taken on the next gesture. The listeners go on before
+     the request, not after: the click that follows the opening pointerdown
+     is the first activation going spare, and waiting for the promise to
+     resolve first was a race with it. They stay on until the resize lands,
+     so any later press in either window finishes the job.
+
+     resizeTo sets the outer size, and this window carries an origin bar the
+     radio's does not, so the frame is measured rather than assumed. */
+  /* Four, not one. requestWindow spends the activation that opened the
+     window, and the promise usually resolves after the click has already
+     been and gone -- so the same press is watched at every moment it can
+     still be worth something, and whichever lands after the window exists
+     is the one that pays. */
+  var FIT_ON = ['pointerdown', 'pointerup', 'mouseup', 'click'];
+  var pipFitted = false;
+
+  /* Asked for twice, from both sides of the glass.
+
+     User activation belongs to a Window, and every attempt from here has
+     spent one this window no longer has. The floating window is its own
+     Window and was created by a gesture, so it may hold an activation
+     nothing has touched -- and a call made from inside it, in its own task,
+     is a different question to the browser than the same call reached
+     across from here. Both are tried; whichever is allowed wins, and if
+     neither is, the next press does it. */
+  function askForSize(win) {
+    var w = PIN_W + (win.outerWidth - win.innerWidth);
+    var h = PIN_H + (win.outerHeight - win.innerHeight);
+    try { win.resizeTo(w, h); } catch (e) { /* from out here, then */ }
+    try {
+      win.setTimeout(function () {
+        try { win.resizeTo(w, h); } catch (e) { /* nor from in there */ }
+      }, 0);
+    } catch (e) { /* window already gone */ }
+  }
+
+  function fitPip() {
+    if (pipFitted || !pipWin || pipWin.closed) return;
+    if (Math.abs(pipWin.innerWidth - PIN_W) < 8 && Math.abs(pipWin.innerHeight - PIN_H) < 8) {
+      pipFitted = true;
+      stopFitting();
+      return;
+    }
+    askForSize(pipWin);
+    setTimeout(function () {
+      if (pipWin && !pipWin.closed && Math.abs(pipWin.innerHeight - PIN_H) < 20) {
+        pipFitted = true;
+        stopFitting();
+        checkRoomy();
+      }
+    }, 150);
+  }
+
+  /* Bigger than it was asked for by enough to be worth saying so. Only
+     until it has been fitted once -- after that the size is the listener's
+     business and this has nothing useful to add. */
+  function checkRoomy() {
+    if (!strip || !pipWin || pipWin.closed) return;
+    var roomy = !pipFitted &&
+      (pipWin.innerWidth > PIN_W + 40 || pipWin.innerHeight > PIN_H + 40);
+    strip.root.classList.toggle('is-roomy', roomy);
+  }
+
+  function startFitting() {
+    pipFitted = false;
+    FIT_ON.forEach(function (ev) { document.addEventListener(ev, fitPip, true); });
+  }
+
+  function alsoFitFrom(win) {
+    try {
+      FIT_ON.forEach(function (ev) { win.document.addEventListener(ev, fitPip, true); });
+    } catch (e) { /* gone already */ }
+  }
+
+  function stopFitting() {
+    FIT_ON.forEach(function (ev) { document.removeEventListener(ev, fitPip, true); });
+    try {
+      if (pipWin && !pipWin.closed) {
+        FIT_ON.forEach(function (ev) { pipWin.document.removeEventListener(ev, fitPip, true); });
+      }
+    } catch (e) { /* gone */ }
+  }
+
+  /* ---------- getting this window out of the way ----------
+     There is no way for a page to minimise its own window, and Chrome will
+     not let one be pushed off the edge of the screen either -- see the note
+     in restoreBox, which measured exactly that. So it is put where it
+     cannot be seen instead: shrunk to a placard and parked inside the
+     floating strip's own rectangle. The strip is always on top and the
+     placard is smaller, so the placard is covered.
+
+     It follows the strip, because a window fires no event for having been
+     dragged and the two would otherwise come apart the first time the
+     strip is moved. And it comes back on unpin, and only then. */
+
+  /* Smaller than the strip by a good margin on both axes, so that what
+     lag there is has room to be wrong in without the placard showing at
+     the edges. */
+  var STUB_W = 120, STUB_H = 64;
+  /* Where the radio's window stood before it was stowed, and the flag the
+     sizing code reads to keep its hands off while it is. Both at once, on
+     purpose: there is no state where one is true and the other is not. */
+  var pinnedBox = null;
+  var mainStub = null;
+  var followTimer = null;
+  /* When the window was stowed. The press that opens the strip is a click
+     on the pin, and without this the placard's way back took that same
+     click and shut the strip in the gesture that opened it. */
+  var stowedAt = 0;
+
+  var STUB_HTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"' +
+    ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M9.5 3.5h5l-.6 6 3.1 3.2H7l3.1-3.2z"/><path d="M12 12.7V20.5"/>' +
+    '</svg>' +
+    '<b>Floating</b>' +
+    '<span>Click to bring the radio back</span>';
+
+  function showStub() {
+    if (!mainStub) {
+      mainStub = document.createElement('div');
+      mainStub.className = 'dr-stub';
+      mainStub.innerHTML = STUB_HTML;
+      // On the placard, not the body: only a deliberate click on the thing
+      // offering the way back should take it.
+      mainStub.addEventListener('click', function () {
+        if (Date.now() - stowedAt < 600) return;
+        if (document.body.classList.contains('is-stowed')) unpin(true);
+      });
+      document.body.appendChild(mainStub);
+    }
+    mainStub.hidden = false;
+    stowedAt = Date.now();
+    document.body.classList.add('is-stowed');
+  }
+
+  function hideStub() {
+    if (mainStub) mainStub.hidden = true;
+    document.body.classList.remove('is-stowed');
+  }
+
+  /* Clamped into the strip's rectangle rather than merely centred on it:
+     Chrome quietly moves a window back on screen, and a strip near an edge
+     would otherwise leave this one peeping out beside it. */
+  function followFloat() {
+    if (!pinnedBox || !pipWin || pipWin.closed) return;
+    var pw = pipWin.outerWidth, ph = pipWin.outerHeight;
+    if (!pw || !ph) return;
+    var x = Math.round(pipWin.screenX + Math.max(0, (pw - window.outerWidth) / 2));
+    var y = Math.round(pipWin.screenY + Math.max(0, (ph - window.outerHeight) / 2));
+    if (Math.abs(x - window.screenX) < 2 && Math.abs(y - window.screenY) < 2) return;
+    try { window.moveTo(x, y); } catch (e) { /* nothing to be done */ }
+  }
+
+  /* Whose clock the follow runs on, because it matters more than the rate.
+
+     A poll is needed at all because a window fires no event for having been
+     dragged. The first version polled on this window's own timer and lagged
+     badly enough to show at the edges: Chrome holds back timers in a window
+     it considers occluded, and being occluded is the whole point of this
+     one, so it was served at about once a second however often it asked.
+
+     The floating strip is visible, focused and unthrottled, and it can move
+     this window as readily as this window can. So the interval is its. */
+  var followOwner = null;
+
+  function startFollowing(win) {
+    stopFollowing();
+    followOwner = (win && !win.closed) ? win : window;
+    try {
+      followTimer = followOwner.setInterval(followFloat, 60);
+    } catch (e) {
+      followOwner = window;
+      followTimer = window.setInterval(followFloat, 60);
+    }
+  }
+
+  function stopFollowing() {
+    if (!followTimer) return;
+    try { (followOwner || window).clearInterval(followTimer); } catch (e) { /* window gone */ }
+    followTimer = null;
+    followOwner = null;
+  }
+
+  /* Only where the window is ours to size. In an ordinary tab resizeTo is
+     ignored, so this would shrink nothing and park nothing; there the
+     radio's window is left alone and the floating strip is the whole of
+     the feature. */
+  function sizeSelf(w, h) {
+    try {
+      window.resizeTo(w + (window.outerWidth - window.innerWidth),
+                      h + (window.outerHeight - window.innerHeight));
+    } catch (e) { /* left as it was */ }
+  }
+
+  /* Done before the strip is asked for, and this is the whole trick.
+
+     Chrome ignores the size requestWindow is given and opens the floating
+     window at the opener's viewport instead -- measured, on a profile with
+     nothing remembered: 440x150, 440x240 and 600x400 all came back
+     1119x700, which was this window's inner size at the time. Meanwhile
+     this window can be resized whenever we like, because it is ours; it is
+     only the floating one that wants an activation we have already spent.
+
+     So rather than argue, this window becomes the size the strip should be
+     and lets Chrome copy it. The placard goes up first so that what is
+     briefly on screen is a placard and not a squashed radio. */
+  function prepareOpener() {
+    if (!windowIsOurs()) return;
+    pinnedBox = { x: window.screenX, y: window.screenY, w: window.outerWidth, h: window.outerHeight };
+    showStub();
+    sizeSelf(PIN_W, PIN_H);
+  }
+
+  /* And once the strip is up, the rest of the way down and out of sight. */
+  function stowOpener() {
+    if (!pinnedBox) return;
+    sizeSelf(STUB_W, STUB_H);
+    // After the resize, so the centring uses the size actually granted.
+    followFloat();
+    startFollowing(pipWin);
+  }
+
+  /* The size and place the radio had before it was stowed, written out as
+     the box to open at next time. rememberBox is held off for the whole of
+     a pin -- a placard's size is nobody's choice -- so on the way out this
+     is the only thing that knows where the radio actually lives. */
+  function keepTheBox() {
+    if (!pinnedBox) return;
+    var b = pinnedBox;
+    state.windowBox = { x: b.x, y: b.y, w: b.w, h: b.h, t: state.theme };
+    save();
+  }
+
+  function restoreMain() {
+    stopFollowing();
+    hideStub();
+    if (!pinnedBox) return;
+    var b = pinnedBox;
+    // Cleared before the resize, or the guards would turn away the fit that
+    // has to follow it.
+    pinnedBox = null;
+    try { window.resizeTo(b.w, b.h); window.moveTo(b.x, b.y); } catch (e) { /* nothing to do */ }
+    /* Nothing was remembered or fitted for the whole of the pin, and the
+       theme's height is what the window should be wearing now. */
+    setTimeout(fitWindow, 0);
+  }
+
+  function pin() {
+    if (!pinSupported() || pipWin || pinPending) return;
+    pinPending = true;
+    startFitting();
+    prepareOpener();
+    /* Not to influence the size Chrome gives -- it does not copy the opener,
+       measured: 440x150 at the request, 1119x700 granted -- but so the
+       placard is up and the shrink has landed before a second window
+       appears over it. Transient activation lasts seconds, so the ask is
+       still paid for by the press that started it. */
+    setTimeout(openFloat, 80);
+  }
+
+  function openFloat() {
+
+    /* disallowReturnToOpener takes away the back-to-tab button. Chrome puts
+       it beside the close button and both merely shut the window, so with
+       the strip carrying its own way back there were three controls for two
+       meanings. One browser control, one meaning: the X closes the radio. */
+    documentPictureInPicture.requestWindow({
+      width: PIN_W,
+      height: PIN_H,
+      disallowReturnToOpener: true
+    }).then(function (win) {
+      pinPending = false;
+      pipWin = win;
+      var d = win.document;
+      /* A window this new is not guaranteed to have been given a head and
+         a body yet, and everything below writes into one or the other. */
+      if (!d.documentElement) d.appendChild(d.createElement('html'));
+      if (!d.head) d.documentElement.appendChild(d.createElement('head'));
+      if (!d.body) d.documentElement.appendChild(d.createElement('body'));
+      d.documentElement.className = 'dr-pip';
+      d.body.className = 'dr-pip';
+      /* Not what Windows shows. It captions this window with the opener's
+         title regardless -- measured: named separately, both still
+         enumerated as 'KISS 92.5 - Deskside Radio'. Set anyway, because it
+         is this document's own name and screen readers use it. */
+      d.title = document.title;
+
+      /* Only the webfonts are linked, and by absolute URL: they are https
+         and load here like anywhere, where a file:// sheet is not reliably
+         fetched by a document whose own URL is about:blank. The strip's own
+         rules are written in by buildStrip for that reason. */
+      var fonts = document.querySelector('link[rel="stylesheet"][href*="fonts.googleapis"]');
+      if (fonts) {
+        var l = d.createElement('link');
+        l.rel = 'stylesheet';
+        l.href = fonts.href;
+        d.head.appendChild(l);
+      }
+
+      strip = buildStrip(d);
+      d.body.appendChild(strip.root);
+
+      alsoFitFrom(win);
+      fitPip();
+      /* Long enough for the fitter to have had its turn, so that on Windows
+         this is never seen at all. */
+      win.setTimeout(checkRoomy, 700);
+      win.addEventListener('resize', checkRoomy);
+
+    /* Only ever the listener's doing. unpin() clears pipWin before it closes
+       the window, so by the time this runs for a close of our own the check
+       below has already failed -- which leaves this meaning one thing: the X
+       was pressed, and the radio is being put away. */
+      win.addEventListener('pagehide', function () {
+        if (pipWin !== win) return;
+        pipWin = null;
+        strip = null;
+        stopFitting();
+        keepTheBox();
+        /* If the browser will not let the window go -- it is allowed to
+           refuse -- the radio must not be left stowed behind a window that
+           is no longer there. */
+        try { window.close(); } catch (e) { /* then stay */ }
+        setTimeout(function () { if (!window.closed) restoreMain(); }, 250);
+      });
+
+
+      stowOpener();
+      paintStrip();
+      paintStripClock(el.clock.textContent);
+      // The needle stops itself when there is nothing to show; wake it so
+      // the strip's meter is not stuck at whatever it was left at.
+      startMeter();
+    }).catch(function (err) {
+      pinPending = false;
+      stopFitting();
+      // The window was made small for a strip that is not coming.
+      restoreMain();
+      /* Not swallowed. A window the browser declines to open is not worth a
+         noise, but a fault in the code above is, and hiding one cost an
+         afternoon of looking at a blank window with an empty console. */
+      try { console.error('Deskside: pin failed', err); } catch (e) { /* no console */ }
+    });
+  }
+
+  /* Idempotent on purpose: reached from the strip's own button, from Reset,
+     and from the floating window being closed by hand. focusBack is for the
+     routes where the listener is asking for the radio rather than putting
+     it away -- Chrome's own close button leaves the radio's window wherever
+     it was in the stack, which after an hour of other work is behind
+     everything. */
+  function unpin(focusBack) {
+    stopFitting();
+    var win = pipWin;
+    pipWin = null;
+    strip = null;
+    if (win && !win.closed) {
+      try { win.close(); } catch (e) { /* already going */ }
+    }
+    restoreMain();
+    if (focusBack) {
+      try { window.focus(); } catch (e) { /* not allowed, and not important */ }
+    }
+  }
+
+  (function wirePin() {
+    var btn = $('pinTop');
+    if (!btn) return;
+    if (!pinSupported()) { btn.hidden = true; return; }
+    /* pointerdown as well as click, so the click that follows is a fresh
+       activation for fitPip to spend on resizeTo. pin() is a no-op once one
+       is open or on the way, and click alone serves the keyboard, which
+       produces no pointer event at all. */
+    btn.addEventListener('pointerdown', function () { pin(); });
+    btn.addEventListener('click', function () { pin(); });
+  }());
 
   // ---------- media session ----------
   function updateMediaSession() {
@@ -2633,7 +3491,14 @@
     sizeDrawer();
     findReadme();
   }
-  $('openSettings').addEventListener('click', openSettings);
+  $('openSettings').addEventListener('click', function () {
+    /* The drawer borrows height from this window, and while the radio is
+       pinned this window is a placard a hundred pixels tall. So the radio
+       comes back first, and the drawer opens on the window it was written
+       for. */
+    unpin(false);
+    openSettings();
+  });
 
   /* ---------- the read me ----------
      Which file it is depends on where this copy came from: the download
@@ -4293,6 +5158,8 @@
 
   function resetEverything() {
     if (state.intendedPlaying) stopPlayback();
+    // Defaults are not floating above everything.
+    unpin(false);
     /* Which settings file this profile has already read is not a setting,
        and clearing it would undo the reset at the next launch: the export
        beside index.html would look new again and be imported straight back

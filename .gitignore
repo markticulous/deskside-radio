@@ -4,6 +4,10 @@ dist/
 # Scratch from the browser refusing to name a shortcut file properly.
 *.download
 
+# Written by the launcher at every start, to tell the page whether a Desktop
+# shortcut exists. Belongs to the machine it was launched on, not the repo.
+assets/shortcut.js
+
 # OS clutter
 Thumbs.db
 desktop.ini
