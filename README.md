@@ -277,7 +277,7 @@ The Chrome profile is also now called `profile-chrome` rather than `profile`, so
 
 ## What the download looks like
 
-The root of the unzipped folder holds only things meant to be double-clicked — `index.html`, `README.html`, and the `Win -` and `Linux -` scripts. Everything the radio needs but nobody opens is in `assets/`: one `favicon-*.ico` per theme, and `LICENSE.txt`.
+The root of the unzipped folder holds only things meant to be double-clicked — `index.html`, `User Reference Guide.html`, and the `Win -` and `Linux -` scripts. Everything the radio needs but nobody opens is in `assets/`: one `favicon-*.ico` per theme, and `LICENSE.txt`.
 
 The icons sit at that same path in this repository, so the launchers name them one way and it works whether they are run from a clone or from a download. The licence is the exception: `LICENSE` stays at the repo root, where GitHub and every licence scanner looks for it, and the build writes it to `assets/LICENSE.txt` on the way into the archive.
 
@@ -409,9 +409,9 @@ The source is split into a stylesheet and five modules because that is how it is
 node tools/build-dist.js
 ```
 
-That writes `dist/` — `index.html` plus the theme icons, the shortcut helpers, the licence and `README.html`. The icons are separate files because Windows reads them off disk rather than out of a page.
+That writes `dist/` — `index.html` plus the theme icons, the shortcut helpers, the licence and `User Reference Guide.html`. The icons are separate files because Windows reads them off disk rather than out of a page.
 
-`README.html` is the manual: a user guide style description of the app, its features and functions. It sits beside `index.html` here as well as in the download, because **Settings → Service → Open the read me** looks in the app's own folder, so a copy run straight from this repository has to find the same file. It is a page rather than plain text because nothing shipped with Windows, macOS or Linux renders Markdown — a browser hands you a local `.md` as raw text in a `<pre>` — while every one of those machines has a browser. The link opens it in a window of its own, sized and centred on the screen the radio is on.
+`User Reference Guide.html` is the manual: a user guide style description of the app, its features and functions. It sits beside `index.html` here as well as in the download, because **Settings → Service → Open the guide** looks in the app's own folder, so a copy run straight from this repository has to find the same file. It is a page rather than plain text because nothing shipped with Windows, macOS or Linux renders Markdown — a browser hands you a local `.md` as raw text in a `<pre>` — while every one of those machines has a browser. The link opens it in a window of its own, sized and centred on the screen the radio is on — 1000×1240 where there is room, and clamped to the screen less 80px where there is not, so a 1366×768 laptop gets a window that fits it rather than one that hangs off it. The guide has its own search in the bar across the top: four characters or more, matched against the whole text rather than the headings, listing each section it appears in with a count and marking every hit on the page.
 
 This file, `README.md`, is the one for GitHub and for anyone reading the source.
 

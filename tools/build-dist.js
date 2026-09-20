@@ -171,10 +171,10 @@ fs.readdirSync(path.join(ROOT, ASSETS))
    looks for it in its own folder: a copy run straight from the repository
    has to find the same manual the download does, and one kept under tools/
    would leave that button opening raw Markdown. */
-const manual = read('README.html').replace(
+const manual = read('User Reference Guide.html').replace(
   /(<span class="ver" id="verChip">)v[0-9.]+(<\/span>)/,
   '$1v' + JSON.parse(read('version.json')).version + '$2');
-fs.writeFileSync(path.join(OUT, 'README.html'), manual);
+fs.writeFileSync(path.join(OUT, 'User Reference Guide.html'), manual);
 
 /* And the licence, which the MIT terms ask to travel with every copy. It
    used to be left behind in the repository, which was an oversight when

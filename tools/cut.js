@@ -32,13 +32,13 @@ const exists = (f) => fs.existsSync(path.join(ROOT, f));
 const SOURCES = [
   { file: 'app.js', re: /var APP_VERSION = '([0-9][0-9.]*)'/, what: 'APP_VERSION' },
   { file: 'version.json', re: /"version":\s*"([0-9][0-9.]*)"/, what: 'version' },
-  { file: 'README.html', re: /<span class="ver" id="verChip">v([0-9][0-9.]*)<\/span>/, what: 'verChip' },
+  { file: 'User Reference Guide.html', re: /<span class="ver" id="verChip">v([0-9][0-9.]*)<\/span>/, what: 'verChip' },
   { file: 'index.html', re: /<span id="appVersion">v([0-9][0-9.]*)<\/span>/, what: 'appVersion' }
 ];
 
 /* What the build writes. Checked after building, never edited by hand. */
 const BUILT = [
-  { file: 'dist/README.html', re: /<span class="ver" id="verChip">v([0-9][0-9.]*)<\/span>/, what: 'manual chip' },
+  { file: 'dist/User Reference Guide.html', re: /<span class="ver" id="verChip">v([0-9][0-9.]*)<\/span>/, what: 'manual chip' },
   { file: 'dist/assets/version.txt', re: /^([0-9][0-9.]*)/, what: 'what the launcher reads' },
   { file: 'dist/assets/version.js', re: /DESKSIDE_ON_DISK = "([0-9][0-9.]*)"/, what: 'what the page reads' }
 ];
@@ -194,9 +194,9 @@ async function verify() {
     const r = await fetch('https://github.com/markticulous/deskside-radio/releases/latest/download/deskside-radio.zip');
     fs.writeFileSync(path.join(tmp, 'z.zip'), Buffer.from(await r.arrayBuffer()));
     execFileSync(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe'),
-      ['-xf', 'z.zip', 'README.html', 'assets/version.txt'], { cwd: tmp });
+      ['-xf', 'z.zip', 'User Reference Guide.html', 'assets/version.txt'], { cwd: tmp });
     const chip = /<span class="ver" id="verChip">v([0-9][0-9.]*)<\/span>/
-      .exec(fs.readFileSync(path.join(tmp, 'README.html'), 'utf8'));
+      .exec(fs.readFileSync(path.join(tmp, 'User Reference Guide.html'), 'utf8'));
     say(chip && chip[1] === want, 'manual chip inside the published zip', chip && chip[1]);
     const vt = fs.readFileSync(path.join(tmp, 'assets', 'version.txt'), 'utf8').trim();
     say(vt === want, 'version.txt inside the published zip', vt);

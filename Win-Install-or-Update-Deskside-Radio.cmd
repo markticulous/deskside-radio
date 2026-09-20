@@ -390,6 +390,20 @@ if exist "%APPDIR%assets\favicon-dial.ico" if exist "%APPDIR%favicon-dial.ico" (
   del /q "%APPDIR%favicon-*.ico" >nul 2>&1
 )
 
+rem And the manual's old name. It was README.html until 1.5.1 and is now
+rem User Reference Guide.html, which says what it is to somebody reading
+rem the folder rather than assuming they know the convention. tar writes
+rem the new one beside the old rather than over it, so a folder installed
+rem before the rename would keep both -- and the stale one would go on
+rem describing a version nobody is running.
+rem
+rem Only once the new one is confirmed to be there, so an unpack that went
+rem wrong leaves the old manual rather than no manual at all. The app reads
+rem whichever it finds, new name first, so either way the button works.
+if exist "%APPDIR%User Reference Guide.html" if exist "%APPDIR%README.html" (
+  del /q "%APPDIR%README.html" >nul 2>&1
+)
+
 rem And this file's own older name. It used to have spaces in it, which
 rem GitHub turns into dots on the release page -- it was published as
 rem Win.-.Install.or.Update.Deskside.Radio.cmd, which is not a name anyone

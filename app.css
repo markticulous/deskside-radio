@@ -171,9 +171,16 @@
    The ring stays the button's own ground showing through, which is why it
    is currentColor at low alpha rather than a background this rule would
    have to guess at. */
+/* In the button's own corner, clear of the drawn glyph rather than over it.
+
+   At top/right 6 it sat on the gear: a 20px glyph centred in a 40px button
+   reaches to 10px from each edge, and the dot's box ran from 6 to 13. The
+   corner is the one place that is the button's and not the icon's -- and it
+   is the corner in the 32px faces too, where the glyph is the same 20px and
+   leaves only 6px round it. */
 #openSettings.has-update::after {
-  content: ''; position: absolute; top: 6px; right: 6px;
-  width: 7px; height: 7px; border-radius: 50%;
+  content: ''; position: absolute; top: 0; right: 0;
+  width: 6px; height: 6px; border-radius: 50%;
   background: var(--alert, #ff8f2e);
   box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 22%, transparent);
 }
@@ -1840,28 +1847,37 @@
 [data-theme="retro"] .play-btn:active { box-shadow: inset 4px 4px 0 #a01000, inset -4px -4px 0 #ff7c5c; }
 [data-theme="retro"] .fader label { font-size: 8px; letter-spacing: 0; text-transform: uppercase; color: var(--grey); }
 [data-theme="retro"] .fader output { font-size: 9px; color: var(--green); }
+/* One lamp lit, and a whole one.
+
+   The mark is painted into the track rather than being the thumb. A thumb
+   sits wherever a continuous value puts it, so whatever width it was given
+   it lit one cell and part of its neighbour -- and moving the mask off it
+   only changed which half was wrong. Here the lit cell is a hard-edged
+   band in the background at --lit-x, which markFader snaps to whole cells;
+   the mask then cuts the gaps into it like any other.
+
+   --fader-cell is read by markFader. It is declared here because this is
+   the only face drawn as lamps, and the measurement belongs with the
+   drawing. */
+[data-theme="retro"] .fader { --fader-cell: 10px; }
 [data-theme="retro"] .fader input {
-  -webkit-appearance: none; appearance: none; height: 10px; border-radius: 0; background: none;
-}
-/* The cells belong to the track, not to the control. Masked on the input,
-   the thumb was clipped by the same pattern -- 12px of thumb over a 10px
-   pitch lit one cell whole and the next one part-way, which is the one
-   thing a row of LEDs cannot do. */
-[data-theme="retro"] .fader input::-webkit-slider-runnable-track {
-  height: 10px; border-radius: 0; background: var(--dark);
+  -webkit-appearance: none; appearance: none; height: 10px; border-radius: 0;
+  background-color: var(--dark);
+  background-image: linear-gradient(90deg,
+    transparent 0 var(--lit-x, 0px),
+    var(--green) var(--lit-x, 0px) calc(var(--lit-x, 0px) + 7px),
+    transparent calc(var(--lit-x, 0px) + 7px));
+  background-repeat: no-repeat;
   -webkit-mask: repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 10px);
           mask: repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 10px);
 }
-[data-theme="retro"] .fader input::-moz-range-track {
-  height: 10px; border-radius: 0; background: var(--dark);
-  mask: repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 10px);
-}
+/* Invisible on purpose: the lit lamp above is the mark, and a second one
+   travelling beside it would be two answers to the same question. Kept at a
+   grabbable width, because it is still what the pointer takes hold of. */
 [data-theme="retro"] .fader input::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 12px; height: 18px; border-radius: 0; background: var(--green); cursor: grab;
-  /* Centred on a 10px track from an 18px block. */
-  margin-top: -4px;
+  -webkit-appearance: none; width: 12px; height: 18px; border-radius: 0; background: transparent; cursor: grab;
 }
-[data-theme="retro"] .fader input::-moz-range-thumb { width: 12px; height: 18px; border: 0; border-radius: 0; background: var(--green); }
+[data-theme="retro"] .fader input::-moz-range-thumb { width: 12px; height: 18px; border: 0; border-radius: 0; background: transparent; }
 
 /* ================================================================== */
 /* F · DEPARTURES — a split-flap board; the schedule is the subject     */

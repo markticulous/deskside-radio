@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.5.1';
+  var APP_VERSION = '1.5.2';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -1147,8 +1147,10 @@
     }
     // A reading, though, so this one is whole.
     if (el.volumeOut) el.volumeOut.value = Math.round(+input.value);
-    var at = hi > lo ? (+input.value - lo) / (hi - lo) : 0;
-    (input.parentElement || input).style.setProperty('--turn', at.toFixed(4));
+    /* One place works out where the mark goes, so the faces drawn as a knob
+       and the face drawn as lamps cannot disagree about it. This used to
+       carry its own copy of the turn, which left the lamps behind. */
+    markFader(input);
     // The strip's fader is the same reading, so it is drawn from the same place.
     paintStripFade();
   }
@@ -1199,13 +1201,40 @@
   /* A range input says nothing in CSS about where it sits between its
      ends, and a theme drawn as a knob has to turn something by exactly
      that. One number per fader, 0 at the low end and 1 at the high. */
+  /* How wide one lamp is on a face drawn as lamps, or 0 on the rest. Read
+     once per look rather than per frame: it is a style read, and this runs on
+     every movement of every fader. applyLook clears it. */
+  var faderCell = null;
+
+  function lampWidth(wrap) {
+    if (faderCell !== null) return faderCell;
+    faderCell = 0;
+    try {
+      faderCell = parseFloat(getComputedStyle(wrap).getPropertyValue('--fader-cell')) || 0;
+    } catch (e) { /* unreadable: no lamps, then */ }
+    return faderCell;
+  }
+
   function markFader(input) {
     var lo = +input.min, hi = +input.max;
     var at = hi > lo ? (+input.value - lo) / (hi - lo) : 0;
     // On the wrapper, not the input: a theme that draws the control as a
     // knob builds it out of the wrapper's own pseudo-elements, and those
     // can only read what the wrapper has.
-    (input.parentElement || input).style.setProperty('--turn', at.toFixed(4));
+    var wrap = input.parentElement || input;
+    wrap.style.setProperty('--turn', at.toFixed(4));
+
+    /* And, where the face is a row of lamps, which lamp is lit -- as a length,
+       snapped to whole cells. Half a lit lamp is not a thing a row of lamps
+       can do, and the fader used to show one every time it came to rest
+       between two. The same bargain vuTargets strikes for the meter. */
+    var cell = lampWidth(wrap);
+    if (cell > 0) {
+      var w = input.clientWidth;
+      var lamps = Math.max(1, Math.floor(w / cell));
+      var lit = Math.min(lamps - 1, Math.round(at * (lamps - 1)));
+      wrap.style.setProperty('--lit-x', (lit * cell) + 'px');
+    }
   }
 
   function showDb(v) { return (v > 0 ? '+' : '') + v; }
@@ -2244,6 +2273,8 @@
   function applyLook() {
     var from = lookWas;
     lookWas = state.theme;
+    // Measured per look; see lampWidth.
+    faderCell = null;
     document.documentElement.setAttribute('data-theme', state.theme);
     requestAnimationFrame(function () {
       // The meter is drawn differently by every theme, and setLevel works
@@ -2264,6 +2295,10 @@
       if (state.theme === 'departures' && from && from !== 'departures') {
         flapWhenClear();
       }
+    });
+    // The lamps, if this face has them, are a different width now.
+    requestAnimationFrame(function () {
+      markFader(el.volume); markFader(el.bass); markFader(el.treble);
     });
     // After the theme has painted, so the new height is the one measured.
     requestAnimationFrame(function () { sizeWindow(); });
@@ -3739,9 +3774,9 @@
 
   /* ---------- the read me ----------
      Which file it is depends on where this copy came from: the download
-     ships README.html, the repository has README.md, and README.txt is
-     what older downloads have. Rather than guess, ask for each in turn
-     and link the first one that answers.
+     ships User Reference Guide.html, the repository has README.md, and
+     README.html and README.txt are what older downloads have. Rather than
+     guess, ask for each in turn and link the first one that answers.
 
      Asking is the awkward part. A page opened from a disk may not read
      its own folder -- fetch is refused outright on file: URLs and XHR
@@ -3755,7 +3790,11 @@
      If nothing answers, the link is left dead with the reason beside it,
      because a link that opens a browser error page is worse than one
      that says up front it has nowhere to go. */
-  var README_NAMES = ['README.html', 'README.txt', 'README.md'];
+  /* The new name first, the old one after it. An app folder installed
+     before the rename still has README.html sitting in it, and the
+     button that opens the guide should not go dead because a later
+     version renamed the file. */
+  var README_NAMES = ['User Reference Guide.html', 'README.html', 'README.txt', 'README.md'];
 
   /* A read me is a document, not a tab. It opens in a window of its own,
      sized to the page's measure and centred on the screen this window is
@@ -3767,7 +3806,7 @@
      otherwise be handed a window taller than itself. If the browser
      refuses the popup outright, nothing is prevented and the link does
      what it always did. */
-  var README_W = 1000, README_H = 1000;
+  var README_W = 1000, README_H = 1240;
 
   function openReadme(e) {
     var href = el.readmeLink.getAttribute('href');
@@ -3781,7 +3820,14 @@
     var h = Math.max(400, Math.min(README_H, sh - 80));
     var ox = screen.availLeft != null ? screen.availLeft : 0;
     var oy = screen.availTop != null ? screen.availTop : 0;
-    var win = window.open(href, 'dsradio-readme',
+    /* The version in the query, so an update is not read through the
+       cache. This is a file:// page in a named window: the name means
+       the same window is reused, and the cache means the bytes can be
+       the ones from before the update -- a manual describing a version
+       that is no longer running, at a path that looks right. Nothing
+       reads the query; it is there to be different. */
+    var fresh = href + (href.indexOf('?') === -1 ? '?v=' : '&v=') + APP_VERSION;
+    var win = window.open(fresh, 'dsradio-readme',
       // No noopener here: with it, window.open hands back null and
       // there would be no way to tell a refused popup from a working
       // one. The page it opens is this app's own file.
@@ -3789,6 +3835,15 @@
       ',left=' + Math.round(ox + (sw - w) / 2) + ',top=' + Math.round(oy + (sh - h) / 2));
     if (!win) return;
     e.preventDefault();
+
+    /* And again, now the window exists. The features above are read only
+       when open() creates a window; this one is named, so pressing the
+       button while the guide is already up reuses it and ignores every
+       one of them -- including a height that has since changed. */
+    try {
+      win.resizeTo(w, h);
+      win.moveTo(Math.round(ox + (sw - w) / 2), Math.round(oy + (sh - h) / 2));
+    } catch (err) { /* not ours to size, which is answer enough */ }
     if (win.focus) win.focus();
   }
 
