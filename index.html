@@ -98,13 +98,13 @@
              will let you build, and making the whole pill a button would
              cost the link to what changed. -->
         <button type="button" class="update-pill-x" id="updatePillClose"
-                title="Hide this until the next check" aria-label="Hide this notice until the next check">
+                data-tip="Hide this until the next check" aria-label="Hide this notice until the next check">
           <span aria-hidden="true">&times;</span>
         </button>
       </span>
     </div>
     <time class="clock" id="clock">--:--</time>
-    <button class="sched-chip" id="schedToggle" aria-pressed="true" title="Turn the schedule on or off">
+    <button class="sched-chip" id="schedToggle" aria-pressed="true" data-tip="Turn the schedule on or off">
       <!-- A hairline along the bottom edge that runs out through the last
            minute before a handover, so the change is something you watch
            arrive rather than something that happens to you. -->
@@ -113,7 +113,7 @@
       <span class="sched-label" id="schedLabel">Schedule on</span>
       <span class="sched-next" id="schedNext"></span>
     </button>
-    <button class="icon-btn shortcut-btn" id="makeShortcut" aria-label="Put a shortcut on the desktop" title="Put a shortcut on the desktop">
+    <button class="icon-btn shortcut-btn" id="makeShortcut" aria-label="Put a shortcut on the desktop" data-tip="Put a shortcut on the desktop">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="4" width="18" height="12" rx="1.6"/><path d="M9 20h6M12 16v4"/><path d="M12 7v5M12 12l-2.2-2.2M12 12l2.2-2.2"/>
       </svg>
@@ -123,7 +123,7 @@
          picture-in-picture window can -- so this opens one and moves the
          radio into it. Hidden outright on a browser that has no such
          window to open. -->
-    <button class="icon-btn pin-btn" id="pinTop" aria-label="Pin an always-on-top mini radio" title="Pin an always-on-top mini radio">
+    <button class="icon-btn pin-btn" id="pinTop" aria-label="Pin as always-on-top mini radio" data-tip="Pin as always-on-top mini radio">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M9.5 3.5h5l-.6 6 3.1 3.2H7l3.1-3.2z"/><path d="M12 12.7V20.5"/>
       </svg>
@@ -180,13 +180,13 @@
       <svg class="ic-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="5.5" y="5.5" width="13" height="13" rx="1"/></svg>
       <span class="btn-text"></span>
     </button>
-    <button class="rec-btn" id="rec" hidden aria-pressed="false" title="Record">
+    <button class="rec-btn" id="rec" hidden aria-pressed="false" data-tip="Record">
       <span class="rec-dot" aria-hidden="true"></span>
       <span class="rec-word">REC</span>
     </button>
     <div class="fader volume">
       <label for="volume">Volume</label>
-      <input type="range" id="volume" min="0" max="100" value="60">
+      <input type="range" id="volume" min="0" max="100" step="any" value="60">
       <output id="volumeOut" for="volume">60</output>
     </div>
     <div class="fader tone">
@@ -212,7 +212,7 @@
     <header class="drawer-head">
       <div class="drawer-title">
         <h2>Settings</h2>
-        <span class="app-version">Deskside Radio&nbsp;&nbsp;<i class="ver-dot" aria-hidden="true"></i>&nbsp;&nbsp;<span id="appVersion">v1.5.0</span></span>
+        <span class="app-version">Deskside Radio&nbsp;&nbsp;<i class="ver-dot" aria-hidden="true"></i>&nbsp;&nbsp;<span id="appVersion">v1.5.1</span></span>
       </div>
       <button type="button" id="drawerClose" class="drawer-x" aria-label="Close">&times;</button>
     </header>
@@ -267,13 +267,13 @@
               <label class="finder-field">
                 <span>City</span>
                 <input class="in" type="text" id="cityInput" placeholder="Toronto" autocomplete="off"
-                       title="The town or city to search near. Type two letters and pick one from the list that drops down.">
+                       data-tip="The town or city to search near. Type two letters and pick one from the list that drops down.">
                 <ul class="finder-menu" id="cityMenu" hidden></ul>
               </label>
               <label class="finder-field">
                 <span>Station name or frequency</span>
                 <input class="in" type="text" id="stationInput" placeholder="1010, KISS, CBC" autocomplete="off"
-                       title="A station name or a frequency. Leave it empty to list everything near the city.">
+                       data-tip="A station name or a frequency. Leave it empty to list everything near the city.">
               </label>
             </div>
             <p class="finder-status" id="finderStatus">Pick a city, then search by name or frequency.</p>
@@ -373,7 +373,7 @@
                this is the pane where somebody comes to check it. Nothing
                is installed to make the updating happen: it is the opener
                doing one more thing on its way past, and then exiting. -->
-          <p class="hint os-win">Nothing is installed to do that &mdash; no service, no scheduled task, nothing in the registry, and nothing running when the radio is not. To take an update the moment you hear about it instead of waiting, run <span class="path">Win-Install-or-Update-Deskside-Radio.cmd</span> in your app folder; hold Shift on this tab for a button that opens it. To stop the radio updating itself, run <span class="path">Win - Automatic Updates.cmd off</span> in the same folder.</p>
+          <p class="hint os-win">Nothing is installed to do that &mdash; no service, no scheduled task, nothing in the registry, and nothing running when the radio is not. To take an update the moment you hear about it instead of waiting, run <strong>Deskside Radio - Update</strong> from the Start menu, or <span class="path">Win-Install-or-Update-Deskside-Radio.cmd</span> in your app folder &mdash; hold Shift on this tab for a button that opens it. Either way it names the version it is putting down, and the one it is replacing, before it writes anything. To stop the radio updating itself, run <span class="path">Win - Automatic Updates.cmd</span> with <code>off</code> in the same folder; with no argument it starts again.</p>
           <p class="hint os-other">To take an update, follow the <strong>get it from GitHub</strong> link beside the notice, download <span class="path">deskside-radio.zip</span> and unpack it over your app folder.</p>
           <p class="hint">Either way every station and setting survives, because those live in the browser profile rather than in the app folder.</p>
           <div class="switch-row">

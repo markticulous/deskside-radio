@@ -1482,6 +1482,27 @@ test('a found station is labelled format, bitrate, city', () => {
 /* A placeholder shows the shape of the answer; a tooltip says what the box
    is for. Every box somebody types into gets both, except the two whose
    shape the browser draws itself. */
+test('nothing is left showing the browser own tooltip', () => {
+  /* The app draws its own now: .tip in app.css, the tooltip block in app.js.
+     A title attribute left anywhere would put the grey system rectangle up
+     as well -- on its own delay, in its own font, saying the same thing
+     twice. The two cannot be told apart by looking at one screenshot, which
+     is exactly why this is a test. */
+  ['index.html', 'app.js'].forEach(function (f) {
+    const src = read(f);
+    assert.equal(/\stitle="/.test(src), false, f + ' still sets a native title somewhere');
+  });
+
+  const app = read('app.js');
+  assert.ok(app.indexOf("'[data-tip]'") !== -1,
+    'nothing looks for data-tip, so no tooltip would ever be shown');
+  /* Without the popover it is an ordinary child of .tuner, which sets
+     overflow: hidden -- and every tooltip in the top bar is cut off. */
+  assert.ok(app.indexOf("setAttribute('popover'") !== -1,
+    'the tooltip is no longer a popover, so the cabinet will clip it');
+  assert.ok(read('app.css').indexOf('.tip:popover-open') !== -1,
+    'the sheet has no rule for an open tooltip');
+});
 test('every box in the drawer says what it is for', () => {
   const app = read('app.js');
   const html = read('index.html');
@@ -1494,13 +1515,13 @@ test('every box in the drawer says what it is for', () => {
   ['name', 'band', 'url', 'tag', 'color', 'start', 'end'].forEach(function (k) {
     const i = app.indexOf('data-k="' + k + '"');
     assert.ok(i !== -1, 'the ' + k + ' box is gone');
-    assert.ok(app.slice(i, i + 400).indexOf('title="') !== -1,
+    assert.ok(app.slice(i, i + 400).indexOf('data-tip="') !== -1,
       'the ' + k + ' box has no tooltip saying what it is for');
   });
   ['cityInput', 'stationInput'].forEach(function (id) {
     const i = html.indexOf('id="' + id + '"');
     assert.ok(i !== -1, id + ' is gone');
-    assert.ok(html.slice(i - 200, i + 300).indexOf('title="') !== -1, id + ' has no tooltip');
+    assert.ok(html.slice(i - 200, i + 300).indexOf('data-tip="') !== -1, id + ' has no tooltip');
     assert.ok(html.slice(i - 200, i + 300).indexOf('placeholder="') !== -1, id + ' has no placeholder');
   });
 });

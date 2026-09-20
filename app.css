@@ -1737,7 +1737,7 @@
 [data-theme="retro"] .brand-mark { width: 10px; height: 10px; border-radius: 0; background: var(--gold); }
 [data-theme="retro"] .brand-name { font-size: 10px; letter-spacing: 0; font-weight: 400; }
 [data-theme="retro"] .clock { font-size: 10px; color: var(--sky); }
-[data-theme="retro"] .sched-chip { gap: 8px; padding: 8px 10px; font-size: 8px; color: var(--grey);
+[data-theme="retro"] .sched-chip { gap: 8px; height: 32px; padding: 0 10px; font-size: 8px; color: var(--grey);
   border-radius: 0; box-shadow: inset 0 0 0 2px var(--dark); }
 [data-theme="retro"] .sched-chip[aria-pressed="true"] { color: var(--green); box-shadow: inset 0 0 0 2px var(--green); }
 [data-theme="retro"] .sched-led { width: 8px; height: 8px; border-radius: 0; background: var(--dark); }
@@ -1787,7 +1787,18 @@
 }
 [data-theme="retro"] .meter-bar::before {
   content: ""; position: absolute; inset: 0;
+  /* Plain percentages first, so a browser without round() keeps what it had. */
   background: linear-gradient(90deg, var(--green) 0 62%, var(--gold) 62% 84%, var(--red) 84%);
+  /* Then the same boundaries snapped down to whole cells. A stop at a bare
+     62% falls wherever it falls, and the LED it lands in is painted half
+     green and half amber -- which is not a thing a row of LEDs can do.
+     --vu-step is one cell as a fraction of the bar, measured by vuTargets. */
+  --vu-amber-at: calc(round(down, 62%, var(--vu-step, .02) * 100%));
+  --vu-red-at: calc(round(down, 84%, var(--vu-step, .02) * 100%));
+  background: linear-gradient(90deg,
+    var(--green) 0 var(--vu-amber-at),
+    var(--gold) var(--vu-amber-at) var(--vu-red-at),
+    var(--red) var(--vu-red-at));
 }
 /* One cell is 15px lit and 4px dark, so the pitch is 19. The stylesheet
    carries a rough fraction of its own in case the measurement never runs;
@@ -1830,12 +1841,25 @@
 [data-theme="retro"] .fader label { font-size: 8px; letter-spacing: 0; text-transform: uppercase; color: var(--grey); }
 [data-theme="retro"] .fader output { font-size: 9px; color: var(--green); }
 [data-theme="retro"] .fader input {
-  -webkit-appearance: none; appearance: none; height: 10px; border-radius: 0; background: var(--dark);
+  -webkit-appearance: none; appearance: none; height: 10px; border-radius: 0; background: none;
+}
+/* The cells belong to the track, not to the control. Masked on the input,
+   the thumb was clipped by the same pattern -- 12px of thumb over a 10px
+   pitch lit one cell whole and the next one part-way, which is the one
+   thing a row of LEDs cannot do. */
+[data-theme="retro"] .fader input::-webkit-slider-runnable-track {
+  height: 10px; border-radius: 0; background: var(--dark);
   -webkit-mask: repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 10px);
           mask: repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 10px);
 }
+[data-theme="retro"] .fader input::-moz-range-track {
+  height: 10px; border-radius: 0; background: var(--dark);
+  mask: repeating-linear-gradient(90deg, #000 0 7px, transparent 7px 10px);
+}
 [data-theme="retro"] .fader input::-webkit-slider-thumb {
   -webkit-appearance: none; width: 12px; height: 18px; border-radius: 0; background: var(--green); cursor: grab;
+  /* Centred on a 10px track from an 18px block. */
+  margin-top: -4px;
 }
 [data-theme="retro"] .fader input::-moz-range-thumb { width: 12px; height: 18px; border: 0; border-radius: 0; background: var(--green); }
 
@@ -3891,6 +3915,69 @@ body.app.is-stowed .tuner { display: none; }
 .dr-stub svg { width: 18px; height: 18px; }
 .dr-stub b { font-weight: 600; font-size: 12.5px; }
 .dr-stub span { font-size: 10.5px; opacity: .72; }
+
+/* ================================================================== */
+/* Tooltips                                                           */
+/* ================================================================== */
+
+/* The app's own, in place of the browser's. A native title is a grey
+   rectangle in a system font, after a delay nothing can change, and it says
+   nothing at all to somebody who reached the control with the keyboard.
+
+   It wears the neutral chrome rather than the cabinet's -- the same --ui-*
+   the drawer, the confirm dialogs and the finder list wear. The note above
+   those sets out why, and a tooltip is chrome by the same argument: a face
+   is for looking at, and this is for reading.
+
+   A popover, which puts it in the top layer. That is the whole reason: the
+   cabinet sets overflow: hidden, so anything positioned inside it is cut off
+   at the edge -- which is exactly where the top-bar buttons are -- and this
+   sheet's z-index only runs to 6. The top layer is above both without
+   joining that argument. */
+.tip {
+  /* The UA sheet gives a popover inset: 0 and margin: auto to centre it.
+     Both have to go, or left and top below are ignored. */
+  position: fixed; inset: auto; margin: 0;
+  /* And overflow: auto, which would clip the point off. */
+  overflow: visible;
+  width: max-content; max-width: 260px;
+  padding: 7px 10px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
+  color: var(--ui-fg);
+  box-shadow: 0 10px 24px -12px rgba(0,0,0,.5);
+  font: 12px/1.35 var(--ui-font);
+  /* It follows the pointer around; it must never be in its way. */
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .12s ease, overlay .12s allow-discrete, display .12s allow-discrete;
+}
+.tip:popover-open { opacity: 1; }
+@starting-style { .tip:popover-open { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
+
+/* The point, joined to the plate rather than parked beside it.
+
+   Its centre sits on the plate's edge, so the inward half paints over the
+   border line there; only the two outward edges carry a border, and what is
+   left reads as the plate's own border carrying on around the point. This is
+   why the plate above has a real border and not an inset shadow -- an inset
+   shadow paints inside the box, so the line would cross the point's base
+   with nothing able to cover it. */
+.tip::after {
+  content: ""; position: absolute;
+  width: 8px; height: 8px;
+  background: inherit;
+  border: 1px solid var(--ui-line);
+  transform: rotate(45deg);
+}
+.tip[data-side="top"]::after    { bottom: -4px; left: var(--tip-ax, 50%); margin-left: -4px; border-top: 0; border-left: 0; }
+.tip[data-side="bottom"]::after { top: -4px;    left: var(--tip-ax, 50%); margin-left: -4px; border-bottom: 0; border-right: 0; }
+/* Sideways, for when there is room neither above nor below. In the mini
+   radio, whose whole window is 88px tall, that is the ordinary case. */
+.tip[data-side="left"]::after   { right: -4px;  top: var(--tip-ay, 50%);  margin-top: -4px;  border-left: 0; border-bottom: 0; }
+.tip[data-side="right"]::after  { left: -4px;   top: var(--tip-ay, 50%);  margin-top: -4px;  border-right: 0; border-top: 0; }
 
 /* ================================================================== */
 /* Phones                                                              */

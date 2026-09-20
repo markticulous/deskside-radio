@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.5.0';
+  var APP_VERSION = '1.5.1';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -668,7 +668,8 @@
     }
     var toneOff = audio === plainEl;
     el.bass.disabled = el.treble.disabled = toneOff;
-    el.bass.title = el.treble.title = toneOff ? 'This stream would not load on the analysed path, so tone control is unavailable.' : '';
+    tipOn(el.bass, toneOff ? 'This stream would not load on the analysed path, so tone control is unavailable.' : '');
+    tipOn(el.treble, toneOff ? 'This stream would not load on the analysed path, so tone control is unavailable.' : '');
     el.play.setAttribute('aria-pressed', state.intendedPlaying ? 'true' : 'false');
     paintStrip();
   }
@@ -862,7 +863,7 @@
     scheduleStopped = false;
     startMeter();
     // Whatever a handover left behind, a deliberate press starts at full.
-    clearInterval(fadeTimer); fadeTimer = null;
+    stopFade();
     fadeMul = 1; applyGain();
     attempts = 0;
     ensureGraph();
@@ -1136,10 +1137,16 @@
     if (!input) return;
     var lo = +input.min, hi = +input.max;
     if (!draggingFader) {
-      var shown = Math.max(lo, Math.min(hi, Math.round(state.volume * fadeMul)));
+      /* Not rounded. A range input whose step is 1 can only stand at whole
+         numbers, about two pixels apart on this control, so a fade moved the
+         knob in visible jumps however smoothly the gain itself was changing.
+         The input carries step="any" for this; the value the listener set is
+         still a whole number, because setVolume rounds it. */
+      var shown = Math.max(lo, Math.min(hi, state.volume * fadeMul));
       if (+input.value !== shown) input.value = shown;
     }
-    if (el.volumeOut) el.volumeOut.value = input.value;
+    // A reading, though, so this one is whole.
+    if (el.volumeOut) el.volumeOut.value = Math.round(+input.value);
     var at = hi > lo ? (+input.value - lo) / (hi - lo) : 0;
     (input.parentElement || input).style.setProperty('--turn', at.toFixed(4));
     // The strip's fader is the same reading, so it is drawn from the same place.
@@ -1150,16 +1157,31 @@
      the no-CORS path has no scheduler: it is an element's volume property
      and nothing else. One shape for both, and a fade nobody can hear the
      seams of at 25 steps a second. */
+  /* On the frame clock. It was a 40ms interval, which is twenty-five steps a
+     second in a thing the eye is watching move -- and the fader it drags along
+     with it looked it. requestAnimationFrame also stops the work entirely when
+     the window is not being drawn, which a timer does not.
+
+     The other half of that stutter was the fader's own granularity: see the
+     step on the volume input, and paintFade. */
   function fadeGain(to, ms, done) {
-    clearInterval(fadeTimer);
-    var from = fadeMul, started = Date.now();
+    stopFade();
+    var from = fadeMul, started = 0;
     if (ms <= 0) { fadeMul = to; applyGain(); if (done) done(); return; }
-    fadeTimer = setInterval(function () {
-      var t = Math.min(1, (Date.now() - started) / ms);
+    var step = function (ts) {
+      if (!started) started = ts;
+      var t = Math.min(1, (ts - started) / ms);
       fadeMul = from + (to - from) * t;
       applyGain();
-      if (t >= 1) { clearInterval(fadeTimer); fadeTimer = null; if (done) done(); }
-    }, 40);
+      if (t < 1) { fadeTimer = requestAnimationFrame(step); return; }
+      fadeTimer = null;
+      if (done) done();
+    };
+    fadeTimer = requestAnimationFrame(step);
+  }
+
+  function stopFade() {
+    if (fadeTimer) { cancelAnimationFrame(fadeTimer); fadeTimer = null; }
   }
 
   function setVolume(v, silent) {
@@ -1426,7 +1448,7 @@
             scheduleStopped = false;
             state.intendedPlaying = true;
             ensureGraph();
-            clearInterval(fadeTimer); fadeTimer = null;
+            stopFade();
             fadeMul = 1; applyGain();
           }
 
@@ -2284,6 +2306,7 @@
   var pipWin = null;
   var strip = null;
   var stripVolTimer;
+  var stripTip = null;
   /* True from the press until the window arrives or is refused, so a
      second press in that gap does not ask for a second window. */
   var pinPending = false;
@@ -2466,6 +2489,29 @@
     "/* The floating document's own page rules. There is no body.app in there to",
     "   carry them, and this sheet is written in rather than linked: a file:// sheet",
     "   is not reliably fetched by a document whose own URL is about:blank. */",
+    "/* The strip's tooltips. The same neutral plate the radio wears, spelled",
+    "   out here because this document never sees app.css. */",
+    ".tip {",
+    "  position: fixed; inset: auto; margin: 0; overflow: visible;",
+    "  width: max-content; max-width: 220px; padding: 6px 9px;",
+    "  border: 1px solid #d6d2c9; border-radius: 6px;",
+    "  background: #ffffff; color: #1d1d1b;",
+    "  box-shadow: 0 10px 24px -12px rgba(0,0,0,.5);",
+    "  font: 11.5px/1.3 \"Archivo\", \"Helvetica Neue\", Arial, sans-serif;",
+    "  pointer-events: none; opacity: 0;",
+    "  transition: opacity .12s ease, overlay .12s allow-discrete, display .12s allow-discrete;",
+    "}",
+    ".tip:popover-open { opacity: 1; }",
+    "@starting-style { .tip:popover-open { opacity: 0; } }",
+    "@media (prefers-reduced-motion: reduce) { .tip { transition: none; } }",
+    ".tip::after {",
+    "  content: \"\"; position: absolute; width: 8px; height: 8px;",
+    "  background: inherit; border: 1px solid #d6d2c9; transform: rotate(45deg);",
+    "}",
+    ".tip[data-side=\"top\"]::after    { bottom: -4px; left: var(--tip-ax, 50%); margin-left: -4px; border-top: 0; border-left: 0; }",
+    ".tip[data-side=\"bottom\"]::after { top: -4px;    left: var(--tip-ax, 50%); margin-left: -4px; border-bottom: 0; border-right: 0; }",
+    ".tip[data-side=\"left\"]::after   { right: -4px;  top: var(--tip-ay, 50%);  margin-top: -4px;  border-left: 0; border-bottom: 0; }",
+    ".tip[data-side=\"right\"]::after  { left: -4px;   top: var(--tip-ay, 50%);  margin-top: -4px;  border-right: 0; border-top: 0; }",
     "html.dr-pip, body.dr-pip { margin: 0; height: 100%; overflow: hidden; background: #16171a; }",
     "@media (prefers-color-scheme: light) {",
     "  html.dr-pip, body.dr-pip { background: #f4f2ec; }",
@@ -2484,8 +2530,8 @@
       '</div>' +
       '<div class="dr-meter" aria-hidden="true"></div>' +
     '</div>' +
-    '<button type="button" class="dr-unpin" aria-label="Expand to main radio" title="Expand to main radio">' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<button type="button" class="dr-unpin" aria-label="Expand to main radio" data-tip="Expand to main radio">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
         '<path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/>' +
       '</svg>' +
     '</button>' +
@@ -2495,7 +2541,7 @@
          to write there, which is the whole point of it. */
       '<span class="dr-name">Deskside Radio Mini</span>' +
       '<time class="dr-clock">--:--</time>' +
-      '<input type="range" class="dr-vol" min="0" max="100" aria-label="Volume">' +
+      '<input type="range" class="dr-vol" min="0" max="100" step="any" aria-label="Volume">' +
     '</div>' +
     '<div class="dr-hint">Click anywhere to shrink this window</div>';
 
@@ -2621,7 +2667,8 @@
      over the listener's thumb an event at a time. */
   function paintStripFade() {
     if (!strip || strip.doc.activeElement === strip.vol) return;
-    var shown = Math.max(0, Math.min(100, Math.round(state.volume * fadeMul)));
+    // Unrounded, for the same reason as paintFade: see the note there.
+    var shown = Math.max(0, Math.min(100, state.volume * fadeMul));
     if (+strip.vol.value !== shown) strip.vol.value = shown;
   }
 
@@ -2976,6 +3023,21 @@
       strip = buildStrip(d);
       d.body.appendChild(strip.root);
 
+      /* The strip's own tooltip, in the strip's own document. Same code,
+         same rules -- its CSS rides along in STRIP_CSS, because a file://
+         sheet is not reliably fetched by a window whose URL is about:blank. */
+      stripTip = tipNode(d, d.body);
+      wireTips(d);
+
+      /* Escape is what a small window that appeared over everything else
+         is expected to answer to. On the floating document, because that
+         is the window with the focus once it opens. */
+      d.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        e.preventDefault();
+        unpin(true);
+      });
+
       alsoFitFrom(win);
       fitPip();
       /* Long enough for the fitter to have had its turn, so that on Windows
@@ -2991,6 +3053,7 @@
         if (pipWin !== win) return;
         pipWin = null;
         strip = null;
+        stripTip = null;
         stopFitting();
         keepTheBox();
         /* If the browser will not let the window go -- it is allowed to
@@ -3030,6 +3093,7 @@
     var win = pipWin;
     pipWin = null;
     strip = null;
+    stripTip = null;
     if (win && !win.closed) {
       try { win.close(); } catch (e) { /* already going */ }
     }
@@ -3050,6 +3114,179 @@
     btn.addEventListener('pointerdown', function () { pin(); });
     btn.addEventListener('click', function () { pin(); });
   }());
+
+  /* ---------- tooltips ----------
+     The browser's own were a grey rectangle in a system font, on a delay
+     nothing can change, and silent to anybody who reached the control with
+     a keyboard. These are the app's, and they answer to focus as well as
+     to the pointer.
+
+     One element per document, moved and refilled rather than made and
+     thrown away. It is a popover, so it paints in the top layer -- which is
+     what gets it past the cabinet's overflow: hidden, the one thing that
+     would otherwise cut off every tooltip in the top bar.
+
+     What it cannot do, and the native one could: leave the window. The top
+     layer is above the page's stacking and clipping, not above the frame.
+     Hence the placement below, which has somewhere to go in every case. */
+
+  var TIP_DELAY = 400;     // before the first one
+  var TIP_WARM = 1200;     // after which the next is no longer immediate
+  var TIP_GAP = 8, TIP_EDGE = 8;
+
+  var tipEl = null, tipFor = null, tipTimer = null, tipLast = 0;
+
+  /* Written by the code that owns the control, since these change: the tone
+     sliders explain themselves only when the stream refused the analysed
+     path, and the record button has three or four things to say. An empty
+     string takes the tooltip away, which is what the title property did. */
+  function tipOn(node, text) {
+    if (!node) return;
+    if (text) node.setAttribute('data-tip', text);
+    else node.removeAttribute('data-tip');
+    // Already on screen for this one: say the new thing, not the old.
+    if (tipFor === node) { if (text) showTip(node); else hideTip(); }
+  }
+
+  function tipNode(doc, host) {
+    var box = doc.createElement('div');
+    box.className = 'tip';
+    box.setAttribute('popover', 'manual');
+    box.setAttribute('role', 'tooltip');
+    box.id = 'dsr-tip';
+    host.appendChild(box);
+    return box;
+  }
+
+  function theTip() {
+    if (tipEl && tipEl.isConnected) return tipEl;
+    /* Inside the cabinet, so it travels with it -- and harmless there now
+       the top layer does the escaping. */
+    tipEl = tipNode(document, el.tuner || document.body);
+    return tipEl;
+  }
+
+  /* Above if it fits, below if not, and beside if neither does. Measured
+     first, because none of it can be decided without knowing how big the
+     words came out. */
+  function placeTip(box, node) {
+    var win = node.ownerDocument.defaultView || window;
+    box.style.left = '0px';
+    box.style.top = '0px';
+    box.removeAttribute('data-side');
+
+    var r = node.getBoundingClientRect();
+    var t = box.getBoundingClientRect();
+    var vw = win.innerWidth, vh = win.innerHeight;
+    var side, left, top;
+
+    if (r.top - t.height - TIP_GAP >= TIP_EDGE) {
+      side = 'top';
+      top = r.top - t.height - TIP_GAP;
+      left = r.left + r.width / 2 - t.width / 2;
+    } else if (r.bottom + TIP_GAP + t.height <= vh - TIP_EDGE) {
+      side = 'bottom';
+      top = r.bottom + TIP_GAP;
+      left = r.left + r.width / 2 - t.width / 2;
+    } else {
+      // Whichever hand has more room.
+      side = (vw - r.right) >= r.left ? 'right' : 'left';
+      left = side === 'right' ? r.right + TIP_GAP : r.left - t.width - TIP_GAP;
+      top = r.top + r.height / 2 - t.height / 2;
+    }
+
+    // Back inside the window, whatever the above worked out.
+    left = Math.max(TIP_EDGE, Math.min(left, vw - t.width - TIP_EDGE));
+    top = Math.max(TIP_EDGE, Math.min(top, vh - t.height - TIP_EDGE));
+
+    box.style.left = Math.round(left) + 'px';
+    box.style.top = Math.round(top) + 'px';
+    box.setAttribute('data-side', side);
+
+    /* The point stays over the control even when the plate has been pushed
+       back on screen, and clear of the corners, or it grows out of a curve. */
+    if (side === 'top' || side === 'bottom') {
+      var ax = r.left + r.width / 2 - left;
+      box.style.setProperty('--tip-ax', Math.round(Math.max(12, Math.min(ax, t.width - 12))) + 'px');
+    } else {
+      var ay = r.top + r.height / 2 - top;
+      box.style.setProperty('--tip-ay', Math.round(Math.max(12, Math.min(ay, t.height - 12))) + 'px');
+    }
+  }
+
+  function showTip(node) {
+    var text = node.getAttribute('data-tip');
+    if (!text) return;
+    var box = node.ownerDocument === document ? theTip() : stripTip;
+    if (!box) return;
+
+    box.textContent = text;
+    try { if (!box.matches(':popover-open')) box.showPopover(); } catch (e) { /* already up */ }
+    placeTip(box, node);
+
+    if (tipFor && tipFor !== node) tipFor.removeAttribute('aria-describedby');
+    tipFor = node;
+    node.setAttribute('aria-describedby', 'dsr-tip');
+    tipLast = Date.now();
+  }
+
+  function hideTip() {
+    clearTimeout(tipTimer);
+    tipTimer = null;
+    if (tipFor) { tipFor.removeAttribute('aria-describedby'); tipFor = null; }
+    [tipEl, stripTip].forEach(function (box) {
+      if (!box || !box.isConnected) return;
+      try { if (box.matches(':popover-open')) box.hidePopover(); } catch (e) { /* gone */ }
+    });
+  }
+
+  function wantTip(node, now) {
+    clearTimeout(tipTimer);
+    /* No wait when one has only just been up: moving along a row of buttons
+       should not make you wait again at each. */
+    var wait = now || (Date.now() - tipLast < TIP_WARM) ? 0 : TIP_DELAY;
+    tipTimer = setTimeout(function () { showTip(node); }, wait);
+  }
+
+  /* Delegated, and given a document so the mini radio's window can be wired
+     with the same code. */
+  function wireTips(doc) {
+    var find = function (e) {
+      var t = e.target;
+      return t && t.closest ? t.closest('[data-tip]') : null;
+    };
+
+    doc.addEventListener('pointerover', function (e) {
+      // A finger has no hover, and a tooltip it cannot dismiss is a nuisance.
+      if (e.pointerType === 'touch') return;
+      var node = find(e);
+      if (!node || node === tipFor) return;
+      wantTip(node, false);
+    });
+
+    doc.addEventListener('pointerout', function (e) {
+      if (!find(e)) return;
+      hideTip();
+    });
+
+    // Which the browser's own never did.
+    doc.addEventListener('focusin', function (e) {
+      var node = find(e);
+      if (node) wantTip(node, true);
+    });
+    doc.addEventListener('focusout', hideTip);
+
+    doc.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') hideTip();
+    });
+
+    // A press has been answered; the label for it is no longer wanted.
+    doc.addEventListener('pointerdown', hideTip);
+    doc.addEventListener('scroll', hideTip, true);
+  }
+
+  wireTips(document);
+  window.addEventListener('resize', hideTip);
 
   // ---------- media session ----------
   function updateMediaSession() {
@@ -3223,13 +3460,13 @@
     if (savedFlash) {
       el.rec.disabled = false;
       el.rec.setAttribute('aria-pressed', 'false');
-      el.rec.title = 'Saved to your downloads';
+      tipOn(el.rec, 'Saved to your downloads');
       el.recWord.textContent = 'SAVED';
       return;
     }
     var why = running ? '' : recBlockedReason();
     el.rec.disabled = !!why;
-    el.rec.title = why || (running ? 'Stop recording and save it' : 'Record this station');
+    tipOn(el.rec, why || (running ? 'Stop recording and save it' : 'Record this station'));
     el.rec.setAttribute('aria-pressed', running ? 'true' : 'false');
     el.recWord.textContent = running ? 'STOP' : 'REC';
   }
@@ -3530,7 +3767,7 @@
      otherwise be handed a window taller than itself. If the browser
      refuses the popup outright, nothing is prevented and the link does
      what it always did. */
-  var README_W = 1040, README_H = 940;
+  var README_W = 1000, README_H = 1000;
 
   function openReadme(e) {
     var href = el.readmeLink.getAttribute('href');
@@ -4157,15 +4394,15 @@
                field and pushes the row down instead of being parked at the
                bottom of the card away from what it is about. */
             '<div class="fw fw-name"><input class="in" data-k="name" placeholder="Station name" aria-label="Name"' +
-            ' title="What the radio shows in large letters. Any name you like."></div>' +
+            ' data-tip="What the radio shows in large letters. Any name you like."></div>' +
             '<div class="fw fw-band"><input class="in in-band" data-k="band" placeholder="1010 AM" aria-label="Frequency"' +
-            ' title="The frequency printed on the tuning scale, e.g. 92.5 FM. Leave it empty for a stream with no dial position."></div>' +
+            ' data-tip="The frequency printed on the tuning scale, e.g. 92.5 FM. Leave it empty for a stream with no dial position."></div>' +
             '<input class="in in-color" data-k="color" type="color" aria-label="Colour"' +
-            ' title="The colour this station is drawn in. The editorial and departures themes use it; the others ignore it.">' +
+            ' data-tip="The colour this station is drawn in. The editorial and departures themes use it; the others ignore it.">' +
             '<div class="fw fw-url"><input class="in in-url" data-k="url" placeholder="https://stream.example.com/live.mp3" aria-label="Stream URL"' +
-            ' title="The direct address of the audio itself. MP3 and AAC play here; a .pls or .m3u is a list of streams rather than one and will not."></div>' +
+            ' data-tip="The direct address of the audio itself. MP3 and AAC play here; a .pls or .m3u is a list of streams rather than one and will not."></div>' +
             '<input class="in in-tag" data-k="tag" placeholder="AAC+ \u00b7 48 kbps \u00b7 Toronto" aria-label="Tagline"' +
-            ' title="The small line under the name. Found stations arrive with the format, the bitrate and the city; yours can say anything.">' +
+            ' data-tip="The small line under the name. Found stations arrive with the format, the bitrate and the city; yours can say anything.">' +
           '</div>' +
         '</div>' +
         '</div>';
@@ -4527,10 +4764,10 @@
           '<div class="slot-inner">' +
             '<div class="slot-when">' +
               '<input class="in in-time" data-k="start" type="time" aria-label="Start" required' +
-              ' title="When this slot starts.">' +
+              ' data-tip="When this slot starts.">' +
               '<span class="to">to</span>' +
               '<input class="in in-time" data-k="end" type="time" aria-label="End" required' +
-              ' title="When this slot ends and hands over. The same time at both ends means all day.">' +
+              ' data-tip="When this slot ends and hands over. The same time at both ends means all day.">' +
               '<select class="in" data-k="stationId" aria-label="Station"></select>' +
             '</div>' +
             '<p class="slot-note"></p>' +
@@ -4884,7 +5121,7 @@
       btn.type = 'button';
       btn.className = 'result-add';
       btn.textContent = s.playable ? 'Add station' : 'Add anyway';
-      btn.title = s.playable ? '' : 'This link is a playlist file listing streams, not a stream, so it may not play. Adding it is still worth a try.';
+      tipOn(btn, s.playable ? '' : 'This link is a playlist file listing streams, not a stream, so it may not play. Adding it is still worth a try.');
       btn.addEventListener('click', function () {
         if (!addFoundStation(s)) return;
         li.classList.add('is-added');
@@ -5402,7 +5639,7 @@
     var link = $('updatePillLink');
     if (link) {
       link.href = RELEASES_URL;
-      link.title = 'Version ' + state.versionLatest + ' has been published. Running ' + APP_VERSION + '.';
+      tipOn(link, 'Version ' + state.versionLatest + ' has been published. Running ' + APP_VERSION + '.');
     }
   }
 
