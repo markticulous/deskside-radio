@@ -222,6 +222,10 @@ main { padding: 40px 0 0; max-width: 40em; }
 /* Clicking a contents entry has to land the heading below the bar, not
    underneath it. */
 section { padding-top: 26px; scroll-margin-top: calc(var(--bar-h) + 14px); }
+/* A heading can be jumped to as well, and lands under the sticky banner
+   without this -- the app links into the middle of a section rather than
+   the top of one. */
+h3[id] { scroll-margin-top: calc(var(--bar-h) + 14px); }
 section + section { margin-top: 44px; border-top: 1px solid var(--line); }
 
 h2.sec {
@@ -444,7 +448,7 @@ html { scroll-behavior: smooth; }
   .toc, .totop, .uptop { display: none; }
   /* Nothing sticks to a sheet of paper. */
   .wordmark { position: static; padding: 0 0 10px; }
-  section { scroll-margin-top: 0; }
+  section, h3[id] { scroll-margin-top: 0; }
   .shell { display: block; padding: 0; max-width: none; }
   main { max-width: none; }
   .masthead { border-bottom-width: 2px; }
@@ -566,7 +570,7 @@ html { scroll-behavior: smooth; }
   <span class="byline">
     <span class="byline-by">A</span><span class="byline-name">Markticulous</span><span class="byline-suffix">build</span>
   </span>
-  <span class="ver" id="verChip">v1.5.2</span>
+  <span class="ver" id="verChip">v1.5.3</span>
   <span class="find">
     <input type="search" id="findInput" class="find-input" autocomplete="off" spellcheck="false"
            placeholder="Search the manual…" aria-label="Search the manual"
@@ -635,8 +639,11 @@ html { scroll-behavior: smooth; }
         <dt><span class="path">Win - Create Desktop Shortcut (Edge).cmd</span><br><span class="path">Win - Create Desktop Shortcut (Firefox).cmd</span></dt>
         <dd>The same, pinned to one browser on purpose.</dd>
 
-        <dt><span class="path">Win - Start With Windows.cmd</span></dt>
-        <dd>Opens the radio when you sign in.</dd>
+        <dt><span class="path">Win - Start with Windows (On-Off).cmd</span></dt>
+        <dd>Opens the radio when you sign in. It is the switch as well as the installer: run it and it tells you whether it is on, and offers to turn it off again or aim it at this folder.</dd>
+
+        <dt><span class="path">Win - Deskside Radio Protocol.vbs</span></dt>
+        <dd>Not one to double-click. It is what the <strong>Start with Windows</strong> switch in Settings reaches when you use it: Windows hands it the request and it runs the script above. It understands two words and ignores everything else.</dd>
 
         <dt><span class="path">Win - Automatic Updates.cmd</span></dt>
         <dd>Controls whether the radio updates itself. Nothing is installed or removed either way: it writes, or deletes, one small file in the app folder that the launcher looks for before it checks for a newer version. Run it with <code>off</code> to stop the updating; run it with no argument to start it again.</dd>
@@ -767,13 +774,20 @@ html { scroll-behavior: smooth; }
       <h2 class="sec"><span class="n">07</span>Starting when you sign in</h2>
 
       <h3>Windows</h3>
-      <p>Double-click <span class="path">Win&nbsp;-&nbsp;Start With Windows.cmd</span>. It puts the same shortcut in your Startup folder, and tells you where it put it. Run it again with the word <code>off</code> to stop it:</p>
-      <div class="cmd">"Win - Start With Windows.cmd" off</div>
-      <p>Nothing is written to the registry and nothing runs in the background. It is one file in a folder you can open yourself: press <kbd>Win</kbd>&nbsp;+&nbsp;<kbd>R</kbd> and enter <code>shell:startup</code>.</p>
+      <p>Double-click <span class="path">Win&nbsp;-&nbsp;Start with Windows (On-Off).cmd</span>. It looks first and tells you where things stand, then asks. If it is off it offers to turn it on, which puts the same shortcut the Desktop one uses into your Startup folder. If it is already on it shows you which folder that entry opens and offers two keys: <kbd>R</kbd> to remove it, or <kbd>P</kbd> to point it at the folder you ran it from. Pressing <kbd>Enter</kbd> on its own changes nothing.</p>
+      <p>That middle line is worth reading rather than skipping. A start-up entry made from a copy you unzipped somewhere temporary keeps opening <em>that</em> copy, and once the folder has gone what greets you at sign-in is the browser&rsquo;s <em>Your file couldn&rsquo;t be accessed</em> rather than a radio. If the folder it names is not the one you are in, press <kbd>P</kbd>.</p>
+      <p>Nothing runs in the background. What this puts down is one file, in a folder you can open yourself: press <kbd>Win</kbd>&nbsp;+&nbsp;<kbd>R</kbd> and enter <code>shell:startup</code>.</p>
+      <h3>Or from Settings</h3>
+      <p>There is a switch for the same thing in <strong>Settings &rarr; Service &rarr; Start with Windows</strong>, and it shows you which way it is set before you touch it. The first time you use it your browser asks for permission, and what it names is <strong>Windows Based Script Host</strong> rather than the radio &mdash; that is the part of Windows that runs the small script doing the work, and it is what the browser can see. Two steps, and the order matters: <strong>first</strong> tick <strong><em>Always allow</em></strong>, <strong>then</strong> click <strong><em>Open Microsoft Windows Based Script Host</em></strong>. Clicking Open closes the dialog, so a tick made afterwards is a tick made never, and you will be asked again every time. The radio keeps a browser profile of its own, so that tick applies to the radio and to nothing else you do.</p>
+      <p>If it does keep asking, that is what happened. Tick the box the next time before you press the button.</p>
+      <p>That question is worth a word, because it is the one surprising thing in the app. A page opened from a disk cannot put a file in your Startup folder &mdash; no browser allows it, and none should. So the switch asks Windows to do it, through one small registered handler that accepts two words and ignores everything else. It is the only thing this app puts in the registry, it starts nothing by itself, and uninstalling takes it out again.</p>
       <p>For the radio to be <em>playing</em> when you sit down rather than just open, turn on <strong>Play on launch</strong> in Settings and choose a station, or set up a schedule.</p>
 
+      <p>On a Mac or on Linux the switch in Settings is not offered, and the reason is worth a line: it works by asking Windows to do something, and there is nothing equivalent to ask. What follows is the same job done by hand, once.</p>
       <h3>macOS</h3>
       <p>Use the shortcut button next to Settings to save a <span class="path">.fileloc</span> file somewhere you will keep it, then open <strong>System Settings → General → Login Items</strong>, and add that file under <strong>Open at Login</strong>. It opens in your normal browser, so it will ask for one click before it plays — the trick the Windows shortcut uses to skip that click is a Chrome command line, and there is no equivalent to hand a login item.</p>
+      <h3>Linux</h3>
+      <p>Run <span class="path">Linux - Create Desktop Shortcut.sh</span> in the app folder to get a launcher, then add that launcher to whatever your desktop calls its startup applications &mdash; GNOME and KDE both have one, and both read the same <span class="path">~/.config/autostart</span> folder if you would rather put the file there yourself.</p>
     </section>
 
     <section id="does">
@@ -875,6 +889,7 @@ html { scroll-behavior: smooth; }
       <p><strong>Anything other than a clear yes leaves the button showing.</strong> No file, an unreadable file, an error, or a machine where no launcher runs at all &mdash; which is macOS and Linux, where that file is never written and the top bar stays exactly as it always was. Hiding on not knowing would be the one failure worth avoiding: somebody whose shortcut has just gone is the person who needs the button most.</p>
       <p>The same action lives permanently in <strong>Settings &rarr; Service</strong>, and that one never hides. The icon is the convenience; the drawer is the guarantee.</p>
 
+      <h3 id="updating">Keeping up to date</h3>
       <p>What the notice means depends on what you are running it on. The updating is done by a Windows batch file, so saying so on a Mac or on Linux would be a promise that cannot be kept; the radio checks and says the right thing for the machine it is on.</p>
       <p><strong>On Windows the notice is news, not an instruction.</strong> There is nothing to do with it. Your Desktop shortcut does not point at a browser &mdash; it points at <span class="path">Win - Open Deskside Radio.cmd</span>, which opens the radio and then, once a day, asks the same question the app asks. If a newer version has been published it fetches and unpacks it in the background while you listen. The radio is running it the next time you open it, and the readout says which version that is.</p>
       <p>Clicking the notice opens a small dialog rather than a releases page, and what it says depends on something only this machine knows: whether the new version has already been fetched. If it has, it offers to close the radio, because reopening is then the whole of the update. If it has not, it says so, shows the two launches &mdash; the next one collects it, the one after runs it &mdash; and offers nothing to press but <strong>Got it</strong>. The page works that out by reading a line the build leaves in the app folder, which is the one thing a page opened from a disk can find out about the disk it was opened from.</p>
@@ -882,7 +897,7 @@ html { scroll-behavior: smooth; }
       <p>To stop the radio updating itself, run <span class="path">Win - Automatic Updates.cmd off</span> in the app folder; with no argument it starts again. It is a script rather than a switch in Settings for a plain reason: the app's settings live in the browser's own storage, which a batch file cannot read, so the answer is kept where the launcher can see it &mdash; one small file in the app folder, the same shape as starting with Windows being one file in the Startup folder. Turning it off does not turn off the notice, which has its own switch.</p>
       <p><strong>On macOS and Linux</strong> the notice reads <strong>get it from GitHub</strong> and takes you to the releases page. Download <span class="path">deskside-radio.zip</span>, unpack it over your app folder, and reopen the radio. There is no installer to run, nothing to uninstall, and nothing that updates itself: the launcher there is a shell script that opens the browser and stops.</p>
       <p>The installer checks for a newer copy of <em>itself</em> before it does anything else, and hands the job over if there is one. It ships inside the zip, so the copy in your app folder is always one release behind the version it is about to install &mdash; which would mean a fix to the way installing works could never reach the install that needed it.</p>
-      <p><strong>Nothing is installed to make that happen.</strong> There is no service, no scheduled task, nothing written to the registry, and nothing running when the radio is not &mdash; the same promise <span class="path">Win - Start With Windows.cmd</span> makes, and it is still kept. The updating is the opener doing one more thing on its way past and then exiting, which is what a scheduled task would have been for, without being one.</p>
+      <p><strong>Nothing is installed to make that happen.</strong> There is no service, no scheduled task, nothing written to the registry for it, and nothing running when the radio is not &mdash; the same promise <span class="path">Win - Start with Windows (On-Off).cmd</span> makes, and it is still kept. The updating is the opener doing one more thing on its way past and then exiting, which is what a scheduled task would have been for, without being one.</p>
       <p>The page itself still installs nothing, and still cannot: a page opened from a disk has no way to run a program, and one that could would be a hole worth more than the convenience. All of the above is the launcher &mdash; the script the shortcut actually points at, which already ran at every launch.</p>
       <p>Three things it will not do. It never touches anything outside the folder it was opened from. It checks the archive before it writes a single file, so a truncated download is nothing having happened rather than half an app. And it fails quietly &mdash; offline, behind a proxy, read-only folder &mdash; and tries again tomorrow, because the radio is already open and playing and an update is never worth interrupting that.</p>
       <p>An update replaces every file in the app folder and loses nothing, because your stations, schedule and settings are not in it &mdash; they are in the browser profile. Anything else you left beside <span class="path">index.html</span>, such as a settings seed, survives as well: the update unpacks over the top rather than clearing the folder out first.</p>

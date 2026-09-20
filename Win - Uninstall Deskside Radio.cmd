@@ -244,10 +244,15 @@ rem Two rules here, and neither is negotiable.
 rem
 rem Nothing goes unless it names THIS app. Not "deskside" on its own --
 rem Dell has sold Deskside workstations for twenty years -- but the whole
-rem name, or this install's own folder path. The protocol key is not taken
-rem on its name either: what its command actually says has to name this
-rem app, because no version of this software has ever registered one. A key
-rem nothing here wrote belongs to somebody else until it proves otherwise.
+rem name, or this install's own folder path. That rule is why the handler
+rem this app does register, from 1.5.2, is called desksideradio and not
+rem deskside: a key named for a fragment could never be swept up again
+rem without risking somebody else's.
+rem
+rem Even so, no protocol key is taken on its name alone. What its command
+rem actually says has to name this app or sit in this folder, because the
+rem two shorter names were never ours and a key nothing here wrote belongs
+rem to somebody else until it proves otherwise.
 rem
 rem And the folder path is refused as a needle unless it is a real path
 rem with a folder in it. An install at a drive root would make $root "C:",
@@ -267,7 +272,7 @@ rem asked for one.
   "  if ($s.Contains($name)) { return $true }" ^
   "  if ($root -and $s.ToLower().Contains($root.ToLower())) { return $true }" ^
   "  return $false }" ^
-  "foreach ($p in @('HKCU:\Software\Classes\deskside', 'HKCU:\Software\Classes\deskside-radio')) {" ^
+  "foreach ($p in @('HKCU:\Software\Classes\desksideradio', 'HKCU:\Software\Classes\deskside', 'HKCU:\Software\Classes\deskside-radio')) {" ^
   "  if (-not (Test-Path -LiteralPath $p)) { continue };" ^
   "  $cmdKey = ($p + '\shell\open\command'); $says = '';" ^
   "  if (Test-Path -LiteralPath $cmdKey) { $says = [string](Get-Item -LiteralPath $cmdKey).GetValue('') };" ^

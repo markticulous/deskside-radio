@@ -7,11 +7,16 @@ rem Startup folder, which Windows opens on sign-in. Nothing is written to the
 rem registry and nothing runs as a service: it is one .lnk file in a folder
 rem you can open yourself with Win+R, shell:startup.
 rem
-rem Run it again to see whether it is on, or run it with "off" to remove it:
+rem Double-click it and it looks first: if the entry is already there it says
+rem where it points and offers to remove it or aim it at this folder, and if it
+rem is not there it offers to put it in. Nothing happens without an answer.
 rem
-rem   "Win - Start With Windows.cmd"           turn it on, with the dial icon
-rem   "Win - Start With Windows.cmd" console   turn it on, with the console icon
-rem   "Win - Start With Windows.cmd" off       turn it off
+rem A word on the command line skips the question, which is how the installer
+rem calls it and how a script of your own can:
+rem
+rem   "Win - Start with Windows (On-Off).cmd" on        turn it on, with the dial icon
+rem   "Win - Start with Windows (On-Off).cmd" console   turn it on, with the console icon
+rem   "Win - Start with Windows (On-Off).cmd" off       turn it off
 rem
 rem The browser detection below is deliberately a copy of the one in
 rem "Win - Create Desktop Shortcut (Chrome).cmd" rather than shared with it. These are files
@@ -55,12 +60,79 @@ if not exist "%STARTUP%" (
   exit /b 1
 )
 
-rem ---- off ----------------------------------------------------------------
+rem ---- which way, and who is asking ---------------------------------------
 set "MODE=%~1"
 if /i "%MODE%"=="off" goto :remove
 if /i "%MODE%"=="remove" goto :remove
 if /i "%MODE%"=="/off" goto :remove
+
+rem "on" is a word, not a theme. Cleared so it does not go looking for
+rem assets\favicon-on.ico and then report the fallback as though it were
+rem a choice somebody made.
+if /i "%MODE%"=="on" set "MODE="
+
+rem Any other word is a theme name, and means business. So does being called:
+rem DESKSIDE_NOPAUSE is the installer, which runs this only to repoint an entry
+rem that is already there. A question at that point would stop an install dead,
+rem behind a window that says nothing about why it is waiting.
+if defined MODE goto :install
+if defined DESKSIDE_NOPAUSE goto :install
+
+rem ---- nobody said which, and somebody is watching ------------------------
+rem
+rem The shortcut's working directory is read rather than its target. The target
+rem is wscript.exe or a browser -- the same on every machine and worth nothing
+rem here -- while the working directory is the folder that will be opened, and
+rem that is the thing worth checking. If PowerShell cannot be reached the two
+rem folder lines are skipped and the rest of the question still works.
+:ask
+if not exist "%LINK%" goto :askoff
+
+set "HERE=%APPDIR%"
+if "%HERE:~-1%"=="\" set "HERE=%HERE:~0,-1%"
+set "LNKDIR="
+for /f "usebackq delims=" %%A in (`%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "(New-Object -ComObject WScript.Shell).CreateShortcut($env:LINK).WorkingDirectory"`) do set "LNKDIR=%%A"
+if defined LNKDIR if "%LNKDIR:~-1%"=="\" set "LNKDIR=%LNKDIR:~0,-1%"
+
+echo   It is ON. Deskside Radio opens when you sign in.
+echo.
+echo     Entry:  "%LINK%"
+if defined LNKDIR echo     Opens:  "%LNKDIR%"
+if defined LNKDIR if /i not "%LNKDIR%"=="%HERE%" (
+  echo.
+  echo   That is not this folder. At sign-in it opens the copy named above,
+  echo   and if that copy has been moved or deleted you get an error page
+  echo   instead of a radio. Press P to aim it here.
+)
+echo.
+echo     R  remove it
+echo     P  point it at this folder
+echo.
+set "ANS="
+set /p "ANS=  Type R or P and press Enter, or just Enter to leave it alone: "
+if /i "%ANS%"=="R" goto :remove
+if /i "%ANS%"=="P" goto :install
+echo.
+echo   Left as it was.
+echo.
+pause
+exit /b 0
+
+:askoff
+echo   It is OFF. Deskside Radio does not open when you sign in.
+echo.
+set "ANS="
+set /p "ANS=  Turn it on? Press Enter for yes, or N and Enter for no: "
+if /i "%ANS%"=="N" goto :leaveoff
+if /i "%ANS%"=="no" goto :leaveoff
 goto :install
+
+:leaveoff
+echo.
+echo   Left off.
+echo.
+pause
+exit /b 0
 
 :remove
 if exist "%LINK%" (
@@ -73,7 +145,10 @@ if exist "%LINK%" (
   echo   It was not set to start with Windows, so there was nothing to remove.
 )
 echo.
-pause
+rem The same guard the install path carries at the foot of the file. Without
+rem it, anything calling this with "off" gets a window waiting on a keypress
+rem that is never coming.
+if not defined DESKSIDE_NOPAUSE pause
 exit /b 0
 
 rem ---- on -----------------------------------------------------------------
@@ -198,8 +273,7 @@ echo.
 echo   It will open the next time you sign in. To have it playing by then,
 echo   turn on "Play on launch" in Settings and choose a station.
 echo.
-echo   To stop it starting: run this script again with off
-echo     "Win - Start With Windows.cmd" off
+echo   To stop it starting, run this script again and press R.
 echo.
 rem Only the success path. The pauses above sit on error paths and
 rem stop whoever is calling, which is what an error is for.

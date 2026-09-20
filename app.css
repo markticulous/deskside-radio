@@ -2924,6 +2924,16 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 }
 .drawer-x { font: inherit; font-size: 22px; line-height: 1; background: none; border: 0; color: var(--ui-mute); cursor: pointer; width: 36px; height: 36px; }
 .hint { margin: 0; color: var(--ui-mute); font-size: 13px; max-width: 75ch; }
+/* Links inside the drawer's prose. Brighter than the text around them
+   rather than a colour of their own: this chrome is deliberately neutral
+   in all eight themes, and one blue link would be the only thing in the
+   drawer that did not belong to the radio. */
+.hint a { color: var(--ui-fg); text-decoration: underline;
+  text-underline-offset: 2px; text-decoration-thickness: 1px; }
+.hint a:hover { text-decoration-thickness: 2px; }
+/* No manual in the folder, so nothing to point at. It stays as the word it
+   always was rather than becoming a link that goes nowhere. */
+.hint a.is-off { color: inherit; text-decoration: none; cursor: default; }
 
 /* ---- tab strip ----
    Every tab is the same 44px box whether or not it carries a count, and a
@@ -3100,6 +3110,11 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
    button next to it rather than flung to the far edge: it belongs to the
    switch, and the gap that would leave reads as two unrelated controls. */
 .switch-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+/* The same trap as .pane-block and .ghost: `display: flex` above is an
+   author rule and the one that honours `hidden` is the browser's, so a
+   hidden row is drawn anyway. The start-with-Windows switch is hidden on
+   macOS and Linux, where it has nothing to talk to. */
+.switch-row[hidden] { display: none; }
 .switch input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .switch-track {
   width: 36px; height: 20px; flex: none; border-radius: 999px; position: relative;
@@ -3687,6 +3702,12 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .ghost:disabled:hover { background: none; color: var(--ui-mute); border-color: var(--ui-line); }
 
 .update-line { margin: 2px 0 0; font-size: 12.5px; color: var(--ui-mute); }
+/* Nothing to say, so no room taken. The pane is a grid, and a grid gap is
+   spent on a child of no height as readily as on one with some -- which left
+   the sign-in pane with ten pixels of slack under its switch until the first
+   time the switch was used. The updates line is empty too, briefly, before
+   the first check comes back. */
+.update-line:empty { display: none; }
 .update-line.is-new { color: var(--ui-fg); }
 /* Only the news itself. The rest of the line is what version is running
    and where to get the new one, and those are ordinary text; colouring
