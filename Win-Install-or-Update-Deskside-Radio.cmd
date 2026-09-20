@@ -390,7 +390,7 @@ if exist "%APPDIR%assets\favicon-dial.ico" if exist "%APPDIR%favicon-dial.ico" (
   del /q "%APPDIR%favicon-*.ico" >nul 2>&1
 )
 
-rem And the manual's old name. It was README.html until 1.5.1 and is now
+rem And the manual's old name. It was README.html until 1.5.2 and is now
 rem User Reference Guide.html, which says what it is to somebody reading
 rem the folder rather than assuming they know the convention. tar writes
 rem the new one beside the old rather than over it, so a folder installed
@@ -402,6 +402,14 @@ rem wrong leaves the old manual rather than no manual at all. The app reads
 rem whichever it finds, new name first, so either way the button works.
 if exist "%APPDIR%User Reference Guide.html" if exist "%APPDIR%README.html" (
   del /q "%APPDIR%README.html" >nul 2>&1
+)
+
+rem And the start-up script's old name, for the same reason and in the same
+rem shape. It was Win - Start With Windows.cmd until 1.5.2. Leaving it behind
+rem would leave two scripts in the folder that write the same .lnk, one of
+rem which cannot turn it off again because the old one never offered to.
+if exist "%APPDIR%Win - Start with Windows (On-Off).cmd" if exist "%APPDIR%Win - Start With Windows.cmd" (
+  del /q "%APPDIR%Win - Start With Windows.cmd" >nul 2>&1
 )
 
 rem And this file's own older name. It used to have spaces in it, which
@@ -543,29 +551,31 @@ rem The Startup entry, if there is one, for the same reason: it holds the
 rem same stale path and nothing else ever rewrites it.
 set "STARTLNK=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Deskside Radio.lnk"
 if exist "%STARTLNK%" (
-  call "%APPDIR%Win - Start With Windows.cmd" >nul 2>&1
+  call "%APPDIR%Win - Start with Windows (On-Off).cmd" >nul 2>&1
   set "MSG=Start-up entry repointed at this folder"
   call :ok
 )
 set "DESKSIDE_NOPAUSE="
 
 rem ---- stale registry keys ----------------------------------------------
-rem Nothing here has ever written one. Every reg.exe in this repository is
-rem a query against HKLM App Paths, asking where a browser was installed,
-rem and the readmes promise in those words that nothing goes in the
-rem registry. This does not change that: it only takes things out.
+rem This block only takes things out. One key does go in, further down --
+rem the desksideradio: handler, which is what lets the switch in Settings
+rem act at all -- and the readmes now say so. Nothing else here writes: every
+rem reg.exe in this repository is a query against HKLM App Paths, asking
+rem where a browser was installed.
 rem
 rem Narrower than the uninstaller's sweep on purpose. That one runs when
 rem the app is going away and can take everything of ours; this one runs
 rem while it is being installed, so it removes only what is provably dead:
 rem
-rem   the protocol handler   HKCU\Software\Classes\deskside, which nothing
-rem                          that shipped ever registered. It was proposed
-rem                          once, to make the update notice a real button,
-rem                          and turned down for breaking the promise
-rem                          above. Anything sitting there was done by hand
-rem                          on somebody's machine, and the app will not
-rem                          use it.
+rem   two old handler names  HKCU\Software\Classes\deskside and
+rem                          ...\deskside-radio. Neither was ever shipped.
+rem                          The one this app does register, from 1.5.2, is
+rem                          desksideradio -- the full name, because a key
+rem                          called deskside alone cannot be proved to be
+rem                          ours and so could never be swept up again.
+rem                          Anything at the two short names was put there
+rem                          by hand, and nothing here will use it.
 rem   a dead Run value       one naming a Deskside Radio folder that is not
 rem                          there any more. Starting with Windows is a
 rem                          .lnk in the Startup folder and always has
@@ -601,6 +611,52 @@ rem somebody's own arrangement.
   "          $hit++ } } } } };" ^
   "if ($hit -gt 0 -and -not $env:DESKSIDE_QUIET) {" ^
   "  Write-Host ('     cleared ' + $hit + ' stale registry entr' + $(if ($hit -eq 1) { 'y' } else { 'ies' })) }"
+
+rem ---- the door the Settings switch knocks on ----------------------------
+rem
+rem The radio is a page opened off a disk. It can be told things -- the
+rem launcher writes down whether there is a Desktop shortcut and whether the
+rem Startup entry exists, and the page reads that -- but it cannot DO
+rem anything outside itself. No browser will ever let a file:// page write a
+rem shortcut into the Startup folder, and it should not.
+rem
+rem So one door, and a narrow one. desksideradio: is registered here, and
+rem Windows hands whatever follows the colon to a four-line script of ours,
+rem which accepts exactly two words and ignores everything else. The switch
+rem in Settings navigates to desksideradio:startup-on or ...-off and the
+rem shortcut appears or goes.
+rem
+rem This is the one thing this app puts in the registry, and both readmes
+rem and the Settings pane now say so in those words. It is a file
+rem association, not a start-up entry: nothing runs because it is there.
+rem The thing that actually starts the radio at sign-in is still one .lnk in
+rem the Startup folder, which you can see and delete yourself.
+rem
+rem Rewritten on every run rather than only when missing, because the path
+rem inside it is this folder's -- and the whole reason the Startup entry gets
+rem repointed a few lines above is that a moved app folder leaves paths
+rem behind that nothing else ever corrects.
+rem
+rem The %1 that Windows replaces with the URL is built as a character code.
+rem Written literally it would be eaten twice over: once by cmd reading this
+rem file, and once more by the for-loop parsing that is not even here. A
+rem [char]37 cannot be misread by either.
+set "WSX=%SystemRoot%\System32\wscript.exe"
+set "PROTOVBS=%APPDIR%Win - Deskside Radio Protocol.vbs"
+if exist "%PROTOVBS%" if exist "%WSX%" (
+  "%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
+    "try {" ^
+    "  $k = 'HKCU:\Software\Classes\desksideradio';" ^
+    "  $q = [char]34; $pct = [char]37;" ^
+    "  New-Item -Path ($k + '\shell\open\command') -Force | Out-Null;" ^
+    "  Set-ItemProperty -LiteralPath $k -Name '(Default)' -Value 'URL:Deskside Radio';" ^
+    "  Set-ItemProperty -LiteralPath $k -Name 'URL Protocol' -Value '';" ^
+    "  Set-ItemProperty -LiteralPath ($k + '\shell\open\command') -Name '(Default)'" ^
+    "    -Value ($q + $env:WSX + $q + ' ' + $q + $env:PROTOVBS + $q + ' ' + $q + $pct + '1' + $q);" ^
+    "} catch { }"
+  set "MSG=Settings switch for starting with Windows is wired up"
+  call :ok
+)
 
 rem And one in the Start menu for the updater itself, because
 rem %LOCALAPPDATA% is not a folder anyone goes looking in.

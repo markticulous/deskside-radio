@@ -180,6 +180,15 @@ rem since nothing of ours runs at launch there to write this at all.
 rem
 rem Asked for by name, and only by the full name. "Deskside Radio*.lnk"
 rem covers the Edge and Firefox ones, which carry the browser in brackets.
+rem
+rem The Startup entry is checked in the same breath and written into the
+rem same file, because it is the same kind of fact -- something only
+rem something outside the page can know -- and a second PowerShell launch
+rem to learn it would cost more than the answer is worth. The switch in
+rem Settings reads it. Unlike the Desktop one it is asked for by its exact
+rem name: the Startup entry is written by one script, always as
+rem "Deskside Radio.lnk", so a wildcard here would only let somebody
+rem else's shortcut answer for ours.
 "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command ^
   "try {" ^
   "  $d = [Environment]::GetFolderPath('Desktop');" ^
@@ -187,11 +196,17 @@ rem covers the Edge and Firefox ones, which carry the browser in brackets.
   "  if ($d -and (Test-Path -LiteralPath $d)) {" ^
   "    $found = @(Get-ChildItem -LiteralPath $d -Filter 'Deskside Radio*.lnk' -ErrorAction SilentlyContinue);" ^
   "    $has = ($found.Count -gt 0) };" ^
+  "  $sf = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup';" ^
+  "  $boot = $false;" ^
+  "  if (Test-Path -LiteralPath $sf) {" ^
+  "    $boot = (Test-Path -LiteralPath (Join-Path $sf 'Deskside Radio.lnk')) };" ^
   "  $out = Join-Path $env:APPROOT 'assets';" ^
   "  if (Test-Path -LiteralPath $out) {" ^
-  "    $line = '/* Written by the launcher at each start. Whether a shortcut for' + [Environment]::NewLine" ^
-  "      + '   this radio is on the Desktop right now. */' + [Environment]::NewLine" ^
-  "      + 'window.DESKSIDE_HAS_SHORTCUT = ' + $has.ToString().ToLower() + ';' + [Environment]::NewLine;" ^
+  "    $line = '/* Written by the launcher at each start. Two things the page' + [Environment]::NewLine" ^
+  "      + '   cannot find out for itself: whether this radio has a shortcut on' + [Environment]::NewLine" ^
+  "      + '   the Desktop, and whether it is set to open when you sign in. */' + [Environment]::NewLine" ^
+  "      + 'window.DESKSIDE_HAS_SHORTCUT = ' + $has.ToString().ToLower() + ';' + [Environment]::NewLine" ^
+  "      + 'window.DESKSIDE_STARTS_WITH_WINDOWS = ' + $boot.ToString().ToLower() + ';' + [Environment]::NewLine;" ^
   "    Set-Content -LiteralPath (Join-Path $out 'shortcut.js') -Value $line -Encoding ASCII -NoNewline }" ^
   "} catch { }"
 

@@ -212,7 +212,7 @@
     <header class="drawer-head">
       <div class="drawer-title">
         <h2>Settings</h2>
-        <span class="app-version">Deskside Radio&nbsp;&nbsp;<i class="ver-dot" aria-hidden="true"></i>&nbsp;&nbsp;<span id="appVersion">v1.5.2</span></span>
+        <span class="app-version">Deskside Radio&nbsp;&nbsp;<i class="ver-dot" aria-hidden="true"></i>&nbsp;&nbsp;<span id="appVersion">v1.5.3</span></span>
       </div>
       <button type="button" id="drawerClose" class="drawer-x" aria-label="Close">&times;</button>
     </header>
@@ -361,21 +361,41 @@
             <button type="button" class="ghost" id="makeShortcutPane">Put a shortcut on the Desktop</button>
           </div>
         </div>
+        <!-- Shown everywhere; only the switch is Windows-only. Starting at
+             login works on all three platforms, and this is the place
+             somebody goes to ask about it -- hiding the whole pane told a
+             listener on a Mac that the answer was no. The heading has to be
+             true on three platforms now, and matches what the guide calls
+             the same subject. -->
+        <div class="pane-block" id="startupBlock">
+          <h3>Start when you sign in</h3>
+          <p class="hint os-win">Opens the radio when you sign in. One shortcut in your Startup folder &mdash; no service, no scheduled task, nothing running when the radio is not.</p>
+          <!-- The one surprise in the app, and so the one thing kept in the pane.
+               A page opened off a disk cannot write to the Startup folder, so the
+               switch asks Windows to, and the browser asks first -- naming the
+               script host rather than the radio, because what it can see is the
+               program it is being asked to start. Met without warning that reads
+               as something having gone wrong. The why is in the guide. -->
+          <p class="hint os-win"><strong>Note:</strong> The first time you turn this on, the app asks your browser for permission and pops open a Windows Based Script Host window. That is expected &mdash; (i) tick the <strong><em>Always allow</em></strong> checkbox; then (ii) click the <strong><em>Open Microsoft Windows Based Script Host</em></strong> button, and it will not ask again. See the <a href="#" class="guide-link" data-guide="signin" target="_blank" rel="noopener">guide</a> for more information.</p>
+          <p class="hint os-other">The radio can open when you sign in here too, but not from this switch &mdash; the switch asks Windows to do it, and there is nothing equivalent to ask. On a Mac, save a shortcut with <strong>Put a shortcut on the Desktop</strong> above and add it under <strong>System Settings &rarr; General &rarr; Login Items</strong>. On Linux, add the shortcut to your desktop's own startup applications. Both are in the guide: <strong>Open the guide</strong>, above.</p>
+          <div class="switch-row">
+            <label class="switch">
+              <input type="checkbox" id="startWithWindows">
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">Open the radio when I sign in</span>
+            </label>
+          </div>
+          <p class="update-line" id="startupLine" role="status" aria-live="polite"></p>
+        </div>
         <div class="pane-block">
           <h3>Updates</h3>
-          <p class="hint">The app asks GitHub whether a newer version has been published when it opens, and every six hours it is left running, and shows a small <strong>Update available</strong> mark beside the wordmark when there is one. It sends nothing but the request. The page itself installs nothing and cannot &mdash; it is opened from a disk, and a page opened from a disk has no way to run a program.</p>
-          <!-- The same paragraph for two platforms. Which one is drawn
-               depends on data-os, which the script stamps on the root: the
-               installer is a Windows batch file, and naming it to somebody
-               on a Mac is an instruction that cannot be followed. -->
-          <p class="hint os-win"><strong>There is nothing to do.</strong> The shortcut you open the radio with runs a small script first, and once a day that script asks the same question the app does. If the answer is yes it fetches the new version in the background while you listen, and the radio is running it the next time you open it &mdash; which is when the readout says which version that is.</p>
-          <!-- Said here because it is the promise the readmes make, and
-               this is the pane where somebody comes to check it. Nothing
-               is installed to make the updating happen: it is the opener
-               doing one more thing on its way past, and then exiting. -->
-          <p class="hint os-win">Nothing is installed to do that &mdash; no service, no scheduled task, nothing in the registry, and nothing running when the radio is not. To take an update the moment you hear about it instead of waiting, run <strong>Deskside Radio - Update</strong> from the Start menu, or <span class="path">Win-Install-or-Update-Deskside-Radio.cmd</span> in your app folder &mdash; hold Shift on this tab for a button that opens it. Either way it names the version it is putting down, and the one it is replacing, before it writes anything. To stop the radio updating itself, run <span class="path">Win - Automatic Updates.cmd</span> with <code>off</code> in the same folder; with no argument it starts again.</p>
+          <p class="hint">The app asks GitHub for the latest version when it opens and every six hours after, and marks the wordmark when there is one. It sends nothing but the request.</p>
+          <!-- Two platforms, one line each, drawn by data-os. The updating is done
+               by a Windows batch file, so naming it to somebody on a Mac is an
+               instruction that cannot be followed. -->
+          <p class="hint os-win"><strong>There is nothing to do.</strong> The shortcut you open the radio with fetches new versions in the background, and the radio is running the new one next time you open it. To take one now, run <strong>Deskside Radio - Update</strong> from the Start menu.</p>
           <p class="hint os-other">To take an update, follow the <strong>get it from GitHub</strong> link beside the notice, download <span class="path">deskside-radio.zip</span> and unpack it over your app folder.</p>
-          <p class="hint">Either way every station and setting survives, because those live in the browser profile rather than in the app folder.</p>
+          <p class="hint">Your stations and settings always survive an update. See the <a href="#" class="guide-link" data-guide="updating" target="_blank" rel="noopener">guide</a> for more information.</p>
           <div class="switch-row">
             <label class="switch">
               <input type="checkbox" id="versionCheckOn">

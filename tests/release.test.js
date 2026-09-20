@@ -220,7 +220,7 @@ test('the launcher grants no file access, in either script', () => {
      script on the page read anything the user can, for as long as the
      shortcut exists. The seed is a script tag now and needs no flag, so
      the only thing left to do about it is make sure it stays gone. */
-  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start With Windows.cmd'].forEach(function (f) {
+  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start with Windows (On-Off).cmd'].forEach(function (f) {
     assert.equal(read(f).indexOf('--allow-file-access-from-files'), -1,
       f + ' passes --allow-file-access-from-files again');
   });
@@ -231,7 +231,7 @@ test('both launchers name powershell and reg by their full paths', () => {
      directory, and a default Windows looks there before it looks along
      PATH. A bare `powershell` is therefore whatever sits next to the
      script, which on a shared or synced folder is not necessarily ours. */
-  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start With Windows.cmd'].forEach(function (f) {
+  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start with Windows (On-Off).cmd'].forEach(function (f) {
     const cmd = read(f);
     assert.ok(/%SystemRoot%\\System32\\WindowsPowerShell\\v1\.0\\powershell\.exe/.test(cmd),
       f + ' no longer calls powershell by its full path');
@@ -1000,7 +1000,7 @@ test('the opener locks the window, and the shortcuts go through it', () => {
   /* Both shortcut writers go through it -- by way of the .vbs, which is
      what keeps a console from ever being created -- and fall back, first to
      the .cmd and then to the browser. */
-  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start With Windows.cmd'].forEach(function (f) {
+  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start with Windows (On-Off).cmd'].forEach(function (f) {
     const s = read(f);
     assert.ok(s.indexOf('set "OPENER=%APPDIR%' + VBS + '"') !== -1,
       f + ' no longer names the .vbs opener');
@@ -1053,7 +1053,7 @@ test('the launcher opens without a console window', () => {
    another is a profile that fetches the lot again. */
 test('the profile-trimming flags are the same wherever they are written', () => {
   const FLAGS = ['Win - Open Deskside Radio.cmd', 'Win - Create Desktop Shortcut (Chrome).cmd',
-    'Win - Create Desktop Shortcut (Edge).cmd', 'Win - Start With Windows.cmd'];
+    'Win - Create Desktop Shortcut (Edge).cmd', 'Win - Start with Windows (On-Off).cmd'];
   const lines = FLAGS.map(function (f) {
     const m = read(f).match(/^set "LEAN=.*$/m);
     assert.ok(m, f + ' no longer sets the lean-profile flags');
@@ -1081,7 +1081,7 @@ test('the profile-trimming flags are the same wherever they are written', () => 
    schedule and the theme live in it and nowhere else. */
 test('the chrome profile is named after chrome, and is moved rather than remade', () => {
   ['Win - Open Deskside Radio.cmd', 'Win - Create Desktop Shortcut (Chrome).cmd',
-   'Win - Start With Windows.cmd'].forEach(function (f) {
+   'Win - Start with Windows (On-Off).cmd'].forEach(function (f) {
     const s = read(f);
     assert.ok(s.indexOf('set "PROFILE=%LOCALAPPDATA%\\DesksideRadio\\profile-chrome"') !== -1,
       f + ' still points at the unnamed profile folder');
@@ -1263,13 +1263,13 @@ test('the installer rewrites the shortcuts that exist, and asks when there are n
       INSTALLER + ' cannot make the ' + b + ' shortcut');
   });
   /* And the Startup entry, which nothing else ever rewrites. */
-  assert.ok(/Startup\\Deskside Radio\.lnk/.test(src) && /Win - Start With Windows\.cmd/.test(src),
+  assert.ok(/Startup\\Deskside Radio\.lnk/.test(src) && /Win - Start with Windows \(On-Off\)\.cmd/.test(src),
     INSTALLER + ' leaves a stale Startup entry pointing at the old folder');
 
   /* Every one of those is called quietly, or the installer's own account
      of what it did arrives in pieces around three other banners. */
   ['Win - Create Desktop Shortcut (Edge).cmd', 'Win - Create Desktop Shortcut (Firefox).cmd',
-   'Win - Start With Windows.cmd'].forEach(function (f) {
+   'Win - Start with Windows (On-Off).cmd'].forEach(function (f) {
     const s = read(f);
     assert.ok(/if not defined DESKSIDE_NOPAUSE pause/.test(s),
       f + ' pauses even when the installer is calling it, so an install stops dead waiting for a keypress');
@@ -1806,7 +1806,7 @@ test('the installer closes the radio, and nothing else', () => {
    radio comes up with no stations and nothing says why. */
 test('a profile that could not be renamed is still used', () => {
   ['Win - Open Deskside Radio.cmd', 'Win - Create Desktop Shortcut (Chrome).cmd',
-   'Win - Start With Windows.cmd'].forEach(function (f) {
+   'Win - Start with Windows (On-Off).cmd'].forEach(function (f) {
     const s = read(f);
     assert.ok(/if not exist "%PROFILE%\\" if exist "%LOCALAPPDATA%\\DesksideRadio\\profile\\" set "PROFILE=%LOCALAPPDATA%\\DesksideRadio\\profile"/.test(s),
       f + ' starts an empty profile when the rename could not happen');
@@ -2496,4 +2496,116 @@ test('nothing scheduled and set to off means off, gap or not', () => {
     'the drawer still says a gap is exempt, which it no longer is');
   assert.ok(/nothing follows it/.test(html),
     'the control still says it is about the day\'s last slot only');
+});
+
+/* ---------------------------------------------------------------------
+   Start with Windows, from the page
+
+   The radio is a file:// page. It can be told things -- the launcher
+   writes them down -- but it cannot act, so the switch in Settings goes
+   out through a registered protocol and comes back in through a script.
+   Four links in that chain, and a break in any one of them is silent.
+   --------------------------------------------------------------------- */
+const PROTOVBS = 'Win - Deskside Radio Protocol.vbs';
+
+test('the launcher writes down whether the radio starts with Windows', () => {
+  const src = read(OPENER);
+  assert.ok(/DESKSIDE_STARTS_WITH_WINDOWS/.test(src),
+    OPENER + ' never tells the page whether the Startup entry exists, so the switch cannot show it');
+  /* By its exact name. The Desktop one is a wildcard because Edge and
+     Firefox carry the browser in brackets; this one is written by a single
+     script and always called the same thing, so a wildcard here would only
+     let somebody else's shortcut answer for ours. */
+  assert.ok(src.indexOf("'Deskside Radio.lnk'") !== -1,
+    OPENER + ' looks for the Startup entry by a pattern rather than by name');
+});
+
+test('the protocol handler takes two words and nothing else', () => {
+  const src = read(PROTOVBS);
+
+  assert.ok(/desksideradio:/.test(src), PROTOVBS + ' does not check the scheme');
+  assert.ok(/startup-on/.test(src) && /startup-off/.test(src),
+    PROTOVBS + ' no longer understands both directions');
+
+  /* The property the whole thing rests on. Anything a website can reach
+     must not be able to choose what runs, so the verb selects one of two
+     constants and is then finished with. If this ever becomes
+     sh.Run(... & verb & ...) the app has handed every page on the internet
+     a way to run programs. */
+  const run = src.slice(src.indexOf('sh.Run'));
+  assert.equal(/verb/.test(run), false,
+    PROTOVBS + ' builds the command line out of the URL, which lets any website choose what runs');
+  assert.equal(/url/.test(run), false,
+    PROTOVBS + ' passes the URL through to what it runs');
+  assert.ok(/arg = "on"/.test(src) && /arg = "off"/.test(src),
+    PROTOVBS + ' no longer reduces the URL to one of two constants');
+
+  /* Anything else leaves without a sound. */
+  assert.ok(/WScript\.Quit 0/.test(src),
+    PROTOVBS + ' does not simply stop on input it does not recognise');
+
+  /* And it is the installed folder's own copy that runs, not whichever
+     one the registry was last pointed at. */
+  assert.ok(/ScriptFullName/.test(src),
+    PROTOVBS + ' does not work out its own folder, so a moved app folder breaks the switch');
+});
+
+test('the installer registers the handler and the uninstaller takes it away', () => {
+  const inst = read(INSTALLER);
+  assert.ok(/HKCU:.Software.Classes.desksideradio/.test(inst),
+    INSTALLER + ' never registers the handler, so the Settings switch does nothing');
+  assert.ok(/URL Protocol/.test(inst),
+    INSTALLER + ' writes the key without the value that makes Windows treat it as a protocol');
+  /* Rewritten every run, because the path inside it is this folder's and a
+     moved app folder leaves it behind. */
+  assert.ok(inst.indexOf(PROTOVBS) !== -1,
+    INSTALLER + ' registers something other than the handler script');
+
+  /* The full name, never the fragment: a key called deskside cannot be
+     proved to be ours, so it could never be swept up again. */
+  assert.equal(/Classes.deskside'/.test(inst.slice(inst.indexOf('New-Item -Path'))), false,
+    INSTALLER + ' registers under a name too short to be safely removed later');
+
+  const un = read(UNINSTALLER);
+  assert.ok(/Classes.desksideradio/.test(un),
+    UNINSTALLER + ' leaves the protocol handler behind');
+});
+
+test('the switch is wired to the handler, and never saved as a setting', () => {
+  const html = read('index.html');
+  const src = read('app.js');
+
+  assert.ok(/id="startWithWindows"/.test(html), 'Settings has no start-with-Windows switch');
+  assert.ok(/id="startupBlock"/.test(html), 'Settings has no start-when-you-sign-in pane');
+
+  /* The pane is shown on every platform, because starting at login is
+     possible on every platform and this is where somebody comes to ask.
+     What is Windows-only is the switch, which has nothing to talk to
+     elsewhere -- so the pane has to answer for the others in words. */
+  const pane = html.slice(html.indexOf('id="startupBlock"'),
+                          html.indexOf('<h3>Updates</h3>'));
+  assert.ok(/os-win/.test(pane) && /os-other/.test(pane),
+    'the sign-in pane says the same thing on Windows as on macOS, where the switch cannot work');
+  assert.equal(/id="startupBlock" hidden/.test(pane), false,
+    'the sign-in pane is hidden outright off Windows, which tells a Mac listener the answer is no');
+
+  /* And the row itself is taken away there. By attribute, which needs a rule:
+     display: flex is an author rule and beats the browser's on [hidden]. */
+  assert.ok(/\.switch-row\[hidden\]/.test(read('app.css')),
+    'a hidden switch row is drawn anyway, because .switch-row sets its own display');
+  assert.ok(/#startupBlock \.switch-row/.test(src),
+    'the switch is offered on macOS and Linux, where nothing can answer it');
+
+  assert.ok(/desksideradio:startup-/.test(src),
+    'the switch never asks Windows for anything');
+
+  /* It is a fact about the machine, not a preference. Saving it would mean
+     the app remembering an answer it is not entitled to give: the shortcut
+     can be deleted by hand at any time, and then the setting is a lie. */
+  const mod = src.slice(src.indexOf('function showStartupState'),
+                        src.indexOf('function reReadStartup'));
+  assert.equal(/state\.start/.test(mod), false,
+    'the switch is stored as a setting, so it will disagree with the machine the moment the shortcut is deleted');
+  assert.ok(/DESKSIDE_STARTS_WITH_WINDOWS/.test(src),
+    'the switch never reads what the launcher wrote, so it cannot show the truth');
 });

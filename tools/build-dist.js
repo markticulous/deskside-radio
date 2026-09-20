@@ -101,7 +101,7 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
    thing to run, and eight .ico files and a licence sitting in the same
    list as the scripts are eight wrong answers each. Sorted this way the
    root reads as a short menu. */
-['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start With Windows.cmd',
+['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start with Windows (On-Off).cmd',
  /* What the Desktop shortcut and the Startup entry actually point at. It
     starts the browser and then takes the resize grip off the window, which
     is the one thing a page cannot do for itself. Without it in the folder
@@ -114,6 +114,13 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
     at launch. Missing, the two scripts above fall back to the .cmd and
     the flash comes back; nothing else is lost. */
  'Win - Open Deskside Radio.vbs',
+ /* The one door from the page to the Startup folder. The switch in
+    Settings navigates to desksideradio:startup-on, Windows hands the
+    URL to this, and it runs the on-off script. Missing from the folder
+    the switch simply does nothing, so it is checked for rather than
+    assumed -- by the installer, which will not register a handler
+    pointing at a file that is not there. */
+ 'Win - Deskside Radio Protocol.vbs',
  /* The per-browser launchers, and Linux. Named for the platform they are
     for, because a folder of double-clickable scripts is the one place a
     filename has to say what it does before anyone opens it. */

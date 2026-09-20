@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.5.2';
+  var APP_VERSION = '1.5.3';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -3165,7 +3165,7 @@
      layer is above the page's stacking and clipping, not above the frame.
      Hence the placement below, which has somewhere to go in every case. */
 
-  var TIP_DELAY = 400;     // before the first one
+  var TIP_DELAY = 550;     // before the first one
   var TIP_WARM = 1200;     // after which the next is no longer immediate
   var TIP_GAP = 8, TIP_EDGE = 8;
 
@@ -3809,7 +3809,10 @@
   var README_W = 1000, README_H = 1240;
 
   function openReadme(e) {
-    var href = el.readmeLink.getAttribute('href');
+    /* Whatever was clicked: the button in Service, or one of the links in
+       the prose that go to a section of the same file. */
+    var from = (this && this.getAttribute) ? this : el.readmeLink;
+    var href = from.getAttribute('href');
     if (!href) { e.preventDefault(); return; }
     // A deliberate new tab, a new window, or the middle button: theirs.
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
@@ -3826,7 +3829,10 @@
        the ones from before the update -- a manual describing a version
        that is no longer running, at a path that looks right. Nothing
        reads the query; it is there to be different. */
-    var fresh = href + (href.indexOf('?') === -1 ? '?v=' : '&v=') + APP_VERSION;
+    var hash = '';
+    var cut = href.indexOf('#');
+    if (cut !== -1) { hash = href.slice(cut); href = href.slice(0, cut); }
+    var fresh = href + (href.indexOf('?') === -1 ? '?v=' : '&v=') + APP_VERSION + hash;
     var win = window.open(fresh, 'dsradio-readme',
       // No noopener here: with it, window.open hands back null and
       // there would be no way to tell a refused popup from a working
@@ -3866,6 +3872,14 @@
     document.head.appendChild(link);
   }
 
+  /* Named once. The drawer's prose points at the manual in more than one
+     place and will point at it in more again; a querySelectorAll spelled out
+     at each call site is a list that goes out of step with itself. */
+  function guideLinks(fn) {
+    var all = document.querySelectorAll('a[data-guide]');
+    for (var i = 0; i < all.length; i++) fn(all[i]);
+  }
+
   var readmeChecked = false;
   function findReadme() {
     if (readmeChecked) return;
@@ -3877,6 +3891,14 @@
         el.readmeLink.removeAttribute('href');
         el.readmeLink.setAttribute('aria-disabled', 'true');
         el.readmeMissing.hidden = false;
+        /* And the ones in the prose go back to being the word they were.
+           A link that goes nowhere is worse than no link: it reads as
+           something broken rather than something absent. */
+        guideLinks(function (a2) {
+          a2.classList.add('is-off');
+          a2.removeAttribute('href');
+          a2.removeAttribute('target');
+        });
         return;
       }
       var name = README_NAMES[i++];
@@ -3886,6 +3908,15 @@
         el.readmeMissing.hidden = true;
         // Only a page gets a window of its own; plain text is fine in a tab.
         if (/\.html?$/i.test(name)) el.readmeLink.addEventListener('click', openReadme);
+        /* The links in the prose, now that there is a name to give them.
+           Sections only exist in the page, so a .txt or .md manual gets the
+           file and no fragment rather than a fragment that means nothing. */
+        var page = /\.html?$/i.test(name);
+        guideLinks(function (a2) {
+          var sec = a2.getAttribute('data-guide');
+          a2.href = page && sec ? name + '#' + sec : name;
+          if (page) a2.addEventListener('click', openReadme);
+        });
       });
     }
     next();
@@ -3954,6 +3985,9 @@
       s.onload = function () {
         s.remove();
         btn.hidden = window.DESKSIDE_HAS_SHORTCUT === true;
+        /* The same file carries whether the radio starts with Windows.
+           One launcher, one write, one read. */
+        showStartupState();
         again();
       };
       s.onerror = function () { s.remove(); again(); };
@@ -3972,6 +4006,98 @@
     });
   }
   hideShortcutIfOneExists();
+
+  /* ---------- start with Windows ----------
+
+     The only control in Settings that is not a setting. Everything else here
+     is something the app decides and remembers; this is a fact about the
+     machine, and the app is the last thing to know it. So it is never saved
+     and never assumed: it is shown from what the launcher wrote down, and
+     read again after every flip.
+
+     Read again because the flip can fail in ways nothing here can see. A page
+     opened off a disk cannot write to the Startup folder -- no browser allows
+     it -- so the switch navigates to desksideradio:, which the installer
+     registered, and Windows runs a script of ours. The browser asks the
+     listener first, and they may say no; they may also have no handler at all,
+     on a folder that was unzipped by hand rather than installed. In both cases
+     the switch has to go back to showing the truth rather than the wish.
+
+     Nothing here works on macOS or Linux and the block stays hidden there. */
+  var startupWanted = null;
+  var startupTimer = null;
+
+  function startupIsOn() {
+    return window.DESKSIDE_STARTS_WITH_WINDOWS === true;
+  }
+
+  function showStartupState() {
+    var box = $('startWithWindows');
+    if (!box) return;
+    var on = startupIsOn();
+    box.checked = on;
+
+    /* Nothing was asked for, so there is nothing to report. Loose equality on
+       purpose: var hoists startupWanted as undefined, and the first probe is
+       later than the assignment only by the event loop. */
+    if (startupWanted == null) return;
+
+    if (on === startupWanted) {
+      startupSays('startupLine', on
+        ? 'Set. The radio will open when you next sign in.'
+        : 'Off. The radio will not open when you sign in.');
+      startupWanted = null;
+      return;
+    }
+
+    /* Asked, and it did not happen. Said plainly, with the way round it,
+       because the likeliest cause is a permission dialog that was dismissed
+       and the second likeliest is a folder that was never installed. */
+    startupSays('startupLine', 'Windows did not do that. If your browser asked for '
+      + 'permission and the answer was no, try again \u2014 or run '
+      + '"Win - Start with Windows (On-Off).cmd" in your app folder.');
+    startupWanted = null;
+  }
+
+  function startupSays(id, text) {
+    var el = $(id);
+    if (el) el.textContent = text;
+  }
+
+  $('startWithWindows').addEventListener('change', function () {
+    var want = this.checked;
+    startupWanted = want;
+    startupSays('startupLine', want ? 'Asking Windows\u2026' : 'Removing it\u2026');
+
+    /* Two words, and the handler accepts no others. Nothing from this page
+       is interpolated into it: a registered protocol can be reached by any
+       site in any browser, so what crosses the gap is a constant. */
+    try {
+      location.href = 'desksideradio:startup-' + (want ? 'on' : 'off');
+    } catch (e) { /* no handler, and the re-read below will say so */ }
+
+    /* The answer arrives out of band -- another process writes a file and
+       the launcher's note is stale until something reads it again. Focus is
+       the reliable moment: the permission dialog takes it and gives it back.
+       The timer is for the case where it never left, which is what happens
+       when the browser has been told to stop asking. */
+    if (startupTimer) clearTimeout(startupTimer);
+    startupTimer = setTimeout(reReadStartup, 1200);
+  });
+
+  function reReadStartup() {
+    var s = document.createElement('script');
+    s.src = 'assets/shortcut.js?' + Date.now();
+    s.onload = function () { s.remove(); showStartupState(); };
+    /* Unreadable means unchanged, which showStartupState will report as a
+       failure -- correctly: if the file cannot be read, nothing can be known. */
+    s.onerror = function () { s.remove(); showStartupState(); };
+    document.head.appendChild(s);
+  }
+
+  window.addEventListener('focus', function () {
+    if (startupWanted !== null) reReadStartup();
+  });
 
   $('makeShortcutPane').addEventListener('click', function () {
     $('makeShortcut').click();
@@ -6226,6 +6352,18 @@
        it picks a theme. Doing it here rather than in markup because only
        the script can ask what it is running on. */
     document.documentElement.setAttribute('data-os', onWindows() ? 'windows' : 'other');
+    /* The pane is shown everywhere -- the paragraphs inside it answer for
+       each platform -- but the switch only has something to talk to on
+       Windows. Hidden by attribute rather than by the .os-win class: that
+       rule sets display: block and the row is a flex row, so the class
+       would lay it out wrongly on the one platform it is meant to show it
+       on. .switch-row[hidden] is what answers this. */
+    if (!onWindows()) {
+      var row = document.querySelector('#startupBlock .switch-row');
+      if (row) row.hidden = true;
+      var line = $('startupLine');
+      if (line) line.hidden = true;
+    }
 
     // Not on the critical path: let the radio come up first.
     paintMotion();
