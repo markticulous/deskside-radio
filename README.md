@@ -1,8 +1,10 @@
 # Deskside Radio
 
-A desktop internet radio that looks like a radio. Open `index.html` in a browser and it plays — no install, no build step, no account, no server. Stations, a day schedule, eight visual themes, and a watchdog that reconnects a dropped stream on its own.
+A desktop internet radio that looks like a radio. Stations, a day schedule, eight visual themes, and a watchdog that reconnects a dropped stream on its own.
 
-The four themes are laid out side by side in [previews/preview.html](previews/preview.html) — open it in a browser.
+Deskside Radio is a webpage-based application. There is nothing to install, no account and no server. Nothing about you is sent anywhere; the two things that do leave your machine are the stations you play and, on each launch, a request to Google Fonts for the typefaces.
+
+The eight themes are laid out side by side in [previews/preview.html](previews/preview.html) — open it in a browser.
 
 ## Running it
 
@@ -219,7 +221,9 @@ Clicking the notice opens a small dialog rather than a releases page, and what i
 
 That means the notice you see today is acted on at the next launch and visible at the one after — so a radio opened daily is current within a day or two without anybody doing anything, which is the whole point. To take one the moment you hear about it instead, run `Win-Install-or-Update-Deskside-Radio.cmd` in the app folder: it carries no Mark of the Web, so it costs none of the security prompts a fresh download does, and holding Shift on **Settings → Service** gives you a button that opens the folder. **Deskside Radio - Update** in the Start menu runs the same file, where the installer made one.
 
-To stop the radio updating itself, run `Win - Automatic Updates.cmd off` in the app folder; with no argument it starts again. It is a script and not a switch in Settings for one reason: the app's settings live in the browser's storage, which a batch file cannot read, so the answer is kept where the launcher can see it — one small file in the app folder, the same shape as starting with Windows being one file in the Startup folder. Turning it off does not turn off the notice, which has its own switch.
+`Win - Automatic Updates.cmd` controls whether the radio updates itself. Nothing is installed or removed either way: it writes, or deletes, one small file in the app folder that the launcher looks for before it checks for a newer version. Run it with `off` to stop the updating; run it with no argument to start it again.
+
+It is a script and not a switch in Settings for one reason: the app's settings live in the browser's storage, which a batch file cannot read, so the answer is kept where the launcher can see it — one small file in the app folder, the same shape as starting with Windows being one file in the Startup folder. Turning it off does not turn off the notice, which has its own switch.
 
 **On macOS and Linux** the notice reads **get it from GitHub** and links to the releases page. Take `deskside-radio.zip`, unpack it over your app folder, and reopen the radio. There is no installer to run and nothing to uninstall.
 
@@ -313,7 +317,7 @@ A window dragged hard into the top-left corner is the one position that cannot b
 
 ## The mini radio
 
-The pushpin in the top bar opens a small strip that floats above every other window — station, what it is doing, play, volume, a meter and a clock — and tucks the radio's own window out of sight behind it. The expand button on the strip puts the radio back. The strip's close button closes the radio altogether, which is why there is only one of them: Chrome's own back-to-tab button is turned off, so one browser control means one thing.
+The pushpin in the top bar opens a small strip that floats above every other window — station, what it is doing, play, volume, a meter and a clock — and tucks the radio's own window out of sight behind it. The expand button on the strip puts the radio back, and so does **Escape**. The strip's close button closes the radio altogether, which is why there is only one of them: Chrome's own back-to-tab button is turned off, so one browser control means one thing.
 
 During a slot change the strip says what is about to happen and counts the last thirty seconds down — *Schedule change in 30s*, or *Schedule play ends in 30s*, or *Schedule play ends, then freeplay in 30s* — and its fader rides the handover fade exactly as the radio's own does. Double-clicking the fader slides it back to 50.
 
@@ -336,6 +340,14 @@ A page cannot minimise its own window — there is no API for it — and a brows
 It follows the strip if the strip is moved, and it does that on the strip's clock rather than its own: a browser throttles the timers of a window it believes nobody can see, which is precisely what this window is. Run from its own window, the placard lagged far enough behind a drag to show at the edges.
 
 If the two ever do come apart, what shows is a small placard reading **Floating**, and clicking it brings the radio back.
+
+## Tooltips
+
+The hints are the app's own rather than the browser's. A native `title` is a grey rectangle in a system font, after a delay nothing can change, and it says nothing at all to somebody who reached the control with the keyboard — these appear on focus as well as on hover, after about four hundred milliseconds, and immediately after that while you are moving along a row. Escape dismisses one; so does pressing the thing it belongs to.
+
+They wear the same neutral plate as the Settings drawer and the confirm dialogs rather than each of the eight faces. That is the policy already written into the sheet for everything that is chrome rather than cabinet: a face is for looking at, and a tooltip is for reading.
+
+One thing is genuinely worse than what it replaces, and it is worth knowing why. **A tooltip drawn by the page cannot leave the window.** The native one could — it is drawn by the operating system, outside the browser entirely. This one is a popover, which escapes the cabinet's clipping and the stacking order but not the window frame. So it opens above the control if there is room, below if there is not, and beside it if there is room for neither — which in the mini radio, whose whole window is eighty-eight pixels tall, is the ordinary case.
 
 ## The app folder
 
@@ -399,7 +411,7 @@ node tools/build-dist.js
 
 That writes `dist/` — `index.html` plus the theme icons, the shortcut helpers, the licence and `README.html`. The icons are separate files because Windows reads them off disk rather than out of a page.
 
-`README.html` is the manual, and it sits beside `index.html` here as well as in the download — **Settings → Service → Open the read me** looks in the app's own folder, so a copy run straight from this repository has to find the same file. It is a page rather than plain text because nothing shipped with Windows, macOS or Linux renders Markdown — a browser hands you a local `.md` as raw text in a `<pre>` — while every one of those machines has a browser. The link opens it in a window of its own, sized and centred on the screen the radio is on.
+`README.html` is the manual: a user guide style description of the app, its features and functions. It sits beside `index.html` here as well as in the download, because **Settings → Service → Open the read me** looks in the app's own folder, so a copy run straight from this repository has to find the same file. It is a page rather than plain text because nothing shipped with Windows, macOS or Linux renders Markdown — a browser hands you a local `.md` as raw text in a `<pre>` — while every one of those machines has a browser. The link opens it in a window of its own, sized and centred on the screen the radio is on.
 
 This file, `README.md`, is the one for GitHub and for anyone reading the source.
 

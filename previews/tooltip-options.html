@@ -1,0 +1,417 @@
+<meta charset="utf-8">
+<title>Deskside Radio — Tooltip Options</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Syne:wght@700;800&family=IBM+Plex+Mono:wght@400;600&family=Big+Shoulders+Display:wght@600;700&family=Barlow+Condensed:wght@600;700&family=Press+Start+2P&family=Cormorant+Garamond:ital,wght@1,500&family=Archivo+Narrow:wght@600;700&display=swap">
+<style>
+  /* ------------------------------------------------------------------
+     Four ways a tooltip could look, each shown against four of the
+     radio's eight faces. The palettes below are lifted from app.css so
+     the comparison is honest: dial's brass and cream, console's amber on
+     black, retro's 8-bit green, editorial's paper and rule.
+
+     Every tooltip here is live. Hover the controls. The point is to judge
+     them where they will actually appear -- over a cabinet edge, beside a
+     small icon button -- rather than as swatches in a row.
+     ------------------------------------------------------------------ */
+  :root {
+    --pg-bg: #eceae4; --pg-ink: #1a1a18; --pg-mute: #6b6a64; --pg-rule: #d8d6cf;
+    --ui-accent: #b5461c;
+    --ui-font: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-scheme="light"]) {
+      --pg-bg: #131412; --pg-ink: #ecebe6; --pg-mute: #9a9891; --pg-rule: #2c2c29;
+      --ui-accent: #e8783f;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--pg-bg); color: var(--pg-ink);
+    font-family: var(--ui-font); line-height: 1.5;
+    padding-inline: clamp(16px, 4vw, 44px); padding-block: 40px 100px;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+
+  .intro h1 { font-family: "Syne", sans-serif; font-weight: 800; font-size: clamp(30px, 4.6vw, 48px); letter-spacing: -.03em; line-height: 1; margin: 0 0 14px; }
+  .intro p { margin: 0; max-width: 68ch; color: var(--pg-mute); font-size: 16px; }
+  .intro p + p { margin-top: 8px; }
+  .intro strong { color: var(--pg-ink); font-weight: 600; }
+
+  .note { margin: 26px 0 0; padding: 14px 18px; border-radius: 10px; border: 1px solid var(--ui-accent); background: color-mix(in srgb, var(--ui-accent) 8%, transparent); font-size: 14px; max-width: 78ch; }
+  .note b { font-weight: 600; }
+
+  /* ---- the grid of options x themes ---- */
+  .lane-head { display: grid; grid-template-columns: auto 1fr; column-gap: 14px; align-items: baseline; border-top: 2px solid var(--pg-ink); padding-top: 12px; margin: 46px 0 6px; }
+  .lane-key { font-family: "Syne", sans-serif; font-weight: 800; font-size: 26px; line-height: 1; color: var(--ui-accent); }
+  .lane-title { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
+  .lane-why { grid-column: 2; margin: 4px 0 0; font-size: 13.5px; color: var(--pg-mute); max-width: 72ch; }
+
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 18px; margin-top: 18px; }
+
+  /* ---- a miniature cabinet, one per theme ---- */
+  .cab {
+    position: relative; border-radius: 10px; padding: 16px;
+    min-height: 150px; display: grid; align-content: space-between; gap: 14px;
+    /* The real .tuner clips. Kept here so the flip-above behaviour is
+       judged under the same constraint the app imposes. */
+    overflow: hidden;
+  }
+  .cab-name { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; opacity: .7; }
+  .bar { display: flex; align-items: center; gap: 10px; }
+  .spacer { flex: 1; }
+  .btn {
+    width: 32px; height: 32px; display: grid; place-items: center;
+    border: 0; background: none; cursor: pointer; color: inherit; border-radius: 4px;
+  }
+  .btn svg { width: 17px; height: 17px; }
+  .chip { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; padding: 5px 9px; border-radius: 3px; }
+
+  /* dial */
+  .t-dial { --brass:#c9a24a; --cream:#f2e7c9; --ink:#2a1a10;
+    color: var(--cream); font-family: "Big Shoulders Display", sans-serif;
+    background: repeating-linear-gradient(87deg,#4a2c19 0 7px,#3d2415 7px 15px,#44291a 15px 26px,#3a2214 26px 31px);
+    box-shadow: inset 0 0 0 3px #8d6a25, inset 0 0 0 5px var(--brass);
+    --tip-bg:#241609; --tip-ink:var(--cream); --tip-line:var(--brass);
+  }
+  .t-dial .btn, .t-dial .chip { color: var(--brass); }
+  /* console */
+  .t-console { --amber:#ffb000; --text:#d7dadd; --line:#262a2f;
+    color: var(--text); font-family: "Archivo", sans-serif; background: #14161a;
+    box-shadow: inset 0 0 0 1px var(--line);
+    --tip-bg:#0a0b0d; --tip-ink:var(--amber); --tip-line:#3a4046;
+  }
+  .t-console .btn, .t-console .chip { color: var(--amber); }
+  /* retro */
+  .t-retro { --green:#b8f818; --grey:#7c7c7c; --dark:#3c3c3c;
+    color: #fcfcfc; font-family: "Press Start 2P", monospace; background: #0a0a0c;
+    box-shadow: inset 0 0 0 3px var(--dark); border-radius: 0;
+    --tip-bg:#0a0a0c; --tip-ink:var(--green); --tip-line:var(--green);
+  }
+  .t-retro .cab-name, .t-retro .chip { font-size: 7px; letter-spacing: 0; }
+  .t-retro .btn { color: var(--green); }
+  /* editorial */
+  .t-editorial { --ink:#111; --mute:#6e6e6a; --rule:#e3e3df;
+    color: var(--ink); font-family: "Archivo Narrow", sans-serif; background: #fbfbfa;
+    box-shadow: inset 0 0 0 1px var(--rule);
+    --tip-bg:#111; --tip-ink:#fbfbfa; --tip-line:#111;
+  }
+  .t-editorial .btn { color: var(--ink); }
+  .t-editorial .chip { color: var(--mute); }
+
+  /* ================================================================
+     The four candidates. All four read the SAME three tokens, which is
+     the point: one rule, eight themes, each theme naming its own three
+     colours the way it already names --by-fg and friends.
+     ================================================================ */
+  .tip {
+    position: fixed; z-index: 99; margin: 0; pointer-events: none;
+    opacity: 0; transition: opacity .12s ease;
+    font-family: var(--ui-font); font-size: 12px; line-height: 1.35;
+    max-width: 240px; white-space: normal;
+  }
+  .tip.is-on { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
+
+
+  /* The pointer, joined to the plate rather than parked beside it.
+
+     Its centre sits exactly on the plate's edge, so half of it is inside and
+     paints over the border line there; only the two outward edges carry a
+     border, which then reads as the plate's own border carrying on around the
+     point. This is why the plate below uses a real border and not an inset
+     shadow: an inset shadow paints inside the box, so the line would cross
+     the arrow's base and nothing could cover it. */
+  .tip.has-arrow::after {
+    content: ""; position: absolute;
+    width: 8px; height: 8px;
+    background: inherit;
+    border: 1px solid var(--tip-edge);
+    transform: rotate(45deg);
+    left: var(--arrow-x, 50%); margin-left: -4px;
+  }
+  .tip.has-arrow[data-side="top"]::after { bottom: -4px; border-top: 0; border-left: 0; }
+  .tip.has-arrow[data-side="bottom"]::after { top: -4px; border-bottom: 0; border-right: 0; }
+  /* Sideways, for when there is room neither above nor below -- which in a
+     340x88 window is most of the time. */
+  .tip.has-arrow[data-side="left"]::after {
+    right: -4px; left: auto; margin-left: 0; top: var(--arrow-y, 50%); margin-top: -4px;
+    border-left: 0; border-bottom: 0;
+  }
+  .tip.has-arrow[data-side="right"]::after {
+    left: -4px; margin-left: 0; top: var(--arrow-y, 50%); margin-top: -4px;
+    border-right: 0; border-top: 0;
+  }
+
+  /* A — plain plate */
+  .tip.a { background: var(--tip-bg); color: var(--tip-ink); padding: 6px 9px; border-radius: 5px; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+
+  /* B — bordered, takes the theme's line */
+  .tip.b { background: var(--tip-bg); color: var(--tip-ink); padding: 6px 10px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--tip-line), 0 8px 20px rgba(0,0,0,.3); }
+
+  /* C — with a pointer */
+  .tip.c {
+    --tip-edge: var(--tip-line);
+    background: var(--tip-bg); color: var(--tip-ink); padding: 6px 10px;
+    border: 1px solid var(--tip-line); border-radius: 5px;
+    box-shadow: 0 8px 20px rgba(0,0,0,.3);
+  }
+
+  /* D — per-theme character: no radius, hard edge, tracked caps */
+  .tip.d {
+    background: var(--tip-bg); color: var(--tip-ink); padding: 7px 10px; border-radius: 0;
+    box-shadow: 0 0 0 1px var(--tip-line), 4px 4px 0 rgba(0,0,0,.35);
+    font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .t-retro ~ * .tip.d, .tip.d { font-family: inherit; }
+
+  /* E -- the neutral chrome the rest of the app already wears. These four
+     values are declared once at :root in app.css and used by the drawer, the
+     confirm dialogs, the finder menu and the save note. Copied here at their
+     real values. */
+  .tip.e {
+    --ui-bg: #ffffff; --ui-fg: #1d1d1b; --ui-line: #d6d2c9; --ui-radius: 6px;
+    --tip-edge: var(--ui-line);
+    background: var(--ui-bg); color: var(--ui-fg);
+    padding: 7px 10px;
+    /* A real border, not an inset shadow -- see the note on the arrow. */
+    border: 1px solid var(--ui-line); border-radius: var(--ui-radius);
+    box-shadow: 0 10px 24px -12px rgba(0,0,0,.5);
+    font-size: 12px;
+  }
+
+  .edge-row .cab { min-height: 0; }
+  .edge-top { padding-top: 6px; }
+  .edge-narrow { max-width: 210px; justify-self: end; }
+  /* The mini radio at its real size, so the sideways placement is judged
+     against the room it actually has. */
+  .strip-size { width: 340px; height: 88px; padding: 10px; }
+
+  .legend { margin-top: 14px; font-size: 13px; color: var(--pg-mute); }
+  .legend code { font-family: "IBM Plex Mono", monospace; font-size: 12px; background: color-mix(in srgb, var(--pg-ink) 8%, transparent); padding: 1px 5px; border-radius: 4px; }
+</style>
+
+<div class="wrap">
+
+  <div class="intro">
+    <h1>Tooltips</h1>
+    <p>Five candidates, each shown on four of the eight faces. <strong>Hover the icons and the chip in any cabinet</strong> — every tooltip here is live and positioned the way the real one would be.</p>
+    <p>The first four read the same three values — <strong>background, ink and line</strong> — which each theme names for itself. That is the same arrangement the byline already uses, and it is what lets one rule serve eight faces.</p>
+  </div>
+
+  <div class="note">
+    <b>Two things to watch for, not just the look.</b> Each cabinet below clips its contents, exactly as the real one does — so notice how a tooltip on the <em>top</em> row has to escape upward past the cabinet edge. And the retro face has no anti-aliasing to hide behind: a rounded corner or a soft shadow reads as wrong there in a way it does not elsewhere.
+  </div>
+
+  <div class="lane-head">
+    <div class="lane-key">A</div>
+    <h2 class="lane-title">Plain plate</h2>
+    <p class="lane-why">Background, ink, a soft shadow, nothing else. Quietest and least likely to fight any face — and the least like a radio.</p>
+  </div>
+  <div class="row" data-style="a"></div>
+
+  <div class="lane-head">
+    <div class="lane-key">B</div>
+    <h2 class="lane-title">Bordered plate</h2>
+    <p class="lane-why">The same, with a hairline in the theme's own line colour. Reads as a piece of the cabinet rather than something floating over it.</p>
+  </div>
+  <div class="row" data-style="b"></div>
+
+  <div class="lane-head">
+    <div class="lane-key">C</div>
+    <h2 class="lane-title">With a pointer</h2>
+    <p class="lane-why">Bordered, plus a small arrow at the control it belongs to. Unambiguous when several controls sit close together — which is exactly the top bar.</p>
+  </div>
+  <div class="row" data-style="c"></div>
+
+  <div class="lane-head">
+    <div class="lane-key">D</div>
+    <h2 class="lane-title">In the face's own voice</h2>
+    <p class="lane-why">Hard edge, offset shadow, tracked caps, and the cabinet's own typeface. Most characterful; also the most work, and the easiest to get wrong on a face it was not drawn for.</p>
+  </div>
+  <div class="row" data-style="d"></div>
+
+  <div class="lane-head">
+    <div class="lane-key">E</div>
+    <h2 class="lane-title">The app&rsquo;s own chrome</h2>
+    <p class="lane-why">Identical on all eight faces &mdash; the same white plate, hairline and radius the Settings drawer, the confirm dialogs and the finder list already wear, now with a pointer joined to the plate. Note it is the only option here that does <em>not</em> change between cabinets.</p>
+  </div>
+  <div class="row" data-style="e"></div>
+
+  <div class="note" style="margin-top:22px">
+    <b>Why E is on the list.</b> The sheet already states this policy, about Settings: <em>&ldquo;Settings wears one neutral light chrome whatever the tuner is wearing&hellip; re-skinning it per theme meant reading forms through a pixel face or a gold serif on near-black for no gain.&rdquo;</em> A tooltip is chrome by that definition, so E is what the codebase already argues for &mdash; and A&ndash;D are all departures from it. That may still be the right departure: a tooltip is a glance, not a form to read.
+  </div>
+
+  <div class="lane-head">
+    <div class="lane-key">&#9888;</div>
+    <h2 class="lane-title">At the edges</h2>
+    <p class="lane-why">All using option E. A tooltip cannot leave the window &mdash; the top layer escapes clipping and stacking, not the viewport &mdash; and the radio&rsquo;s window is sized snugly to the cabinet, so there is no room above a top-bar button. Hover the controls in each of these.</p>
+  </div>
+  <div class="row edge-row" data-style="e">
+    <div class="cab t-console edge-top">
+      <div class="cab-name">flush to the top of its space</div>
+      <div class="bar">
+        <button class="btn" data-tip="No room above. This one opens downward.">&#9679;</button>
+        <span class="spacer"></span>
+        <button class="btn" data-tip="Put a shortcut on the desktop">&#9679;</button>
+      </div>
+    </div>
+    <div class="cab t-editorial edge-narrow">
+      <div class="cab-name">hard against the right</div>
+      <div class="bar">
+        <span class="spacer"></span>
+        <button class="btn" data-tip="A long one, hard against the right edge, so the plate is nudged back on screen and the point stays over the button.">&#9679;</button>
+      </div>
+    </div>
+    <div class="cab t-dial strip-size">
+      <div class="bar">
+        <button class="btn" data-tip="Pause">&#9679;</button>
+        <span class="cab-name">mini radio &mdash; 340&times;88</span>
+        <span class="spacer"></span>
+        <button class="btn" data-tip="Expand to main radio">&#9679;</button>
+      </div>
+      <div class="bar"><span class="cab-name">no room above or below &mdash; goes sideways</span></div>
+    </div>
+  </div>
+
+  <p class="legend">Each cabinet sets only <code>--tip-bg</code>, <code>--tip-ink</code> and <code>--tip-line</code>. Option D additionally inherits the cabinet's <code>font-family</code>.</p>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var THEMES = [
+    { cls: 't-dial', name: 'Dial' },
+    { cls: 't-console', name: 'Console' },
+    { cls: 't-retro', name: '8-bit' },
+    { cls: 't-editorial', name: 'Editorial' }
+  ];
+
+  var GEAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>';
+  var PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3.5h5l-.6 6 3.1 3.2H7l3.1-3.2z"/><path d="M12 12.7V20.5"/></svg>';
+  var MON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="1.6"/><path d="M9 20h6M12 16v4"/></svg>';
+
+  /* One cabinet, with the same furniture the real top bar carries: a chip
+     and three icon buttons, the tooltips on which are the ones that have
+     to escape the cabinet's clip. */
+  function cabinet(t) {
+    var d = document.createElement('div');
+    d.className = 'cab ' + t.cls;
+    d.innerHTML =
+      '<div class="bar">' +
+        '<span class="cab-name">' + t.name + '</span>' +
+        '<span class="spacer"></span>' +
+        '<span class="chip" data-tip="Turn the schedule on or off">Sched on</span>' +
+        '<button class="btn" data-tip="Put a shortcut on the desktop">' + MON + '</button>' +
+        '<button class="btn" data-tip="Pin as always-on-top mini radio">' + PIN + '</button>' +
+        '<button class="btn" data-tip="Settings">' + GEAR + '</button>' +
+      '</div>' +
+      '<div class="bar">' +
+        '<button class="btn" data-tip="This stream would not load on the analysed path, so tone control is unavailable.">' + GEAR + '</button>' +
+        '<span class="cab-name">bottom row &mdash; tooltips here open upward</span>' +
+      '</div>';
+    return d;
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.row'), function (row) {
+    THEMES.forEach(function (t) { row.appendChild(cabinet(t)); });
+  });
+
+  /* One tooltip element per style, kept inside a cabinet so it inherits
+     that cabinet's tokens -- which is the arrangement being tested. In the
+     app this is what the popover attribute buys: inside for inheritance,
+     top layer for painting. Here a plain high z-index stands in, and the
+     cabinets do not clip it only because it is position:fixed. */
+  var tip = null, tipStyle = '', timer = null;
+
+  function ensure(host, style) {
+    if (tip && tipStyle === style && tip.parentElement === host) return tip;
+    if (tip) tip.remove();
+    tip = document.createElement('div');
+    // C and E are the two that carry a pointer.
+    tip.className = 'tip ' + style + (/^[ce]$/.test(style) ? ' has-arrow' : '');
+    host.appendChild(tip);
+    tipStyle = style;
+    return tip;
+  }
+
+  function show(el) {
+    var host = el.closest('.cab');
+    var row = el.closest('.row');
+    if (!host || !row) return;
+    var t = ensure(host, row.getAttribute('data-style'));
+    t.textContent = el.getAttribute('data-tip');
+    t.classList.remove('is-on');
+
+    /* Measure first, then choose. Above if it fits, below if not, and beside
+       if neither does -- which is the ordinary case in the mini radio, where
+       the whole window is 88px tall.
+
+       Everything is clamped into the viewport at the end, because a tooltip
+       in the page cannot leave the window the way a native one can. */
+    t.style.left = '0px';
+    t.style.top = '0px';
+    t.removeAttribute('data-side');
+    var r = el.getBoundingClientRect();
+    var tr = t.getBoundingClientRect();
+    var GAP = 8, EDGE = 8;
+    var vw = window.innerWidth, vh = window.innerHeight;
+
+    var side, left, top;
+    if (r.top - tr.height - GAP >= EDGE) {
+      side = 'top';
+      top = r.top - tr.height - GAP;
+      left = r.left + r.width / 2 - tr.width / 2;
+    } else if (r.bottom + GAP + tr.height <= vh - EDGE) {
+      side = 'bottom';
+      top = r.bottom + GAP;
+      left = r.left + r.width / 2 - tr.width / 2;
+    } else {
+      // Beside: whichever hand has more room.
+      var roomRight = vw - r.right, roomLeft = r.left;
+      side = roomRight >= roomLeft ? 'right' : 'left';
+      left = side === 'right' ? r.right + GAP : r.left - tr.width - GAP;
+      top = r.top + r.height / 2 - tr.height / 2;
+    }
+
+    left = Math.max(EDGE, Math.min(left, vw - tr.width - EDGE));
+    top = Math.max(EDGE, Math.min(top, vh - tr.height - EDGE));
+
+    t.style.left = Math.round(left) + 'px';
+    t.style.top = Math.round(top) + 'px';
+    t.setAttribute('data-side', side);
+
+    /* Where the point sits, now the plate may have been pushed back on screen.
+       Kept clear of the corners, or it grows out of a curve. */
+    if (side === 'top' || side === 'bottom') {
+      var ax = r.left + r.width / 2 - left;
+      t.style.setProperty('--arrow-x', Math.round(Math.max(12, Math.min(ax, tr.width - 12))) + 'px');
+    } else {
+      var ay = r.top + r.height / 2 - top;
+      t.style.setProperty('--arrow-y', Math.round(Math.max(12, Math.min(ay, tr.height - 12))) + 'px');
+    }
+    t.classList.add('is-on');
+  }
+
+  function hide() {
+    clearTimeout(timer);
+    if (tip) tip.classList.remove('is-on');
+  }
+
+  document.addEventListener('pointerover', function (e) {
+    var el = e.target.closest ? e.target.closest('[data-tip]') : null;
+    if (!el) return;
+    clearTimeout(timer);
+    // Quick here so the four can be compared without waiting; the app uses
+    // about 400ms, and none at all once one is already open.
+    timer = setTimeout(function () { show(el); }, 120);
+  });
+  document.addEventListener('pointerout', function (e) {
+    var el = e.target.closest ? e.target.closest('[data-tip]') : null;
+    if (el) hide();
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hide(); });
+  window.addEventListener('scroll', hide, { passive: true });
+}());
+</script>
