@@ -74,7 +74,18 @@
    strength. */
 .tuner .fader input:focus-visible { outline-offset: 2px; }
 
-.tuner-bar   { grid-area: bar; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+/* One row, always. Wrapping was the old behaviour and it is the wrong
+   failure: the items that do not fit are the last in the markup, which
+   is the pin and the settings buttons, and a second line makes the
+   panel taller -- every row below it is auto, the window is a fixed
+   1133x741 that cannot be resized, and the controls row ends up under
+   the bottom edge. Squeezing the one piece of variable-length text is
+   a smaller price than moving the whole instrument.
+
+   There is no breakpoint here on purpose. The window is not resizable,
+   so the row is never short of space because the viewport narrowed --
+   only because something in it grew. A media query would never fire. */
+.tuner-bar   { grid-area: bar; display: flex; align-items: center; gap: 16px; flex-wrap: nowrap; }
 .display     { grid-area: display; position: relative; }
 .presets     {
   grid-area: presets; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px;
@@ -94,9 +105,16 @@
 }
 .controls    { grid-area: controls; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; --rec-gap: 20px; }
 
-.brand        { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.clock        { margin-left: auto; font-variant-numeric: tabular-nums; }
-.sched-chip   { display: inline-flex; align-items: center; gap: 10px; position: relative; }
+/* The four that do not give. Flex items shrink by default, and these
+   have nothing to shrink into: fixed-size buttons, tabular time, and
+   two pieces of set text. Left to the default they would be squeezed
+   out of shape before the one thing that can afford it. */
+.brand        { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: none; }
+.clock        { margin-left: auto; font-variant-numeric: tabular-nums; flex: none; }
+/* And the one that does. min-width: 0 is the whole of it: a flex item's
+   floor is its min-content unless it is told otherwise, and the chip's
+   min-content includes the station name in full. */
+.sched-chip   { display: inline-flex; align-items: center; gap: 10px; position: relative; min-width: 0; }
 /* The last minute, drawn as a hairline running out along the bottom edge
    of the chip. Two pixels and the chip's own ink at a third strength: it
    belongs to the button rather than sitting on top of it, and at a glance
@@ -148,14 +166,23 @@
   /* 36ch, up from 30. The chip used to say only what was stopping, and
      now says what follows it, which is a few characters longer than the
      old cap allowed -- it was cutting station names in half. */
+  /* The pressure valve for the whole row. width is the starting size and
+     the cap; min-width: 0 is what lets flex take it back below the length
+     of the name when something else in the row needs the space.
+
+     An ellipsis at last: this clipped at 40ch with nothing to show for it,
+     so a long name stopped mid-word and read as a rendering fault rather
+     than as more text. That is the same complaint that pushed the cap from
+     30ch to 40ch, which treated the symptom. */
   opacity: .7; width: var(--next-w, 40ch); max-width: 40ch;
-  overflow: hidden; white-space: nowrap;
+  min-width: 0; flex: 0 1 auto;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
   transition: width .3s cubic-bezier(.2, .8, .2, 1), opacity .16s ease;
 }
 /* Turning the schedule off slides the next-up text away instead of
    dropping it, so the chip changes width in one short move. */
 .sched-chip[aria-pressed="false"] .sched-next { width: 0; opacity: 0; }
-.icon-btn     { display: inline-grid; place-items: center; width: 40px; height: 40px; position: relative; }
+.icon-btn     { display: inline-grid; place-items: center; width: 40px; height: 40px; position: relative; flex: none; }
 /* The same news as the pill, on the control that leads to it. Drawn rather
    than marked up, so it costs the header no extra element.
 
@@ -502,7 +529,7 @@
   font-family: var(--by-font, "Oswald", "Arial Narrow", sans-serif);
   font-size: 10px; font-weight: 500; line-height: 1.4;
   letter-spacing: .1em; text-transform: uppercase;
-  white-space: nowrap;
+  white-space: nowrap; flex: none;
 }
 /* display: inline-flex would otherwise beat the attribute. */
 .update-pill[hidden] { display: none; }
@@ -632,7 +659,7 @@
    preset keyframes. setName already puts every line in a .name-line, and
    that span is display:block with width:max-content, so it is the right
 /* ---- what the readout says once, after an update ----------------------
-   The version that has just been installed, blinked four times and then
+   The version that has just been installed, blinked five times and then
    given back to the station. The radio has no other way to tell anybody
    an update landed: the window it was announced in is gone by then, and
    the version in Settings is a place nobody looks on the way past.
@@ -642,12 +669,17 @@
    thing does when it has gone wrong. At a second it is plainly
    deliberate.
 
-   Four of them and not six. Six held the readout for the better part of
-   seven seconds on the departures board, which flaps in and out either
-   side of the blinking, and that is a long time to keep somebody from
-   the name of their own station. It is only ever seen on the one launch
+   Five of them. It was four, and six before that: six held the readout
+   for the better part of seven seconds on the departures board, which
+   flaps in and out either side of the blinking, and that is a long time
+   to keep somebody from the name of their own station. Five holds it for
+   about five and a half seconds plus the flapping, which is the same
+   argument with a second of slack in it.
+
+   The tension is real either way. It is only ever seen on the one launch
    after an update, which is the argument for making it unmissable and
-   also the argument against making it long.
+   also the argument against making it long. If it ever reads as too much
+   again, the theme to judge it on is departures.
 
    The numbers live in app.js as well, and a test holds the two to each
    other. */
@@ -663,7 +695,7 @@
    times slower than the four before it and read as the announcement
    winding down rather than finishing. The pause carries the ending now,
    not the fade. forwards is what holds it dark through that pause. */
-.display-name.is-announcing { animation: name-flash 1s linear 3; }
+.display-name.is-announcing { animation: name-flash 1s linear 4; }
 @keyframes name-fade-out { from { opacity: 1; } to { opacity: 0; } }
 .display-name.is-fading { animation: name-fade-out .05s linear forwards; }
 
@@ -2951,12 +2983,16 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 }
 .dtab:hover { color: var(--ui-fg); }
 .dtab[aria-selected="true"] { color: var(--ui-fg); font-weight: 600; }
-.dtab-n {
+/* The count badge, worn by the drawer's own tabs and by the weekday and
+   weekend tabs inside the schedule pane. One rule rather than two sets of
+   the same declarations: they are meant to be the same thing, and two
+   rules are the same thing only until somebody edits one of them. */
+.dtab-n, .tab-n {
   font-size: 10.5px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums;
   min-width: 17px; padding: 3px 5px; border-radius: 999px; text-align: center;
   background: var(--ui-field); color: var(--ui-mute); transition: background .18s ease, color .18s ease;
 }
-.dtab-n:empty { display: none; }
+.dtab-n:empty, .tab-n:empty { display: none; }
 
 /* The same mark the Settings control carries, on the tab that leads to
    the thing itself. The gear says there is news somewhere in here; this
@@ -2971,7 +3007,11 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
   width: 6px; height: 6px; border-radius: 50%;
   background: var(--alert, #ff8f2e);
 }
-.dtab[aria-selected="true"] .dtab-n { background: var(--ui-accent); color: #fff; }
+/* Selected, in both places. aria-selected rather than .is-active because
+   the drawer tabs carry only the former; the schedule tabs carry both and
+   app.js keeps them in step. */
+.dtab[aria-selected="true"] .dtab-n,
+.tab[aria-selected="true"] .tab-n { background: var(--ui-accent); color: #fff; }
 .dtab-ink {
   position: absolute; left: 0; bottom: -1px; height: 2px; border-radius: 2px 2px 0 0;
   background: var(--ui-accent); width: var(--ink-w, 0px);
@@ -3788,8 +3828,11 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 
 /* A count per group, so which day is busy is legible before switching to
    it. Empty stays invisible rather than showing a nought. */
-.tab-n { font-size: 11px; opacity: .6; }
-.tab-n:empty { display: none; }
+/* .tab-n is styled with .dtab-n further up: the two counts are the same
+   count. What is left here is the row that has to hold one -- a badge needs
+   a box, and min-width and padding on an inline span inside a plain button
+   do not give it one. Flex, with .dtab's own gap. */
+.tab { display: inline-flex; align-items: center; gap: 7px; }
 
 /* A card that settling just moved, or one that was only now added: a ring
    in the accent that fades, so the eye finds what changed without

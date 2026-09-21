@@ -2673,3 +2673,38 @@ test('the switch is wired to the handler, and never saved as a setting', () => {
   assert.ok(budget && Number(budget[1]) >= 20000,
     'the app gives up on Windows sooner than somebody can read the dialog it just opened');
 });
+
+test('the header row stays one row, and the next-up text is what gives', () => {
+  const css = read('app.css');
+
+  /* Wrapping is the wrong failure here. The items that do not fit are the
+     last in the markup -- the pin and the settings buttons -- and a second
+     line makes the panel taller, which pushes the controls row under the
+     bottom of a window that is a fixed 1133x741 and cannot be resized. */
+  const bar = /\.tuner-bar\s*{[^}]*}/.exec(css);
+  assert.ok(bar, 'the header row has no rule of its own any more');
+  assert.ok(/flex-wrap:\s*nowrap/.test(bar[0]),
+    'the header row wraps, so a long station name or one more button puts the settings button on a second line and clips the controls');
+
+  /* One thing in the row may be squeezed, and it is the only one whose
+     length is not fixed. min-width: 0 is the whole trick: a flex item will
+     not shrink below its min-content until it is told it may. */
+  const next = /\.sched-next\s*{[^}]*}/.exec(css);
+  assert.ok(next, 'the next-up text has no rule of its own any more');
+  assert.ok(/min-width:\s*0/.test(next[0]),
+    'the next-up text cannot shrink, so the row has nothing to give and overflows instead');
+  assert.ok(/text-overflow:\s*ellipsis/.test(next[0]),
+    'a cut station name stops mid-word with nothing to say it was cut');
+
+  /* And the rest hold their size. Flex items shrink by default, and these
+     have nothing to shrink into -- fixed buttons, tabular time, set text. */
+  [['.icon-btn', 'the top-bar buttons'],
+   ['.clock', 'the clock'],
+   ['.brand', 'the wordmark'],
+   ['.update-pill', 'the update pill']].forEach(function (pair) {
+    const rule = new RegExp('\\' + pair[0] + '\\s*{[^}]*}').exec(css);
+    assert.ok(rule, pair[1] + ' has no rule of its own any more');
+    assert.ok(/flex:\s*none/.test(rule[0]),
+      pair[1] + ' can be squeezed out of shape before the one thing in the row that can afford it');
+  });
+});

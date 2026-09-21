@@ -357,7 +357,7 @@ h2 {
   100%      { opacity: 1; }
 }
 @keyframes ann-return { from { opacity: 0; } to { opacity: 1; } }
-.ann-name.is-announcing { animation: ann-flash 1s linear 3; }
+.ann-name.is-announcing { animation: ann-flash 1s linear 4; }
 @keyframes ann-fade-out { from { opacity: 1; } to { opacity: 0; } }
 .ann-name.is-fading { animation: ann-fade-out .05s linear forwards; }
 .ann-name.is-returning  { animation: ann-return .22s ease-out; }
@@ -1032,7 +1032,7 @@ document.querySelectorAll('.s-x').forEach(function (x) {
   var names = [].slice.call(document.querySelectorAll('.ann-name'));
   var play = document.getElementById('annPlay');
   if (!names.length || !play) return;
-  var STEP = 1000, FLASHES = 4, FADE = 50, GAP = 900, STATION = 'KISS 92.5';
+  var STEP = 1000, FLASHES = 5, FADE = 50, GAP = 900, STATION = 'KISS 92.5';
   /* The lit part of one blink. The last blink needs its own, or it is
      taken away in the same breath as the cycle before it hands it back. */
   var ON = Math.round(STEP * 0.45);
