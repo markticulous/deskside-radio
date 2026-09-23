@@ -192,6 +192,35 @@ rem one. An empty profile is the alarming outcome here: the radio comes up
 rem with none of your stations, and nothing on screen says why.
 if not exist "%PROFILE%\" if exist "%LOCALAPPDATA%\DesksideRadio\profile\" set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile"
 
+rem ---- the radio this person actually opens ---------------------------------
+rem
+rem Chosen from the Desktop, not from what is installed. Somebody who uses the
+rem Edge shortcut keeps their stations in profile-edge, and an entry built for
+rem Chrome's profile opened either a different set of stations or, on a
+rem machine without Chrome, Edge with none at all. The updater repoints this
+rem entry through this script, so every update used to make it again.
+rem
+rem The Edge shortcut alone means Edge and its profile. The Chrome one, both,
+rem only Firefox or none is the old behaviour, unchanged. The Desktop is asked
+rem for rather than assumed, because OneDrive and folder redirection move it.
+rem
+rem After the migration above, which moves an old unnamed profile into PROFILE
+rem when PROFILE is missing: pointed at profile-edge first, it would carry a
+rem Chrome user's stations into Edge's folder.
+set "DESK="
+set "EDGEONLY="
+set "PROFARG="
+for /f "usebackq delims=" %%D in (`%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -Command "[Environment]::GetFolderPath('Desktop')"`) do set "DESK=%%D"
+if defined DESK if not exist "%DESK%\Deskside Radio.lnk" if exist "%DESK%\Deskside Radio (Edge).lnk" set "EDGEONLY=1"
+set "EB="
+if defined EDGEONLY if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" set "EB=%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"
+if defined EDGEONLY if not defined EB if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" set "EB=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
+if defined EB set "BROWSER=%EB%"
+if defined EB set "BROWSERNAME=Microsoft Edge"
+if defined EB set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile-edge"
+rem With a leading space, so it can be added to the opener's arguments as is.
+if defined EB set "PROFARG= profile-edge"
+
 rem The flags that keep the profile from filling with things a browser
 rem showing one local file will never consult. Word for word the line in
 rem "Win - Open Deskside Radio.cmd"; a test holds the copies together.
@@ -234,10 +263,10 @@ rem contain a space, so it needs no quoting of its own.
   "$q = [char]34;" ^
   "if ($env:BROWSER -and $env:OPENER) {" ^
   "  $link.TargetPath = $env:WSCRIPT;" ^
-  "  $link.Arguments = $q + $env:OPENER + $q + ' ' + $q + $env:BROWSER + $q;" ^
+  "  $link.Arguments = $q + $env:OPENER + $q + ' ' + $q + $env:BROWSER + $q + $env:PROFARG;" ^
   "} elseif ($env:BROWSER -and $env:OPENERCMD) {" ^
   "  $link.TargetPath = $env:OPENERCMD;" ^
-  "  $link.Arguments = $q + $env:BROWSER + $q;" ^
+  "  $link.Arguments = $q + $env:BROWSER + $q + $env:PROFARG;" ^
   "  $link.WindowStyle = 7;" ^
   "} elseif ($env:BROWSER) {" ^
   "  $url = ([Uri]$env:TARGET).AbsoluteUri;" ^

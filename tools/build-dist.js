@@ -159,7 +159,10 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
    download -- there is one string, and it cannot drift. */
 fs.mkdirSync(path.join(OUT, ASSETS), { recursive: true });
 fs.readdirSync(path.join(ROOT, ASSETS))
-  .filter(function (f) { return /\.(?:ico|ps1)$/i.test(f); })
+  /* And hls.js with its licence, which Apache-2.0 asks to travel with every
+     copy. Loaded from here by the page, only in a browser with no native
+     HLS, which is Firefox. */
+  .filter(function (f) { return /\.(?:ico|ps1)$/i.test(f) || f === 'hls.light.min.js' || f === 'hls.js-LICENSE.txt'; })
   .forEach(function (f) {
     fs.copyFileSync(path.join(ROOT, ASSETS, f), path.join(OUT, ASSETS, f));
   });

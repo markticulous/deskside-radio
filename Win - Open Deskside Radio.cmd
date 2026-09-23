@@ -180,6 +180,10 @@ rem fragments, and nothing ran. Called directly, as it always was.
   "    Set-Content -LiteralPath (Join-Path $out 'startup.js') -Value $line2 -Encoding ASCII -NoNewline }" ^
   "} catch { }"
 
+rem Firefox takes none of the flags below -- no --app, no --window-size --
+rem so it has its own way in. See :firefox.
+if /i "%~nx1"=="firefox.exe" goto :firefox
+
 rem One PowerShell call does the lot, because it is the only thing here
 rem that can build a file:// URL, wait on a window and call into user32.
 rem Every quote is [char]34: a literal one would close the -Command string
@@ -271,6 +275,56 @@ rem  Nothing is installed to make this happen. No service, no scheduled
 rem  task, no registry key, nothing left running. This process exits a
 rem  moment after the download, as it always did.
 rem ---------------------------------------------------------------------
+call :autoupdate
+exit /b 0
+
+rem ---- Firefox ------------------------------------------------------------
+rem
+rem Firefox has no --window-size and no --app, and a page may not resize an
+rem ordinary Firefox window -- so without this the radio came up at whatever
+rem size Firefox last remembered, maximised as often as not. But this profile
+rem is the radio's own, and Firefox keeps window geometry in its
+rem xulstore.json. So the size goes there before every start: every start,
+rem because Firefox writes the last size back over it on exit.
+rem
+rem 1133x796, measured rather than chosen. The Chrome app window above,
+rem started at 1133x741, gives the page 1119x704; Firefox's frame is 14
+rem across and 92 down. So this is the size that gives Firefox's page the
+rem same area. xulstore is in CSS pixels, which is what a DPI-unaware
+rem PowerShell reports for the screen, so the centring is in the same units.
+rem
+rem Merged into what is there rather than written over it -- the file holds
+rem other things of the profile's -- and written without a byte-order mark,
+rem which Firefox's JSON reader does not expect. If any of that fails, Firefox
+rem is started anyway and opens at its own size: a wrong size is a nuisance,
+rem not starting is a fault.
+rem
+rem No window lock here. The grip-removal finds windows whose title ends
+rem "Deskside Radio", and Firefox appends its own name to every title.
+:firefox
+set "FXPROFILE=%LOCALAPPDATA%\DesksideRadio\profile-firefox"
+"%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$p = $env:FXPROFILE;" ^
+  "try {" ^
+  "  New-Item -ItemType Directory -Force -Path $p | Out-Null;" ^
+  "  $f = Join-Path $p 'xulstore.json'; $x = $null;" ^
+  "  if (Test-Path -LiteralPath $f) { try { $x = Get-Content -Raw -LiteralPath $f | ConvertFrom-Json } catch { $x = $null } };" ^
+  "  if (-not $x) { $x = New-Object PSObject };" ^
+  "  $k = 'chrome://browser/content/browser.xhtml';" ^
+  "  if (-not $x.PSObject.Properties[$k]) { $x | Add-Member -NotePropertyName $k -NotePropertyValue (New-Object PSObject) };" ^
+  "  $w = $x.$k;" ^
+  "  if (-not $w.PSObject.Properties['main-window']) { $w | Add-Member -NotePropertyName 'main-window' -NotePropertyValue (New-Object PSObject) };" ^
+  "  $m = $w.'main-window';" ^
+  "  Add-Type -AssemblyName System.Windows.Forms;" ^
+  "  $a = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea;" ^
+  "  $sx = [int]($a.X + [Math]::Max(0, ($a.Width - 1133) / 2));" ^
+  "  $sy = [int]($a.Y + [Math]::Max(0, ($a.Height - 796) / 2));" ^
+  "  foreach ($kv in @(@('width','1133'), @('height','796'), @('screenX',[string]$sx), @('screenY',[string]$sy), @('sizemode','normal'))) {" ^
+  "    $m | Add-Member -NotePropertyName $kv[0] -NotePropertyValue $kv[1] -Force };" ^
+  "  [System.IO.File]::WriteAllText($f, ($x | ConvertTo-Json -Depth 8 -Compress));" ^
+  "} catch { };" ^
+  "$q = [char]34; $u = ([Uri]$env:TARGET).AbsoluteUri;" ^
+  "Start-Process -FilePath $env:BROWSER -ArgumentList ('-profile ' + $q + $p + $q + ' -new-window ' + $q + $u + $q)"
 call :autoupdate
 exit /b 0
 

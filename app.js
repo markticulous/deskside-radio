@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.5.7';
+  var APP_VERSION = '1.5.8';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -31,10 +31,11 @@
     stations: [
       { id: 'covers', name: '100% Covers Lounge', band: '100 FM', tag: 'MP3 · 128 kbps · Toronto',
         url: 'https://az1.mediacp.eu/listen/100coverslounge/radio.mp3', color: '#5b2a86', bass: 0, treble: 0 },
-      /* CBC hands out an HLS playlist rather than a plain stream. Every
-         current desktop browser plays it off the element, Chrome included,
-         so it needs no library — see the note in radio-directory.js about
-         judging a stream by whether it holds up, not by its extension. */
+      /* CBC hands out an HLS playlist rather than a plain stream. Chrome,
+         Edge and Safari play it off the element; Firefox does not -- measured
+         in 155 and 156, canPlayType answers '' -- and gets it through hls.js,
+         loaded only then. See the note in radio-directory.js about judging a
+         stream by whether it holds up, not by its extension. */
       { id: 'cbc1', name: 'CBC Radio 1 · Toronto', band: '99.1 FM', tag: 'CBLA-FM',
         url: 'https://cbcradiolive.akamaized.net/hls/live/2041036/ES_R1ETR/master.m3u8', color: '#a8321c', bass: 0, treble: 0 },
       { id: 'cfrb', name: 'NewsTalk 1010', band: '1010 AM', tag: "Toronto's news, traffic and weather, all day.",
@@ -660,6 +661,7 @@
   }
   function useElement(next) {
     if (audio === next) return;
+    releaseHls();
     try { audio.pause(); audio.removeAttribute('src'); audio.load(); } catch (e) { /* already idle */ }
     audio = next;
   }
@@ -766,6 +768,73 @@
      stopped working should not outlive the session that picked it. If the
      master cannot be read the master is tuned, which is what happened
      before, so nothing is worse off for trying. */
+  /* ---------- HLS where the element cannot play it ----------
+
+     Firefox has no native HLS -- measured: canPlayType answers '' for it,
+     where Chrome and Edge answer 'maybe' -- but it does have MediaSource
+     with AAC. hls.js bridges the two, into the same element, so everything
+     downstream sees an ordinary element playing: the graph, the meters, the
+     silence and stall watchdogs, the retries.
+
+     Only where it is needed. A browser with native HLS keeps the path it
+     always had and never loads the file, which is fetched from assets/ the
+     first time a station needs it rather than folded into the page. */
+  var hlsLib = null;          // the player on the current element, if any
+  var hlsLibState = 'unloaded'; // unloaded | loading | ready | missing
+
+  function needsHlsLib(url) {
+    if (Directory.streamKind(url) !== 'hls' && !/\.m3u8(\?|$)/i.test(url)) return false;
+    var probe = audio || corsEl;
+    return !(probe && probe.canPlayType && probe.canPlayType('application/vnd.apple.mpegurl'));
+  }
+
+  /* Detached before every new load and on stop. A player left attached
+     keeps fetching segments into an element that has moved on. */
+  function releaseHls() {
+    if (!hlsLib) return;
+    try { hlsLib.destroy(); } catch (e) { /* already gone */ }
+    hlsLib = null;
+  }
+
+  /* Fetched once, from beside the page. A script tag is the only way a
+     file:// page can load one, the same door version.js comes through. If
+     the file is missing -- a folder from before it shipped -- the element
+     is tried on its own and fails the ordinary way, with the retries. */
+  function loadHlsLib(then) {
+    if (hlsLibState === 'ready' || hlsLibState === 'missing') { then(); return; }
+    var queue = loadHlsLib.queue || (loadHlsLib.queue = []);
+    queue.push(then);
+    if (hlsLibState === 'loading') return;
+    hlsLibState = 'loading';
+    var s = document.createElement('script');
+    s.src = 'assets/hls.light.min.js';
+    function done(ok) {
+      hlsLibState = ok && window.Hls && window.Hls.isSupported() ? 'ready' : 'missing';
+      var q = queue.splice(0);
+      q.forEach(function (fn) { fn(); });
+    }
+    s.onload = function () { done(true); };
+    s.onerror = function () { done(false); };
+    document.head.appendChild(s);
+  }
+
+  /* The element's source, through hls.js. A fatal error is handed to the
+     same onFailure the element's own error event reaches, so reconnecting
+     works exactly as it does for every other stream; the non-fatal ones
+     hls.js recovers from by itself and are left to it. */
+  function attachHls(url) {
+    releaseHls();
+    var h = new window.Hls({ lowLatencyMode: false, enableWorker: true });
+    h.on(window.Hls.Events.ERROR, function (ev, data) {
+      if (!data || !data.fatal || hlsLib !== h) return;
+      releaseHls();
+      onFailure();
+    });
+    hlsLib = h;
+    h.loadSource(url);
+    h.attachMedia(audio);
+  }
+
   var hlsVariant = {};
   var hlsTried = {};
   var hlsLadder = {};
@@ -863,14 +932,27 @@
       resolveHlsThenTune(st, volume);
       return;
     }
+    var src = hlsVariant[st.url] || st.url;
+    /* Firefox and its like: fetch hls.js first, then come back here. */
+    if (needsHlsLib(src) && hlsLibState !== 'ready' && hlsLibState !== 'missing') {
+      state.currentStationId = st.id;
+      renderStation(st);
+      loadHlsLib(function () { if (state.currentStationId === st.id) tune(st, volume); });
+      return;
+    }
     clearTimeout(retryTimer); retryTimer = null;
     state.currentStationId = st.id;
+    releaseHls();
     useElement(elementFor(st));
     loadTone(st);
     setVolume(typeof volume === 'number' ? volume : state.volume, true);
     renderStation(st);
-    audio.src = hlsVariant[st.url] || st.url;
-    audio.load();
+    if (hlsLibState === 'ready' && needsHlsLib(src)) {
+      attachHls(src);
+    } else {
+      audio.src = src;
+      audio.load();
+    }
     liveSince = 0; lastTime = -1; stuckSince = 0; startedThisTune = false;
     syncedThisTune = false;
     // Let the meters fall away rather than freeze on the old station's level.
@@ -925,6 +1007,7 @@
     clearTimeout(retryTimer); retryTimer = null;
     stopSilentRetry();
     silentTries = 0;
+    releaseHls();
     audio.pause();
     audio.removeAttribute('src');
     audio.load();
