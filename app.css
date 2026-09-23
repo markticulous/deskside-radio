@@ -198,15 +198,32 @@
    The ring stays the button's own ground showing through, which is why it
    is currentColor at low alpha rather than a background this rule would
    have to guess at. */
-/* In the button's own corner, clear of the drawn glyph rather than over it.
+/* Clear of the drawn glyph rather than over it, and how far out depends on
+   whether there is a button drawn round it.
 
    At top/right 6 it sat on the gear: a 20px glyph centred in a 40px button
    reaches to 10px from each edge, and the dot's box ran from 6 to 13. The
-   corner is the one place that is the button's and not the icon's -- and it
-   is the corner in the 32px faces too, where the glyph is the same 20px and
-   leaves only 6px round it. */
+   corner is the one place that is the button's and not the icon's -- where
+   there is a button to be in the corner of. Five of the eight themes draw
+   one; on the other three the 40px box is invisible and the dot reads as
+   floating near the glyph rather than marking it.
+
+   --dot-inset is the contract, and it is written the way round that makes a
+   new theme right by default. Close is the default; a theme that draws a
+   visible edge sets it to 0 in the same rule that draws the edge, so the
+   declaration causing the problem is the one answering it and the two
+   cannot drift apart. CSS cannot be asked whether a button has an edge --
+   these five use a border, an inset shadow and a background between them --
+   and a list of theme names here would go stale at the ninth theme.
+
+   A percentage, so one number carries both button sizes: 10% is 4px on the
+   40px faces and 3.2px on the 32px ones, and in both it lands the dot just
+   clear of the glyph's corner. Percentages on top resolve against the
+   containing block's height and on right against its width; these are
+   square. */
 #openSettings.has-update::after {
-  content: ''; position: absolute; top: 0; right: 0;
+  content: ''; position: absolute;
+  top: var(--dot-inset, 10%); right: var(--dot-inset, 10%);
   width: 6px; height: 6px; border-radius: 50%;
   background: var(--alert, #ff8f2e);
   box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 22%, transparent);
@@ -1138,7 +1155,7 @@
 [data-theme="console"] .sched-chip[aria-pressed="true"] .sched-led::after { left: 18px; background: linear-gradient(#8bffb0, var(--green)); box-shadow: 0 0 8px rgba(46,229,106,.55); }
 [data-theme="console"] .sched-chip[aria-pressed="true"] .sched-label { color: var(--amber); }
 [data-theme="console"] .sched-next { font-size: 12px; color: var(--mute); opacity: 1; }
-[data-theme="console"] .icon-btn { color: var(--mute); border: 1px solid var(--line); border-radius: 2px; background: var(--panel); }
+[data-theme="console"] .icon-btn { color: var(--mute); border: 1px solid var(--line); border-radius: 2px; background: var(--panel); --dot-inset: 0; }
 [data-theme="console"] .icon-btn:hover { color: var(--text); }
 
 [data-theme="console"] .display {
@@ -1490,7 +1507,7 @@
 [data-theme="rams"] .sched-led { width: 7px; height: 7px; border-radius: 50%; background: var(--rule); }
 [data-theme="rams"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--green); }
 [data-theme="rams"] .sched-next { color: var(--mute); opacity: 1; }
-[data-theme="rams"] .icon-btn { border-radius: 50%; background: var(--body-2); color: var(--ink); }
+[data-theme="rams"] .icon-btn { border-radius: 50%; background: var(--body-2); color: var(--ink); --dot-inset: 0; }
 
 [data-theme="rams"] .display {
   padding: 8px 0 0;
@@ -1783,7 +1800,7 @@
 [data-theme="retro"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--green); }
 [data-theme="retro"] .sched-next { font-size: 8px; color: var(--grey); opacity: 1; }
 [data-theme="retro"] .icon-btn { width: 32px; height: 32px; border-radius: 0; color: var(--grey);
-  box-shadow: inset 0 0 0 2px var(--dark); }
+  box-shadow: inset 0 0 0 2px var(--dark); --dot-inset: 0; }
 [data-theme="retro"] .icon-btn:hover { color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
 
 [data-theme="retro"] .display-band { font-size: 9px; letter-spacing: 0; color: var(--sky); }
@@ -1939,7 +1956,7 @@
 [data-theme="departures"] .sched-led { width: 7px; height: 7px; border-radius: 0; background: var(--line); }
 [data-theme="departures"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--lime); }
 [data-theme="departures"] .sched-next { font-size: 12px; letter-spacing: .12em; color: var(--mute); opacity: 1; }
-[data-theme="departures"] .icon-btn { width: 32px; height: 32px; border-radius: 0; color: var(--mute); box-shadow: inset 0 0 0 1px var(--line); }
+[data-theme="departures"] .icon-btn { width: 32px; height: 32px; border-radius: 0; color: var(--mute); box-shadow: inset 0 0 0 1px var(--line); --dot-inset: 0; }
 [data-theme="departures"] .icon-btn:hover { color: var(--ink); }
 
 [data-theme="departures"] .display-band { font-size: 13px; letter-spacing: .24em; text-transform: uppercase; color: var(--mute); }
@@ -2106,7 +2123,7 @@
 [data-theme="marconi"] { --sched-on: #7ad6a0; }
 [data-theme="marconi"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--sched-on); box-shadow: 0 0 7px rgba(122,214,160,.75); }
 [data-theme="marconi"] .sched-next { font-size: 10px; letter-spacing: .16em; color: var(--mute); opacity: 1; }
-[data-theme="marconi"] .icon-btn { width: 32px; height: 32px; border-radius: 0; color: var(--mute); box-shadow: inset 0 0 0 1px #4a3d1e; }
+[data-theme="marconi"] .icon-btn { width: 32px; height: 32px; border-radius: 0; color: var(--mute); box-shadow: inset 0 0 0 1px #4a3d1e; --dot-inset: 0; }
 [data-theme="marconi"] .icon-btn:hover { color: var(--gold-hi); box-shadow: inset 0 0 0 1px var(--gold); }
 
 [data-theme="marconi"] .display { text-align: center; }
@@ -2321,6 +2338,8 @@
 [data-theme="tivoli"] .icon-btn {
   width: 32px; height: 32px; border-radius: 3px; color: #d8bfa4;
   background: rgba(0,0,0,.18); box-shadow: inset 0 0 0 1px rgba(255,220,180,.2);
+  /* There is a button drawn here, so the dot keeps its corner. */
+  --dot-inset: 0;
 }
 [data-theme="tivoli"] .icon-btn:hover { color: #fbe6cf; background: rgba(0,0,0,.3); }
 
