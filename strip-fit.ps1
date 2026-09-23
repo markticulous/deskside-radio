@@ -4,7 +4,14 @@ param(
     # path, every window it sees and every resize it attempts is noted, which
     # is the only way to tell "it never found the window" apart from "it found
     # the window and Windows refused".
-    [string]$LogPath
+    [string]$LogPath,
+
+    # Firefox. Set by the launcher's Firefox branch. Firefox will not let the
+    # page move or size its own window, so on pin this moves the big window
+    # off the screen instead and puts it back on unpin -- and leaves the float's
+    # size alone, since Firefox draws an address bar in it that Chrome's
+    # numbers would crop.
+    [switch]$Firefox
 )
 
 # Deskside Radio -- sizes the floating strip.
@@ -94,7 +101,12 @@ $MAX_MINUTES = 720
 # one is still noticing the radio has gone: giving up immediately meant the new
 # one stood down, the old one then exited, and the next pin had no watcher at
 # all.
-$mutex = New-Object System.Threading.Mutex($false, 'Local\DesksideRadioStripFit')
+# One slot per browser family, not one in all. With a single slot a Firefox
+# radio's watcher held it, Chrome's quit, and the Firefox one then treated
+# Chrome's windows as Firefox's -- which broke Chrome's pin and unpin.
+$slot = 'Local\DesksideRadioStripFit'
+if ($Firefox) { $slot = 'Local\DesksideRadioStripFitFirefox' }
+$mutex = New-Object System.Threading.Mutex($false, $slot)
 $mine = $false
 try { $mine = $mutex.WaitOne(4000) } catch [System.Threading.AbandonedMutexException] { $mine = $true }
 if (-not $mine) { return }
@@ -137,6 +149,12 @@ public static extern bool GetWindowRect(System.IntPtr h, out RECT r);
 // there. Windows 10 1607 and later; if it is missing the fallback is 96.
 [System.Runtime.InteropServices.DllImport("user32.dll")]
 public static extern int GetDpiForWindow(System.IntPtr h);
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+public static extern int GetSystemMetrics(int i);
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+public static extern bool IsZoomed(System.IntPtr h);
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+public static extern bool ShowWindow(System.IntPtr h, int c);
 
 [System.Runtime.InteropServices.DllImport("user32.dll")]
 public static extern System.IntPtr MonitorFromWindow(System.IntPtr h, uint flags);
@@ -179,7 +197,7 @@ function Get-RadioWindows {
             $sb = New-Object System.Text.StringBuilder 512
             [void][DsFit.Win]::GetWindowTextW($h, $sb, 512)
             $t = $sb.ToString()
-            if ($t -and $t.EndsWith($script:tail)) {
+            if ($t -and ($t.EndsWith($script:tail) -or $t.EndsWith($script:fxtail))) {
                 $ex = [DsFit.Win]::GetWindowLongPtr($h, $script:gwl).ToInt64()
                 $r = New-Object DsFit.Win+RECT
                 [void][DsFit.Win]::GetWindowRect($h, [ref]$r)
@@ -201,6 +219,12 @@ function Get-RadioWindows {
 }
 
 $script:tail = $RADIO_TAIL
+# Firefox puts its own name after every title, behind an em dash. Built from
+# the code point rather than typed: Windows PowerShell reads a file without a
+# byte-order mark as ANSI, and a typed em dash would arrive as three bytes of
+# something else and never match.
+$script:fxtail = $RADIO_TAIL + ' ' + [char]0x2014 + ' Mozilla Firefox'
+$stowed = $null
 $script:gwl = $GWL_EXSTYLE
 $script:topmost = $WS_EX_TOPMOST
 
@@ -221,6 +245,9 @@ while ($true) {
     if ((Get-Date) -gt $until) { Note "twelve hours; stopping"; break }
 
     $wins = Get-RadioWindows
+    # Only this mode's own browser. Firefox names every window with its own
+    # suffix and Chrome and Edge do not, so the suffix divides them cleanly.
+    $wins = @($wins | Where-Object { $_.Title.EndsWith($script:fxtail) -eq [bool]$Firefox })
 
     if ($LogPath) {
         $now = ($wins | ForEach-Object { "$($_.Title) [$(if ($_.Topmost) {'TOPMOST'} else {'normal'})] $($_.W)x$($_.T)" }) -join ' ;; '
@@ -243,6 +270,57 @@ while ($true) {
     # that, its absence means the app has been closed.
     if ($wins | Where-Object { -not $_.Topmost }) { $sawRadio = $true }
     elseif ($sawRadio) { Note "the radio has gone; stopping"; break }
+
+    # Firefox: out of the way on pin, back on unpin. The float is the topmost
+    # one; the big window is the other. Remembered by handle and rectangle, so
+    # it comes back exactly where it was. Past the right-hand edge of the whole
+    # virtual screen, not merely behind the float: Firefox will not go narrower
+    # than 515px, so tucked behind a 355px float it still showed. Tested there
+    # before this was written, and Firefox keeps drawing the page -- which is
+    # what paints the float -- so the mini radio's visualiser does not stop.
+    # A maximised radio window goes straight back to its own size. Chrome and
+    # Edge draw their own maximise button whatever the window style says, so it
+    # cannot be removed from outside; this makes it do nothing. The float is
+    # left alone -- it is the big window that has a size to keep.
+    foreach ($mw in ($wins | Where-Object { -not $_.Topmost })) {
+        if ([DsFit.Win]::IsZoomed($mw.H)) {
+            [void][DsFit.Win]::ShowWindow($mw.H, 9)
+            Note "radio window was maximised; put back"
+        }
+    }
+
+    if ($Firefox) {
+        # The resize lock, on both windows. See the note on this in the Firefox
+        # branch of the launcher: whether Firefox honours it is the open question,
+        # so each change is logged. Only when the style is still there, so a
+        # window that has kept it off costs one read a pass.
+        foreach ($fw in $wins) {
+            $st = [DsFit.Win]::GetWindowLongPtr($fw.H, $GWL_STYLE).ToInt64()
+            $locked = $st -band -bnot ($WS_THICKFRAME -bor $WS_MAXIMIZEBOX)
+            if ($locked -ne $st) {
+                [void][DsFit.Win]::SetWindowLongPtr($fw.H, $GWL_STYLE, [System.IntPtr]$locked)
+                [void][DsFit.Win]::SetWindowPos($fw.H, [System.IntPtr]::Zero, 0, 0, 0, 0, 0x0027)
+                $which = 'the radio window'; if ($fw.Topmost) { $which = 'the float' }
+                Note ("locked {0}: style {1:X} -> {2:X}" -f $which, $st, $locked)
+            }
+        }
+
+        $float = $wins | Where-Object { $_.Topmost } | Select-Object -First 1
+        $main = $wins | Where-Object { -not $_.Topmost } | Select-Object -First 1
+        if ($float -and $main -and -not $stowed) {
+            $stowed = [pscustomobject]@{ H = $main.H; X = $main.X; Y = $main.Y; W = $main.W; T = $main.T }
+            $vx = [DsFit.Win]::GetSystemMetrics(76); $vy = [DsFit.Win]::GetSystemMetrics(77)
+            $vw = [DsFit.Win]::GetSystemMetrics(78)
+            $ok = [DsFit.Win]::SetWindowPos($main.H, [System.IntPtr]::Zero, $vx + $vw + 50, $vy + 50, $main.W, $main.T, 0x0014)
+            Note "pinned: radio window moved off-screen from $($main.X),$($main.Y) -> $ok"
+        } elseif (-not $float -and $stowed) {
+            $ok = [DsFit.Win]::SetWindowPos($stowed.H, [System.IntPtr]::Zero, $stowed.X, $stowed.Y, $stowed.W, $stowed.T, 0x0014)
+            Note "unpinned: radio window back at $($stowed.X),$($stowed.Y) -> $ok"
+            $stowed = $null
+        }
+        Start-Sleep -Milliseconds 200
+        continue
+    }
 
     foreach ($w in ($wins | Where-Object { $_.Topmost })) {
         if ($done.Contains($w.H)) { continue }

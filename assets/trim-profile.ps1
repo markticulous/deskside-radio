@@ -58,9 +58,28 @@ $junk = @(
 
 $freed = 0
 
+# A profile whose browser is open is left alone: this is called by the
+# installer, and the radio can be playing through an update. Matched on the
+# profile's own folder name in the browser's command line.
+function Running([string]$name) {
+  [bool](Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains($name) })
+}
+
+function Drop([string]$target) {
+  if (-not (Test-Path -LiteralPath $target)) { return }
+  $size = (Get-ChildItem -LiteralPath $target -Recurse -Force -File | Measure-Object -Property Length -Sum).Sum
+  Remove-Item -LiteralPath $target -Recurse -Force
+  if (-not (Test-Path -LiteralPath $target)) { $script:freed += [double]$size }
+}
+
 foreach ($name in @('profile-chrome', 'profile-edge')) {
   $dir = Join-Path $root $name
   if (-not (Test-Path -LiteralPath $dir)) { continue }
+  if (Running $name) { continue }
+  # Extensions nothing of ours installed. The launcher starts these profiles
+  # with --disable-extensions, so they would never load; PDF tools register
+  # with every Chrome profile on the machine, and this one had 20 MB of them.
+  Drop (Join-Path $dir 'Default\Extensions')
 
   foreach ($j in $junk) {
     $target = Join-Path $dir $j
@@ -90,6 +109,17 @@ foreach ($name in @('profile-chrome', 'profile-edge')) {
         $o | Add-Member -NotePropertyName savefile -NotePropertyValue (New-Object PSObject) -Force
       }
       $o.savefile | Add-Member -NotePropertyName default_directory -NotePropertyValue $app -Force
+      # Dark: the browser's own Appearance setting, found by choosing it in
+      # Edge's settings and comparing the file. Chromium's key, so Chrome
+      # reads it too. It darkens menus, dialogs and settings; the title bar
+      # follows Windows' accent-colour setting, which this cannot touch.
+      if (-not $o.browser) {
+        $o | Add-Member -NotePropertyName browser -NotePropertyValue (New-Object PSObject) -Force
+      }
+      if (-not $o.browser.theme) {
+        $o.browser | Add-Member -NotePropertyName theme -NotePropertyValue (New-Object PSObject) -Force
+      }
+      $o.browser.theme | Add-Member -NotePropertyName color_scheme2 -NotePropertyValue 2 -Force
       # Depth well past anything Chrome nests, because the default of 2
       # would quietly flatten most of this file into strings.
       $json = $o | ConvertTo-Json -Depth 100 -Compress
@@ -103,8 +133,20 @@ foreach ($name in @('profile-chrome', 'profile-edge')) {
     $fresh = @{
       download = @{ default_directory = $app; prompt_for_download = $false }
       savefile = @{ default_directory = $app }
+      browser = @{ theme = @{ color_scheme2 = 2 } }
     } | ConvertTo-Json -Depth 4
     Set-Content -LiteralPath $prefs -Value $fresh -Encoding ASCII
+  }
+}
+
+# Firefox, which was never trimmed at all and was the largest by far. Named
+# folders only, all of them caches or things the radio does not use: never
+# 'storage', which is where Firefox keeps the stations and settings.
+$fx = Join-Path $root 'profile-firefox'
+if ((Test-Path -LiteralPath $fx) -and -not (Running 'profile-firefox')) {
+  foreach ($j in @('cache2', 'startupCache', 'gmp-widevinecdm', 'crashes', 'minidumps',
+                   'datareporting', 'saved-telemetry-pings', 'shader-cache')) {
+    Drop (Join-Path $fx $j)
   }
 }
 
