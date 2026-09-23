@@ -17,3 +17,9 @@
 *.png  binary
 *.otf  binary
 *.woff binary
+
+# Vendored third-party files stay byte-for-byte as published. hls.js was
+# checked against the npm registry's sha512; line-ending conversion would
+# quietly make every checkout disagree with that.
+assets/hls.light.min.js -text
+assets/hls.js-LICENSE.txt -text
