@@ -188,18 +188,18 @@ test('volumeToGain is linear in decibels, so every step of the fader is worth th
   // Measured: a power-law fader spends its top third inside 1 dB on real
   // broadcast material. Constant dB per unit is what keeps climbing.
   const db = (v) => 20 * Math.log10(S.volumeToGain(v));
-  for (let v = 10; v <= 90; v += 10) near(db(v + 10) - db(v), 6, 0.001);
+  for (let v = 10; v <= 90; v += 10) near(db(v + 10) - db(v), 4, 0.001);
 });
 
 test('volumeToGain leaves the top of the travel plenty to do', () => {
   const db = (v) => 20 * Math.log10(S.volumeToGain(v));
-  near(db(100) - db(70), 18, 0.001);
-  near(db(100) - db(95), 3, 0.001);
+  near(db(100) - db(70), 12, 0.001);
+  near(db(100) - db(95), 2, 0.001);
 });
 
 test('volumeToGain spans a usable range and rises monotonically', () => {
   const db = (v) => 20 * Math.log10(S.volumeToGain(v));
-  near(db(100) - db(1), 59.4, 0.001);
+  near(db(100) - db(1), 39.6, 0.001);
   let prev = -1;
   for (let v = 0; v <= 100; v += 5) {
     const g = S.volumeToGain(v);
@@ -240,7 +240,7 @@ test('migrateVolume moves a mid setting up the new scale, not down', () => {
   // 60 was almost full volume under the old curve, so it must land near the top.
   const v = S.migrateVolume(60);
   assert.ok(v > 90 && v <= 100, 'got ' + v);
-  assert.ok(S.migrateVolume(30) > 60, 'got ' + S.migrateVolume(30));
+  assert.ok(S.migrateVolume(30) > 50, 'got ' + S.migrateVolume(30));
 });
 
 test('migrateVolume never goes backwards and stays in range', () => {
@@ -269,4 +269,24 @@ test('parseBand still reads every band shape it needs to', () => {
   assert.deepEqual(S.parseBand('530 am'), { kind: 'am', value: 530 });
   assert.deepEqual(S.parseBand('107.9 FM'), { kind: 'fm', value: 107.9 });
   assert.deepEqual(S.parseBand('88.1 fm'), { kind: 'fm', value: 88.1 });
+});
+
+test('the bottom third of the fader is audible', () => {
+  /* The reason the range is 40 dB. At 60, slider 33 was -40 dB, and on top of
+     programme that already sits near -18 dBFS that is too quiet to hear on
+     ordinary speakers -- a third of the travel doing nothing. */
+  const db = (v) => 20 * Math.log10(S.volumeToGain(v));
+  assert.ok(db(33) > -30, 'slider 33 is ' + db(33).toFixed(1) + ' dB, which is inaudible on most speakers');
+});
+
+test('a volume saved on the 60 dB fader keeps its loudness', () => {
+  const oldDb = (v) => v / 100 * 60 - 60;
+  const newDb = (v) => 20 * Math.log10(S.volumeToGain(v));
+  [50, 66, 75, 90, 100].forEach(function (v) {
+    assert.ok(Math.abs(newDb(S.migrateVolume60(v)) - oldDb(v)) <= 0.21,
+      v + ' was ' + oldDb(v) + ' dB and came back ' + newDb(S.migrateVolume60(v)).toFixed(1));
+  });
+  assert.equal(S.migrateVolume60(0), 0, 'muted stays muted');
+  /* Quieter than the new range reaches: lands on 1, not 0. */
+  assert.equal(S.migrateVolume60(20), 1, 'a quiet setting was muted by the migration');
 });
