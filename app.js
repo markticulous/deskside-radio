@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.5.5';
+  var APP_VERSION = '1.5.6';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -92,6 +92,11 @@
        and never remembered -- but whether the round trip has ever worked,
        which is also when the browser's permission was granted. Until then
        the control is a button rather than a switch. */
+    /* Which of the mini radio's four visualisations is showing. A
+       preference about how the app looks, so it is remembered; choosing
+       it again at every pin would make it a toy rather than a choice.
+       An unknown value falls back to the bars. */
+    miniViz: 'bars',
     startupUsed: false,
     versionCheck: true,
     versionLastCheck: 0,
@@ -298,6 +303,12 @@
   var provenCors = {};   // url -> true, once it has actually played through the tap.
 
   var ctx = null, analyser = null, gainNode = null, bassNode = null, trebleNode = null;
+  /* A second analyser, on the far end of the graph, for the mini radio's
+     scope. The one above is first in the chain on purpose so the meter
+     reads the broadcast; this one is last, so the trace answers the volume
+     and the tone controls the way a scope on the speaker leads would.
+     Small window -- the trace is 46 pixels wide and takes 24 points. */
+  var scopeAn = null, scopeData = null;
   var recTap = null;
   var timeData = null, freqData = null;
 
@@ -406,7 +417,8 @@
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     try { buildGraph(new AC()); }
-    catch (e) { ctx = null; analyser = null; gainNode = null; bassNode = null; trebleNode = null; }
+    catch (e) { ctx = null; analyser = null; gainNode = null; bassNode = null; trebleNode = null;
+      scopeAn = null; scopeData = null; }
   }
 
   /* Wraps the element. This is the point of no return: a
@@ -428,6 +440,24 @@
     // Chromium's adds makeup gain even far below its threshold.
     src.connect(an); an.connect(lowShelf); lowShelf.connect(highShelf);
     highShelf.connect(g); g.connect(c.destination);
+    /* And the scope's own tap, off the same gain node. A node may feed
+       more than one destination, and an analyser runs without being
+       connected onward -- it is a sink that happens to keep the last
+       window of samples. Nothing downstream hears it. */
+    try {
+      scopeAn = c.createAnalyser();
+      scopeAn.fftSize = 1024;
+      /* And on into a gain of nothing, which is the whole reason this line
+         exists. The graph is pulled from the destination backwards, so a node
+         whose output reaches nothing may never be rendered -- and an analyser
+         that is never rendered hands back a buffer of zeros, which draws a
+         perfectly flat trace and looks exactly like silence. It was a dead end
+         and it read as one. */
+      var sink = c.createGain();
+      sink.gain.value = 0;
+      g.connect(scopeAn); scopeAn.connect(sink); sink.connect(c.destination);
+      scopeData = new Float32Array(scopeAn.fftSize);
+    } catch (e) { scopeAn = null; scopeData = null; }
     /* The recorder taps in beside the tone controls rather than after
        them, so a recording is a copy of what was broadcast: turning the
        volume down, or dialling in bass for the room, changes what comes
@@ -487,7 +517,8 @@
       if (ok) {
         userGestured = true;
         try { buildGraph(c); }
-        catch (e) { ctx = null; analyser = null; gainNode = null; bassNode = null; trebleNode = null; }
+        catch (e) { ctx = null; analyser = null; gainNode = null; bassNode = null; trebleNode = null;
+          scopeAn = null; scopeData = null; }
       } else {
         try { c.close(); } catch (e) { /* already gone */ }
       }
@@ -1086,6 +1117,7 @@
     if (!holding) level = Signal.vuBallistics(level, target, dt);
     TunerUI.setLevel(el.tuner, level);
     paintStripLevel(lit ? target : level);
+    paintStripScope();
 
     // Park the indicators only once the needle has actually fallen to rest.
     var quiet = !lit && !holding && level < 0.004;
@@ -2343,6 +2375,12 @@
   var PIN_W = 340, PIN_H = 88;
 
   var PIN_BARS = 12;
+  /* In the order the click walks them. Bars first because it is the one
+     that was here before, so an existing listener sees no change until
+     they ask for one. */
+  var VIZ = ['bars', 'needle', 'matrix', 'scope', 'sonar'];
+  function vizName(v) { return VIZ.indexOf(v) === -1 ? VIZ[0] : v; }
+  function nextViz(v) { return VIZ[(VIZ.indexOf(vizName(v)) + 1) % VIZ.length]; }
 
   var pipWin = null;
   var strip = null;
@@ -2421,30 +2459,153 @@
     ".dr-note { opacity: 0; transition: opacity .22s ease; }",
     ".dr-strip.is-noting .dr-note { opacity: 1; }",
     ".dr-note:not(:empty)::before { content: \"\\00a0\\00b7\\00a0\"; }",
-    "/* One number per frame, not twelve heights: --dr-vu is the level and --dr-w",
-    "   is each bar's share of it, written once when the strip is built. The same",
-    "   bargain .tuner strikes with its own --vu.",
+    "/* One number per frame, whichever of the four is showing: --dr-vu is the",
+    "   level, written on the button that holds them all, and every child reads",
+    "   it by inheritance. The same bargain .tuner strikes with its own --vu, and",
+    "   the reason this is a second document's worth of paint and not more.",
     "",
-    "   The shares are deliberately uneven. A smooth arch scaled by one number",
-    "   reads as a single object breathing in and out; an irregular one reads as a",
-    "   meter, which is what this is pretending to be. */",
-    ".dr-meter { display: flex; align-items: flex-end; gap: 2px; height: 20px; --dr-vu: 0; margin-right: 10px; }",
-    ".dr-meter i {",
-    "  width: 2px; border-radius: 1px; background: currentColor; opacity: .38;",
-    "  height: calc(2px + var(--dr-vu, 0) * var(--dr-w, 1) * 18px);",
+    "   46x20 for all four -- the width the twelve bars already came to -- so",
+    "   nothing in the row moves when one is swapped for another. */",
+    ".dr-viz {",
+    "  appearance: none; border: 0; background: none; padding: 0; color: inherit;",
+    "  cursor: pointer; position: relative; flex: none;",
+    "  width: 46px; height: 26px; margin-right: 10px; --dr-vu: 0;",
     "}",
-    ".dr-strip.is-live .dr-meter i { opacity: .85; }",
+    ".dr-viz > * { position: absolute; inset: 0; display: none; }",
+    ".dr-viz[data-viz=\"bars\"] .dr-meter,",
+    ".dr-viz[data-viz=\"needle\"] .dr-needle,",
+    ".dr-viz[data-viz=\"matrix\"] .dr-matrix,",
+    ".dr-viz[data-viz=\"scope\"] .dr-scope,",
+    ".dr-viz[data-viz=\"sonar\"] .dr-sonar { display: flex; }",
+    ".dr-viz:focus-visible { outline: 2px solid var(--dr-hot); outline-offset: 2px; border-radius: 3px; }",
+    ".dr-viz svg { width: 100%; height: 100%; overflow: visible; }",
+    "",
+    "/* All five are the strip's own ink, near enough white on the dark face.",
+    "   Orange is kept for the two places it means something: the top of the",
+    "   needle's travel, and the cap at the middle of the speaker. */",
+    "",
+    "/* Bars. The shares are deliberately uneven -- a smooth arch scaled by one",
+    "   number reads as a single object breathing in and out -- and so are the",
+    "   transition times, for the same reason a beat later: twelve bars that",
+    "   settle in exactly the same time are one bar drawn twelve times. */",
+    ".dr-meter { align-items: flex-end; gap: 2px; }",
+    ".dr-meter i {",
+    "  width: 2px; border-radius: 1px; background: currentColor; opacity: .55;",
+    "  height: calc(2px + var(--dr-vu, 0) * var(--dr-w, 1) * 24px);",
+    "  transition: height .05s linear;",
+    "}",
+    ".dr-meter i:nth-child(3n) { transition-duration: .085s; }",
+    ".dr-meter i:nth-child(3n+1) { transition-duration: .035s; }",
+    ".dr-strip.is-live .dr-meter i { opacity: 1; }",
+    "",
+    "/* Needle. Drawn, so it can carry a scale without four more elements;",
+    "   everything but the pointer is static. The transition is there because",
+    "   this is handed the raw level rather than the ballistic one -- see",
+    "   paintStripLevel -- and a needle that snaps between readings reads as",
+    "   broken where a bar does not. Short, so it still flicks. */",
+    ".dr-needle { opacity: .8; }",
+    ".dr-needle path, .dr-needle line { fill: none; stroke: currentColor; }",
+    ".dr-arc { stroke-width: 1; opacity: .55; }",
+    ".dr-arc-hot { stroke-width: 1.8; stroke: var(--dr-hot); opacity: .95; }",
+    ".dr-ticks path { stroke-width: 1; opacity: .7; }",
+    ".dr-pointer {",
+    "  stroke-width: 1.7; stroke-linecap: round;",
+    "  transform-box: view-box; transform-origin: 23px 24px;",
+    "  transform: rotate(calc((var(--dr-vu, 0) - .5) * 110deg));",
+    "  transition: transform .05s linear;",
+    "}",
+    ".dr-pivot { fill: currentColor; stroke: none; opacity: .85; }",
+    ".dr-strip.is-live .dr-needle { opacity: 1; }",
+    "",
+    "/* Matrix. clamp() is doing the work of an if: the inner term goes negative",
+    "   below the dot's threshold and past 1 above it, multiplied up so the",
+    "   crossing is a step rather than a ramp. Unlit dots stay faintly on, or it",
+    "   is not a grid, it is a few lights in the dark. */",
+    ".dr-viz[data-viz=\"matrix\"] .dr-matrix { display: grid; }",
+    ".dr-matrix { grid-template-columns: repeat(6, 1fr); gap: 2px; }",
+    ".dr-matrix i {",
+    "  width: 3px; height: 3px; border-radius: 50%; background: currentColor;",
+    "  align-self: center; justify-self: center;",
+    "  opacity: calc(.18 + .82 * clamp(0, (var(--dr-vu, 0) * var(--dr-w, 1) - var(--dr-row, 0)) * 60, 1));",
+    "}",
+    "",
+    "/* Scope. The only one that is not a function of --dr-vu: its points are",
+    "   written from the samples themselves, off an analyser at the far end of",
+    "   the graph, so it answers the volume and the tone controls. Silence is a",
+    "   flat line because silence is a flat line. */",
+    ".dr-trace {",
+    "  fill: none; stroke: currentColor; stroke-width: 1.3;",
+    "  stroke-linejoin: round; stroke-linecap: round;",
+    "  vector-effect: non-scaling-stroke; opacity: .75;",
+    "}",
+    ".dr-strip.is-live .dr-trace { opacity: 1; }",
+    "",
+    "/* Sonar, which is the Tivoli face's loudspeaker at an eighth the size. The",
+    "   cone swells, the cap swells harder, and the rings' REACH is the level",
+    "   rather than their rate: quiet programme moves the middle only, and it",
+    "   takes something loud to run a wave out to the surround. Reading the",
+    "   custom property inside the keyframe's own calc() is Tivoli's trick and",
+    "   the reason the rings need no work per frame. */",
+    ".dr-sonar { align-items: center; justify-content: center; }",
+    "/* The dot the rings leave from. It was the bright point of a gradient",
+    "   across a cone, placed at 42%/36% -- which is where a highlight goes on",
+    "   a curved surface, and is not the middle. A circle knows where its own",
+    "   middle is. */",
+    ".dr-sonar b {",
+    "  position: absolute; left: 50%; top: 50%; width: 5px; height: 5px;",
+    "  margin: -2.5px 0 0 -2.5px; border-radius: 50%;",
+    "  background: var(--dr-hot); opacity: .7;",
+    "  transform: scale(calc(1 + var(--dr-vu, 0) * .5));",
+    "  transition: transform .06s linear;",
+    "}",
+    ".dr-strip.is-live .dr-sonar b { opacity: 1; }",
+    ".dr-sonar i {",
+    "  position: absolute; left: 50%; top: 50%; width: 22px; height: 22px;",
+    "  margin: -11px 0 0 -11px; border-radius: 50%;",
+    "  border: 1.5px solid currentColor;",
+    "  opacity: 0; animation: dr-ping 1.45s linear infinite;",
+    "}",
+    ".dr-sonar i:nth-child(2) { animation-delay: .48s; }",
+    ".dr-sonar i:nth-child(3) { animation-delay: .97s; }",
+    "@keyframes dr-ping {",
+    "  0%   { transform: scale(.18); opacity: 0; }",
+    "  14%  { opacity: calc(.35 + var(--dr-vu, 0) * .65); }",
+    "  70%  { opacity: calc(.18 + var(--dr-vu, 0) * .55); }",
+    "  100% { transform: scale(calc(.4 + var(--dr-vu, 0) * 1.35)); opacity: 0; }",
+    "}",
+    "@media (prefers-reduced-motion: reduce) {",
+    "  .dr-sonar i { animation: none; opacity: .3; transform: scale(.7); }",
+    "  .dr-sonar b, .dr-pointer, .dr-meter i { transition: none; }",
+    "}",
     "/* Shown only while the window is bigger than it should be, in the band",
     "   the extra height leaves between the controls and the foot. Takes no",
     "   clicks: the strip underneath stays live, and the click that dismisses",
     "   this is the same click that resizes the window. */",
+    "/* Top left, and not centred: this is only ever drawn when Chrome has",
+    "   ignored the size asked for, and the window it hands back in that case",
+    "   lands at the bottom right, mostly off the screen. The middle of it is",
+    "   off the screen as well. The top left corner is the part still showing,",
+    "   so it is the only place this can be read.",
+    "",
+    "   On a plate, because it is sitting over the strip's own controls",
+    "   stretched across a window twelve times too wide, and it has to read as",
+    "   the thing to deal with first.",
+    "",
+    "   pointer-events: none on purpose. The click target is the whole window",
+    "   -- every FIT_ON event on either document calls fitPip -- so this must",
+    "   not become the only thing that works, nor swallow a click aimed past",
+    "   it. It says click here and it means click anywhere; here is simply",
+    "   where the pointer already is. */",
     ".dr-hint {",
-    "  position: absolute; inset: 0;",
-    "  display: none; align-items: center; justify-content: center;",
-    "  padding: 0 14px; text-align: center;",
+    "  position: absolute; top: 10px; left: 10px; max-width: calc(100% - 20px);",
+    "  display: none; align-items: center; gap: 7px;",
+    "  padding: 9px 13px; border-radius: 8px;",
     "  pointer-events: none;",
-    "  font-size: 12px; font-weight: 600; letter-spacing: .01em;",
+    "  font-size: 12.5px; font-weight: 600; letter-spacing: .01em; line-height: 1.25;",
     "  color: var(--dr-hot);",
+    "  background: color-mix(in srgb, var(--dr-bg) 88%, transparent);",
+    "  border: 1px solid color-mix(in srgb, var(--dr-hot) 45%, transparent);",
+    "  box-shadow: 0 6px 20px rgba(0, 0, 0, .45);",
     "}",
     ".dr-strip.is-roomy .dr-hint { display: flex; }",
     "/* Out of the row and into the corner, where a window's own controls live. */",
@@ -2569,7 +2730,40 @@
         '<div class="dr-station"></div>' +
         '<div class="dr-now"><span class="dr-status"></span><span class="dr-note"></span></div>' +
       '</div>' +
-      '<div class="dr-meter" aria-hidden="true"></div>' +
+      '<button type="button" class="dr-viz" data-viz="bars"' +
+        ' aria-label="Change the visualisation" data-tip="Change the visualisation">' +
+        '<span class="dr-meter" aria-hidden="true"></span>' +
+        /* The needle is drawn rather than built from borders: an arc, a scale,
+           a hot stretch at the top of the travel and a pivot, all of it static,
+           with one line that turns. */
+        '<span class="dr-needle" aria-hidden="true">' +
+          '<svg viewBox="0 0 46 26">' +
+            /* A 110-degree scale on a 20-unit radius, struck about the pivot at
+               23,24. The hot stretch is the last 25 degrees of it. */
+            '<path class="dr-arc" d="M6.6 12.5 A20 20 0 0 1 39.4 12.5"/>' +
+            '<path class="dr-arc-hot" d="M33 6.7 A20 20 0 0 1 39.4 12.5"/>' +
+            '<g class="dr-ticks">' +
+              '<path d="M9.1 14.3 L6.6 12.5"/><path d="M15.2 8.9 L13.8 6.3"/>' +
+              '<path d="M23 7 L23 4"/><path d="M30.8 8.9 L32.2 6.3"/>' +
+              '<path d="M36.9 14.3 L39.4 12.5"/>' +
+            '</g>' +
+            '<line class="dr-pointer" x1="23" y1="24" x2="23" y2="6"/>' +
+            '<circle class="dr-pivot" cx="23" cy="24" r="1.8"/>' +
+          '</svg>' +
+        '</span>' +
+        '<span class="dr-matrix" aria-hidden="true"></span>' +
+        /* The trace carries no shape of its own. Its points are written from
+           the samples each frame, so silence is a flat line because silence
+           is a flat line. */
+        '<span class="dr-scope" aria-hidden="true">' +
+          '<svg viewBox="0 0 46 26" preserveAspectRatio="none">' +
+            '<polyline class="dr-trace" points="0,13 46,13"/>' +
+          '</svg>' +
+        '</span>' +
+        '<span class="dr-sonar" aria-hidden="true">' +
+          '<i></i><i></i><i></i><b></b>' +
+        '</span>' +
+      '</button>' +
     '</div>' +
     '<button type="button" class="dr-unpin" aria-label="Expand to main radio" data-tip="Expand to main radio">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -2584,7 +2778,7 @@
       '<time class="dr-clock">--:--</time>' +
       '<input type="range" class="dr-vol" min="0" max="100" step="any" aria-label="Volume">' +
     '</div>' +
-    '<div class="dr-hint">Click anywhere to shrink this window</div>';
+    '<div class="dr-hint">Click here to show Deskside Radio Mini</div>';
 
   function buildStrip(doc) {
     var s = doc.createElement('style');
@@ -2608,8 +2802,28 @@
       meter.appendChild(bar);
     }
 
+    /* The matrix, on the same arch across six columns rather than twelve.
+       Its rows carry a threshold instead of a height: the dot lights when the
+       level times its column's share passes that. Written top row first,
+       because that is the order a grid fills, so the thresholds count down. */
+    var matrix = root.querySelector('.dr-matrix');
+    var COLS = 6, ROWS = 4;
+    for (var r = 0; r < ROWS; r++) {
+      for (var c = 0; c < COLS; c++) {
+        var dot = doc.createElement('i');
+        var march = 0.40 + 0.60 * Math.sin((c + 1) / (COLS + 1) * Math.PI);
+        var mw = march * (0.72 + 0.28 * Math.abs(Math.sin(c * 2.399963)));
+        dot.style.setProperty('--dr-w', mw.toFixed(3));
+        /* The bottom row lights on any signal at all; the top only when the
+           column is close to full. */
+        dot.style.setProperty('--dr-row', (((ROWS - 1 - r) / ROWS) + 0.02).toFixed(3));
+        matrix.appendChild(dot);
+      }
+    }
+
     var o = {
       doc: doc, root: root, meter: meter,
+      viz: root.querySelector('.dr-viz'),
       station: root.querySelector('.dr-station'),
       now: root.querySelector('.dr-status'),
       note: root.querySelector('.dr-note'),
@@ -2617,6 +2831,15 @@
       vol: root.querySelector('.dr-vol'),
       clock: root.querySelector('.dr-clock')
     };
+
+    /* The chosen one, and the click that moves to the next. Saved rather
+       than kept in the strip, which is torn down at every unpin. */
+    o.viz.setAttribute('data-viz', vizName(state.miniViz));
+    o.viz.addEventListener('click', function () {
+      state.miniViz = nextViz(state.miniViz);
+      save();
+      o.viz.setAttribute('data-viz', state.miniViz);
+    });
 
     o.play.addEventListener('click', function () {
       if (state.intendedPlaying) stopPlayback();
@@ -2751,8 +2974,127 @@
      of its travel is not telling anybody anything. */
   function paintStripLevel(v) {
     if (!strip) return;
-    var shown = Math.pow(Math.max(0, Math.min(1, v)), 0.6);
-    strip.meter.style.setProperty('--dr-vu', shown.toFixed(3));
+    /* Down from 0.6, then 0.42, then 0.52, and now up to 0.8. The first was
+       too low in the travel and the rest were too high -- everything pinned
+       near the top with nowhere left to go, which is not liveliness, it is a
+       meter that has run out of room. Above 0.5 the curve is gentler than
+       square root, so peaks still reach the top and ordinary programme sits
+       where it can be seen to move. Does not touch the tuner's own needle. */
+    var shown = Math.pow(Math.max(0, Math.min(1, v)), 0.8);
+    /* On the button, not the bars: all four read it from there by
+       inheritance, so changing visualisation changes nothing about what
+       this does or how often. */
+    strip.viz.style.setProperty('--dr-vu', shown.toFixed(3));
+  }
+
+  /* The scope, and only when it is the one showing. Everything else in here
+     costs one custom property a frame between them; this costs a string of
+     two dozen numbers, which is worth it for the one visualisation that is
+     the signal rather than a picture of its loudness.
+
+     No analyser, or not playing, and it is left flat -- which is also what
+     silence draws, so there is nothing to special-case. */
+  var SCOPE_PTS = 30;
+  /* How much of the buffer the box shows, in samples. About 7ms at 44.1k,
+     which is a few cycles of the low mids -- enough to read as a wave.
+     The whole 1024 was 23ms, and drawing that across 46 pixels aliased
+     everything above a few hundred hertz into noise that changed
+     completely every frame. */
+  var SCOPE_SPAN = 320;
+  /* Where each point was last frame. The trace moves instead of
+     teleporting, which is most of what made it look frantic. One array,
+     kept between frames, nothing allocated per frame. */
+  var scopePrev = null;
+
+  /* How loud this buffer is, not whether anything is in it.
+
+     The difference cost four rounds. Asking 'is anything here' with a floor
+     of 0.0004 -- around -68 dBFS, below the noise on a quiet line -- meant a
+     buffer carrying nothing but residue answered yes, won the choice, and
+     shut out the one with the programme in it. The trace was drawn from real
+     samples the whole time and every one of them was inaudibly small.
+
+     Sixty-four samples is plenty to compare two buffers, and cheap enough to
+     ask every frame. */
+  function peakOfBuf(buf) {
+    if (!buf) return 0;
+    var step = Math.max(1, Math.floor(buf.length / 64));
+    var hi = 0;
+    for (var i = 0; i < buf.length; i += step) {
+      var a = buf[i] < 0 ? -buf[i] : buf[i];
+      if (a > hi) hi = a;
+    }
+    return hi;
+  }
+
+  function paintStripScope() {
+    if (!strip || !strip.viz) return;
+    /* The attribute, not the setting. They are written from each other and
+       should never differ -- and they are two things, so proving they do not
+       differ costs more than reading the one that actually drives the
+       display. */
+    if (strip.viz.getAttribute('data-viz') !== 'scope') return;
+    /* Looked up now rather than kept from build time. A handle captured once
+       is a handle that can have been null once. */
+    var trace = strip.root.querySelector('.dr-trace');
+    if (!trace) return;
+
+    /* The far tap first -- it sits after the tone and the fader, so its trace
+       answers both, which is what a scope on the speaker leads would show.
+
+       And the meter's own analyser behind it, because the far tap has not
+       been made to work and I would rather draw the right shape from the
+       wrong end of the graph than draw a flat line. That one is demonstrably
+       live: every other visualisation in this strip moves off it. The cost of
+       the fallback is that the trace stops answering the volume control. */
+    var buf = null;
+    if (scopeAn && scopeData) {
+      scopeAn.getFloatTimeDomainData(scopeData);
+      /* A real floor, about -46 dBFS. Below this there is nothing to draw
+         whatever the samples technically say. */
+      if (peakOfBuf(scopeData) > 0.005) buf = scopeData;
+    }
+    /* And the meter's own buffer behind it, taken when it is the louder of
+       the two -- which also covers the far tap being silent. The cost of
+       falling back is that the trace stops answering the volume control,
+       since this one is tapped before it. */
+    if (peakOfBuf(timeData) > peakOfBuf(buf)) buf = timeData;
+
+    /* Nothing in either buffer draws a square wave, which no signal makes
+       and silence certainly does not. It is there to tell one failure from
+       another: a flat line now means this function never wrote, where a
+       square wave means it wrote and had nothing to write. Drawn flat, the
+       two were indistinguishable, and four rounds of looking at a flat line
+       told us nothing at all. */
+    if (!scopePrev || scopePrev.length !== SCOPE_PTS) {
+      scopePrev = new Float32Array(SCOPE_PTS);
+    }
+
+    /* The tail of the buffer, not the head: getFloatTimeDomainData hands back
+       the last fftSize samples, so the front of it is 23ms stale. */
+    var span = buf ? Math.min(SCOPE_SPAN, buf.length) : 0;
+    var base = buf ? buf.length - span : 0;
+
+    var pts = [];
+    for (var i = 0; i < SCOPE_PTS; i++) {
+      var x = (i / (SCOPE_PTS - 1)) * 46;
+      var v = buf ? buf[base + Math.floor(i / (SCOPE_PTS - 1) * (span - 1))]
+                  : ((i % 8) < 4 ? 0.42 : -0.42);
+      /* 13 is the middle of the 26-unit box and 11 keeps a full-scale
+         excursion just inside it. */
+      /* Broadcast programme rarely peaks near full scale, so it is lifted
+         before the clamp -- which then keeps the overdriven case inside the
+         box rather than letting it draw outside. */
+      var lift = Math.max(-1, Math.min(1, (v || 0) * 2.4));
+      /* Where it was, mostly, plus where it is. Enough memory to carry the
+         movement across frames and not so much that it lags the music. */
+      scopePrev[i] = scopePrev[i] * 0.55 + lift * 0.45;
+      /* 13 is the middle of the 26-unit box; 12 of the 13 either side is as
+         near the edges as a rounded stroke can go without clipping. */
+      var y = 13 - scopePrev[i] * 12;
+      pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+    }
+    trace.setAttribute('points', pts.join(' '));
   }
 
   /* Chrome will not open the floating window at the size asked for --

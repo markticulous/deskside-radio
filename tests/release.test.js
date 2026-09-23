@@ -2708,3 +2708,66 @@ test('the header row stays one row, and the next-up text is what gives', () => {
       pair[1] + ' can be squeezed out of shape before the one thing in the row that can afford it');
   });
 });
+
+test('a theme that draws a Settings button keeps the dot in its corner', () => {
+  const css = read('app.css');
+
+  /* The dot sits close to the glyph by default, because most of the work of
+     a theme is colour and several of them draw no button at all -- and in
+     the button's corner is only a place to be when there is a button to be
+     in the corner of. A theme that draws one opts out.
+
+     Written that way round so a new theme is right by default. The cost is
+     that forgetting is silent: the dot is a few pixels adrift on one face
+     and nobody sees it until all eight are side by side. Hence this. */
+  assert.ok(/top: var\(--dot-inset, 10%\); right: var\(--dot-inset, 10%\);/.test(css),
+    'the update dot no longer reads --dot-inset, so the per-theme contract below means nothing');
+
+  const rules = css.match(/\[data-theme="[a-z]+"\][^{]*\.icon-btn[^{]*\{[^}]*\}/g) || [];
+  assert.ok(rules.length >= 5, 'only ' + rules.length + ' per-theme button rules found; the sweep is not finding them');
+
+  rules.forEach(function (rule) {
+    /* Hover states do not count. Retro draws its edge only under the
+       pointer, and a dot that moved on hover would be worse than one that
+       sat still in the wrong place. */
+    if (/:hover|:focus|:active/.test(rule)) return;
+
+    const body = rule.slice(rule.indexOf('{'));
+    /* The three ways a face draws a button. border-radius is not one of
+       them -- every face sets it, and none of them is a visible edge. */
+    const draws = /(^|[\s;{])border\s*:/.test(body)
+      || /box-shadow\s*:/.test(body)
+      || /(^|[\s;{])background\s*:\s*(?!none)/.test(body);
+    if (!draws) return;
+
+    const theme = /data-theme="([a-z]+)"/.exec(rule)[1];
+    assert.ok(/--dot-inset\s*:/.test(body),
+      theme + ' draws a button round the Settings glyph but does not set --dot-inset,'
+        + ' so its update dot is pulled in as though there were nothing drawn there');
+  });
+});
+
+test('every mini-radio visualisation has something to draw', () => {
+  const src = read('app.js');
+
+  const list = /var VIZ = \[([^\]]+)\]/.exec(src);
+  assert.ok(list, 'the mini radio no longer has a list of visualisations');
+  const names = list[1].match(/'([a-z]+)'/g).map(function (n) { return n.replace(/'/g, ''); });
+  assert.ok(names.length >= 2, 'there is only one visualisation, so the click cycles nothing');
+
+  /* Each needs a box in the markup and a rule that shows it. Miss either
+     and the click lands on an empty 46x20 -- silent, and only on every
+     fourth press, which is the kind of fault that ships. */
+  /* The strip's stylesheet is a JS array of strings, so every quote in it is
+     backslash-escaped on disk. Unescape before looking for a selector. */
+  const flat = src.replace(/\\"/g, '"');
+  names.forEach(function (n) {
+    assert.ok(flat.indexOf('data-viz="' + n + '"]') !== -1,
+      'the ' + n + ' visualisation has no rule showing it, so choosing it shows nothing');
+  });
+
+  /* And the level still goes to one element, whichever is showing. The
+     whole design is one custom property per frame into a second document. */
+  assert.ok(/strip\.viz\.style\.setProperty\('--dr-vu'/.test(src),
+    'the level is no longer written once to the element the four inherit it from');
+});
