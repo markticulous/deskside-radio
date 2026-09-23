@@ -88,6 +88,10 @@ Each has its own browser profile, so stations and settings do not carry between 
 
 **Firefox is the odd one.** It has no `--app`, having dropped site-specific browsers, so the radio opens in an ordinary window with a tab strip above it — F11 for fullscreen if that bothers you. Autoplay is not a command-line flag there either, it is a preference, so the script writes a `user.js` into the profile it creates setting `media.autoplay.default` to 0. That is why the profile is made by the script rather than left to Firefox.
 
+It goes through the same launcher as Chrome and Edge, which sizes the window: Firefox has no `--window-size` and will not let a page resize a window with tabs, but it keeps window geometry in the profile's `xulstore.json`, so the launcher writes 1133×796 there before every start — every start, because Firefox writes its last size back on exit. That size is measured: the Chrome app window gives the page 1119×704, and Firefox's frame adds 14×92. What Firefox still does not get is the window lock, or the radio window stepping out of the way when the mini radio is pinned; both need a page that can move and size its own window, and Firefox allows that only for pop-ups.
+
+Firefox also has no native HLS — measured in 155 and 156, `canPlayType` answers `''` for it where Chrome and Edge answer `maybe` — so HLS stations there play through [hls.js](https://github.com/video-dev/hls.js), loaded from `assets/` only in a browser that needs it. Chrome and Edge never load it.
+
 **Linux** has no equivalent of the Windows startup folder, but every desktop environment worth the name reads `~/.config/autostart`, which is the same file format as the launcher with two lines added. `--autostart` writes it, with an eight-second delay so the radio is not reconnecting before the network is up. The script writes two files in your home directory and nothing else: no root, no package, no service.
 
 **macOS** gets a `.fileloc` rather than a `.webloc`. Both are property lists holding a URL and Finder opens both, but they are not interchangeable — `.webloc` is for a web address and `.fileloc` for something on this disk, which is what this is. Handed a `file://` URL inside a `.webloc`, Finder says *"the document content is not readable or is in the wrong format"*. If dragging the file still does not work, drag the address out of your browser's address bar onto the Desktop instead; Safari and Chrome both make a working shortcut that way.
@@ -451,6 +455,8 @@ No dependencies, no test runner to install — Node's own.
 ## Licence
 
 [MIT](LICENSE). The code is yours to use, change and ship. The licence covers this project only — not the streams it plays, which belong to the broadcasters below.
+
+One library ships with it and keeps its own licence: [hls.js](https://github.com/video-dev/hls.js) 1.7.3, the light build, under Apache-2.0, in `assets/hls.light.min.js` with the licence beside it as `assets/hls.js-LICENSE.txt`. It was taken from the npm registry's tarball and checked against the registry's published sha512, not from a CDN.
 
 ## Streams and attribution
 

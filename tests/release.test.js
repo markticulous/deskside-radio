@@ -1012,7 +1012,7 @@ test('the opener locks the window, and the shortcuts go through it', () => {
       f + ' would aim a shortcut at wscript.exe without checking it is there');
     assert.ok(/\$link\.TargetPath = \$env:WSCRIPT;/.test(s),
       f + ' does not start the opener through wscript, so the console flashes again');
-    assert.ok(/\$link\.Arguments = \$q \+ \$env:OPENER \+ \$q \+ ' ' \+ \$q \+ \$env:BROWSER \+ \$q;/.test(s),
+    assert.ok(/\$link\.Arguments = \$q \+ \$env:OPENER \+ \$q \+ ' ' \+ \$q \+ \$env:BROWSER \+ \$q( \+ \$env:PROFARG)?;/.test(s),
       f + ' does not hand the .vbs the browser to use');
     assert.ok(/\$link\.WindowStyle = 7;/.test(s),
       f + ' no longer minimises the .cmd on the fallback path, so its console shows');
@@ -2792,4 +2792,53 @@ test('the Edge shortcut goes through the opener, into its own profile', () => {
   assert.ok(pick !== -1, 'the opener ignores the profile it is handed');
   assert.ok(migrate !== -1 && pick > migrate,
     'the opener picks the Edge profile before the legacy migration, which can move Chrome stations into it');
+});
+
+test('the Start-with-Windows entry opens the radio the Desktop shortcut opens', () => {
+  /* It chose a browser by what was installed and always used profile-chrome,
+     so somebody on the Edge shortcut got Chrome with other stations at sign-in
+     -- or, with no Chrome, Edge on an empty profile. The updater repoints this
+     entry through this script, so every update made the mistake again. */
+  const src = read('Win - Start with Windows (On-Off).cmd');
+
+  /* The Edge shortcut alone decides it; with the Chrome one present nothing
+     changes. Both halves, or 'both shortcuts' would switch to Edge. */
+  assert.ok(/if not exist "%DESK%.Deskside Radio\.lnk" if exist "%DESK%.Deskside Radio \(Edge\)\.lnk"/.test(src),
+    'the start-up entry does not follow the Edge shortcut, so its stations are not the ones that open at sign-in');
+
+  /* And the profile reaches the opener on both routes to it. */
+  const passes = src.match(/\$env:BROWSER \+ \$q \+ \$env:PROFARG/g) || [];
+  assert.equal(passes.length, 2,
+    'the Edge profile reaches the opener on ' + passes.length + ' of its two routes');
+
+  /* After the legacy migration, which moves an old unnamed profile into
+     PROFILE when PROFILE is missing -- pointed at profile-edge first, it would
+     carry a Chrome user's stations into Edge's folder. */
+  const pick = src.indexOf('profile-edge"');
+  const migrate = src.indexOf('An empty profile is the alarming outcome');
+  assert.ok(migrate !== -1 && pick > migrate,
+    'the start-up entry picks the Edge profile before the legacy migration');
+});
+
+test('Firefox opens at the radio size, through the launcher', () => {
+  /* Firefox has no --window-size and no --app, so it came up at whatever size
+     it last remembered. The launcher writes the size into the radio profile's
+     xulstore.json before every start, because Firefox writes the last size
+     back over it on exit. */
+  const op = read('Win - Open Deskside Radio.cmd');
+  assert.ok(/if \/i "%~nx1"=="firefox\.exe" goto :firefox/.test(op),
+    'the launcher hands Firefox the Chrome flags, which it ignores');
+  assert.ok(op.indexOf("'xulstore.json'") !== -1, 'Firefox is started without being told its size');
+  /* Measured: the Chrome app page is 1119x704 and Firefox's frame 14x92. */
+  assert.ok(/'width','1133'/.test(op) && /'height','796'/.test(op),
+    'the Firefox size no longer gives its page the same area as the Chrome window');
+  /* Without a byte-order mark: Set-Content -Encoding UTF8 on PowerShell 5 writes one. */
+  assert.ok(/WriteAllText\(\$f,/.test(op), 'xulstore is written in a way that can put a BOM in front of the JSON');
+  /* The Firefox branch must still check for updates like the others. */
+  const branch = op.slice(op.indexOf(':firefox'));
+  assert.ok(/call :autoupdate/.test(branch), 'Firefox launches skip the update check');
+
+  const sc = read('Win - Create Desktop Shortcut (Firefox).cmd');
+  assert.ok(/Win - Open Deskside Radio\.vbs/.test(sc) && /\$env:WSCRIPT/.test(sc),
+    'the Firefox shortcut aims straight at Firefox, so none of this runs');
 });

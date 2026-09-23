@@ -99,15 +99,28 @@ rem named below" rather than Downloads or the desktop.
 >> "%PROFILE%\user.js" echo user_pref("browser.download.useDownloadDir", true);
 >> "%PROFILE%\user.js" echo user_pref("browser.download.dir", "%APPROOT:\=\\%");
 
+rem Through the launcher, like the Chrome and Edge shortcuts, which sizes the
+rem window, leaves the page its notes and checks for updates. Straight at
+rem Firefox, as it always was, from a folder older than the launcher.
+set "WSCRIPT=%SystemRoot%\System32\wscript.exe"
+set "OPENER=%APPDIR%Win - Open Deskside Radio.vbs"
+if not exist "%OPENER%" set "OPENER="
+if not exist "%WSCRIPT%" set "OPENER="
+
 %SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
   "$desktop = [Environment]::GetFolderPath('Desktop');" ^
   "$path = Join-Path $desktop 'Deskside Radio (Firefox).lnk';" ^
   "$link = (New-Object -ComObject WScript.Shell).CreateShortcut($path);" ^
   "$q = [char]34;" ^
   "$url = ([Uri]$env:TARGET).AbsoluteUri;" ^
-  "$link.TargetPath = $env:BROWSER;" ^
-  "$link.Arguments = '-profile ' + $q + $env:PROFILE + $q +" ^
-  "  ' -new-window ' + $q + $url + $q;" ^
+  "if ($env:OPENER) {" ^
+  "  $link.TargetPath = $env:WSCRIPT;" ^
+  "  $link.Arguments = $q + $env:OPENER + $q + ' ' + $q + $env:BROWSER + $q;" ^
+  "} else {" ^
+  "  $link.TargetPath = $env:BROWSER;" ^
+  "  $link.Arguments = '-profile ' + $q + $env:PROFILE + $q +" ^
+  "    ' -new-window ' + $q + $url + $q;" ^
+  "}" ^
   "$link.IconLocation = $env:ICON + ',0';" ^
   "$link.WorkingDirectory = $env:APPDIR;" ^
   "$link.Description = 'Deskside Radio (Firefox)';" ^
