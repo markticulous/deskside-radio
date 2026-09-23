@@ -2771,3 +2771,25 @@ test('every mini-radio visualisation has something to draw', () => {
   assert.ok(/strip\.viz\.style\.setProperty\('--dr-vu'/.test(src),
     'the level is no longer written once to the element the four inherit it from');
 });
+
+test('the Edge shortcut goes through the opener, into its own profile', () => {
+  /* It aimed straight at msedge.exe until 1.5.7, so on a machine that used
+     it nothing of ours ran at launch: no grip taken off, no watcher for the
+     mini radio, no note about the Desktop shortcut, no update check. Found on
+     a work PC as three unrelated-looking faults with one cause. */
+  const edge = read('Win - Create Desktop Shortcut (Edge).cmd');
+  assert.ok(/Win - Open Deskside Radio\.vbs/.test(edge) && /\$env:WSCRIPT/.test(edge),
+    'the Edge shortcut aims straight at the browser, so the opener never runs on machines that use it');
+  assert.ok(/profile-edge'/.test(edge),
+    'the Edge shortcut does not tell the opener which profile, so it opens profile-chrome and the radio comes up empty');
+
+  /* And the opener honours it -- but only after the legacy migration, which
+     moves an old unnamed profile into PROFILE when PROFILE is missing.
+     Pointed at profile-edge first, it would carry Chrome stations into Edge. */
+  const op = read('Win - Open Deskside Radio.cmd');
+  const pick = op.indexOf('"%~2"=="profile-edge"');
+  const migrate = op.indexOf('An empty profile is the alarming outcome');
+  assert.ok(pick !== -1, 'the opener ignores the profile it is handed');
+  assert.ok(migrate !== -1 && pick > migrate,
+    'the opener picks the Edge profile before the legacy migration, which can move Chrome stations into it');
+});

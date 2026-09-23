@@ -125,10 +125,21 @@
      travel: measured through the real graph, the last third was worth
      1.6 dB on typical broadcast material and 0.9 dB on a hot station,
      which is why it felt like it stopped working well before 100. This
-     curve gives every unit the same 0.6 dB, so the fader keeps climbing
+     curve gives every unit the same 0.4 dB, so the fader keeps climbing
      the whole way, and it tops out at unity: the stream as broadcast,
-     never amplified, so nothing downstream has to catch clipping. */
-  var VOL_RANGE_DB = 60;   // silence to unity across the travel
+     never amplified, so nothing downstream has to catch clipping.
+
+     40 dB of it, not 60. At 60 the bottom third ran from -60 to -40, and
+     broadcast programme already arrives at around -15 to -20 dBFS -- so
+     that third came out at -55 to -60 absolute, which on a laptop speaker
+     is nothing at all. The whole of it was travel nobody could hear, and
+     the sound then seemed to ramp in around the middle: not the curve
+     bending, but audibility arriving. Measured as a table before it was
+     changed, and reported as exactly that. */
+  var VOL_RANGE_DB = 40;   // silence to unity across the travel
+
+  /* The width it used to be, kept for carrying saved settings across. */
+  var OLD_RANGE_DB = 60;
 
   function volumeToGain(percent) {
     var v = clamp(Number(percent) || 0, 0, 100);
@@ -156,7 +167,22 @@
     if (v <= 0) return 0;
     var oldGain = Math.min(1, 3 * Math.pow(v / 100, 2.5502));
     var db = 20 * Math.log10(oldGain);
-    return Math.round(clamp(100 + db / (VOL_RANGE_DB / 100), 0, 100));
+    return toSlider(db);
+  }
+
+  /* A setting saved on the 60 dB fader, to the same loudness on this one.
+     Without it every radio would come back 10 dB louder on update. */
+  function migrateVolume60(oldPercent) {
+    var v = clamp(Number(oldPercent) || 0, 0, 100);
+    if (v <= 0) return 0;
+    return toSlider(v / 100 * OLD_RANGE_DB - OLD_RANGE_DB);
+  }
+
+  /* A loudness in dB below unity to a slider position. Anything quieter than
+     the range reaches lands on 1 and not 0: quiet is not muted, and a
+     migration must never be what silences somebody's radio. */
+  function toSlider(db) {
+    return Math.round(clamp(100 + db / (VOL_RANGE_DB / 100), 1, 100));
   }
 
   // Damped movement: quick to rise, slow to fall, like a real meter.
@@ -175,6 +201,7 @@
     scaleTicks: scaleTicks,
     rmsToVu: rmsToVu,
     volumeToGain: volumeToGain,
+    migrateVolume60: migrateVolume60,
     migrateVolume: migrateVolume,
     VOL_RANGE_DB: VOL_RANGE_DB,
     peakOf: peakOf,

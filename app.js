@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.5.6';
+  var APP_VERSION = '1.5.7';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -64,7 +64,7 @@
     intendedPlaying: false,
     currentStationId: 'cfrb',
     volume: 50,
-    volumeCurve: 2,
+    volumeCurve: 3,
     autoplay: false,
     /* Filled in from the list below once it exists -- see just under the
        closing brace. The drawer already falls back to the first station
@@ -254,14 +254,19 @@
         if (typeof st.treble !== 'number') st.treble = clampTone(merged.treble);
       });
 
-      // Settings saved before the fader was rebuilt in decibels.
-      if (merged.volumeCurve !== 2) {
-        merged.volume = Signal.migrateVolume(merged.volume);
-        merged.volumeCurve = 2;
-        if (merged.lastGood) merged.lastGood.volume = Signal.migrateVolume(merged.lastGood.volume);
+      /* Settings saved on an older fader, carried to the same loudness on this
+         one. Curve 1 was a power law, curve 2 was 60 dB wide, curve 3 is 40.
+         Each is converted straight to the current fader, never through the one
+         in between, so rounding happens once. Everywhere a volume is kept: the
+         fader, the last station that played, and every schedule slot. */
+      if (merged.volumeCurve !== 3) {
+        var carry = merged.volumeCurve === 2 ? Signal.migrateVolume60 : Signal.migrateVolume;
+        merged.volume = carry(merged.volume);
+        if (merged.lastGood) merged.lastGood.volume = carry(merged.lastGood.volume);
         ['weekday', 'weekend'].forEach(function (group) {
-          (merged.schedule[group] || []).forEach(function (slot) { slot.volume = Signal.migrateVolume(slot.volume); });
+          (merged.schedule[group] || []).forEach(function (slot) { slot.volume = carry(slot.volume); });
         });
+        merged.volumeCurve = 3;
       }
       return merged;
     } catch (e) { return clone(DEFAULTS); }
@@ -1118,6 +1123,7 @@
     TunerUI.setLevel(el.tuner, level);
     paintStripLevel(lit ? target : level);
     paintStripScope();
+    paintStripThump(ts);
 
     // Park the indicators only once the needle has actually fallen to rest.
     var quiet = !lit && !holding && level < 0.004;
@@ -2422,7 +2428,7 @@
     "}",
     ".dr-strip, .dr-strip * { box-sizing: border-box; }",
     "@media (prefers-color-scheme: light) {",
-    "  .dr-strip { --dr-bg: #f4f2ec; --dr-ink: #1b1b19; --dr-rail: rgba(27, 27, 25, .5); }",
+    "  .dr-strip { --dr-bg: #f4f2ec; --dr-ink: #1b1b19; --dr-rail: rgba(27, 27, 25, .5); --dr-viz: var(--dr-ink); }",
     "}",
     ".dr-top {",
     "  display: grid;",
@@ -2469,7 +2475,11 @@
     ".dr-viz {",
     "  appearance: none; border: 0; background: none; padding: 0; color: inherit;",
     "  cursor: pointer; position: relative; flex: none;",
-    "  width: 46px; height: 26px; margin-right: 10px; --dr-vu: 0;",
+    "  width: 46px; height: 26px; margin-right: 10px; --dr-vu: 0; --dr-thump: 0;",
+    "  /* One colour for all five, white on the dark face. Every visualisation",
+    "     draws in currentColor, so this is the only place it is decided; the",
+    "     light face swaps it for the ink, where white would vanish. */",
+    "  color: var(--dr-viz, #fff);",
     "}",
     ".dr-viz > * { position: absolute; inset: 0; display: none; }",
     ".dr-viz[data-viz=\"bars\"] .dr-meter,",
@@ -2506,7 +2516,7 @@
     ".dr-needle { opacity: .8; }",
     ".dr-needle path, .dr-needle line { fill: none; stroke: currentColor; }",
     ".dr-arc { stroke-width: 1; opacity: .55; }",
-    ".dr-arc-hot { stroke-width: 1.8; stroke: var(--dr-hot); opacity: .95; }",
+    ".dr-arc-hot { stroke-width: 1.8; stroke: currentColor; opacity: .95; }",
     ".dr-ticks path { stroke-width: 1; opacity: .7; }",
     ".dr-pointer {",
     "  stroke-width: 1.7; stroke-linecap: round;",
@@ -2551,12 +2561,18 @@
     "   across a cone, placed at 42%/36% -- which is where a highlight goes on",
     "   a curved surface, and is not the middle. A circle knows where its own",
     "   middle is. */",
+    "/* The woofer: full at the middle and fading out towards its edge, and",
+    "   pushed out on each beat by --dr-thump. No transition -- the envelope",
+    "   that drives it already has its own attack and decay, and a transition",
+    "   on top would round the attack off, which is the whole of a thump. */",
     ".dr-sonar b {",
-    "  position: absolute; left: 50%; top: 50%; width: 5px; height: 5px;",
-    "  margin: -2.5px 0 0 -2.5px; border-radius: 50%;",
-    "  background: var(--dr-hot); opacity: .7;",
-    "  transform: scale(calc(1 + var(--dr-vu, 0) * .5));",
-    "  transition: transform .06s linear;",
+    "  position: absolute; left: 50%; top: 50%; width: 6px; height: 6px;",
+    "  margin: -3px 0 0 -3px; border-radius: 50%;",
+    "  background: radial-gradient(circle, currentColor 0 28%,",
+    "    color-mix(in srgb, currentColor 55%, transparent) 62%,",
+    "    color-mix(in srgb, currentColor 22%, transparent) 100%);",
+    "  opacity: .75;",
+    "  transform: scale(calc(1 + var(--dr-vu, 0) * .2 + var(--dr-thump, 0) * .8));",
     "}",
     ".dr-strip.is-live .dr-sonar b { opacity: 1; }",
     ".dr-sonar i {",
@@ -2597,11 +2613,11 @@
     "   it. It says click here and it means click anywhere; here is simply",
     "   where the pointer already is. */",
     ".dr-hint {",
-    "  position: absolute; top: 10px; left: 10px; max-width: calc(100% - 20px);",
+    "  position: absolute; top: 10px; left: 8px; max-width: calc(100% - 18px);",
     "  display: none; align-items: center; gap: 7px;",
-    "  padding: 9px 13px; border-radius: 8px;",
+    "  padding: 10px 15px; border-radius: 9px;",
     "  pointer-events: none;",
-    "  font-size: 12.5px; font-weight: 600; letter-spacing: .01em; line-height: 1.25;",
+    "  font-size: 13.5px; font-weight: 600; letter-spacing: .01em; line-height: 1.25;",
     "  color: var(--dr-hot);",
     "  background: color-mix(in srgb, var(--dr-bg) 88%, transparent);",
     "  border: 1px solid color-mix(in srgb, var(--dr-hot) 45%, transparent);",
@@ -2994,6 +3010,37 @@
 
      No analyser, or not playing, and it is left flat -- which is also what
      silence draws, so there is nothing to special-case. */
+  /* The woofer's beat. Below about 150 Hz is where a kick lives, and the
+     beat is that band jumping clear of its own recent average -- so a loud
+     sustained passage does not hold the cone out, and a quiet track with a
+     real kick still thumps. */
+  var THUMP_HZ = 150;
+  var thumpAvg = 0, thumpEnv = 0, thumpLast = 0, thumpBins = null;
+
+  function paintStripThump(ts) {
+    if (!strip || !strip.viz || strip.viz.getAttribute('data-viz') !== 'sonar') return;
+    var dt = thumpLast ? Math.min(100, ts - thumpLast) : 16;
+    thumpLast = ts;
+
+    var e = 0;
+    if (analyser && ctx && freqData) {
+      /* The one transform this costs, and only while the speaker is showing. */
+      analyser.getByteFrequencyData(freqData);
+      var top = Math.max(2, Math.ceil(THUMP_HZ / (ctx.sampleRate / analyser.fftSize)));
+      /* From bin 1: bin 0 is DC, which is not a beat. */
+      for (var i = 1; i < top; i++) e += freqData[i];
+      e = e / ((top - 1) * 255);
+    }
+
+    /* The running average, about 400ms. */
+    thumpAvg += (e - thumpAvg) * (1 - Math.exp(-dt / 400));
+    /* A beat is the band clearing its average by a margin. */
+    var kick = Math.max(0, Math.min(1, (e - thumpAvg * 1.12) * 5));
+    /* Instant attack, 130ms decay: roughly a real cone coming back. */
+    thumpEnv = kick > thumpEnv ? kick : thumpEnv * Math.exp(-dt / 130);
+    strip.viz.style.setProperty('--dr-thump', thumpEnv.toFixed(3));
+  }
+
   var SCOPE_PTS = 30;
   /* How much of the buffer the box shows, in samples. About 7ms at 44.1k,
      which is a few cycles of the low mids -- enough to read as a wave.

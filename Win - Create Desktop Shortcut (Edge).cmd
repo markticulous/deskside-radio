@@ -70,6 +70,29 @@ rem showing one local file will never consult. Word for word the line in
 rem "Win - Open Deskside Radio.cmd"; a test holds the copies together.
 set "LEAN= --disable-background-networking --disable-component-update --disable-breakpad --disable-domain-reliability --disable-sync --no-pings --disable-features=OptimizationHints,OptimizationGuideModelDownloading,SegmentationPlatform,MediaRouter --disk-cache-size=16777216 --media-cache-size=16777216"
 
+rem The shortcut aims at the opener rather than at the browser, the same as
+rem the Chrome one. The opener starts Edge with these same flags and then does
+rem the things a page cannot do for itself: takes the resize grip off the
+rem window, starts the watcher that sizes the mini radio, leaves the page a
+rem note about the Desktop shortcut, and checks for updates once a day.
+rem
+rem This script aimed straight at msedge.exe until 1.5.7, so on a machine
+rem that used it none of that ever ran -- found on a work PC as a resizable
+rem window, an unsized mini radio, and a shortcut button that would not hide.
+rem
+rem It passes "profile-edge" to the opener, which otherwise defaults to
+rem profile-chrome: this shortcut's stations have always lived in the Edge
+rem folder, and an opener that did not know would open the radio empty.
+rem
+rem Through wscript and the .vbs so no console flashes; the .cmd alone if an
+rem older folder has no .vbs; straight at Edge, as before, with neither.
+set "WSCRIPT=%SystemRoot%\System32\wscript.exe"
+set "OPENER=%APPDIR%Win - Open Deskside Radio.vbs"
+set "OPENERCMD=%APPDIR%Win - Open Deskside Radio.cmd"
+if not exist "%OPENER%" set "OPENER="
+if not exist "%OPENERCMD%" set "OPENERCMD="
+if not exist "%WSCRIPT%" set "OPENER="
+
 rem Where this profile saves a download: the app folder, not Downloads.
 rem
 rem Export settings writes deskside-radio-settings.js, and that file is
@@ -103,13 +126,22 @@ rem before it looks along PATH.
   "$path = Join-Path $desktop 'Deskside Radio (Edge).lnk';" ^
   "$link = (New-Object -ComObject WScript.Shell).CreateShortcut($path);" ^
   "$q = [char]34;" ^
-  "$url = ([Uri]$env:TARGET).AbsoluteUri;" ^
-  "$link.TargetPath = $env:BROWSER;" ^
-  "$link.Arguments = '--app=' + $q + $url + $q +" ^
-  "  ' --autoplay-policy=no-user-gesture-required' +" ^
-  "  ' --window-size=1133,741' +" ^
-  "  ' --user-data-dir=' + $q + $env:PROFILE + $q +" ^
-  "  ' --no-first-run --no-default-browser-check' + $env:LEAN;" ^
+  "if ($env:OPENER) {" ^
+  "  $link.TargetPath = $env:WSCRIPT;" ^
+  "  $link.Arguments = $q + $env:OPENER + $q + ' ' + $q + $env:BROWSER + $q + ' profile-edge';" ^
+  "} elseif ($env:OPENERCMD) {" ^
+  "  $link.TargetPath = $env:OPENERCMD;" ^
+  "  $link.Arguments = $q + $env:BROWSER + $q + ' profile-edge';" ^
+  "  $link.WindowStyle = 7;" ^
+  "} else {" ^
+  "  $url = ([Uri]$env:TARGET).AbsoluteUri;" ^
+  "  $link.TargetPath = $env:BROWSER;" ^
+  "  $link.Arguments = '--app=' + $q + $url + $q +" ^
+  "    ' --autoplay-policy=no-user-gesture-required' +" ^
+  "    ' --window-size=1133,741' +" ^
+  "    ' --user-data-dir=' + $q + $env:PROFILE + $q +" ^
+  "    ' --no-first-run --no-default-browser-check' + $env:LEAN;" ^
+  "}" ^
   "$link.IconLocation = $env:ICON + ',0';" ^
   "$link.WorkingDirectory = $env:APPDIR;" ^
   "$link.Description = 'Deskside Radio (Edge)';" ^

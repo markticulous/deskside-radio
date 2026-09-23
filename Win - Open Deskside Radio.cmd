@@ -59,6 +59,18 @@ rem one. An empty profile is the alarming outcome here: the radio comes up
 rem with none of your stations, and nothing on screen says why.
 if not exist "%PROFILE%\" if exist "%LOCALAPPDATA%\DesksideRadio\profile\" set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile"
 
+rem Which browser's profile, when the shortcut says. Argument 2, and only
+rem "profile-edge" is accepted: the Edge shortcut passes it, because that
+rem shortcut's stations have always lived there, and anything else -- no
+rem argument, or one that is not on this list -- keeps profile-chrome exactly
+rem as before. So a Chrome shortcut driving Edge on a machine without Chrome,
+rem which has been using profile-chrome all along, is not moved.
+rem
+rem Here and not above, deliberately. The block above moves an old unnamed
+rem profile into PROFILE when PROFILE does not exist yet; pointed at
+rem profile-edge, it would carry a Chrome user's stations into Edge's folder.
+if /i "%~2"=="profile-edge" set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile-edge"
+
 rem ---------------------------------------------------------------------
 rem  The flags that keep the profile small.
 rem
