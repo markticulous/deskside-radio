@@ -88,10 +88,16 @@ rem
 rem  The shader caches are deliberately NOT disabled. They are small, and
 rem  they are the reason every launch is not recompiling the same shaders.
 rem
+rem  --disable-extensions because the radio uses none, and because PDF tools
+rem  register their extensions with every Chrome profile on the machine --
+rem  Adobe Acrobat and Soda PDF were found here, 20 MB of the 66. And
+rem  --force-dark-mode so the browser's own title bar, and the mini radio's,
+rem  are dark as Firefox's are.
+rem
 rem  This exact line also appears in the two shortcut scripts, which build
 rem  their own command lines. A test holds the three to the same wording.
 rem ---------------------------------------------------------------------
-set "LEAN= --disable-background-networking --disable-component-update --disable-breakpad --disable-domain-reliability --disable-sync --no-pings --disable-features=OptimizationHints,OptimizationGuideModelDownloading,SegmentationPlatform,MediaRouter --disk-cache-size=16777216 --media-cache-size=16777216"
+set "LEAN= --disable-background-networking --disable-component-update --disable-breakpad --disable-domain-reliability --disable-sync --no-pings --disable-features=OptimizationHints,OptimizationGuideModelDownloading,SegmentationPlatform,MediaRouter --disk-cache-size=16777216 --media-cache-size=16777216 --disable-extensions --force-dark-mode"
 
 if not exist "%TARGET%" (
   echo.
@@ -109,6 +115,14 @@ if not defined BROWSER (
 )
 
 rem ---- is there a shortcut on the Desktop -------------------------------
+rem
+rem And, once a day, the profile trim, in the same PowerShell. The installer
+rem trims too, but skips a profile whose browser is open -- and the ordinary
+rem update runs in the background while the radio plays, so the profile in
+rem use was skipped on the runs that happen most. Here, before the browser
+rem starts, is the one moment nothing has it open. The stamp is in the app
+rem folder, which an uninstall removes whole; in the data folder it would
+rem stop the uninstaller removing that folder, which it does only when empty.
 rem The page has a button offering to make one, and no way on earth to find
 rem out whether it is needed. A page opened from a disk cannot look at the
 rem disk. It can load a script, though -- the same door the settings seed
@@ -158,6 +172,9 @@ rem start re-parses a -Command assembled from thirty caret-joined quoted
 rem fragments, and nothing ran. Called directly, as it always was.
 "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command ^
   "try {" ^
+  "  $tp = Join-Path $env:APPROOT 'assets\trim-profile.ps1'; $stamp = Join-Path $env:APPROOT 'assets\trimmed.stamp';" ^
+  "  if ((Test-Path -LiteralPath $tp) -and ((-not (Test-Path -LiteralPath $stamp)) -or ((Get-Item -LiteralPath $stamp).LastWriteTime -lt (Get-Date).AddHours(-20)))) {" ^
+  "    try { & $tp | Out-Null } catch { }; Set-Content -LiteralPath $stamp -Value (Get-Date).ToString('s') };" ^
   "  $d = [Environment]::GetFolderPath('Desktop');" ^
   "  $has = $false;" ^
   "  if ($d -and (Test-Path -LiteralPath $d)) {" ^
@@ -287,7 +304,16 @@ rem is the radio's own, and Firefox keeps window geometry in its
 rem xulstore.json. So the size goes there before every start: every start,
 rem because Firefox writes the last size back over it on exit.
 rem
-rem 1133x796, measured rather than chosen. The Chrome app window above,
+rem The size is forced and the position is not: wherever the listener left
+rem it is kept, as Chrome keeps its own. Kept only if it is on a screen,
+rem though. Close Firefox while the mini radio is pinned and the watcher has
+rem it parked off-screen, so that is the position Firefox saves -- and the
+rem next launch would open where nobody can see it. Centred instead.
+rem
+rem 1133x742, measured rather than chosen, with the tab strip, toolbar and
+rem bookmarks bar hidden (userChrome.css) and Windows' own title bar in their
+rem place (browser.tabs.inTitlebar = 0), which leaves Firefox a 14x38 frame
+rem against Chrome's 15x38. It was 1133x796 while those bars were showing: The Chrome app window above,
 rem started at 1133x741, gives the page 1119x704; Firefox's frame is 14
 rem across and 92 down. So this is the size that gives Firefox's page the
 rem same area. xulstore is in CSS pixels, which is what a DPI-unaware
@@ -299,8 +325,29 @@ rem which Firefox's JSON reader does not expect. If any of that fails, Firefox
 rem is started anyway and opens at its own size: a wrong size is a nuisance,
 rem not starting is a fault.
 rem
-rem No window lock here. The grip-removal finds windows whose title ends
-rem "Deskside Radio", and Firefox appends its own name to every title.
+rem And dark. Firefox's own title bar, toolbar and tab strip -- and the address
+rem bar it puts on the mini radio -- follow Firefox's theme, not the page. This
+rem profile is the radio's alone, so it is told the system is dark --
+rem ui.systemUsesDarkTheme, in user.js, which Firefox reads at every start --
+rem and its default theme, which follows the system, goes dark with it.
+rem extensions.activeThemeID was tried first and did nothing in 156: Firefox
+rem treats it as a record of the add-on manager's choice, not an instruction.
+rem Any copy of either line is removed first. The one line is replaced, not
+rem appended, so the file does not grow per launch; the lines the shortcut
+rem script wrote there (autoplay, the download folder) are kept.
+rem
+rem And lean: the cache capped at 16 MB where Firefox would size it to the
+rem disk, and the DRM plugin and telemetry off. The profile was 177 MB, 70 of
+rem it cache and 22 a copy-protection plugin no radio stream uses.
+rem
+rem And no maximise button. Firefox draws its own title-bar buttons, so the
+rem watcher taking WS_MAXIMIZEBOX off from outside leaves them drawn; a
+rem userChrome.css in this profile hides them, with the one pref that makes
+rem Firefox read it. Both rewritten every start, this profile only.
+rem
+rem The resize lock is the watcher's job here rather than this script's:
+rem strip-fit.ps1 -Firefox finds both windows by Firefox's own title suffix
+rem and takes the resize frame off each, which Firefox was found to honour.
 :firefox
 set "FXPROFILE=%LOCALAPPDATA%\DesksideRadio\profile-firefox"
 "%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
@@ -318,12 +365,41 @@ set "FXPROFILE=%LOCALAPPDATA%\DesksideRadio\profile-firefox"
   "  Add-Type -AssemblyName System.Windows.Forms;" ^
   "  $a = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea;" ^
   "  $sx = [int]($a.X + [Math]::Max(0, ($a.Width - 1133) / 2));" ^
-  "  $sy = [int]($a.Y + [Math]::Max(0, ($a.Height - 796) / 2));" ^
-  "  foreach ($kv in @(@('width','1133'), @('height','796'), @('screenX',[string]$sx), @('screenY',[string]$sy), @('sizemode','normal'))) {" ^
+  "  $sy = [int]($a.Y + [Math]::Max(0, ($a.Height - 742) / 2));" ^
+  "  foreach ($kv in @(@('width','1133'), @('height','742'), @('sizemode','normal'))) {" ^
   "    $m | Add-Member -NotePropertyName $kv[0] -NotePropertyValue $kv[1] -Force };" ^
+  "  $v = [System.Windows.Forms.SystemInformation]::VirtualScreen; $ox = 0; $oy = 0;" ^
+  "  $has = [int]::TryParse([string]$m.screenX, [ref]$ox) -and [int]::TryParse([string]$m.screenY, [ref]$oy);" ^
+  "  $on = $has -and $ox -ge ($v.X - 20) -and $oy -ge ($v.Y - 20) -and $ox -le ($v.Right - 200) -and $oy -le ($v.Bottom - 200);" ^
+  "  if (-not $on) {" ^
+  "    $m | Add-Member -NotePropertyName 'screenX' -NotePropertyValue ([string]$sx) -Force;" ^
+  "    $m | Add-Member -NotePropertyName 'screenY' -NotePropertyValue ([string]$sy) -Force };" ^
   "  [System.IO.File]::WriteAllText($f, ($x | ConvertTo-Json -Depth 8 -Compress));" ^
   "} catch { };" ^
+  "try {" ^
+  "  $uj = Join-Path $p 'user.js';" ^
+  "  $keep = @(); if (Test-Path -LiteralPath $uj) { $keep = @(Get-Content -LiteralPath $uj | Where-Object { $_ -notmatch 'extensions\.activeThemeID|ui\.systemUsesDarkTheme|legacyUserProfileCustomizations|browser\.tabs\.inTitlebar|browser\.cache\.disk\.capacity|browser\.cache\.disk\.smart_size\.enabled|media\.eme\.enabled|media\.gmp-widevinecdm\.enabled|media\.gmp-widevinecdm\.visible|datareporting\.healthreport\.uploadEnabled|datareporting\.policy\.dataSubmissionEnabled|toolkit\.telemetry\.enabled|app\.normandy\.enabled|app\.shield\.optoutstudies\.enabled' }) };" ^
+  "  $keep += 'user_pref(' + [char]34 + 'ui.systemUsesDarkTheme' + [char]34 + ', 1);';" ^
+  "  $keep += 'user_pref(' + [char]34 + 'toolkit.legacyUserProfileCustomizations.stylesheets' + [char]34 + ', true);';" ^
+  "  $keep += 'user_pref(~browser.tabs.inTitlebar~, 0);'.Replace('~', [string][char]34);" ^
+  "  $keep += 'user_pref(~browser.cache.disk.capacity~, 16384);'.Replace('~', [string][char]34);" ^
+  "  $keep += 'user_pref(~browser.cache.disk.smart_size.enabled~, false);'.Replace('~', [string][char]34);" ^
+  "  $keep += 'user_pref(~media.eme.enabled~, false);'.Replace('~', [string][char]34);" ^
+  "  $keep += 'user_pref(~media.gmp-widevinecdm.enabled~, false);'.Replace('~', [string][char]34);" ^
+  "  $keep += 'user_pref(~media.gmp-widevinecdm.visible~, false);'.Replace('~', [string][char]34);" ^
+  "  $keep += 'user_pref(~datareporting.healthreport.uploadEnabled~, false);'.Replace('~', [string][char]34);" ^
+  "  $keep += 'user_pref(~datareporting.policy.dataSubmissionEnabled~, false);'.Replace('~', [string][char]34);" ^
+  "  $keep += 'user_pref(~toolkit.telemetry.enabled~, false);'.Replace('~', [string][char]34);" ^
+  "  $keep += 'user_pref(~app.normandy.enabled~, false);'.Replace('~', [string][char]34);" ^
+  "  $keep += 'user_pref(~app.shield.optoutstudies.enabled~, false);'.Replace('~', [string][char]34);" ^
+  "  [System.IO.File]::WriteAllLines($uj, [string[]]$keep);" ^
+  "  $cd = Join-Path $p 'chrome'; New-Item -ItemType Directory -Force -Path $cd | Out-Null;" ^
+  "  [System.IO.File]::WriteAllText((Join-Path $cd 'userChrome.css'), '#TabsToolbar, #nav-bar, #PersonalToolbar { visibility: collapse !important; } .titlebar-max, .titlebar-restore { display: none !important; }');" ^
+  "} catch { };" ^
   "$q = [char]34; $u = ([Uri]$env:TARGET).AbsoluteUri;" ^
+  "$fit = $env:APPROOT + '\strip-fit.ps1';" ^
+  "if (Test-Path -LiteralPath $fit) { Start-Process -FilePath $env:PS -WindowStyle Hidden" ^
+  "  -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -File ' + $q + $fit + $q + ' -Firefox') };" ^
   "Start-Process -FilePath $env:BROWSER -ArgumentList ('-profile ' + $q + $p + $q + ' -new-window ' + $q + $u + $q)"
 call :autoupdate
 exit /b 0

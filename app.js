@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.5.8';
+  var APP_VERSION = '1.5.9';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -98,6 +98,8 @@
        it again at every pin would make it a toy rather than a choice.
        An unknown value falls back to the bars. */
     miniViz: 'bars',
+    /* The mini radio's face. Dark unless the listener picks light. */
+    miniLight: false,
     startupUsed: false,
     versionCheck: true,
     versionLastCheck: 0,
@@ -2510,10 +2512,16 @@
     "  user-select: none;",
     "}",
     ".dr-strip, .dr-strip * { box-sizing: border-box; }",
-    "@media (prefers-color-scheme: light) {",
-    "  .dr-strip { --dr-bg: #f4f2ec; --dr-ink: #1b1b19; --dr-rail: rgba(27, 27, 25, .5); --dr-viz: var(--dr-ink); }",
-    "}",
+    "/* Light when the listener asks for it, and only then. It used to follow",
+    "   prefers-color-scheme, which Firefox answers from its own theme and Chrome",
+    "   from Windows -- so the same radio was dark in one and light in the other. */",
+    ".dr-strip.is-light { --dr-bg: #f4f2ec; --dr-ink: #1b1b19; --dr-rail: rgba(27, 27, 25, .5); --dr-viz: var(--dr-ink); }",
     ".dr-top {",
+    "  /* The whole row sits seven pixels down, clear of the light/dark and",
+    "     expand buttons in the corner. top rather than margin: it moves the",
+    "     drawing and leaves the strip's layout as it was. One offset for the",
+    "     row rather than one per item, which would have to be kept equal. */",
+    "  position: relative; top: 7px;",
     "  display: grid;",
     "  grid-template-columns: auto minmax(0, 1fr) auto;",
     "  align-items: center;",
@@ -2559,6 +2567,7 @@
     "  appearance: none; border: 0; background: none; padding: 0; color: inherit;",
     "  cursor: pointer; position: relative; flex: none;",
     "  width: 46px; height: 26px; margin-right: 10px; --dr-vu: 0; --dr-thump: 0;",
+
     "  /* One colour for all five, white on the dark face. Every visualisation",
     "     draws in currentColor, so this is the only place it is decided; the",
     "     light face swaps it for the ink, where white would vanish. */",
@@ -2718,6 +2727,16 @@
     "  display: grid; place-items: center;",
     "}",
     ".dr-unpin:hover { opacity: 1; }",
+    "/* Beside it, the same kind of thing: light or dark, the listener's. */",
+    ".dr-theme {",
+    "  position: absolute; top: 3px; right: 27px;",
+    "  width: 22px; height: 22px; padding: 0;",
+    "  border: 0; background: none; cursor: pointer;",
+    "  color: var(--dr-hot); opacity: .75;",
+    "  display: grid; place-items: center;",
+    "}",
+    ".dr-theme:hover { opacity: 1; }",
+    ".dr-theme svg { width: 13px; height: 13px; }",
     ".dr-unpin svg { width: 13px; height: 13px; }",
     ".dr-foot {",
     "  display: grid;",
@@ -2814,9 +2833,7 @@
     ".tip[data-side=\"left\"]::after   { right: -4px;  top: var(--tip-ay, 50%);  margin-top: -4px;  border-left: 0; border-bottom: 0; }",
     ".tip[data-side=\"right\"]::after  { left: -4px;   top: var(--tip-ay, 50%);  margin-top: -4px;  border-right: 0; border-top: 0; }",
     "html.dr-pip, body.dr-pip { margin: 0; height: 100%; overflow: hidden; background: #16171a; }",
-    "@media (prefers-color-scheme: light) {",
-    "  html.dr-pip, body.dr-pip { background: #f4f2ec; }",
-    "}"
+    "html.dr-light, html.dr-light body.dr-pip { background: #f4f2ec; }"
   ].join('\n');
 
   var STRIP_HTML =
@@ -2864,6 +2881,11 @@
         '</span>' +
       '</button>' +
     '</div>' +
+    /* A circle half filled: the one glyph that reads as light-or-dark either way. */
+    '<button type="button" class="dr-theme" aria-label="Light or dark" data-tip="Light or dark">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.4"/>' +
+        '<path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>' +
+    '</button>' +
     '<button type="button" class="dr-unpin" aria-label="Expand to main radio" data-tip="Expand to main radio">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
         '<path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/>' +
@@ -2963,6 +2985,20 @@
     });
 
     root.querySelector('.dr-unpin').addEventListener('click', function () { unpin(true); });
+
+    /* Light or dark, remembered, dark unless asked. On the strip and on the
+       page behind it together, or a light strip sits in a dark window. */
+    function paintStripTheme() {
+      var light = !!state.miniLight;
+      root.classList.toggle('is-light', light);
+      doc.documentElement.classList.toggle('dr-light', light);
+    }
+    paintStripTheme();
+    root.querySelector('.dr-theme').addEventListener('click', function () {
+      state.miniLight = !state.miniLight;
+      save();
+      paintStripTheme();
+    });
     return o;
   }
 

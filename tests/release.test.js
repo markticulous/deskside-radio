@@ -2829,8 +2829,8 @@ test('Firefox opens at the radio size, through the launcher', () => {
   assert.ok(/if \/i "%~nx1"=="firefox\.exe" goto :firefox/.test(op),
     'the launcher hands Firefox the Chrome flags, which it ignores');
   assert.ok(op.indexOf("'xulstore.json'") !== -1, 'Firefox is started without being told its size');
-  /* Measured: the Chrome app page is 1119x704 and Firefox's frame 14x92. */
-  assert.ok(/'width','1133'/.test(op) && /'height','796'/.test(op),
+  /* Measured: the Chrome app page is 1119x704 and Firefox's frame, bars hidden, 14x38. */
+  assert.ok(/'width','1133'/.test(op) && /'height','742'/.test(op),
     'the Firefox size no longer gives its page the same area as the Chrome window');
   /* Without a byte-order mark: Set-Content -Encoding UTF8 on PowerShell 5 writes one. */
   assert.ok(/WriteAllText\(\$f,/.test(op), 'xulstore is written in a way that can put a BOM in front of the JSON');

@@ -8,6 +8,7 @@ dist/
 # shortcut exists. Belongs to the machine it was launched on, not the repo.
 assets/shortcut.js
 assets/startup.js
+assets/trimmed.stamp
 
 # OS clutter
 Thumbs.db

@@ -570,7 +570,7 @@ html { scroll-behavior: smooth; }
   <span class="byline">
     <span class="byline-by">A</span><span class="byline-name">Markticulous</span><span class="byline-suffix">build</span>
   </span>
-  <span class="ver" id="verChip">v1.5.8</span>
+  <span class="ver" id="verChip">v1.5.9</span>
   <span class="find">
     <input type="search" id="findInput" class="find-input" autocomplete="off" spellcheck="false"
            placeholder="Search the manual…" aria-label="Search the manual"
@@ -673,7 +673,7 @@ html { scroll-behavior: smooth; }
       <p>A page cannot decide how big one of these windows is. Chrome ignores the size it is given &mdash; 440&times;150, 440&times;240 and 600&times;400 were each measured opening at 1119&times;700, which is simply its default for the display &mdash; and although the window can be resized afterwards, that needs a live user gesture, and the gesture that opened it was spent opening it.</p>
       <p>So on Windows the opener starts <span class="path">strip-fit.ps1</span> beside the radio. <strong>It is the only thing this project leaves running</strong>, and the only file in the folder nobody is meant to double-click. It waits for the floating window, sets it to the right size, takes its resize grip off so it cannot be dragged to some other shape, and does nothing else. It stops when the radio&rsquo;s window goes, with a twelve-hour backstop in case it never sees that happen, and only one ever runs at a time. The uninstaller stops it before removing the folder.</p>
       <p>It picks the right window by asking Windows which one floats. Both windows answer to the same name &mdash; Windows captions a picture-in-picture window with the title of the page that opened it, not the title of the page inside it &mdash; and only the floating one carries the always-on-top flag.</p>
-      <p><strong>Everywhere else &mdash; macOS, Linux, and Firefox anywhere &mdash; nothing is started and nothing runs.</strong> The strip opens at whatever size the browser chose and says so, in the middle of itself: <em>Click anywhere to shrink this window</em>. One click sizes it. That prompt is keyed to the window actually being too big rather than to the platform, so it never appears on Windows, and it will stop appearing anywhere a browser begins honouring the size it is asked for.</p>
+      <p><strong>Everywhere else &mdash; macOS and Linux &mdash; nothing is started and nothing runs.</strong> The strip opens at whatever size the browser chose and says so in its top-left corner: <em>Click here to show Deskside Radio Mini</em>. One click sizes it. That prompt is keyed to the window actually being too big rather than to the platform, so it never appears on Windows, and it will stop appearing anywhere a browser begins honouring the size it is asked for.</p>
 
       <h3>Tooltips</h3>
       <p>The hints are the app&rsquo;s own rather than the browser&rsquo;s. A native one is a grey rectangle in a system font, after a delay nothing can change, and it says nothing at all if you reached the control with the keyboard &mdash; these appear on focus as well as on hover, after about four hundred milliseconds, and immediately after that while you are moving along a row. Escape dismisses one, and so does pressing the thing it belongs to.</p>
@@ -753,7 +753,7 @@ html { scroll-behavior: smooth; }
         <dd>Makes <strong>Deskside Radio (Edge)</strong>, pinned to Edge.</dd>
 
         <dt><span class="path">Win - Create Desktop Shortcut (Firefox).cmd</span></dt>
-        <dd>Makes <strong>Deskside Radio (Firefox)</strong>. Firefox has no app-window mode, so this opens an ordinary window with a tab strip; press <kbd>F11</kbd> for fullscreen. Autoplay there is a preference rather than a flag, so the script writes it into the profile it creates. It opens at the radio&rsquo;s size, and it plays stations that other browsers play natively but Firefox cannot, through a small library it loads only when it needs to. Two things it cannot do: lock the window&rsquo;s size, or step the big window out of the way when you pin the mini radio &mdash; Firefox does not let a page move or resize its own window.</dd>
+        <dd>Makes <strong>Deskside Radio (Firefox)</strong>. It looks like the other browsers&rsquo; radio: its own dark window, no tabs or toolbar, no maximise button, at the radio&rsquo;s size, where you last left it. It plays the stations Firefox cannot play natively through a small library it loads only when it needs to. The size lock and the big window stepping aside when you pin the mini radio are done from outside Firefox, by the same small helper the Chrome radio uses, because Firefox does not let a page move or resize its own window.</dd>
 
         <dt><span class="path">Linux - Create Desktop Shortcut.sh</span></dt>
         <dd>

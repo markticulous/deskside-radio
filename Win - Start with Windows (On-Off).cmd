@@ -224,7 +224,7 @@ if defined EB set "PROFARG= profile-edge"
 rem The flags that keep the profile from filling with things a browser
 rem showing one local file will never consult. Word for word the line in
 rem "Win - Open Deskside Radio.cmd"; a test holds the copies together.
-set "LEAN= --disable-background-networking --disable-component-update --disable-breakpad --disable-domain-reliability --disable-sync --no-pings --disable-features=OptimizationHints,OptimizationGuideModelDownloading,SegmentationPlatform,MediaRouter --disk-cache-size=16777216 --media-cache-size=16777216"
+set "LEAN= --disable-background-networking --disable-component-update --disable-breakpad --disable-domain-reliability --disable-sync --no-pings --disable-features=OptimizationHints,OptimizationGuideModelDownloading,SegmentationPlatform,MediaRouter --disk-cache-size=16777216 --media-cache-size=16777216 --disable-extensions --force-dark-mode"
 
 rem The shortcut aims at the opener rather than at the browser. The
 rem opener starts the browser with the same flags and then takes the
