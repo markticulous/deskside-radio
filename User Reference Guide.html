@@ -570,7 +570,7 @@ html { scroll-behavior: smooth; }
   <span class="byline">
     <span class="byline-by">A</span><span class="byline-name">Markticulous</span><span class="byline-suffix">build</span>
   </span>
-  <span class="ver" id="verChip">v1.5.9</span>
+  <span class="ver" id="verChip">v1.5.10</span>
   <span class="find">
     <input type="search" id="findInput" class="find-input" autocomplete="off" spellcheck="false"
            placeholder="Search the manual…" aria-label="Search the manual"
@@ -618,7 +618,7 @@ html { scroll-behavior: smooth; }
         <li>Press play.</li>
       </ol>
       <p>That&rsquo;s all &mdash; it installs the radio, puts a shortcut on your Desktop and opens it.</p>
-      <p>If there is no shortcut on your Desktop yet it asks which browser to open in: <strong>C</strong> for Chrome (or Edge, where Chrome is not installed), <strong>E</strong> for Edge, <strong>F</strong> for Firefox. Pressing Enter takes Chrome. If shortcuts are already there it asks nothing and repoints the ones you have.</p>
+      <p>If there is no shortcut on your Desktop yet it asks which browser to open in, listing only the ones on your PC: <strong>C</strong> for Chrome, <strong>E</strong> for Edge, <strong>F</strong> for Firefox. Pressing Enter takes the first one listed. With only one browser it does not ask. If shortcuts are already there it asks nothing and repoints the ones you have.</p>
       <p>It also tells you which version it is putting in, and which one that replaces.</p>
       <p>If you are reading this inside a folder you unzipped yourself, double-click <span class="path">Win&nbsp;-&nbsp;Create Desktop Shortcut (Chrome).cmd</span> instead and it works the same way from where it stands.</p>
       <p>Everything below is detail you can come back for. On a Mac or on Linux, see <a href="#browser">Choosing a browser</a>.</p>
@@ -730,6 +730,9 @@ html { scroll-behavior: smooth; }
       <p>To give the shortcut a different theme’s icon, run the script with that theme’s name:</p>
       <div class="cmd">"Win - Create Desktop Shortcut (Chrome).cmd" console</div>
       <p>Settings shows you the exact line to use for whichever theme you are on.</p>
+      <p>The icon has a small logo of the browser it opens in, in its top-left corner, so a Chrome, an Edge and a Firefox shortcut side by side are easy to tell apart. The logo comes from the browser installed on your PC. To have the icon without it, add <em>plain</em>:</p>
+      <div class="cmd">"Win - Create Desktop Shortcut (Chrome).cmd" console plain</div>
+      <p>Or right-click the shortcut &rarr; <strong>Properties</strong> &rarr; <strong>Change Icon</strong> and pick any <span class="path">favicon-*.ico</span> in the <span class="path">assets</span> folder. Updates keep whichever icon you chose.</p>
     </section>
 
     <section id="window">

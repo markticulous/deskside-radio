@@ -12,7 +12,7 @@ Download **Win-Install-or-Update-Deskside-Radio.cmd** from the [latest release](
 
 That's all — it installs the radio, puts a shortcut on your Desktop and opens it.
 
-If there is no Deskside Radio shortcut on the Desktop yet it asks which browser to open in — **C** for Chrome (or Edge where Chrome is not installed), **E** for Edge, **F** for Firefox — and pressing Enter takes Chrome. If there are already shortcuts it asks nothing and rewrites the ones that are there, which matters more than it sounds: a `.lnk` holds the full path to the app folder, so an install that moved leaves every shortcut, and the Startup entry, aimed at where the folder used to be.
+If there is no Deskside Radio shortcut on the Desktop yet it asks which browser to open in, offering only the ones installed — **C** for Chrome, **E** for Edge, **F** for Firefox — and pressing Enter takes the first offered. With one browser it asks nothing and uses that one; with none of the three, the shortcut opens the radio in the default browser, which needs a click before it plays. If there are already shortcuts it asks nothing and rewrites the ones that are there, which matters more than it sounds: a `.lnk` holds the full path to the app folder, so an install that moved leaves every shortcut, and the Startup entry, aimed at where the folder used to be.
 
 It also says which version it is putting in, and which one that replaces, read out of the archive it just downloaded rather than off the release page.
 
@@ -36,7 +36,9 @@ The old way still works and is unchanged — download `deskside-radio.zip`, unzi
 "Win - Create Desktop Shortcut (Chrome).cmd" console
 ```
 
-With no argument it uses the analogue dial icon. The app's own shortcut button shows the exact line to run, because a web page is not allowed to write a shortcut file itself — Chrome renames `.url` downloads to `.download`, on the grounds that such a file can point anywhere.
+With no argument it uses the analogue dial icon. The icon carries the browser's logo in its top-left corner, on a thin dark disc, so the Chrome, Edge and Firefox shortcuts can be told apart on one Desktop; add `plain` (`"Win - Create Desktop Shortcut (Chrome).cmd" console plain`) for the icon without it. The logo is never shipped: `assets/shortcut-icon.ps1` takes it from the browser installed on that PC and draws it onto the theme's icon there, into `assets/badged/`, which is gitignored. Every update rewrites the shortcuts, and keeps what each one had — the theme, a plain icon, or an icon chosen in Properties that is not ours at all — except that a plain icon from before badges existed gets the badge once.
+
+The app's own shortcut button shows the exact line to run, because a web page is not allowed to write a shortcut file itself — Chrome renames `.url` downloads to `.download`, on the grounds that such a file can point anywhere.
 
 ### Starting without a click
 
