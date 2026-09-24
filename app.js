@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.5.9';
+  var APP_VERSION = '1.5.10';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -1752,10 +1752,6 @@
     setTimeout(still ? back : leave, ANNOUNCE_MS);
   }
 
-  function setText(node, text) {
-    if (node.textContent !== text) node.textContent = text;
-  }
-
   /* The next-up text, and the width the chip should become to hold it.
 
      Measured rather than left to the layout: width is what the CSS
@@ -3226,12 +3222,6 @@
        since this one is tapped before it. */
     if (peakOfBuf(timeData) > peakOfBuf(buf)) buf = timeData;
 
-    /* Nothing in either buffer draws a square wave, which no signal makes
-       and silence certainly does not. It is there to tell one failure from
-       another: a flat line now means this function never wrote, where a
-       square wave means it wrote and had nothing to write. Drawn flat, the
-       two were indistinguishable, and four rounds of looking at a flat line
-       told us nothing at all. */
     if (!scopePrev || scopePrev.length !== SCOPE_PTS) {
       scopePrev = new Float32Array(SCOPE_PTS);
     }
@@ -3244,10 +3234,8 @@
     var pts = [];
     for (var i = 0; i < SCOPE_PTS; i++) {
       var x = (i / (SCOPE_PTS - 1)) * 46;
-      var v = buf ? buf[base + Math.floor(i / (SCOPE_PTS - 1) * (span - 1))]
-                  : ((i % 8) < 4 ? 0.42 : -0.42);
-      /* 13 is the middle of the 26-unit box and 11 keeps a full-scale
-         excursion just inside it. */
+      /* Nothing in either buffer is a flat line, as on any scope. */
+      var v = buf ? buf[base + Math.floor(i / (SCOPE_PTS - 1) * (span - 1))] : 0;
       /* Broadcast programme rarely peaks near full scale, so it is lifted
          before the clamp -- which then keeps the overdriven case inside the
          box rather than letting it draw outside. */
@@ -3770,6 +3758,16 @@
     if (!box) return;
 
     box.textContent = text;
+    /* A field's tip opens with the field's name in bold, so it reads as a
+       label before the explanation. Built as an element, not markup: the
+       tip text stays text. */
+    var head = node.getAttribute('data-tip-head');
+    if (head) {
+      var b = box.ownerDocument.createElement('b');
+      b.textContent = head;
+      box.insertBefore(box.ownerDocument.createTextNode(' - '), box.firstChild);
+      box.insertBefore(b, box.firstChild);
+    }
     try { if (!box.matches(':popover-open')) box.showPopover(); } catch (e) { /* already up */ }
     placeTip(box, node);
 
@@ -5177,15 +5175,15 @@
                field and pushes the row down instead of being parked at the
                bottom of the card away from what it is about. */
             '<div class="fw fw-name"><input class="in" data-k="name" placeholder="Station name" aria-label="Name"' +
-            ' data-tip="What the radio shows in large letters. Any name you like."></div>' +
+            ' data-tip-head="Station name" data-tip="What the radio shows in large letters. Any name you like."></div>' +
             '<div class="fw fw-band"><input class="in in-band" data-k="band" placeholder="1010 AM" aria-label="Frequency"' +
-            ' data-tip="The frequency printed on the tuning scale, e.g. 92.5 FM. Leave it empty for a stream with no dial position."></div>' +
+            ' data-tip-head="Frequency" data-tip="The frequency printed on the tuning scale, e.g. 92.5 FM. Leave it empty for a stream with no dial position."></div>' +
             '<input class="in in-color" data-k="color" type="color" aria-label="Colour"' +
-            ' data-tip="The colour this station is drawn in. The editorial and departures themes use it; the others ignore it.">' +
+            ' data-tip-head="Colour" data-tip="The colour this station is drawn in. The editorial and departures themes use it; the others ignore it.">' +
             '<div class="fw fw-url"><input class="in in-url" data-k="url" placeholder="https://stream.example.com/live.mp3" aria-label="Stream URL"' +
-            ' data-tip="The direct address of the audio itself. MP3 and AAC play here; a .pls or .m3u is a list of streams rather than one and will not."></div>' +
+            ' data-tip-head="Stream URL" data-tip="The direct address of the audio itself. MP3 and AAC play here; a .pls or .m3u is a list of streams rather than one and will not."></div>' +
             '<input class="in in-tag" data-k="tag" placeholder="AAC+ \u00b7 48 kbps \u00b7 Toronto" aria-label="Tagline"' +
-            ' data-tip="The small line under the name. Found stations arrive with the format, the bitrate and the city; yours can say anything.">' +
+            ' data-tip-head="Station tag" data-tip="The small line under the name. Found stations arrive with the format, the bitrate and the city; yours can say anything.">' +
           '</div>' +
         '</div>' +
         '</div>';
@@ -6679,7 +6677,7 @@
        it is and what wrote it, readable without knowing the format. app
        is also the only honest way to refuse somebody else's JSON: an
        array called stations is not a rare thing to find in a file. */
-    var body = 'window.DESKSIDE_SEED = ' + JSON.stringify({ app: SEED_APP, appVersion: APP_VERSION, seedV: SEED_V, exportedAt: stampNow(), stations: state.stations, schedule: state.schedule, scheduleEnds: state.scheduleEnds, scheduleV: state.scheduleV || 2, schedulerEnabled: !!state.schedulerEnabled, theme: state.theme, volume: state.volume, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId }, null, 2) + ';\n';
+    var body = 'window.DESKSIDE_SEED = ' + JSON.stringify({ app: SEED_APP, appVersion: APP_VERSION, seedV: SEED_V, exportedAt: stampNow(), stations: state.stations, schedule: state.schedule, scheduleEnds: state.scheduleEnds, scheduleV: state.scheduleV || 2, schedulerEnabled: !!state.schedulerEnabled, theme: state.theme, volume: state.volume, volumeCurve: 3, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId, miniViz: state.miniViz, miniLight: !!state.miniLight, versionCheck: !!state.versionCheck, scrollAnyway: !!state.scrollAnyway, lastCity: state.lastCity || null }, null, 2) + ';\n';
     var blob = new Blob([body], { type: 'text/javascript' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -6700,6 +6698,18 @@
     var d = new Date();
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
       + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  /* A remembered city, from a file anyone can edit: the fields the finder
+     reads, of the types it reads them as, and nothing else. */
+  function cleanCity(c) {
+    if (!c || typeof c !== 'object') return null;
+    var lat = Number(c.lat), lon = Number(c.lon);
+    if (typeof c.label !== 'string' || !c.label || !isFinite(lat) || !isFinite(lon)) return null;
+    if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    function str(v) { return typeof v === 'string' ? v.slice(0, 120) : ''; }
+    return { label: str(c.label), name: str(c.name), region: str(c.region),
+             countryCode: str(c.countryCode).slice(0, 3), lat: lat, lon: lon };
   }
 
   /* Which version of the app wrote an export, or null for one written
@@ -6775,6 +6785,43 @@
     if (THEMES.indexOf(data.theme) !== -1) target.theme = data.theme;
     target.autoplay = !!data.autoplay;
     target.autoplayStationId = data.autoplayStationId || null;
+
+    /* Preferences that were stored and never exported, so every import lost
+       them: the mini radio's visualisation and light/dark, the update check,
+       the reduced-motion choice, the remembered city. Each is checked, and a
+       file without it -- anything written before 1.5.10 -- leaves the radio's
+       own choice where it was rather than putting it back to the default. */
+    if (VIZ.indexOf(data.miniViz) !== -1) target.miniViz = data.miniViz;
+    if (typeof data.miniLight === 'boolean') target.miniLight = data.miniLight;
+    if (typeof data.versionCheck === 'boolean') target.versionCheck = data.versionCheck;
+    if (typeof data.scrollAnyway === 'boolean') target.scrollAnyway = data.scrollAnyway;
+    var city = cleanCity(data.lastCity);
+    if (city) target.lastCity = city;
+
+    /* The fader the file was written on. Exports carried no scale until
+       1.5.9, and every release from 1.0.0 to 1.5.6 was 60 dB wide where
+       1.5.7 on is 40 -- so a file read as it stands came in up to 15 dB
+       louder: a saved 50 went from -30 dB to -20. Stated scale first; then
+       the version, 1.5.7 or later being the new fader; then, for a file
+       too old to carry a version at all, the old one.
+
+       Only volumes that came from the file. The target's own is on the new
+       fader already, and converting that too is the double conversion that
+       once drove a saved volume to 1. */
+    var fromV = versionOfExport(data);
+    var fileCurve = (data.volumeCurve === 2 || data.volumeCurve === 3) ? data.volumeCurve
+      : (fromV && !newerThan('1.5.7', fromV)) ? 3 : 2;
+    if (fileCurve === 2) {
+      if (typeof data.volume === 'number' && isFinite(data.volume)) {
+        target.volume = Signal.migrateVolume60(target.volume);
+      }
+      ['weekday', 'weekend'].forEach(function (g) {
+        target.schedule[g].forEach(function (sl) {
+          if (typeof sl.volume === 'number') sl.volume = Signal.migrateVolume60(sl.volume);
+        });
+      });
+    }
+    target.volumeCurve = 3;
     return target;
   }
 

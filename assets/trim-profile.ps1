@@ -61,8 +61,11 @@ $freed = 0
 # A profile whose browser is open is left alone: this is called by the
 # installer, and the radio can be playing through an update. Matched on the
 # profile's own folder name in the browser's command line.
+# One process list for every check. Each costs about 200 ms, and asking
+# once per profile was most of the trim's time at launch.
+$procLines = @(Get-CimInstance Win32_Process | ForEach-Object { $_.CommandLine } | Where-Object { $_ })
 function Running([string]$name) {
-  [bool](Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains($name) })
+  [bool]($script:procLines | Where-Object { $_.Contains($name) })
 }
 
 function Drop([string]$target) {
@@ -80,6 +83,22 @@ foreach ($name in @('profile-chrome', 'profile-edge')) {
   # with --disable-extensions, so they would never load; PDF tools register
   # with every Chrome profile on the machine, and this one had 20 MB of them.
   Drop (Join-Path $dir 'Default\Extensions')
+
+  # What piles up. Service Worker data is all from browser pages -- a file://
+  # page cannot register a worker -- and was 22.6 MB in Edge after one visit
+  # to its settings. The metrics files are Edge's, 4 MB apiece and
+  # accumulating. The cache is capped at 16 MB by the launch flags and was
+  # found at 26, so past the cap it goes, and grows back only to the cap.
+  # Shader caches are not here: they are rebuilt at every launch, so clearing
+  # them frees nothing that lasts and slows the next start.
+  Drop (Join-Path $dir 'Default\Service Worker')
+  Drop (Join-Path $dir 'BrowserMetrics')
+  Drop (Join-Path $dir 'BrowserMetrics-spare.pma')
+  $cache = Join-Path $dir 'Default\Cache'
+  if (Test-Path -LiteralPath $cache) {
+    $held = (Get-ChildItem -LiteralPath $cache -Recurse -Force -File | Measure-Object -Property Length -Sum).Sum
+    if ($held -gt 16MB) { Drop $cache; Drop (Join-Path $dir 'Default\Code Cache') }
+  }
 
   foreach ($j in $junk) {
     $target = Join-Path $dir $j

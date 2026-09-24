@@ -8,6 +8,7 @@ rem first. Useful on a work machine where Edge is the browser allowed.
 rem
 rem   "Win - Create Desktop Shortcut (Edge).cmd"           dial icon
 rem   "Win - Create Desktop Shortcut (Edge).cmd" console   console icon
+rem   "Win - Create Desktop Shortcut (Edge).cmd" plain     dial icon, no Edge logo
 rem
 rem The shortcut is called "Deskside Radio (Edge)" so it can sit beside the
 rem Chrome one without either overwriting the other. Its profile is separate
@@ -36,7 +37,14 @@ if not exist "%TARGET%" (
   exit /b 1
 )
 
+rem "plain", before or after the theme, leaves the browser badge off: the
+rem theme's own icon, as every shortcut had before 1.5.10.
 set "THEME=%~1"
+set "PLAIN="
+if /i "%~1"=="plain" set "THEME=%~2"
+if /i "%~1"=="plain" set "PLAIN=1"
+if /i "%~2"=="plain" set "PLAIN=1"
+set "THEMEARG=%THEME%"
 if not defined THEME set "THEME=dial"
 set "ICON=%APPDIR%assets\favicon-%THEME%.ico"
 if not exist "%ICON%" (
@@ -142,11 +150,16 @@ rem before it looks along PATH.
   "    ' --user-data-dir=' + $q + $env:PROFILE + $q +" ^
   "    ' --no-first-run --no-default-browser-check' + $env:LEAN;" ^
   "}" ^
-  "$link.IconLocation = $env:ICON + ',0';" ^
+  "$ic = $env:ICON + ',0'; $il = $env:THEME + ', plain';" ^
+  "$si = Join-Path $env:APPDIR 'assets\shortcut-icon.ps1';" ^
+  "if (Test-Path -LiteralPath $si) { try {" ^
+  "  $r = & $si -Old $link.IconLocation -Browser $env:BROWSER -Theme $env:THEMEARG -Plain:($env:PLAIN -eq '1');" ^
+  "  if ($r -and $r.Location) { $ic = $r.Location; $il = $r.Label } } catch { } };" ^
+  "$link.IconLocation = $ic;" ^
   "$link.WorkingDirectory = $env:APPDIR;" ^
   "$link.Description = 'Deskside Radio (Edge)';" ^
   "$link.Save();" ^
-  "Write-Host ''; Write-Host ('  Shortcut created: ' + $path)"
+  "Write-Host ''; Write-Host ('  Shortcut created: ' + $path); Write-Host ('  Icon: ' + $il)"
 
 if errorlevel 1 (
   echo.
@@ -156,7 +169,6 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo   Icon: %THEME%
 echo   Opens with: Microsoft Edge
 echo   Its own profile: "%PROFILE%"
 echo.

@@ -4,6 +4,7 @@ rem Deskside Radio - desktop shortcut that opens in Firefox.
 rem
 rem   "Win - Create Desktop Shortcut (Firefox).cmd"           dial icon
 rem   "Win - Create Desktop Shortcut (Firefox).cmd" console   console icon
+rem   "Win - Create Desktop Shortcut (Firefox).cmd" plain     dial icon, no Firefox logo
 rem
 rem Firefox is the odd one out, and it is worth knowing why before you use
 rem this one.
@@ -47,7 +48,14 @@ if not exist "%TARGET%" (
   exit /b 1
 )
 
+rem "plain", before or after the theme, leaves the browser badge off: the
+rem theme's own icon, as every shortcut had before 1.5.10.
 set "THEME=%~1"
+set "PLAIN="
+if /i "%~1"=="plain" set "THEME=%~2"
+if /i "%~1"=="plain" set "PLAIN=1"
+if /i "%~2"=="plain" set "PLAIN=1"
+set "THEMEARG=%THEME%"
 if not defined THEME set "THEME=dial"
 set "ICON=%APPDIR%assets\favicon-%THEME%.ico"
 if not exist "%ICON%" (
@@ -121,11 +129,16 @@ if not exist "%WSCRIPT%" set "OPENER="
   "  $link.Arguments = '-profile ' + $q + $env:PROFILE + $q +" ^
   "    ' -new-window ' + $q + $url + $q;" ^
   "}" ^
-  "$link.IconLocation = $env:ICON + ',0';" ^
+  "$ic = $env:ICON + ',0'; $il = $env:THEME + ', plain';" ^
+  "$si = Join-Path $env:APPDIR 'assets\shortcut-icon.ps1';" ^
+  "if (Test-Path -LiteralPath $si) { try {" ^
+  "  $r = & $si -Old $link.IconLocation -Browser $env:BROWSER -Theme $env:THEMEARG -Plain:($env:PLAIN -eq '1');" ^
+  "  if ($r -and $r.Location) { $ic = $r.Location; $il = $r.Label } } catch { } };" ^
+  "$link.IconLocation = $ic;" ^
   "$link.WorkingDirectory = $env:APPDIR;" ^
   "$link.Description = 'Deskside Radio (Firefox)';" ^
   "$link.Save();" ^
-  "Write-Host ''; Write-Host ('  Shortcut created: ' + $path)"
+  "Write-Host ''; Write-Host ('  Shortcut created: ' + $path); Write-Host ('  Icon: ' + $il)"
 
 if errorlevel 1 (
   echo.
@@ -135,7 +148,6 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo   Icon: %THEME%
 echo   Opens with: Mozilla Firefox
 echo   Its own profile: "%PROFILE%"
 echo.

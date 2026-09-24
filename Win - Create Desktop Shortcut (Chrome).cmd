@@ -30,6 +30,12 @@ rem   "Win - Create Desktop Shortcut (Chrome).cmd" console
 rem
 rem The app's shortcut panel shows the line to use. With no argument, or one
 rem whose icon is missing, it falls back to the analogue dial icon.
+rem
+rem The icon carries the browser's own logo in its top-left corner, taken
+rem from the browser installed here, so the Chrome, Edge and Firefox
+rem shortcuts can be told apart. Add "plain" for the icon without it:
+rem
+rem   "Win - Create Desktop Shortcut (Chrome).cmd" console plain
 
 title Deskside Radio - Desktop shortcut
 
@@ -54,7 +60,14 @@ if not exist "%TARGET%" (
   exit /b 1
 )
 
+rem "plain", before or after the theme, leaves the browser badge off: the
+rem theme's own icon, as every shortcut had before 1.5.10.
 set "THEME=%~1"
+set "PLAIN="
+if /i "%~1"=="plain" set "THEME=%~2"
+if /i "%~1"=="plain" set "PLAIN=1"
+if /i "%~2"=="plain" set "PLAIN=1"
+set "THEMEARG=%THEME%"
 if not defined THEME set "THEME=dial"
 set "ICON=%APPDIR%assets\favicon-%THEME%.ico"
 if not exist "%ICON%" (
@@ -178,11 +191,16 @@ rem contain a space, so it needs no quoting of its own.
   "} else {" ^
   "  $link.TargetPath = $env:TARGET;" ^
   "}" ^
-  "$link.IconLocation = $env:ICON + ',0';" ^
+  "$ic = $env:ICON + ',0'; $il = $env:THEME + ', plain';" ^
+  "$si = Join-Path $env:APPDIR 'assets\shortcut-icon.ps1';" ^
+  "if (Test-Path -LiteralPath $si) { try {" ^
+  "  $r = & $si -Old $link.IconLocation -Browser $env:BROWSER -Theme $env:THEMEARG -Plain:($env:PLAIN -eq '1');" ^
+  "  if ($r -and $r.Location) { $ic = $r.Location; $il = $r.Label } } catch { } };" ^
+  "$link.IconLocation = $ic;" ^
   "$link.WorkingDirectory = $env:APPDIR;" ^
   "$link.Description = 'Deskside Radio';" ^
   "$link.Save();" ^
-  "if (-not $env:DESKSIDE_NOPAUSE) { Write-Host ''; Write-Host ('  Shortcut created: ' + $path) }"
+  "if (-not $env:DESKSIDE_NOPAUSE) { Write-Host ''; Write-Host ('  Shortcut created: ' + $path); Write-Host ('  Icon: ' + $il) }"
 
 if errorlevel 1 (
   echo.
@@ -200,7 +218,6 @@ rem for this step instead. Errors are never suppressed -- those are above,
 rem and they stop either way.
 if defined DESKSIDE_NOPAUSE goto :quietend
 
-echo   Icon: %THEME%
 if defined BROWSER (
   echo   Opens with: %BROWSERNAME%
   echo   Its own profile: "%PROFILE%"

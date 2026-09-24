@@ -526,19 +526,79 @@ rem running for somebody who already has a shortcut, so there is nothing
 rem to work out and nothing to ask.
 if defined DESKSIDE_QUIET goto :haveshortcut
 
+rem Only the browsers that are here. Offering all three meant a pick of one
+rem that was not installed ended at "was not found" with no shortcut made.
+rem Found the way each shortcut script finds its own -- the usual folders,
+rem then Windows' own App Paths -- so this and the script it hands over to
+rem cannot disagree about what is installed. Every line stands alone, not
+rem in a bracketed block, because %ProgramFiles(x86)% ends a block early.
+set "HAVEC="
+set "HAVEE="
+set "HAVEF="
+if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "HAVEC=1"
+if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" set "HAVEC=1"
+if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" set "HAVEC=1"
+if not defined HAVEC for /f "skip=2 tokens=2,*" %%A in ('%SystemRoot%\System32\reg.exe query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe" /ve 2^>nul') do if exist "%%B" set "HAVEC=1"
+if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" set "HAVEE=1"
+if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" set "HAVEE=1"
+if not defined HAVEE for /f "skip=2 tokens=2,*" %%A in ('%SystemRoot%\System32\reg.exe query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe" /ve 2^>nul') do if exist "%%B" set "HAVEE=1"
+if exist "%ProgramFiles%\Mozilla Firefox\firefox.exe" set "HAVEF=1"
+if exist "%ProgramFiles(x86)%\Mozilla Firefox\firefox.exe" set "HAVEF=1"
+if exist "%LOCALAPPDATA%\Mozilla Firefox\firefox.exe" set "HAVEF=1"
+if not defined HAVEF for /f "skip=2 tokens=2,*" %%A in ('%SystemRoot%\System32\reg.exe query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\firefox.exe" /ve 2^>nul') do if exist "%%B" set "HAVEF=1"
+
+rem The first found is the default, in the order the old menu had them;
+rem the last is only needed to say "C or F" when there are two.
+set /a NB=0
+if defined HAVEC set /a NB+=1
+if defined HAVEE set /a NB+=1
+if defined HAVEF set /a NB+=1
+set "FIRST="
+if defined HAVEF set "FIRST=F"
+if defined HAVEE set "FIRST=E"
+if defined HAVEC set "FIRST=C"
+set "LAST="
+if defined HAVEC set "LAST=C"
+if defined HAVEE set "LAST=E"
+if defined HAVEF set "LAST=F"
+
 echo.
 echo   There is no Deskside Radio shortcut on your Desktop yet.
+if %NB% GEQ 2 goto :askbrowser
+
+rem One browser, or none: nothing to choose, so nothing is asked. None
+rem goes to the Chrome script, which with no browser to find makes the
+rem shortcut that opens the page in the default browser.
+if defined HAVEC echo   Chrome is the browser here, so it opens in Chrome.
+if defined HAVEE echo   Microsoft Edge is the browser here, so it opens in Edge.
+if defined HAVEF echo   Firefox is the browser here, so it opens in Firefox.
+if %NB%==0 echo   No Chrome, Edge or Firefox was found, so it opens in your usual
+if %NB%==0 echo   browser, which needs one click before the radio will play.
+if defined HAVEE set "DOE=1"
+if defined HAVEF set "DOF=1"
+if not defined DOE if not defined DOF set "DOC=1"
+echo.
+goto :haveshortcut
+
+:askbrowser
 echo   Which browser should it open in?
 echo.
-echo      C   Chrome, or Edge if Chrome is not installed
-echo      E   Edge
-echo      F   Firefox   ^(no app window: a tab strip and an address bar^)
+if defined HAVEC echo      C   Chrome
+if defined HAVEE echo      E   Microsoft Edge
+if defined HAVEF echo      F   Firefox
 echo.
+set "SAY=%FIRST% or %LAST%"
+if %NB%==3 set "SAY=C, E or F"
 set "PICK="
-set /p "PICK=  Type C, E or F and press Enter, or just Enter for C: "
-if /i "%PICK%"=="E" set "DOE=1"
-if /i "%PICK%"=="F" set "DOF=1"
-if not defined DOE if not defined DOF set "DOC=1"
+set /p "PICK=  Type %SAY% and press Enter, or just Enter for %FIRST%: "
+rem A letter for a browser that is not offered is the same as Enter.
+set "CH=%FIRST%"
+if defined HAVEC if /i "%PICK%"=="C" set "CH=C"
+if defined HAVEE if /i "%PICK%"=="E" set "CH=E"
+if defined HAVEF if /i "%PICK%"=="F" set "CH=F"
+if "%CH%"=="C" set "DOC=1"
+if "%CH%"=="E" set "DOE=1"
+if "%CH%"=="F" set "DOF=1"
 echo.
 
 :haveshortcut

@@ -2509,9 +2509,9 @@ test('nothing scheduled and set to off means off, gap or not', () => {
 const PROTOVBS = 'Win - Deskside Radio Protocol.vbs';
 
 test('the launcher writes down whether the radio starts with Windows', () => {
-  const src = read(OPENER);
+  const src = read('assets/launch-probe.ps1');
   assert.ok(/DESKSIDE_STARTS_WITH_WINDOWS/.test(src),
-    OPENER + ' never tells the page whether the Startup entry exists, so the switch cannot show it');
+    'the launch probe never tells the page whether the Startup entry exists, so the switch cannot show it');
 
   /* And into a file of its own, which is the whole fix for a bug that
      shipped in 1.5.3: the fact lived in shortcut.js, which only the launcher
@@ -2525,7 +2525,7 @@ test('the launcher writes down whether the radio starts with Windows', () => {
   const onoff = read('Win - Start with Windows (On-Off).cmd');
   const app = read('app.js');
 
-  assert.ok(/startup\.js/.test(src), OPENER + ' does not write the start-up state file');
+  assert.ok(/startup\.js/.test(src), 'the launch probe does not write the start-up state file');
   assert.ok(/startup\.js/.test(onoff),
     'the on-off script changes the Startup entry without writing down that it did, so the switch cannot see its own work');
   assert.ok(/assets\/startup\.js/.test(app),
@@ -2841,4 +2841,135 @@ test('Firefox opens at the radio size, through the launcher', () => {
   const sc = read('Win - Create Desktop Shortcut (Firefox).cmd');
   assert.ok(/Win - Open Deskside Radio\.vbs/.test(sc) && /\$env:WSCRIPT/.test(sc),
     'the Firefox shortcut aims straight at Firefox, so none of this runs');
+});
+
+test('a settings file keeps the loudness it was written at', () => {
+  /* Exports carried no volume scale, and import took the numbers as they
+     stood -- so a file from the 60 dB fader (1.0.0 to 1.5.6) came into the
+     40 dB one (1.5.7 on) up to 15 dB louder. Found on an Edge profile seeded
+     from a September export. */
+  const src = read('app.js');
+  const imp = src.slice(src.indexOf('function importSettingsInto'),
+                        src.indexOf('function importSettingsInto') + 6000);
+  assert.ok(/newerThan\('1\.5\.7', fromV\)/.test(imp),
+    'import no longer tells a file from the old fader by its version');
+  assert.ok(/Signal\.migrateVolume60\(sl\.volume\)/.test(imp) && /Signal\.migrateVolume60\(target\.volume\)/.test(imp),
+    'an old file\'s volumes -- the fader or the schedule -- come in unconverted, and louder');
+  /* Only what came from the file: converting the target's own volume too is
+     the double conversion that once drove a saved volume to 1. */
+  assert.ok(/if \(typeof data\.volume === 'number' && isFinite\(data\.volume\)\) \{\s*target\.volume = Signal\.migrateVolume60/.test(imp),
+    'import converts the radio\'s own volume even when the file did not carry one');
+  /* And exports say which fader they were written on, from now. */
+  assert.ok(/volume: state\.volume, volumeCurve: 3,/.test(src), 'exports do not record the volume scale');
+});
+
+test('every stored setting either travels in an export or is kept to this machine on purpose', () => {
+  /* The export had not been looked at while settings were added to the app,
+     and six of them never travelled -- the volume scale among them, which
+     made an old file come in up to 15 dB louder. So every key in DEFAULTS
+     has to be named below, one way or the other, and adding a new setting
+     without deciding which is a failing test rather than a quiet loss. */
+  const EXPORTED = ['stations', 'schedule', 'scheduleEnds', 'scheduleV', 'schedulerEnabled',
+    'theme', 'volume', 'volumeCurve', 'autoplay', 'autoplayStationId', 'bass', 'treble',
+    'miniViz', 'miniLight', 'versionCheck', 'scrollAnyway', 'lastCity'];
+  /* This machine, this browser or this moment -- meaningless anywhere else. */
+  const LOCAL = ['windowBox', 'intendedPlaying', 'currentStationId', 'lastGood', 'seedStamp',
+    'seedFrom', 'ranVersion', 'startupUsed', 'versionLastCheck', 'versionLatest', 'versionPillOff'];
+
+  const src = read('app.js');
+  const a = src.indexOf('var DEFAULTS = {'), b = src.indexOf('\n  };', a);
+  const keys = [...src.slice(a, b).matchAll(/^    ([a-zA-Z]+)\s*:/gm)].map(m => m[1]);
+  assert.ok(keys.length > 20, 'found only ' + keys.length + ' settings; the sweep is not reading DEFAULTS');
+  keys.forEach(function (k) {
+    assert.ok(EXPORTED.includes(k) || LOCAL.includes(k),
+      k + ' is a stored setting that is neither exported nor marked local -- decide which');
+  });
+
+  const ex = src.slice(src.indexOf('JSON.stringify({ app: SEED_APP'), src.indexOf('}, null, 2)', src.indexOf('JSON.stringify({ app: SEED_APP')));
+  const imp = src.slice(src.indexOf('function importSettingsInto'), src.indexOf('function importSettingsInto') + 8000);
+  EXPORTED.forEach(function (k) {
+    assert.ok(new RegExp('\\b' + k + ':').test(ex), k + ' is meant to travel but the export does not write it');
+    assert.ok(imp.indexOf('data.' + k) !== -1, k + ' is written to an export but import never reads it back');
+  });
+});
+
+test('every station field names itself, in bold, at the start of its tooltip', () => {
+  const src = read('app.js');
+  const grid = src.slice(src.indexOf("'<div class=\"station-grid\">'"), src.indexOf('var ins = card.querySelectorAll'));
+  const fields = grid.match(/data-k="[a-z]+"/g) || [];
+  const heads = grid.match(/data-tip-head="[^"]+" data-tip=/g) || [];
+  assert.equal(fields.length, 5, 'expected the five station fields');
+  assert.equal(heads.length, fields.length, 'a station field has a tooltip with no name at its start');
+  /* Bold as an element, never as markup: the tip text stays text. */
+  assert.ok(/createElement\('b'\);\s*b\.textContent = head;/.test(src), 'the tip head is not drawn in bold');
+});
+
+test('the launch probe runs before the browser, inside the PowerShell that starts it', () => {
+  /* It was a PowerShell launch of its own, about 180 ms between every
+     double-click and the radio. Before the browser still: the page reads
+     what it writes while it loads, and the trim reaches only a profile
+     nothing has open. */
+  const cmd = read(OPENER);
+  const fx = cmd.indexOf('\n:firefox');
+  [cmd.slice(cmd.indexOf('goto :firefox'), fx), cmd.slice(fx)].forEach(function (part, i) {
+    const probe = part.indexOf('launch-probe.ps1'), start = part.indexOf('Start-Process -FilePath $env:BROWSER');
+    assert.ok(probe !== -1 && start !== -1 && probe < start,
+      (i ? 'Firefox' : 'Chrome and Edge') + ': the launch probe does not run before the browser starts');
+  });
+  assert.equal(cmd.indexOf('DESKSIDE_HAS_SHORTCUT'), -1,
+    OPENER + ' writes shortcut.js itself again, in a PowerShell launch of its own');
+  const probe = read('assets/launch-probe.ps1');
+  assert.ok(probe.indexOf('trim-profile.ps1') !== -1 && probe.indexOf('DESKSIDE_HAS_SHORTCUT') !== -1,
+    'the launch probe no longer trims, or no longer writes shortcut.js');
+
+  /* And the trim asks for the process list once, not once per profile. */
+  const trim = read('assets/trim-profile.ps1');
+  assert.equal((trim.match(/Get-CimInstance/g) || []).length, 1,
+    'the trim lists processes more than once, at about 200 ms a list');
+});
+
+test('Desktop shortcuts carry the browser badge, made on the PC, and never lose the plain icon', () => {
+  /* The badge is the installed browser's own icon drawn onto ours by
+     assets/shortcut-icon.ps1, so no logo is in the download. The plain
+     theme icon is always what a shortcut falls back to, and "plain" asks
+     for it outright. */
+  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Create Desktop Shortcut (Edge).cmd',
+   'Win - Create Desktop Shortcut (Firefox).cmd'].forEach(function (name) {
+    const s = read(name);
+    assert.ok(s.indexOf("assets\\shortcut-icon.ps1") !== -1, name + ' does not ask the helper for its icon');
+    assert.ok(s.indexOf("$ic = $env:ICON + ',0'") !== -1 && s.indexOf('$link.IconLocation = $ic;') !== -1,
+      name + ' has no plain icon to fall back on when the helper is missing or fails');
+    assert.ok(s.indexOf('-Old $link.IconLocation') !== -1,
+      name + ' does not tell the helper what icon the shortcut had, so an update would undo a chosen one');
+    assert.ok(/if \/i "%~1"=="plain"/.test(s) && /if \/i "%~2"=="plain"/.test(s),
+      name + ' no longer accepts plain');
+  });
+
+  const h = read('assets/shortcut-icon.ps1');
+  /* Kept across updates: a plain icon once a badge has been made, and an
+     icon that is not ours at all. */
+  assert.ok(/\$byInstaller -and \$oldFile -and -not \$oldOurs/.test(h), 'an update replaces an icon somebody chose in Properties');
+  assert.ok(/\$byInstaller -and \$oldOurs -and .*\$madeBefore/.test(h), 'an update puts the badge back on a shortcut made plain');
+  /* It writes into assets/badged and nowhere else, which git ignores. */
+  assert.ok(/\$out = Join-Path \$badged/.test(h) && (h.match(/WriteAllBytes\(/g) || []).length === 1,
+    'the helper writes an icon somewhere other than assets/badged');
+  assert.ok(/^assets\/badged\/\r?$/m.test(read('.gitignore')), 'icons made from the browsers\' logos could be committed');
+});
+
+test('a new install offers only the browsers that are on this PC', () => {
+  /* All three were offered whether they were there or not, and picking a
+     missing one ended at "was not found" with no shortcut made. */
+  const s = read(INSTALLER);
+  ['chrome.exe', 'msedge.exe', 'firefox.exe'].forEach(function (exe) {
+    assert.ok(s.indexOf('App Paths\\' + exe) !== -1, INSTALLER + ' does not look for ' + exe + ' where the shortcut scripts do');
+  });
+  [['HAVEC', 'C   Chrome'], ['HAVEE', 'E   Microsoft Edge'], ['HAVEF', 'F   Firefox']].forEach(function (p) {
+    assert.ok(s.indexOf('if defined ' + p[0] + ' echo      ' + p[1]) !== -1,
+      INSTALLER + ' offers ' + p[1].slice(4) + ' whether or not it is installed');
+  });
+  /* One browser is not a choice, and a letter not offered is not a pick. */
+  assert.ok(s.indexOf('if %NB% GEQ 2 goto :askbrowser') !== -1, INSTALLER + ' asks even when there is only one browser');
+  assert.ok(s.indexOf('if defined HAVEF if /i "%PICK%"=="F"') !== -1, INSTALLER + ' takes a pick of a browser that is not there');
+  assert.equal(s.indexOf('a tab strip and an address bar'), -1,
+    INSTALLER + ' still warns of a tab strip Firefox has not shown since 1.5.9');
 });
