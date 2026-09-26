@@ -331,7 +331,7 @@ A window dragged hard into the top-left corner is the one position that cannot b
 
 ## The mini radio
 
-The pushpin in the top bar opens a small strip that floats above every other window — station, what it is doing, play, volume, a meter and a clock — and tucks the radio's own window out of sight behind it. The expand button on the strip puts the radio back, and so does **Escape**. The strip's close button closes the radio altogether, which is why there is only one of them: Chrome's own back-to-tab button is turned off, so one browser control means one thing.
+The pushpin in the top bar opens a small strip that floats above every other window — station, what it is doing, play, volume and a meter — and tucks the radio's own window out of sight behind it. Its volume slider also answers the mouse wheel, one step (0.4 dB) a notch. The expand button on the strip puts the radio back, and so does **Escape**. The strip's close button closes the radio altogether, which is why there is only one of them: Chrome's own back-to-tab button is turned off, so one browser control means one thing.
 
 During a slot change the strip says what is about to happen and counts the last thirty seconds down — *Schedule change in 30s*, or *Schedule play ends in 30s*, or *Schedule play ends, then freeplay in 30s* — and its fader rides the handover fade exactly as the radio's own does. Double-clicking the fader slides it back to 50.
 
