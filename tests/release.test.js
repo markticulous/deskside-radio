@@ -2973,3 +2973,20 @@ test('a new install offers only the browsers that are on this PC', () => {
   assert.equal(s.indexOf('a tab strip and an address bar'), -1,
     INSTALLER + ' still warns of a tab strip Firefox has not shown since 1.5.9');
 });
+
+test('the mini radio is labelled, has no clock, and its fader answers the wheel a step a notch', () => {
+  /* The clock came out so the fader could have its length; the name stays,
+     because it is what labels the window. The wheel gives the fine steps a
+     short fader under a mouse cannot be dragged to. */
+  const src = read('app.js');
+  assert.ok(src.indexOf('<span class="dr-name">Deskside Radio Mini</span>') !== -1, 'the mini radio has lost its name');
+  assert.equal(src.indexOf('dr-clock'), -1, 'the clock is back in the mini radio, taking the fader\'s room');
+  const h = src.slice(src.indexOf("o.vol.addEventListener('wheel'"), src.indexOf("o.vol.addEventListener('dblclick'"));
+  assert.ok(/\}, \{ passive: false \}\);/.test(h) && /e\.preventDefault\(\)/.test(h),
+    'the wheel scrolls the page instead of moving the fader');
+  /* deltaMode before deltaY, or Firefox answers in pixels it has guessed. */
+  assert.ok(h.indexOf('e.deltaMode') !== -1 && h.indexOf('e.deltaMode') < h.indexOf('e.deltaY'),
+    'deltaY is read before deltaMode, so Firefox stops reporting lines');
+  /* The smallest notch, not the largest, and nine tenths counts. */
+  assert.ok(/mag < wheelNotch/.test(h) && /\* 1\.1\)/.test(h), 'a notch can be lost to rounding again');
+});

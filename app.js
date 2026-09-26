@@ -9,7 +9,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.5.10';
+  var APP_VERSION = '1.5.11';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -1536,7 +1536,6 @@
        same two digits it was already showing. */
     var hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
     if (el.clock.textContent !== hhmm) el.clock.textContent = hhmm;
-    paintStripClock(hhmm);
     var slot = state.schedulerEnabled ? Scheduler.activeSlot(state.schedule, now) : null;
     if (slot !== lastSlot) {
       var first = !seenOnce;
@@ -2589,19 +2588,21 @@
     ".dr-meter { align-items: flex-end; gap: 2px; }",
     ".dr-meter i {",
     "  width: 2px; border-radius: 1px; background: currentColor; opacity: .55;",
-    "  height: calc(2px + var(--dr-vu, 0) * var(--dr-w, 1) * 24px);",
-    "  transition: height .05s linear;",
+    "  height: calc(2px + var(--dr-lvl, 0) * var(--dr-w, 1) * 24px);",
+    "  transition: height .04s linear;",
     "}",
-    ".dr-meter i:nth-child(3n) { transition-duration: .085s; }",
-    ".dr-meter i:nth-child(3n+1) { transition-duration: .035s; }",
+    ".dr-meter i:nth-child(3n) { transition-duration: .07s; }",
+    ".dr-meter i:nth-child(3n+1) { transition-duration: .03s; }",
     ".dr-strip.is-live .dr-meter i { opacity: 1; }",
     "",
     "/* Needle. Drawn, so it can carry a scale without four more elements;",
-    "   everything but the pointer is static. The transition is there because",
-    "   this is handed the raw level rather than the ballistic one -- see",
-    "   paintStripLevel -- and a needle that snaps between readings reads as",
-    "   broken where a bar does not. Short, so it still flicks. */",
-    ".dr-needle { opacity: .8; }",
+    "   everything but the pointer is static. It has its own damped movement",
+    "   -- see paintStripNeedle -- so the short transition only smooths",
+    "   between frames. */",
+    "/* A quarter larger than the box the others share, grown from its foot so",
+    "   the pivot stays on the row's line; the box itself keeps its size, so",
+    "   nothing beside it moves when the visualisation is changed. */",
+    ".dr-needle { opacity: .8; transform: scale(1.25); transform-origin: 50% 100%; }",
     ".dr-needle path, .dr-needle line { fill: none; stroke: currentColor; }",
     ".dr-arc { stroke-width: 1; opacity: .55; }",
     ".dr-arc-hot { stroke-width: 1.8; stroke: currentColor; opacity: .95; }",
@@ -2609,7 +2610,7 @@
     ".dr-pointer {",
     "  stroke-width: 1.7; stroke-linecap: round;",
     "  transform-box: view-box; transform-origin: 23px 24px;",
-    "  transform: rotate(calc((var(--dr-vu, 0) - .5) * 110deg));",
+    "  transform: rotate(calc((var(--dr-needle, 0) - .5) * 110deg));",
     "  transition: transform .05s linear;",
     "}",
     ".dr-pivot { fill: currentColor; stroke: none; opacity: .85; }",
@@ -2624,7 +2625,7 @@
     ".dr-matrix i {",
     "  width: 3px; height: 3px; border-radius: 50%; background: currentColor;",
     "  align-self: center; justify-self: center;",
-    "  opacity: calc(.18 + .82 * clamp(0, (var(--dr-vu, 0) * var(--dr-w, 1) - var(--dr-row, 0)) * 60, 1));",
+    "  opacity: calc(.18 + .82 * clamp(0, (var(--dr-lvl, 0) * var(--dr-w, 1) - var(--dr-row, 0)) * 60, 1));",
     "}",
     "",
     "/* Scope. The only one that is not a function of --dr-vu: its points are",
@@ -2699,15 +2700,19 @@
     "   -- every FIT_ON event on either document calls fitPip -- so this must",
     "   not become the only thing that works, nor swallow a click aimed past",
     "   it. It says click here and it means click anywhere; here is simply",
-    "   where the pointer already is. */",
+    "   where the pointer already is.",
+    "",
+    "   Solid, and tall enough to cover the station row behind it: see-through,",
+    "   the name and the play button showed through the words. */",
     ".dr-hint {",
-    "  position: absolute; top: 10px; left: 8px; max-width: calc(100% - 18px);",
+    "  position: absolute; top: 6px; left: 8px; max-width: calc(100% - 18px);",
     "  display: none; align-items: center; gap: 7px;",
-    "  padding: 10px 15px; border-radius: 9px;",
+    "  min-height: 54px; box-sizing: border-box;",
+    "  padding: 12px 18px; border-radius: 9px;",
     "  pointer-events: none;",
     "  font-size: 13.5px; font-weight: 600; letter-spacing: .01em; line-height: 1.25;",
     "  color: var(--dr-hot);",
-    "  background: color-mix(in srgb, var(--dr-bg) 88%, transparent);",
+    "  background: var(--dr-bg);",
     "  border: 1px solid color-mix(in srgb, var(--dr-hot) 45%, transparent);",
     "  box-shadow: 0 6px 20px rgba(0, 0, 0, .45);",
     "}",
@@ -2736,7 +2741,7 @@
     ".dr-unpin svg { width: 13px; height: 13px; }",
     ".dr-foot {",
     "  display: grid;",
-    "  grid-template-columns: auto auto minmax(0, 1fr);",
+    "  grid-template-columns: auto minmax(0, 1fr);",
     "  align-items: center;",
     "  gap: 7px;",
     "  /* The space, whatever there is of it, goes above this. */",
@@ -2745,9 +2750,9 @@
     "  font-size: 8.5px;",
     "}",
     ".dr-name { letter-spacing: .1em; text-transform: uppercase; opacity: .5; white-space: nowrap; }",
-    "/* Reads as one line with the name -- 'DESKSIDE RADIO MINI - 23:41' -- so",
-    "   the fader gets the whole of the rest of the row. */",
-    ".dr-clock::before { content: \"\\00b7\"; margin-right: 7px; font-weight: 700; opacity: .7; }",
+    "/* The name, and the fader in the whole of the rest of the row. The clock",
+    "   sat between them until it was taken out to give the fader the length:",
+    "   the name is what labels this window, the time was on every screen. */",
     ".dr-vol {",
     "  -webkit-appearance: none; appearance: none;",
     "  /* Tall enough to hold the knob; the rail is the track below. */",
@@ -2801,7 +2806,6 @@
     "  background: var(--dr-hot);",
     "  box-shadow: 0 0 0 2px var(--dr-bg);",
     "}",
-    ".dr-clock { font-family: \"IBM Plex Mono\", monospace; font-size: 9.5px; letter-spacing: .02em; opacity: .5; }",
     "/* The floating document's own page rules. There is no body.app in there to",
     "   carry them, and this sheet is written in rather than linked: a file:// sheet",
     "   is not reliably fetched by a document whose own URL is about:blank. */",
@@ -2892,7 +2896,6 @@
          the browser's and shows the page's origin; a page is not allowed
          to write there, which is the whole point of it. */
       '<span class="dr-name">Deskside Radio Mini</span>' +
-      '<time class="dr-clock">--:--</time>' +
       '<input type="range" class="dr-vol" min="0" max="100" step="any" aria-label="Volume">' +
     '</div>' +
     '<div class="dr-hint">Click here to show Deskside Radio Mini</div>';
@@ -2945,8 +2948,7 @@
       now: root.querySelector('.dr-status'),
       note: root.querySelector('.dr-note'),
       play: root.querySelector('.dr-play'),
-      vol: root.querySelector('.dr-vol'),
-      clock: root.querySelector('.dr-clock')
+      vol: root.querySelector('.dr-vol')
     };
 
     /* The chosen one, and the click that moves to the next. Saved rather
@@ -2970,6 +2972,41 @@
       clearTimeout(stripVolTimer);
       stripVolTimer = setTimeout(save, 250);
     });
+
+    /* The wheel, a step a notch: 0.4 dB, the finest the fader stores, which
+       a short fader under a mouse cannot be dragged to reliably.
+
+       How big a notch is depends on the browser and the display: Edge sent
+       133 px a notch on a 150% screen, and Firefox counts in lines -- which
+       it only does when deltaMode is read before deltaY. And a notch can
+       arrive merged with the next into one bigger event. So the notch is
+       learned as the smallest single event of any size -- 40 px and up; a
+       merged one is bigger and cannot inflate it -- and the deltas are
+       gathered up against it, so a touchpad's stream of small ones moves the
+       fader at a steady rate rather than a step an event. Nine tenths of a
+       notch is a step: 133 px against a notch learned as 133.33 was 0.9975
+       of one, and lost the first step of every turn. A change of direction
+       starts the count again, or a leftover from going up is spent going
+       down. */
+    var wheelAcc = 0, wheelNotch = 0;
+    o.vol.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      var mode = e.deltaMode;
+      var px = e.deltaY * (mode === 1 ? 33 : mode === 2 ? 100 : 1);
+      if (!px) return;
+      var mag = Math.abs(px);
+      if (mag >= 40 && (!wheelNotch || mag < wheelNotch)) wheelNotch = mag;
+      var notch = wheelNotch || 100;
+      if ((px > 0) !== (wheelAcc > 0)) wheelAcc = 0;
+      wheelAcc += px;
+      var steps = Math.trunc(wheelAcc / notch * 1.1);
+      if (!steps) return;
+      wheelAcc -= steps * notch;
+      // Up is louder.
+      setVolume(state.volume - steps, true);
+      clearTimeout(stripVolTimer);
+      stripVolTimer = setTimeout(save, 250);
+    }, { passive: false });
 
     /* Back to the middle. A fader this short is easy to knock, and there is
        no numeric readout beside it to put right by eye. 50 because that is
@@ -3093,10 +3130,6 @@
     }, 260);
   }
 
-  function paintStripClock(hhmm) {
-    if (strip && strip.clock.textContent !== hhmm) strip.clock.textContent = hhmm;
-  }
-
   /* The raw level, not the needle's. The needle is damped on purpose -- a
      VU movement is meant to be read, not watched -- but twelve bars two
      pixels wide have no such duty, and following the ballistics made them
@@ -3105,6 +3138,7 @@
      of its travel is not telling anybody anything. */
   function paintStripLevel(v) {
     if (!strip) return;
+    paintStripNeedle(v);
     /* Down from 0.6, then 0.42, then 0.52, and now up to 0.8. The first was
        too low in the travel and the rest were too high -- everything pinned
        near the top with nowhere left to go, which is not liveliness, it is a
@@ -3116,6 +3150,40 @@
        inheritance, so changing visualisation changes nothing about what
        this does or how often. */
     strip.viz.style.setProperty('--dr-vu', shown.toFixed(3));
+    /* The bars and the dots, a touch livelier on the way down. They already
+       follow every frame -- measured at 60 updates a second while pinned --
+       so a quicker fall has to come from a longer one: the bottom fifth of
+       the scale, where broadcast seldom goes, is folded out of their range,
+       and each dip drops further in the same time. The tops still reach. */
+    var lvl = Math.pow(Math.max(0, Math.min(1, (v - 0.2) / 0.8)), 0.8);
+    strip.viz.style.setProperty('--dr-lvl', lvl.toFixed(3));
+  }
+
+  /* The needle, which is meant to be read, so it gets its own movement.
+     Measured on 40 seconds of KISS 92.5, one reading a frame:
+
+       the raw level, as the bars have it   turned 12.9 times a second
+       the radio's own needle's ballistics  sat at 0.75-0.89, turned 0.2
+
+     The first was frenetic and the second barely moved, pinned up by the
+     end: broadcast arrives hot, and the level spends most of its time
+     between 0.43 and 0.98 of the VU scale. So that working range is spread
+     across the arc, curved down so it rests just right of centre, and
+     damped less than the big needle is. It then sits at 0.57, swings
+     0.39-0.74 and turns about twice a second. */
+  var NEEDLE_LO = 0.43, NEEDLE_HI = 0.98, NEEDLE_CURVE = 1.4;
+  var NEEDLE_RISE_MS = 80, NEEDLE_FALL_MS = 250;
+  var needleAt = 0, needleLast = 0;
+
+  function paintStripNeedle(v) {
+    var now = performance.now();
+    var dt = needleLast ? Math.min(250, now - needleLast) : 16;
+    needleLast = now;
+    var x = Math.max(0, Math.min(1, (v - NEEDLE_LO) / (NEEDLE_HI - NEEDLE_LO)));
+    x = Math.pow(x, NEEDLE_CURVE);
+    var tau = x > needleAt ? NEEDLE_RISE_MS : NEEDLE_FALL_MS;
+    needleAt += (x - needleAt) * (1 - Math.exp(-dt / tau));
+    strip.viz.style.setProperty('--dr-needle', needleAt.toFixed(3));
   }
 
   /* The scope, and only when it is the one showing. Everything else in here
@@ -3603,7 +3671,6 @@
 
       stowOpener();
       paintStrip();
-      paintStripClock(el.clock.textContent);
       // The needle stops itself when there is nothing to show; wake it so
       // the strip's meter is not stuck at whatever it was left at.
       startMeter();
