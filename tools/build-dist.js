@@ -40,6 +40,13 @@ let saved = 0;
 /* A closing tag inside a string would end the block early — app.js has none
    today, but a build that can be broken by a future string is not a build. */
 function inlineSafe(js) { return js.replace(/<\/script/gi, '<\\/script'); }
+/* The same for a sheet going into <style>: the HTML parser ends the element
+   at the first "</style" anywhere in it, and an SVG drawn in a data URI can
+   carry a <style> of its own -- two of the falling leaves do. 1.6.0 shipped
+   that way: the page's styles stopped short, and the rest of the sheet was
+   laid out on the page as text and giant drawings. In a CSS string "\/" is
+   just "/", so the drawing is unchanged. */
+function styleSafe(css) { return css.replace(/<\/style/gi, '<\\/style'); }
 
 function dataUri(file, type) {
   return 'data:' + type + ';base64,' + fs.readFileSync(path.join(ROOT, file)).toString('base64');
@@ -63,7 +70,7 @@ let html = read('index.html');
 const before = html.length;
 
 html = html.replace('<link rel="stylesheet" href="app.css">', function () {
-  return '<style>\n' + styleSheet() + '\n</style>';
+  return '<style>\n' + styleSafe(styleSheet()) + '\n</style>';
 });
 
 /* The seasonal faces live in a sheet of their own, so the preview page and
@@ -74,7 +81,7 @@ html = html.replace(SEASONAL_TAG, function () {
   const css = read('seasonal.css');
   const lean = strip.stripCss(css);
   saved += bytes(css) - bytes(lean);
-  return '<style>\n' + lean + '\n</style>';
+  return '<style>\n' + styleSafe(lean) + '\n</style>';
 });
 
 const SCRIPTS = ['signal.js', 'radio-directory.js', 'scheduler.js', 'tuner-ui.js', 'app.js', 'seasonal.js'];
