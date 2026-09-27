@@ -2992,3 +2992,19 @@ test('the mini radio is labelled, has no clock, and its fader answers the wheel 
   /* The smallest notch, not the largest, and nine tenths counts. */
   assert.ok(/mag < wheelNotch/.test(h) && /\* 1\.1\)/.test(h), 'a notch can be lost to rounding again');
 });
+
+test('an inlined stylesheet cannot end the page\'s <style> early', () => {
+  /* 1.6.0 shipped broken: two SVG drawings inside seasonal.css carry a
+     <style> of their own, and once the sheet was inlined the first
+     "</style" closed the page's style element, spilling the rest of the
+     sheet onto the page. Every inlined sheet goes through styleSafe. */
+  const build = read('tools/build-dist.js');
+  const styles = build.match(/'<style>\\n' \+ ([^\n]*) \+ '\\n<\/style>'/g) || [];
+  assert.ok(styles.length >= 2, 'expected the build to inline at least two sheets');
+  styles.forEach(function (s) { assert.ok(/styleSafe\(/.test(s), 'a sheet is inlined without styleSafe: ' + s); });
+  // And what that does to the sheets as they are.
+  const safe = function (css) { return css.replace(/<\/style/gi, '<\\/style'); };
+  ['app.css', 'seasonal.css'].forEach(function (f) {
+    assert.ok(!/<\/style/i.test(safe(read(f))), f + ' still holds a "</style" after escaping');
+  });
+});
