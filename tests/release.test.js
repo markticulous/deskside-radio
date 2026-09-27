@@ -2720,7 +2720,7 @@ test('a theme that draws a Settings button keeps the dot in its corner', () => {
      Written that way round so a new theme is right by default. The cost is
      that forgetting is silent: the dot is a few pixels adrift on one face
      and nobody sees it until all eight are side by side. Hence this. */
-  assert.ok(/top: var\(--dot-inset, 10%\); right: var\(--dot-inset, 10%\);/.test(css),
+  assert.ok(/top: var\(--dot-inset, (\d+)%\); right: var\(--dot-inset, \1%\);/.test(css),
     'the update dot no longer reads --dot-inset, so the per-theme contract below means nothing');
 
   const rules = css.match(/\[data-theme="[a-z]+"\][^{]*\.icon-btn[^{]*\{[^}]*\}/g) || [];
@@ -2874,7 +2874,9 @@ test('every stored setting either travels in an export or is kept to this machin
     'miniViz', 'miniLight', 'versionCheck', 'scrollAnyway', 'lastCity'];
   /* This machine, this browser or this moment -- meaningless anywhere else. */
   const LOCAL = ['windowBox', 'intendedPlaying', 'currentStationId', 'lastGood', 'seedStamp',
-    'seedFrom', 'ranVersion', 'startupUsed', 'versionLastCheck', 'versionLatest', 'versionPillOff'];
+    'seedFrom', 'ranVersion', 'startupUsed', 'versionLastCheck', 'versionLatest', 'versionPillOff',
+    // Season bookkeeping: what this machine showed, and when.
+    'themeBeforeSeason', 'seasonHold', 'seasonsSeen'];
 
   const src = read('app.js');
   const a = src.indexOf('var DEFAULTS = {'), b = src.indexOf('\n  };', a);

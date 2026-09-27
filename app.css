@@ -216,14 +216,16 @@
    these five use a border, an inset shadow and a background between them --
    and a list of theme names here would go stale at the ninth theme.
 
-   A percentage, so one number carries both button sizes: 10% is 4px on the
-   40px faces and 3.2px on the 32px ones, and in both it lands the dot just
-   clear of the glyph's corner. Percentages on top resolve against the
-   containing block's height and on right against its width; these are
-   square. */
+   A percentage, so one number carries both button sizes: 14% is 5.6px on
+   the 40px faces and 4.5px on the 32px ones. Worked from the glyph's own
+   ink, not its box: the nearest ink is the round end of the top slider
+   line, and 14% leaves the dot's ring about 2.5px clear of it -- close
+   enough to read as the glyph's, not touching. (10% left 4.7px, and read as
+   floating.) Percentages on top resolve against the containing block's
+   height and on right against its width; these are square. */
 #openSettings.has-update::after {
   content: ''; position: absolute;
-  top: var(--dot-inset, 10%); right: var(--dot-inset, 10%);
+  top: var(--dot-inset, 14%); right: var(--dot-inset, 14%);
   width: 6px; height: 6px; border-radius: 50%;
   background: var(--alert, #ff8f2e);
   box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 22%, transparent);
@@ -1758,11 +1760,14 @@
   .tuner { --pad: 18px; }
 }
 
-/* Only the editorial play button carries a text label */
-[data-theme="dial"] .btn-text, [data-theme="console"] .btn-text, [data-theme="rams"] .btn-text,
-[data-theme="tivoli"] .btn-text,
-[data-theme="retro"] .btn-text, [data-theme="departures"] .btn-text,
-[data-theme="marconi"] .btn-text { display: none; }
+/* Only the editorial play button carries a text label, so the label is
+   off unless a theme asks for it. It used to be the other way round -- a
+   list of every theme that hid it -- and a theme missing from the list
+   kept an empty span, which the grid-centred buttons stack as a second
+   row, so the glyph sat high. Every new theme was one line away from
+   that, and several were. */
+.play-btn .btn-text { display: none; }
+[data-theme="editorial"] .play-btn .btn-text { display: inline; }
 
 /* ================================================================== */
 /* E · RETRO 8-BIT — four colours, an 8px grid, a CRT in front          */

@@ -66,7 +66,18 @@ html = html.replace('<link rel="stylesheet" href="app.css">', function () {
   return '<style>\n' + styleSheet() + '\n</style>';
 });
 
-const SCRIPTS = ['signal.js', 'radio-directory.js', 'scheduler.js', 'tuner-ui.js', 'app.js'];
+/* The seasonal faces live in a sheet of their own, so the preview page and
+   the app share it, and ship inline the same way. */
+const SEASONAL_TAG = '<link rel="stylesheet" href="seasonal.css">';
+if (html.indexOf(SEASONAL_TAG) === -1) throw new Error('index.html no longer loads seasonal.css');
+html = html.replace(SEASONAL_TAG, function () {
+  const css = read('seasonal.css');
+  const lean = strip.stripCss(css);
+  saved += bytes(css) - bytes(lean);
+  return '<style>\n' + lean + '\n</style>';
+});
+
+const SCRIPTS = ['signal.js', 'radio-directory.js', 'scheduler.js', 'tuner-ui.js', 'app.js', 'seasonal.js'];
 SCRIPTS.forEach(function (src) {
   const tag = '<script src="' + src + '"></script>';
   if (html.indexOf(tag) === -1) throw new Error('index.html no longer loads ' + src);

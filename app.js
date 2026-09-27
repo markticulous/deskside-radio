@@ -3,13 +3,14 @@
   'use strict';
 
   var KEY = 'radio.v1';
-  var THEMES = ['dial', 'console', 'rams', 'editorial', 'retro', 'departures', 'marconi', 'tivoli'];
+  // One list, kept beside the season rules that decide which are on offer.
+  var THEMES = Scheduler.THEMES;
   /* Bump on release, in all three places: here, version.json (which is
      what every running copy checks once a day), and the placeholder in
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.5.11';
+  var APP_VERSION = '1.6.0';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -112,7 +113,15 @@
        default, because the preference is the listener's and following it
        is the right default -- this is the way back for the one animation
        that carries information rather than decorating. */
-    scrollAnyway: false
+    scrollAnyway: false,
+    /* The seasonal themes. What was showing before one was picked, so the
+       end of its month can hand the radio back; the month an out-of-season
+       one was picked in, which it is kept for; and which seasons have been
+       looked at, so the mark on the gear says "new" once a year and no
+       more. */
+    themeBeforeSeason: null,
+    seasonHold: null,
+    seasonsSeen: []
   };
 
   /* Derived rather than typed, so renaming or reordering the three
@@ -171,6 +180,14 @@
      back the defaults, and the settings the user actually had are quietly
      dropped and written over on the way out. Caught in a headless run
      where a seeded theme kept coming back as the default one. */
+
+  /* The date the seasons are judged by. ?today=2026-10-15 stands in for it,
+     so a season can be checked without waiting for it. A function rather
+     than a var for the reason given above: load() runs on the next line. */
+  function seasonNow() {
+    var m = /[?&]today=(\d{4})-(\d{2})-(\d{2})/.exec(location.search);
+    return m ? new Date(+m[1], +m[2] - 1, +m[3], 12) : new Date();
+  }
 
   // ---------- state ----------
   var state = load();
@@ -233,6 +250,9 @@
       merged.stations = merged.stations.map(cleanStation).filter(Boolean);
       if (!merged.stations.length) merged.stations = clone(DEFAULTS.stations);
       if (THEMES.indexOf(merged.theme) === -1) merged.theme = DEFAULTS.theme;
+      if (!Array.isArray(merged.seasonsSeen)) merged.seasonsSeen = [];
+      // A season that ended while the radio was closed is settled before it paints.
+      merged.theme = Scheduler.themeFor(merged, seasonNow());
 
       /* The gate, on the way in. Storage is shared with every other local
          page the browser has opened, a seed file is a file like any other,
@@ -1209,6 +1229,7 @@
     paintStripLevel(lit ? target : level);
     paintStripScope();
     paintStripThump(ts);
+    paintPumpkin(ts, lit ? target : 0);
 
     // Park the indicators only once the needle has actually fallen to rest.
     var quiet = !lit && !holding && level < 0.004;
@@ -1535,7 +1556,10 @@
        the compositor for a frame -- once a second, all day, to show the
        same two digits it was already showing. */
     var hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
-    if (el.clock.textContent !== hhmm) el.clock.textContent = hhmm;
+    if (el.clock.textContent !== hhmm) {
+      el.clock.textContent = hhmm;
+      checkSeason();
+    }
     var slot = state.schedulerEnabled ? Scheduler.activeSlot(state.schedule, now) : null;
     if (slot !== lastSlot) {
       var first = !seenOnce;
@@ -1612,7 +1636,7 @@
           /* Whatever the slot applies wins over what is in use now. Tone is
              written onto the station before tuning, because tone belongs to
              the station and tune() reads it from there. */
-          var want = Scheduler.slotSettings(slot);
+          var want = Scheduler.slotSettings(slot, seasonNow());
           if (want.bass !== null) st.bass = want.bass;
           if (want.treble !== null) st.treble = want.treble;
 
@@ -1634,7 +1658,7 @@
           }
 
           if (want.theme !== null && want.theme !== state.theme) {
-            state.theme = want.theme;
+            takeTheme(want.theme);
             applyLook();
             save();
           }
@@ -1651,13 +1675,13 @@
      it happened to be left. Only what the slot opts into is applied. */
   function applySlotNow(slot) {
     if (!slot) return;
-    var want = Scheduler.slotSettings(slot);
+    var want = Scheduler.slotSettings(slot, seasonNow());
     var st = station(slot.stationId);
     if (st) {
       if (want.bass !== null) st.bass = want.bass;
       if (want.treble !== null) st.treble = want.treble;
     }
-    if (want.theme !== null && want.theme !== state.theme) { state.theme = want.theme; applyLook(); }
+    if (want.theme !== null && want.theme !== state.theme) { takeTheme(want.theme); applyLook(); }
     if (want.volume !== null) setVolume(want.volume, true);
     save();
   }
@@ -2013,7 +2037,10 @@
        scroll box, so it counts as content. Left out of the height, a list
        that fits exactly overflows by those few pixels and shows a
        scrollbar for a row that is entirely visible. */
-    var press = parseFloat(cs.paddingBottom) || 0;
+    /* And the top, for the same reason: a theme whose keys rise, or lean,
+       needs room above the first row, and 8px of it left out showed a
+       scrollbar beside a single row of headstones. */
+    var press = (parseFloat(cs.paddingBottom) || 0) + (parseFloat(cs.paddingTop) || 0);
     var rows = Math.max(1, Math.round((want + gap) / (rowH + gap)));
     el.presets.style.setProperty('--presets-max', (rows * rowH + (rows - 1) * gap + press) + 'px');
   }
@@ -2427,6 +2454,33 @@
     // After the theme has painted, so the new height is the one measured.
     requestAnimationFrame(function () { sizeWindow(); });
     measurePresetNames();
+  }
+
+  /* Every way a theme is chosen comes through here -- the drawer, a
+     schedule slot -- so the season bookkeeping cannot be skipped by one of
+     them. Moving from an everyday theme to a seasonal one remembers the
+     everyday one to go back to. A seasonal one picked outside its month is
+     kept for the month it was picked in. */
+  function takeTheme(next) {
+    var now = seasonNow();
+    if (Scheduler.isSeasonal(next) && !Scheduler.isSeasonal(state.theme)) state.themeBeforeSeason = state.theme;
+    if (next !== state.theme) {
+      state.seasonHold = Scheduler.isSeasonal(next) && !Scheduler.inSeason(next, now) ? Scheduler.monthTag(now) : null;
+    }
+    state.theme = next;
+  }
+
+  /* Once a minute and at start-up: a season that has just ended hands the
+     radio back, and one that has just begun lights the way to itself. */
+  function checkSeason() {
+    var t = Scheduler.themeFor(state, seasonNow());
+    if (t !== state.theme) {
+      state.theme = t;
+      state.seasonHold = null;
+      applyLook();
+      save();
+    }
+    syncGearDot();
   }
 
   var refitTimer;
@@ -3198,10 +3252,26 @@
      sustained passage does not hold the cone out, and a quiet track with a
      real kick still thumps. */
   var THUMP_HZ = 150;
-  var thumpAvg = 0, thumpEnv = 0, thumpLast = 0, thumpBins = null;
+  var thumpAvg = 0, thumpEnv = 0, thumpLast = 0, thumpBins = null, thumpAt = -1;
+  /* April's puddle reads the same band, more readily and for longer: the
+     kick above is tuned to spark on a sharp hit, and on ordinary programme
+     with a steady beat it read 0.03-0.27 and was gone in 150ms, missing
+     beats outright -- far too little to throw a ripple. This one, on the
+     same programme, read 0.5-1.0 on every beat and fell near 0 between.
+     Measured live. */
+  var bassEnv = 0, BASS_GAIN = 14, BASS_OVER = 1.04, BASS_FALL_MS = 320;
 
   function paintStripThump(ts) {
     if (!strip || !strip.viz || strip.viz.getAttribute('data-viz') !== 'sonar') return;
+    strip.viz.style.setProperty('--dr-thump', readThump(ts).toFixed(3));
+  }
+
+  /* Measured once a frame for whoever wants it -- the mini radio's speaker
+     and the jack-o'-lantern -- so two of them cost one transform, and the
+     running average is not advanced twice. */
+  function readThump(ts) {
+    if (ts === thumpAt) return thumpEnv;
+    thumpAt = ts;
     var dt = thumpLast ? Math.min(100, ts - thumpLast) : 16;
     thumpLast = ts;
 
@@ -3221,7 +3291,32 @@
     var kick = Math.max(0, Math.min(1, (e - thumpAvg * 1.12) * 5));
     /* Instant attack, 130ms decay: roughly a real cone coming back. */
     thumpEnv = kick > thumpEnv ? kick : thumpEnv * Math.exp(-dt / 130);
-    strip.viz.style.setProperty('--dr-thump', thumpEnv.toFixed(3));
+    var wide = Math.max(0, Math.min(1, (e - thumpAvg * BASS_OVER) * BASS_GAIN));
+    bassEnv = wide > bassEnv ? wide : bassEnv * Math.exp(-dt / BASS_FALL_MS);
+    return thumpEnv;
+  }
+
+  /* The jack-o'-lantern's own light. --vu is a needle's level and slow on
+     purpose, about 300ms, and a candle behind a carved face that slow read
+     as drifting rather than answering the sound. This follows the programme
+     with a quick attack and a quicker fall, and the kick band thumps it.
+     Only while that face is showing -- the drawer's preview included, which
+     is why the attribute is asked rather than state.theme. */
+  var GLOW_RISE_MS = 25, GLOW_FALL_MS = 110;
+  var glowAt = 0, glowLast = 0, pumpkinMeter = null;
+  function paintPumpkin(ts, target) {
+    // The pumpkin, and the string of lights, which wants the same quickness.
+    var face = document.documentElement.getAttribute('data-theme');
+    // April's puddle takes the kick as well.
+    if (face !== 'halloween' && face !== 'christmas' && face !== 'spring') { glowLast = 0; return; }
+    if (!pumpkinMeter) pumpkinMeter = el.tuner.querySelector('.meter');
+    if (!pumpkinMeter) return;
+    var dt = glowLast ? Math.min(100, ts - glowLast) : 16;
+    glowLast = ts;
+    glowAt += (target - glowAt) * (1 - Math.exp(-dt / (target > glowAt ? GLOW_RISE_MS : GLOW_FALL_MS)));
+    pumpkinMeter.style.setProperty('--glow', glowAt.toFixed(3));
+    pumpkinMeter.style.setProperty('--thump', (analyser && ctx && freqData ? readThump(ts) : 0).toFixed(3));
+    if (face === 'spring') pumpkinMeter.style.setProperty('--bass', (analyser && ctx && freqData ? bassEnv : 0).toFixed(3));
   }
 
   var SCOPE_PTS = 30;
@@ -4209,6 +4304,17 @@
       paneEl(key).hidden = key !== pane;
     });
     moveInk(animate);
+    /* Arriving on Theme is seeing the season, so the gear and the tab go
+       out. The card keeps its dot for the rest of this visit -- it was
+       drawn when the drawer opened -- so the end of the trail is still
+       there to be found. */
+    var fresh = pane === 'look' && seasonUnseen();
+    if (fresh) {
+      seasonNewsCard = fresh;
+      state.seasonsSeen = (state.seasonsSeen || []).concat(Scheduler.seasonTag(fresh, seasonNow()));
+      save();
+      syncGearDot();
+    }
   }
 
   /* ---------- how tall the dialog opens ----------
@@ -4322,6 +4428,7 @@
     // a system setting that can have changed since the drawer last opened.
     paintMotion();
     renderUpdateLine();
+    seasonNewsCard = null;
     renderDrawer();
     // Snapshot after the render, which fills in any blanks of its own.
     draftClean = draftSnapshot();
@@ -4795,8 +4902,8 @@
       /* The shortcut keeps the theme that was showing when it was made:
          each theme ships its own .ico, and a per-theme path also sidesteps
          the Windows icon cache, which keys on the file it was told about. */
-      var known = /^(dial|console|rams|editorial|retro|departures|marconi|tivoli)$/.test(state.theme);
-      var icon = windowsPathOf(appFolderUrl() + 'assets/favicon-' + (known ? state.theme : 'dial') + '.ico');
+      var known = /^(dial|console|rams|editorial|retro|departures|marconi|tivoli)$/.test(iconTheme());
+      var icon = windowsPathOf(appFolderUrl() + 'assets/favicon-' + (known ? iconTheme() : 'dial') + '.ico');
       // .url files want CRLF and the icon given as a full path.
       body = ['[InternetShortcut]', 'URL=' + here, 'IconFile=' + icon, 'IconIndex=0', ''].join('\r\n');
       type = 'text/plain';
@@ -4813,8 +4920,8 @@
     var label = { dial: 'Analogue dial', console: 'Broadcast console', rams: 'Rams minimal', editorial: 'Editorial',
                   retro: 'Retro 8-bit', departures: 'Departures board', marconi: 'Marconi deco',
                   tivoli: 'Tivoli Model One' };
-    var named = label[state.theme] || 'Deskside Radio';
-    var theme = known ? state.theme : 'dial';
+    var named = label[iconTheme()] || 'Deskside Radio';
+    var theme = known ? iconTheme() : 'dial';
 
     if (mac) {
       setStatus(status, 'Shortcut downloaded · drag it to your Desktop');
@@ -4901,6 +5008,13 @@
      picture already shows the colours and the hardware, so repeating them
      in words says nothing; what it cannot show is where the thing came
      from, which is the part that makes the name make sense. */
+  /* The theme a shortcut is drawn in. A shortcut outlives the month it was
+     made in, so a seasonal theme lends it the everyday one it replaced
+     rather than leaving a seasonal icon on the desktop all year. */
+  function iconTheme() {
+    return Scheduler.isSeasonal(state.theme) ? (state.themeBeforeSeason || 'dial') : state.theme;
+  }
+
   var THEME_CARDS = [
     { key: 'dial', label: 'Analogue dial', note: 'Wood-cabinet radios of the 1950s living room' },
     { key: 'console', label: 'Broadcast console', note: 'The on-air mixing desk of a radio control room' },
@@ -4909,14 +5023,49 @@
     { key: 'retro', label: 'Retro 8-bit', note: 'Interface style of 80s home game consoles' },
     { key: 'departures', label: 'Departures board', note: 'Split-flap boards in airports and railway stations' },
     { key: 'marconi', label: 'Marconi deco', note: 'Art deco radio cabinets of the 1930s' },
-    { key: 'tivoli', label: 'Model One', note: 'The Tivoli Model One, the one-knob tabletop radio of 2000' }
+    { key: 'tivoli', label: 'Model One', note: 'The Tivoli Model One, the one-knob tabletop radio of 2000' },
+    // Only offered in their own month; see SEASONS in scheduler.js.
+    { key: 'halloween', label: 'Halloween Fun', note: 'A 1930s wireless left in the attic far too long' },
+    { key: 'harvest', label: 'Autumn Gobble', note: 'A farmhouse set in late autumn, turkeys about' },
+    { key: 'christmas', label: 'Noel', note: 'A starry winter night – ’tis a magical season' },
+    { key: 'spring', label: 'April Showers', note: 'April rain, and what it brings up' }
   ];
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  /* Which season's card carries the end of the dot trail this visit. Held
+     here because arriving on the tab marks the season seen, and a render
+     after that -- an import redraws the drawer -- would otherwise lose it. */
+  var seasonNewsCard = null;
+
+  /* Seasonal cards are all drawn, and the ones out of their month are
+     hidden by the stylesheet unless Shift+S is held on this tab or the card
+     is the one chosen -- so revealing them is a class, not a re-render, and
+     a click made while the keys are down lands on a card that stays put. */
   function renderThemeCards() {
     var box = $('themeCards');
     box.innerHTML = '';
-    THEME_CARDS.forEach(function (t) {
+    var now = seasonNow();
+    var news = seasonUnseen() || seasonNewsCard;
+    // The month's own theme leads, so it is the first thing seen on the tab.
+    var cards = THEME_CARDS.slice().sort(function (a, b) {
+      var sa = Scheduler.isSeasonal(a.key) && Scheduler.inSeason(a.key, now) ? 0 : 1;
+      var sb = Scheduler.isSeasonal(b.key) && Scheduler.inSeason(b.key, now) ? 0 : 1;
+      return sa - sb;
+    });
+    cards.forEach(function (t) {
       var card = document.createElement('label');
       card.className = 'theme-card';
+      var seasonal = Scheduler.isSeasonal(t.key);
+      var season = '';
+      if (seasonal) {
+        var inIt = Scheduler.inSeason(t.key, now);
+        var end = Scheduler.seasonEnd(t.key, now);
+        if (!inIt) card.classList.add('is-offseason');
+        season = '<span class="theme-season">' +
+          (t.key === news ? '<i class="season-dot" aria-hidden="true"></i>' : '') +
+          (inIt ? 'Seasonal · until ' + MONTHS[end.getMonth()] + ' ' + end.getDate()
+                : 'Seasonal · ' + MONTHS[end.getMonth()]) +
+          '</span>';
+      }
       card.innerHTML =
         '<input type="radio" name="theme" value="' + t.key + '">' +
         '<span class="theme-thumb" data-theme="' + t.key + '" aria-hidden="true">' +
@@ -4926,6 +5075,7 @@
         '<span class="theme-label">' +
           '<span class="theme-name">' + escapeHtml(t.label) + '</span>' +
           '<span class="theme-note">' + escapeHtml(t.note) + '</span>' +
+          season +
         '</span>';
       card.querySelector('input').checked = draft.theme === t.key;
       box.appendChild(card);
@@ -5736,7 +5886,12 @@
 
         var control = spec.kind === 'theme'
           ? '<select class="in" data-role="value" aria-label="' + spec.label + '">' +
-              THEME_CARDS.map(function (th) {
+              /* Seasonal themes only in their month, like the cards; one the
+                 slot already names is kept so opening the card does not
+                 quietly change it. */
+              THEME_CARDS.filter(function (th) {
+                return th.key === v || Scheduler.inSeason(th.key, seasonNow());
+              }).map(function (th) {
                 return '<option value="' + th.key + '"' + (th.key === v ? ' selected' : '') + '>' + th.label + '</option>';
               }).join('') + '</select>'
           : '<input type="range" data-role="value" min="' + spec.min + '" max="' + spec.max + '" value="' + v + '" aria-label="' + spec.label + '">';
@@ -6111,7 +6266,7 @@
        written in behind their back. */
     if (lateFixes.length) showFix(lateFixes.join(' '), null);
     else clearFix();
-    state.theme = draft.theme;
+    takeTheme(draft.theme);
     state.autoplay = !!draft.autoplay;
     state.autoplayStationId = draft.autoplayStationId;
 
@@ -6358,6 +6513,20 @@
     return !!(state.versionLatest && newerThan(state.versionLatest, APP_VERSION));
   }
 
+  function seasonUnseen() { return Scheduler.unseenSeason(state.seasonsSeen, seasonNow()); }
+
+  /* The dot on the gear is a trail, not a verdict about one thing: it is
+     lit while anything in the drawer is new, and each tab carrying news has
+     its own dot so the trail leads somewhere. Kept in one place so a source
+     going quiet cannot put out a dot another source still needs. */
+  function syncGearDot() {
+    var season = !!seasonUnseen();
+    var gear = $('openSettings');
+    if (gear) gear.classList.toggle('has-update', updateAvailable() || season);
+    var look = $('tabLook');
+    if (look) look.classList.toggle('has-update', season);
+  }
+
   /* What is on disk, as against what is running.
 
      Those come apart exactly once, and it is the case worth knowing about:
@@ -6477,8 +6646,7 @@
        announcement, and an announcement you have read should be able to
        stop talking until there is news again. */
     pill.hidden = !on || !!state.versionPillOff;
-    var gear = $('openSettings');
-    if (gear) gear.classList.toggle('has-update', on);
+    syncGearDot();
     /* And the tab, so the mark on the gear leads somewhere rather than
        leaving the drawer to be searched. Same fact, one level down. */
     var tab = $('tabService');
@@ -6684,6 +6852,46 @@
   window.addEventListener('blur', function () {
     shiftForFolder = false;
     refreshFolderBtn();
+    showSeasons(false);
+  });
+
+  /* Shift+S on the Theme tab shows every seasonal theme, in season or not,
+     for as long as the two are held. A card clicked meanwhile is chosen as
+     any other would be, and stays in view once the keys come up because it
+     is the checked one. Key repeat only re-asserts the same class. The S is
+     not swallowed in a text field, where it is a letter. */
+  function showSeasons(on) {
+    var box = $('themeCards');
+    if (box) box.classList.toggle('show-seasons', !!on);
+  }
+  window.addEventListener('keydown', function (e) {
+    if (!e.shiftKey || (e.key !== 'S' && e.key !== 's')) return;
+    if (!el.settings.open || pane !== 'look') return;
+    if (e.target && e.target.closest && e.target.closest('input[type="text"], input[type="search"], input[type="url"], textarea, select')) return;
+    e.preventDefault();
+    showSeasons(true);
+  });
+  window.addEventListener('keyup', function (e) {
+    if (e.key === 'Shift' || e.key === 'S' || e.key === 's') showSeasons(false);
+  });
+  /* Shift is still down when a revealed card is clicked, and a shift-click
+     on a label is a text selection to the browser: it swept the whole
+     drawer into a highlight and the radio never saw the click. So with
+     Shift held the press starts no selection, and the card is chosen here
+     rather than left to the label -- through the same change event the
+     drawer already listens for. */
+  $('themeCards').addEventListener('mousedown', function (e) {
+    if (e.shiftKey && e.target.closest('.theme-card')) e.preventDefault();
+  });
+  $('themeCards').addEventListener('click', function (e) {
+    if (!e.shiftKey) return;
+    var card = e.target.closest('.theme-card');
+    if (!card) return;
+    e.preventDefault();
+    var input = card.querySelector('input');
+    if (input.checked) return;
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
   });
 
   $('openFolderBtn').addEventListener('click', function () {

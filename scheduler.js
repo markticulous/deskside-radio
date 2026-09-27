@@ -372,7 +372,54 @@
      known to work. Letting Play consult lastGood was a bug: a station
      played for under ten seconds never became lastGood, so stopping and
      starting jumped back to the station before it. */
-  var THEMES = ['dial', 'console', 'rams', 'editorial', 'retro', 'departures', 'marconi', 'tivoli'];
+  var THEMES = ['dial', 'console', 'rams', 'editorial', 'retro', 'departures', 'marconi', 'tivoli',
+                'halloween', 'harvest', 'christmas', 'spring'];
+
+  /* Themes that are only offered in their own month, 1 to 12. Out of it
+     they are not in the picker, a schedule slot cannot bring one back, and
+     one still showing when its month ends hands over to the theme that was
+     showing before it. */
+  var SEASONS = { halloween: 10, harvest: 11, christmas: 12, spring: 4 };
+
+  function isSeasonal(key) { return Object.prototype.hasOwnProperty.call(SEASONS, key); }
+  function inSeason(key, now) { return !isSeasonal(key) || SEASONS[key] === now.getMonth() + 1; }
+
+  // The seasonal theme whose month this is, or null.
+  function seasonOf(now) {
+    var m = now.getMonth() + 1;
+    for (var k in SEASONS) if (SEASONS[k] === m) return k;
+    return null;
+  }
+
+  // The last day it is offered: day 0 of the month after is the last of its own.
+  function seasonEnd(key, now) { return new Date(now.getFullYear(), SEASONS[key], 0); }
+
+  /* One mark per season per year, so next October is news again. */
+  function seasonTag(key, now) { return key + '-' + now.getFullYear(); }
+
+  /* A season nobody has been shown yet this year: the gear, the tab and the
+     card say so until the Theme tab has been opened. */
+  function unseenSeason(seen, now) {
+    var k = seasonOf(now);
+    if (!k) return null;
+    return Array.isArray(seen) && seen.indexOf(seasonTag(k, now)) !== -1 ? null : k;
+  }
+
+  /* The month as a mark: a seasonal theme picked outside its own month --
+     Settings, Theme, with Shift+S held -- is kept until the end of the
+     month it was picked in, the same span an in-season one gets. */
+  function monthTag(now) { return now.getFullYear() + '-' + (now.getMonth() + 1); }
+
+  /* The theme that should be showing. Anything in season stands, and so
+     does one picked out of season this month; otherwise a seasonal theme
+     goes back to the one it replaced, and to the default if that is missing
+     or was itself seasonal. */
+  function themeFor(state, now) {
+    if (inSeason(state.theme, now)) return state.theme;
+    if (state.seasonHold === monthTag(now)) return state.theme;
+    var back = state.themeBeforeSeason;
+    return THEMES.indexOf(back) !== -1 && !isSeasonal(back) ? back : 'dial';
+  }
 
   function clampNum(v, lo, hi) {
     if (typeof v !== 'number' || !isFinite(v)) return null;
@@ -382,14 +429,19 @@
   /* What a slot imposes the moment it becomes the active one. Each setting
      is opt-in except volume, which every slot has always carried and always
      applied, so an absent flag there has to keep meaning yes. A null says
-     leave that setting exactly as the listener has it. */
-  function slotSettings(slot) {
+     leave that setting exactly as the listener has it.
+
+     A seasonal theme is only imposed in its own month, so a slot set up in
+     October leaves the look alone the rest of the year. */
+  function slotSettings(slot, now) {
     var out = { volume: null, bass: null, treble: null, theme: null };
     if (!slot) return out;
     if (slot.applyVolume !== false) out.volume = clampNum(slot.volume, 0, 100);
     if (slot.applyBass) out.bass = clampNum(slot.bass, -12, 12);
     if (slot.applyTreble) out.treble = clampNum(slot.treble, -12, 12);
-    if (slot.applyTheme && THEMES.indexOf(slot.theme) !== -1) out.theme = slot.theme;
+    if (slot.applyTheme && THEMES.indexOf(slot.theme) !== -1 && inSeason(slot.theme, now || new Date())) {
+      out.theme = slot.theme;
+    }
     return out;
   }
 
@@ -451,6 +503,8 @@
     dayGroup: dayGroup, parseHHMM: parseHHMM, minutesOfDay: minutesOfDay,
     activeSlot: activeSlot, nextChange: nextChange, dayIsOver: dayIsOver,
     settle: settle, occupancy: occupancy, suggestSlot: suggestSlot, shapeOf: shapeOf, hhmm: hhmm,
-    validateSlots: validateSlots
+    validateSlots: validateSlots,
+    THEMES: THEMES, isSeasonal: isSeasonal, inSeason: inSeason, seasonOf: seasonOf,
+    seasonEnd: seasonEnd, seasonTag: seasonTag, unseenSeason: unseenSeason, themeFor: themeFor, monthTag: monthTag
   };
 });

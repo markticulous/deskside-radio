@@ -1,6 +1,6 @@
 {
-  "version": "1.5.11",
-  "released": "2026-09-26",
-  "notes": "## New features & enhancements\n\n- **The mini radio's volume answers the mouse wheel:** one small step (0.4 dB) a notch, for the fine adjustments a short slider is hard to drag to.\n- **A longer volume slider in the mini radio.** The clock is gone from it to make the room; the *Deskside Radio Mini* name stays.\n- **The mini radio's VU needle reads like a meter:** calmer, spread across its scale rather than pinned near the top, and a quarter larger.\n- The mini radio's bars and dots drop further between beats, so they fall a little quicker.\n\n## Bug fixes\n\n- The mini radio's *Click here* prompt was see-through, with the station name showing through it. It is solid now, and tall enough to cover the row behind.\n- The mini radio's VU needle flicked about a dozen times a second, following every wobble in the sound.",
+  "version": "1.6.0",
+  "released": "2026-09-27",
+  "notes": "## New features & enhancements\n\n- **Seasonal themes.** A few surprises, turning up in *Settings → Theme* through the year. We will say no more.\n- **The bottom of the volume slider is properly quiet now.** The lowest few settings fall away steeply, the way a system volume control does; everything from 10 up sounds exactly as it did.\n- The update dot on the Settings button sits a little closer to its icon on themes where the button has no visible edge.\n\n## Bug fixes\n\n- Fixed small layout bugs: a play button symbol that could sit off-centre, and a scrollbar that could appear on the station presets.",
   "url": "https://github.com/Markticulous/deskside-radio/releases/latest"
 }
