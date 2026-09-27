@@ -1,0 +1,1668 @@
+/* Deskside Radio — seasonal themes
+
+   Four faces that are only offered in their own month: Halloween in
+   October, Harvest in November, Christmas in December, Spring in April.
+   They sit in a sheet of their own so the preview page and the app load
+   exactly the same rules, and so app.css does not grow by a third for
+   themes that are away eight months of the year.
+
+   Each is built on the skeleton of a theme that already ships, not from
+   nothing: Halloween and Harvest on the Analogue dial's glass and its
+   meter column, Christmas on the dial's glass with the meter laid across
+   the top the way Rams lays it across the base, Spring on Rams. Every
+   meter still reads --vu, written on .meter by setLevel.
+
+   One rule holds for all of them: the ambient motion (bats, fog, falling
+   leaves, snow, rain) only runs while the set is making sound. Tivoli
+   learned this the hard way -- rings going round at sixty frames a second
+   all day with nothing playing -- and .is-quiet is the hook it settled on.
+   Reduced motion stops all of it, and the meters go on reading. */
+
+/* ================================================================== */
+/* S1 · HALLOWEEN — a haunted 1930s wireless, candle behind the glass   */
+/* ================================================================== */
+
+/* The page behind each set, as app.css gives the everyday ones. */
+[data-theme="halloween"] { --page-bg: #0b070e; }
+[data-theme="harvest"]   { --page-bg: #1c0906; }
+[data-theme="christmas"] { --page-bg: #14050a; }
+[data-theme="spring"]    { --page-bg: #e8eae1; }
+
+[data-theme="halloween"] .tuner {
+  --pumpkin: #ff7a1a;
+  --ember: #ffb347;
+  --glass-ink: #1c0802;
+  --bone: #efe6d2;
+  --slime: #9dff3a;
+  --gap: 24px;
+  --pad: 30px;
+  --by-mono: "Special Elite", monospace;
+  --by-fg: #f3c98f;
+  --by-line: rgba(255,122,26,.5);
+  --by-plate: rgba(0,0,0,.45);
+  --by-emboss: rgba(255,160,80,.14);
+  --by-accent: linear-gradient(#ffa24a, #d4540a);
+  --by-on-accent: #1c0802;
+  font-family: "Special Elite", "Courier New", monospace;
+  color: var(--bone);
+  background:
+    radial-gradient(ellipse 80% 55% at 50% 42%, rgba(255,122,26,.16), transparent 70%),
+    linear-gradient(90deg, rgba(0,0,0,.5), transparent 22%, transparent 78%, rgba(0,0,0,.55)),
+    repeating-linear-gradient(87deg, #1d1422 0 7px, #170f1b 7px 15px, #21162a 15px 26px, #130c17 26px 31px);
+  box-shadow:
+    inset 0 0 0 4px #2a1733, inset 0 0 0 6px rgba(255,122,26,.55), inset 0 0 0 7px #120a16,
+    inset 0 0 70px rgba(0,0,0,.6),
+    0 0 40px -6px rgba(255,110,20,.35), 0 30px 60px -20px rgba(0,0,0,.75);
+  border-radius: 12px;
+}
+
+/* ---- the haunting: fog, bats, lightning, eyes in the dark ----------- */
+
+/* Fog along the floor of the cabinet. Twice as wide as the set, so it can
+   drift one way and back without ever showing its end. */
+[data-theme="halloween"] .tuner::before {
+  content: ""; position: absolute; left: -50%; width: 200%; bottom: -20px; height: 190px;
+  z-index: 4; pointer-events: none; opacity: .5;
+  background:
+    radial-gradient(ellipse 18% 46% at 10% 72%, rgba(186,170,214,.55), transparent 70%),
+    radial-gradient(ellipse 22% 40% at 34% 80%, rgba(170,160,200,.45), transparent 70%),
+    radial-gradient(ellipse 16% 50% at 58% 70%, rgba(196,182,220,.5), transparent 70%),
+    radial-gradient(ellipse 24% 44% at 82% 78%, rgba(176,164,206,.5), transparent 70%);
+  filter: blur(6px);
+  animation: hw-fog 38s ease-in-out infinite alternate;
+}
+@keyframes hw-fog {
+  from { transform: translateX(0); }
+  to   { transform: translateX(22%); }
+}
+
+/* Three bats. Their wings are animated inside the drawing itself; the
+   flight across the cabinet is this element, once every twenty seconds,
+   so most of the time the sky is empty and a crossing is an event. */
+[data-theme="halloween"] .tuner-bar::after {
+  content: ""; position: absolute; left: -340px; top: 70px; width: 300px; height: 90px;
+  z-index: 5; pointer-events: none;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 90' fill='%23080407'><g transform='translate(40 50) scale(1.6)'><g><animateTransform attributeName='transform' type='translate' values='0 0;0 1.6;0 0' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='0s' dur='.34s' repeatCount='indefinite'/><path d='M1.5-2C6-7 12-9 20-6C17-3.5 16-.5 17 3C14 1 11 1.5 9 4.5C7 1.8 4 1.2 1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='-38 1.5 -1;30 1.5 -1;-38 1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='0s' dur='.34s' repeatCount='indefinite'/></path><path d='M-1.5-2C-6-7-12-9-20-6C-17-3.5-16-.5-17 3C-14 1-11 1.5-9 4.5C-7 1.8-4 1.2-1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='38 -1.5 -1;-30 -1.5 -1;38 -1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='0s' dur='.34s' repeatCount='indefinite'/></path><ellipse cx='0' cy='0' rx='2.6' ry='4.4'/><circle cx='0' cy='-4.6' r='2.3'/><path d='M-2-5.6L-2.7-9.4L-.5-6.6ZM2-5.6L2.7-9.4L.5-6.6Z'/></g></g><g transform='translate(150 24) scale(1)'><g><animateTransform attributeName='transform' type='translate' values='0 0;0 1.6;0 0' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.12s' dur='.34s' repeatCount='indefinite'/><path d='M1.5-2C6-7 12-9 20-6C17-3.5 16-.5 17 3C14 1 11 1.5 9 4.5C7 1.8 4 1.2 1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='-38 1.5 -1;30 1.5 -1;-38 1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.12s' dur='.34s' repeatCount='indefinite'/></path><path d='M-1.5-2C-6-7-12-9-20-6C-17-3.5-16-.5-17 3C-14 1-11 1.5-9 4.5C-7 1.8-4 1.2-1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='38 -1.5 -1;-30 -1.5 -1;38 -1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.12s' dur='.34s' repeatCount='indefinite'/></path><ellipse cx='0' cy='0' rx='2.6' ry='4.4'/><circle cx='0' cy='-4.6' r='2.3'/><path d='M-2-5.6L-2.7-9.4L-.5-6.6ZM2-5.6L2.7-9.4L.5-6.6Z'/></g></g><g transform='translate(250 62) scale(1.25)'><g><animateTransform attributeName='transform' type='translate' values='0 0;0 1.6;0 0' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.21s' dur='.34s' repeatCount='indefinite'/><path d='M1.5-2C6-7 12-9 20-6C17-3.5 16-.5 17 3C14 1 11 1.5 9 4.5C7 1.8 4 1.2 1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='-38 1.5 -1;30 1.5 -1;-38 1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.21s' dur='.34s' repeatCount='indefinite'/></path><path d='M-1.5-2C-6-7-12-9-20-6C-17-3.5-16-.5-17 3C-14 1-11 1.5-9 4.5C-7 1.8-4 1.2-1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='38 -1.5 -1;-30 -1.5 -1;38 -1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.21s' dur='.34s' repeatCount='indefinite'/></path><ellipse cx='0' cy='0' rx='2.6' ry='4.4'/><circle cx='0' cy='-4.6' r='2.3'/><path d='M-2-5.6L-2.7-9.4L-.5-6.6ZM2-5.6L2.7-9.4L.5-6.6Z'/></g></g></svg>") no-repeat center / contain;
+  filter: drop-shadow(0 0 6px rgba(255,122,26,.35));
+  animation: hw-bats 21s linear 2.5s infinite;
+  transition: opacity .6s ease;
+}
+/* Not while the broomstick scene is on (seasonal.js sets .hw-scene): it has
+   a bat of its own, and the flock crossing over it only muddled things. */
+[data-theme="halloween"] .tuner.hw-scene .tuner-bar::after { opacity: 0; }
+@keyframes hw-bats {
+  0%        { transform: translate(0, 0); }
+  7%        { transform: translate(480px, -26px); }
+  14%       { transform: translate(960px, 14px); }
+  21%, 100% { transform: translate(1520px, -34px); }
+}
+
+/* Lightning, down the left side of the set. Once when it comes on air --
+   the animation runs the moment .is-playing lands -- and then rarely, and
+   not on a beat: two storms on cycles of 97 and 151 seconds, a strike in
+   each at a different point, so the gaps between strikes keep changing
+   and the pattern takes hours to come round again. */
+[data-theme="halloween"] .tuner-bar::before,
+[data-theme="halloween"] .brand::after {
+  content: ""; position: absolute; inset: 0; z-index: 6; pointer-events: none; opacity: 0;
+  background:
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 420' fill='none' stroke-linecap='round' stroke-linejoin='round'><path d='M70 0L52 70L78 96L40 190L66 214L30 330L50 352L34 420' stroke='%23b9a4ff' stroke-opacity='.55' stroke-width='12'/><path d='M70 0L52 70L78 96L40 190L66 214L30 330L50 352L34 420' stroke='%23fff' stroke-width='3.5'/><path d='M52 70L28 118M40 190L14 226M66 214L92 262' stroke='%23fff' stroke-opacity='.8' stroke-width='2'/></svg>") no-repeat 7% 0 / auto 78%,
+    radial-gradient(ellipse 45% 95% at 10% 0%, rgba(240,234,255,.95), rgba(186,160,255,.4) 45%, transparent 78%);
+  mix-blend-mode: screen;
+}
+/* The second strike falls a little further in, so two in a row are not the
+   same bolt twice. */
+[data-theme="halloween"] .brand::after {
+  background:
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 420' fill='none' stroke-linecap='round' stroke-linejoin='round'><path d='M70 0L52 70L78 96L40 190L66 214L30 330L50 352L34 420' stroke='%23b9a4ff' stroke-opacity='.55' stroke-width='12'/><path d='M70 0L52 70L78 96L40 190L66 214L30 330L50 352L34 420' stroke='%23fff' stroke-width='3.5'/><path d='M52 70L28 118M40 190L14 226M66 214L92 262' stroke='%23fff' stroke-opacity='.8' stroke-width='2'/></svg>") no-repeat 15% 0 / auto 64%,
+    radial-gradient(ellipse 40% 90% at 16% 0%, rgba(240,234,255,.9), rgba(186,160,255,.35) 45%, transparent 78%);
+}
+[data-theme="halloween"] .tuner.is-playing .tuner-bar::before {
+  animation: hw-bolt .8s ease-out 1, hw-storm-a 97s linear 25s infinite;
+}
+[data-theme="halloween"] .tuner.is-playing .brand::after {
+  animation: hw-storm-b 151s linear 40s infinite;
+}
+/* In a 97s cycle a tenth of a percent is about 100ms: a double crack over
+   half a second, gone as fast as it came. */
+@keyframes hw-storm-a {
+  0%, 38%   { opacity: 0; }
+  38.04%    { opacity: .95; }
+  38.12%    { opacity: .08; }
+  38.2%     { opacity: .85; }
+  38.45%    { opacity: 0; }
+  100%      { opacity: 0; }
+}
+@keyframes hw-storm-b {
+  0%, 66%   { opacity: 0; }
+  66.03%    { opacity: .9; }
+  66.09%    { opacity: 0; }
+  66.16%    { opacity: .7; }
+  66.21%    { opacity: .12; }
+  66.27%    { opacity: .85; }
+  66.42%    { opacity: 0; }
+  100%      { opacity: 0; }
+}
+@keyframes hw-bolt {
+  0%   { opacity: 0; }
+  5%   { opacity: .9; }
+  13%  { opacity: .08; }
+  21%  { opacity: .8; }
+  45%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* Something in the dark either side of the glass, watching. It opens its
+   eyes for a few seconds, blinks, and is gone again. */
+[data-theme="halloween"] .controls::before,
+[data-theme="halloween"] .controls::after {
+  content: ""; position: absolute; width: 22px; height: 9px; z-index: 3; pointer-events: none;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 10'><ellipse cx='5' cy='5' rx='3.4' ry='2.5' fill='%23c8ff3a'/><ellipse cx='19' cy='5' rx='3.4' ry='2.5' fill='%23c8ff3a'/><circle cx='5.8' cy='5.2' r='1.1'/><circle cx='19.8' cy='5.2' r='1.1'/></svg>") no-repeat center / contain;
+  filter: drop-shadow(0 0 4px rgba(200,255,58,.8));
+  opacity: 0;
+  animation: hw-eyes 13s ease-in-out infinite;
+}
+/* Parked for now, at Mark's ask (2026-09-26): the drawing stays so it can
+   come back by deleting this one rule. */
+[data-theme="halloween"] .controls::before,
+[data-theme="halloween"] .controls::after { display: none; }
+[data-theme="halloween"] .controls::before { left: 5px; top: 44%; }
+[data-theme="halloween"] .controls::after  { right: 5px; top: 66%; animation-delay: 6.5s; animation-duration: 17s; }
+@keyframes hw-eyes {
+  0%, 62%   { opacity: 0; transform: scaleY(1); }
+  66%       { opacity: 1; transform: scaleY(1); }
+  74%       { opacity: 1; transform: scaleY(1); }
+  75.5%     { opacity: 1; transform: scaleY(.1); }
+  77%       { opacity: 1; transform: scaleY(1); }
+  84%       { opacity: 1; transform: scaleY(1); }
+  88%, 100% { opacity: 0; transform: scaleY(1); }
+}
+
+/* Quiet means quiet: nothing crosses, drifts or flashes over a set that
+   is not playing. The fog stays where it was, as fog does. */
+[data-theme="halloween"] .tuner.is-quiet::before { animation-play-state: paused; }
+[data-theme="halloween"] .tuner.is-quiet .tuner-bar::after,
+[data-theme="halloween"] .tuner.is-quiet .controls::before,
+[data-theme="halloween"] .tuner.is-quiet .controls::after { animation: none; opacity: 0; }
+
+/* ---- the bar ------------------------------------------------------- */
+
+[data-theme="halloween"] .tuner-bar { color: var(--pumpkin); }
+[data-theme="halloween"] .brand-mark { display: none; }
+[data-theme="halloween"] .brand-name {
+  font-family: "Creepster", "Special Elite", cursive;
+  font-size: 22px; letter-spacing: .1em; font-weight: 400; line-height: 1;
+  color: var(--pumpkin);
+  text-shadow: 0 0 10px rgba(255,122,26,.65), 0 2px 0 #000;
+}
+[data-theme="halloween"] .clock {
+  font-family: "Creepster", cursive; font-size: 32px; letter-spacing: .06em;
+  color: var(--pumpkin); text-shadow: 0 0 12px rgba(255,122,26,.55), 0 2px 0 #000;
+}
+[data-theme="halloween"] .sched-chip {
+  font-size: 13px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--bone); padding: 6px 12px;
+  border: 1px solid rgba(255,122,26,.55); border-radius: 3px;
+  background: rgba(38,12,48,.55);
+}
+/* Unlit, the app's one off-lamp grey with a hairline either way, as the
+   status lamp has: a near-black dot vanished into these dark chips. */
+[data-theme="halloween"] .sched-led { width: 10px; height: 10px; border-radius: 50%; background: var(--lamp-off, #6b7075); box-shadow: 0 0 0 1px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.22); }
+[data-theme="halloween"] .sched-chip[aria-pressed="true"] .sched-led { background: radial-gradient(circle at 35% 35%, #eaffc0, var(--slime) 55%, #3f8a0e); box-shadow: 0 0 9px var(--slime); }
+[data-theme="halloween"] .icon-btn { color: var(--pumpkin); }
+
+/* ---- the glass: lit from behind by a candle ------------------------- */
+
+[data-theme="halloween"] .display {
+  padding: 26px 30px 30px;
+  color: var(--glass-ink);
+  background:
+    radial-gradient(ellipse 70% 80% at 72% 55%, rgba(255,236,160,.55), transparent 60%),
+    radial-gradient(ellipse 120% 95% at 50% 120%, #ffd27a, #ff9a2e 52%, #d9560b 82%, #8e2d04);
+  border-radius: 8px;
+  box-shadow:
+    inset 0 0 0 2px #3a1406, inset 0 0 0 3px rgba(255,200,120,.5),
+    inset 0 0 50px rgba(120,30,0,.55),
+    0 0 36px rgba(255,120,20,.4), 0 4px 0 #0a050c;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "band meter" "name meter" "tag meter" "status meter" "dial dial";
+  column-gap: 30px; row-gap: 4px; align-content: start;
+  isolation: isolate;
+}
+/* A cobweb in the corner of the glass, with its owner. */
+[data-theme="halloween"] .display::before {
+  content: ""; position: absolute; left: 3px; top: 3px; width: 118px; height: 118px;
+  z-index: 1; pointer-events: none;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 110' fill='none' stroke='%231c0802' stroke-opacity='.55' stroke-width='.9'><path d='M0 0L110 18M0 0L96 60M0 0L64 96M0 0L20 110'/><path d='M27.5 4.5Q21.9 8.3 24 15Q17 16.6 16 24Q8.9 21.9 5 27.5'/><path d='M55 9Q43.8 16.6 48 30Q34 33.2 32 48Q17.9 43.8 10 55'/><path d='M82.5 13.5Q65.7 24.9 72 45Q51 49.7 48 72Q26.8 65.7 15 82.5'/><path d='M110 18Q87.6 33.2 96 60Q68 66.3 64 96Q35.7 87.6 20 110' stroke-opacity='.35'/><path d='M60 58V92' stroke-width='.6'/><g fill='%231c0802' stroke='none'><ellipse cx='60' cy='96' rx='3.6' ry='4.4'/><circle cx='60' cy='90.6' r='2.4'/></g><path d='M57 94L51 90M57 96L50 97M57 98L52 103M63 94L69 90M63 96L70 97M63 98L68 103' stroke-opacity='.8' stroke-width='.8'/></svg>") no-repeat left top / contain;
+}
+/* The candle. A layer of dark over the whole glass whose opacity stumbles
+   the way a flame does -- opacity only, so the compositor does it and the
+   glass is not repainted. */
+[data-theme="halloween"] .display::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: 3; pointer-events: none;
+  background: radial-gradient(ellipse 90% 90% at 60% 60%, transparent 35%, rgba(60,14,0,.5));
+  opacity: .35;
+  animation: hw-candle 3.7s steps(1, end) infinite;
+}
+[data-theme="halloween"] .tuner.is-quiet .display::after { animation: none; opacity: .55; }
+@keyframes hw-candle {
+  0%   { opacity: .32; }
+  9%   { opacity: .48; }
+  13%  { opacity: .3; }
+  27%  { opacity: .38; }
+  31%  { opacity: .22; }
+  46%  { opacity: .4; }
+  52%  { opacity: .3; }
+  68%  { opacity: .5; }
+  71%  { opacity: .26; }
+  86%  { opacity: .36; }
+}
+
+[data-theme="halloween"] .display-band { grid-area: band; font-size: 17px; letter-spacing: .22em; opacity: .75; }
+[data-theme="halloween"] .display-name {
+  grid-area: name; margin: 0;
+  font-family: "Creepster", "Special Elite", cursive; font-weight: 400;
+  font-size: clamp(52px, 7.4vw, 96px); line-height: 1.02; letter-spacing: .03em;
+  white-space: nowrap; overflow: hidden;
+  color: var(--glass-ink);
+  text-shadow: 0 0 18px rgba(255,236,170,.45);
+}
+[data-theme="halloween"] .display-tag { grid-area: tag; margin: 6px 0 0; font-size: 17px; line-height: 1.35; opacity: .82; }
+[data-theme="halloween"] .display-status {
+  grid-area: status; margin-top: 10px; font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: #4a1604;
+}
+
+/* ---- dial ---------------------------------------------------------- */
+
+[data-theme="halloween"] .dial { grid-area: dial; display: grid; gap: 26px; margin-top: 24px; padding: 0 16px 0 62px; }
+[data-theme="halloween"] .scale { color: var(--glass-ink); border-bottom: 1px solid var(--glass-ink); }
+[data-theme="halloween"] .scale-labels { font-size: 12px; letter-spacing: .04em; color: #3a1204; padding-top: 3px; }
+[data-theme="halloween"] .scale.is-sweeping::after { background: linear-gradient(90deg, transparent, rgba(220,255,160,.7), transparent); }
+[data-theme="halloween"] .scale-badge {
+  position: absolute; left: -58px; top: 50%; transform: translateY(-50%);
+  width: 46px; padding: 5px 0 4px; text-indent: 2px; text-align: center; border-radius: 3px;
+  font-size: 13px; letter-spacing: .16em;
+  color: #7a3208; background: rgba(28,8,2,.12); box-shadow: inset 0 0 0 1px rgba(28,8,2,.3);
+}
+[data-theme="halloween"] .scale.is-active .scale-badge {
+  color: var(--ember); background: #140608;
+  box-shadow: 0 0 14px rgba(20,6,8,.5), inset 0 0 0 1px rgba(255,122,26,.6);
+}
+/* A ghost-light needle, the one cold colour on the glass. */
+[data-theme="halloween"] .needle { top: -11px; background: var(--slime); border-radius: 2px; box-shadow: 0 0 10px var(--slime), 0 0 2px #1c0802; }
+
+/* ---- the meter is a jack-o'-lantern -------------------------------- */
+
+/* The shell is drawn with its face cut clean through it, and behind the
+   holes are three of the meter's own boxes: the dark inside of the
+   pumpkin, the candle, and the flicker of the candle. The louder the
+   programme, the brighter the face burns. A halo spills out onto the
+   glass with it. */
+[data-theme="halloween"] .meter {
+  grid-area: meter; display: block; position: relative; align-self: start;
+  width: 232px; aspect-ratio: 240 / 210; margin-top: -6px;
+  /* --glow and --thump are written here by paintPumpkin in app.js: the
+     programme with a quick attack and a quicker fall, and the kick band
+     below 150 Hz. The preview pages only write --vu, which is why every
+     use falls back to it. A kick bumps the whole lantern, just. */
+  transform: scale(calc(1 + var(--thump, 0) * .05)); transform-origin: 50% 85%;
+  /* Above the candle's shade on the glass: the pumpkin is a light of its
+     own, and that shade over it browned the carved face to khaki. */
+  isolation: isolate; z-index: 4;
+}
+[data-theme="halloween"] .meter::before {
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 210'><defs><radialGradient id='p' cx='.42' cy='.34' r='.8'><stop offset='0' stop-color='%23ffac48'/><stop offset='.5' stop-color='%23e3600e'/><stop offset='1' stop-color='%23702203'/></radialGradient><mask id='m'><rect width='240' height='210' fill='white'/><g fill='black'><path d='M60 96L94 70L102 108Z'/><path d='M180 96L146 70L138 108Z'/><path d='M120 110L108 132L132 132Z'/><path d='M54 140Q120 206 186 140L170 150L158 146L150 158L140 150L120 156L100 150L90 158L82 146L70 150Z'/></g></mask></defs><path d='M114 62Q104 34 126 16L137 25Q121 38 130 62Z' fill='%23455218'/><path d='M126 16Q136 8 146 12' fill='none' stroke='%23455218' stroke-width='3' stroke-linecap='round'/><g mask='url(%23m)'><ellipse cx='68' cy='132' rx='58' ry='70' fill='url(%23p)'/><ellipse cx='172' cy='132' rx='58' ry='70' fill='url(%23p)'/><ellipse cx='96' cy='130' rx='50' ry='76' fill='url(%23p)'/><ellipse cx='144' cy='130' rx='50' ry='76' fill='url(%23p)'/><ellipse cx='120' cy='130' rx='38' ry='78' fill='url(%23p)'/></g><g fill='none' stroke='%23ffd27a' stroke-opacity='.45' stroke-width='2.5' stroke-linejoin='round'><path d='M60 96L94 70L102 108Z'/><path d='M180 96L146 70L138 108Z'/><path d='M120 110L108 132L132 132Z'/><path d='M54 140Q120 206 186 140L170 150L158 146L150 158L140 150L120 156L100 150L90 158L82 146L70 150Z'/></g></svg>") no-repeat center / contain;
+  /* No drop shadow: a shadow cast by the shell falls into its own carved
+     holes, where there is nothing to cover it, and dulled the face. */
+}
+/* The halo on the glass round it: wide, and warm rather than white -- a
+   pale halo on orange glass reads as fog, not as light. */
+[data-theme="halloween"] .meter::after {
+  content: ""; position: absolute; inset: -30%; z-index: 0; pointer-events: none; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255,214,90,.9), rgba(255,150,20,.5) 42%, rgba(255,110,0,.18) 66%, transparent 80%);
+  opacity: calc((var(--glow, var(--vu, 0)) - .35) * 1.7 + var(--thump, 0) * .5);
+}
+[data-theme="halloween"] .meter-face,
+[data-theme="halloween"] .meter-bar,
+[data-theme="halloween"] .meter-scale {
+  display: block; position: absolute; left: 21%; right: 21%; top: 31%; bottom: 13%;
+  margin: 0; padding: 0; border-radius: 50%; pointer-events: none;
+}
+[data-theme="halloween"] .meter-face > *,
+[data-theme="halloween"] .meter-scale > * { display: none; }
+/* Inside the pumpkin: dark, so an unlit face is a carved face and not a
+   hole through to the glass. */
+[data-theme="halloween"] .meter-face { z-index: 1; background: radial-gradient(closest-side, #6a2206, #2a0a02); }
+/* The candle, as bright as the programme is loud. It reaches full well
+   before the needle would, so ordinary speech already has the face
+   burning rather than glowing. */
+[data-theme="halloween"] .meter-bar {
+  z-index: 2;
+  /* In two layers. This one is the ember -- saturated orange, so a face half
+     lit is orange rather than a grey wash of white over the dark inside --
+     and the white heat is the layer above it, which only comes in on the
+     loud passages. Hot spots at the eyes and at the mouth, because a single
+     centred glow left the eyes on its fading edge. */
+  background:
+    radial-gradient(ellipse 50% 30% at 50% 22%, #ffa21a 0 30%, #ff6a00 72%, transparent),
+    radial-gradient(ellipse 55% 26% at 50% 78%, #ffa21a 0 30%, #ff6a00 72%, transparent),
+    radial-gradient(closest-side at 50% 50%, #ff8a10, #e85a00 70%, #b83c00);
+  /* Over the span a live station actually moves in. 0 VU sits near .87 on
+     this scale and speech swings roughly .45 to .9, so a curve starting at
+     zero had the face pinned at full and only the flicker moving. */
+  opacity: calc((var(--glow, var(--vu, 0)) - .38) * 2.1 + var(--thump, 0) * .4);
+}
+/* The white heat, on the peaks only. */
+[data-theme="halloween"] .meter-bar::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background:
+    radial-gradient(ellipse 48% 28% at 50% 22%, #fffbe0 0 26%, #ffe066 58%, transparent),
+    radial-gradient(ellipse 52% 24% at 50% 78%, #fffbe0 0 26%, #ffe066 58%, transparent);
+  opacity: calc((var(--glow, var(--vu, 0)) - .72) * 4 + var(--thump, 0) * 1.2);
+}
+/* No flicker of its own. A flame's unsteadiness on its own timer read as
+   the face reacting at random rather than to the programme; the glass
+   around it still flickers, and the face follows the sound alone. */
+/* Light coming through the skin: on top of the shell, screened, so the
+   whole pumpkin brightens from inside as the level climbs. */
+[data-theme="halloween"] .meter-scale {
+  z-index: 4; left: 4%; right: 4%; top: 24%; bottom: 2%;
+  background: radial-gradient(closest-side at 50% 58%, rgba(255,160,30,.85), rgba(255,120,0,.4) 60%, transparent 100%);
+  mix-blend-mode: screen;
+  opacity: calc((var(--glow, var(--vu, 0)) - .45) * 1.2 + var(--thump, 0) * .5);
+}
+[data-theme="halloween"] .tuner.is-quiet .meter-scale { opacity: 0; }
+/* On stop the candle gutters out with the level rather than being blown. */
+[data-theme="halloween"] .tuner.is-quiet .meter-bar { opacity: .06; }
+[data-theme="halloween"] .meter-blind {
+  position: absolute; left: 6%; right: 6%; bottom: -4px; z-index: 4; margin: 0;
+  font-size: 9px; line-height: 1.35; letter-spacing: .08em; text-transform: uppercase;
+  text-align: center; color: #fff1d6; text-shadow: 0 1px 2px rgba(20,6,0,.9);
+}
+
+/* ---- presets are headstones ---------------------------------------- */
+
+/* Room above for the risen stone and below for the lean -- the bottom is
+   the base rule's press padding, so it must not be zeroed here. */
+[data-theme="halloween"] .presets { gap: 16px; padding: 8px 4px var(--presets-press); --presets-press: 8px; --presets-thumb: rgba(255,122,26,.5); }
+[data-theme="halloween"] .preset {
+  grid-template-columns: auto 1fr; grid-template-areas: "n name" "n band"; column-gap: 12px; align-items: center;
+  padding: 16px 16px 11px;
+  color: #1d1b22;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,.08) 0 1px, transparent 2px) 0 0 / 9px 11px,
+    radial-gradient(circle at 70% 60%, rgba(0,0,0,.12) 0 1px, transparent 2px) 0 0 / 13px 7px,
+    linear-gradient(#8f8c96, #5f5c66);
+  border-radius: 46% 46% 5px 5px / 40% 40% 5px 5px;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.2), inset 0 -8px 12px rgba(0,0,0,.25), 0 6px 0 #241a2a, 0 10px 14px rgba(0,0,0,.6);
+  transition: transform .18s cubic-bezier(.2, .8, .2, 1), box-shadow .18s, background .18s, color .18s;
+}
+/* Not quite upright, as headstones never are. rotate rather than
+   transform, so the lift on the active one still has transform to itself. */
+[data-theme="halloween"] .preset:nth-child(3n+1) { rotate: -1.3deg; }
+[data-theme="halloween"] .preset:nth-child(3n+2) { rotate: .9deg; }
+[data-theme="halloween"] .preset:nth-child(3n)   { rotate: -.4deg; }
+[data-theme="halloween"] .preset:hover { background:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,.08) 0 1px, transparent 2px) 0 0 / 9px 11px,
+    linear-gradient(#a19eaa, #6d6a75); }
+/* The one that has risen. */
+[data-theme="halloween"] .preset.is-active {
+  transform: translateY(-4px);
+  color: #0f2406;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,.12) 0 1px, transparent 2px) 0 0 / 9px 11px,
+    linear-gradient(#c9dcb4, #86a070);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.35), 0 10px 0 #241a2a, 0 0 26px rgba(157,255,58,.45), 0 14px 18px rgba(0,0,0,.6);
+}
+[data-theme="halloween"] .preset-n {
+  grid-area: n; width: 30px; height: 30px; display: grid; place-items: center;
+  font-family: "Cinzel", serif; font-size: 16px; font-weight: 700; color: #cfcbd6;
+  background: #3a3640; border-radius: 50%;
+  box-shadow: inset 0 2px 3px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.2);
+}
+[data-theme="halloween"] .preset.is-active .preset-n { color: #1b3a0a; background: var(--slime); box-shadow: 0 0 12px var(--slime), inset 0 1px 0 rgba(255,255,255,.5); }
+[data-theme="halloween"] .preset-name {
+  grid-area: name; font-family: "Cinzel", serif; font-size: 18px; font-weight: 700; letter-spacing: .04em; line-height: 1.05;
+  text-shadow: 0 1px 0 rgba(255,255,255,.22);
+}
+[data-theme="halloween"] .preset-band { grid-area: band; font-size: 12px; letter-spacing: .16em; opacity: .75; }
+/* An open plot. */
+[data-theme="halloween"] .preset-add {
+  background: rgba(0,0,0,.35); color: var(--bone);
+  box-shadow: inset 0 0 0 1px rgba(255,122,26,.4); opacity: .8;
+}
+[data-theme="halloween"] .preset-add:hover { background: rgba(0,0,0,.25); }
+[data-theme="halloween"] .preset-add .preset-n { background: none; color: var(--pumpkin); box-shadow: inset 0 0 0 1px rgba(255,122,26,.5); }
+
+/* ---- controls ------------------------------------------------------ */
+
+[data-theme="halloween"] .controls { color: var(--bone); }
+[data-theme="halloween"] .play-btn {
+  width: 64px; height: 64px; border-radius: 50%; color: var(--glass-ink);
+  display: grid; place-items: center;
+  background: radial-gradient(circle at 40% 32%, #ffd08a, #ff8a1f 48%, #9a3304);
+  box-shadow: 0 5px 0 #3a1304, 0 8px 14px rgba(0,0,0,.6), inset 0 1px 1px rgba(255,255,255,.6);
+}
+[data-theme="halloween"] .play-btn[aria-pressed="true"] {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #3a1304, 0 0 26px rgba(255,122,26,.7), inset 0 1px 1px rgba(255,255,255,.6);
+}
+[data-theme="halloween"] .fader label { font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: var(--pumpkin); }
+[data-theme="halloween"] .fader output { font-family: "Creepster", cursive; font-size: 26px; color: var(--pumpkin); }
+[data-theme="halloween"] .fader input {
+  -webkit-appearance: none; appearance: none; height: 8px; border-radius: 4px;
+  background: linear-gradient(#0b060d, #241530);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.9), 0 1px 0 rgba(255,122,26,.18);
+}
+/* Candy corn. White tip, orange middle, yellow base. */
+[data-theme="halloween"] .fader input::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 20px; height: 28px; cursor: grab;
+  border-radius: 50% 50% 38% 38% / 70% 70% 30% 30%;
+  background: linear-gradient(#fff7e6 0 30%, #ff7a1a 30% 66%, #ffc21f 66%);
+  box-shadow: 0 2px 4px rgba(0,0,0,.7);
+}
+[data-theme="halloween"] .fader input::-moz-range-thumb {
+  width: 20px; height: 28px; border: 0; border-radius: 50% 50% 38% 38% / 70% 70% 30% 30%;
+  background: linear-gradient(#fff7e6 0 30%, #ff7a1a 30% 66%, #ffc21f 66%);
+}
+/* Volume gets an eyeball instead: green iris, black pupil, bloodshot at
+   the rim. Candy corn stays on the two tone controls. */
+[data-theme="halloween"] .fader.volume input::-webkit-slider-thumb {
+  width: 34px; height: 34px; border-radius: 50%;
+  background:
+    linear-gradient(#5a1e10, #8a3a22 80%, #3a0f06) 0 0 / 100% 0% no-repeat,
+    radial-gradient(circle at 36% 30%, rgba(255,255,255,.95) 0 2px, transparent 2.8px) 7px 7px / 20px 20px no-repeat,
+    radial-gradient(circle at 50% 50%, #050505 0 3.8px, #7ad13a 4.3px 6.6px, #2e6a10 7.2px 8.4px, transparent 9px) 7px 7px / 20px 20px no-repeat,
+    radial-gradient(circle at 50% 50%, #fffdf6 0 52%, #f6dcd3 72%, #d98478 94%, #9c3a30) center / 100% 100% no-repeat;
+  box-shadow: 0 2px 6px rgba(0,0,0,.8), inset 0 -2px 4px rgba(120,30,20,.35);
+  animation: hw-look 32s linear infinite;
+}
+[data-theme="halloween"] .fader.volume input::-moz-range-thumb {
+  width: 34px; height: 34px; border: 0; border-radius: 50%;
+  background:
+    linear-gradient(#5a1e10, #8a3a22 80%, #3a0f06) 0 0 / 100% 0% no-repeat,
+    radial-gradient(circle at 36% 30%, rgba(255,255,255,.95) 0 2px, transparent 2.8px) 7px 7px / 20px 20px no-repeat,
+    radial-gradient(circle at 50% 50%, #050505 0 3.8px, #7ad13a 4.3px 6.6px, #2e6a10 7.2px 8.4px, transparent 9px) 7px 7px / 20px 20px no-repeat,
+    radial-gradient(circle at 50% 50%, #fffdf6 0 52%, #f6dcd3 72%, #d98478 94%, #9c3a30) center / 100% 100% no-repeat;
+  animation: hw-look 32s linear infinite;
+}
+/* Following the witch during her scene: the looking-about stopped, and the
+   iris and glint tiles (the second and third layers) moved off centre by
+   --ex/--ey, which seasonal.js aims at her each frame. */
+[data-theme="halloween"] .tuner.hw-follow .fader.volume input::-webkit-slider-thumb {
+  animation: none;
+  background-position: 0 0, calc(7px + var(--ex, 0px)) calc(7px + var(--ey, 0px)), calc(7px + var(--ex, 0px)) calc(7px + var(--ey, 0px)), center;
+}
+[data-theme="halloween"] .tuner.hw-follow .fader.volume input::-moz-range-thumb {
+  animation: none;
+  background-position: 0 0, calc(7px + var(--ex, 0px)) calc(7px + var(--ey, 0px)), calc(7px + var(--ex, 0px)) calc(7px + var(--ey, 0px)), center;
+}
+/* It looks about. The iris and its glint are a 20px tile of their own,
+   slid around inside the eye by background-position -- a gradient's centre
+   cannot be animated, a tile's position can -- darting from place to place
+   and holding each look. It only blinks once it has come back and settled
+   in the middle: once, and later twice. Written out from a list of looks
+   rather than by hand, so every frame restates all four layers. */
+/* Hovered, it narrows its eye at you: the look-around stops, the upper lid
+   comes a third of the way down, a lower lid rises to meet it, and the
+   pupil comes to the middle. Both lids are one full-size gradient: drawn
+   as a tile a quarter of 34px high, the lower one rounded short and left a
+   white hairline of eye along the bottom. :hover on the thumb itself, not the whole
+   track, so only a pointer on the eyeball does it. */
+[data-theme="halloween"] .fader.volume input::-webkit-slider-thumb:hover {
+  animation: none;
+  background:
+    linear-gradient(#5a1e10, #8a3a22 29%, #3a0f06 36%, transparent 36% 74%, #3a0f06 74%, #8a3a22 80%, #5a1e10) center / 100% 100% no-repeat,
+    radial-gradient(circle at 36% 30%, rgba(255,255,255,.95) 0 2px, transparent 2.8px) 7px 7px / 20px 20px no-repeat,
+    radial-gradient(circle at 50% 50%, #050505 0 3.8px, #7ad13a 4.3px 6.6px, #2e6a10 7.2px 8.4px, transparent 9px) 7px 7px / 20px 20px no-repeat,
+    radial-gradient(circle at 50% 50%, #fffdf6 0 52%, #f6dcd3 72%, #d98478 94%, #9c3a30) center / 100% 100% no-repeat;
+}
+[data-theme="halloween"] .fader.volume input::-moz-range-thumb:hover {
+  animation: none;
+  background:
+    linear-gradient(#5a1e10, #8a3a22 29%, #3a0f06 36%, transparent 36% 74%, #3a0f06 74%, #8a3a22 80%, #5a1e10) center / 100% 100% no-repeat,
+    radial-gradient(circle at 36% 30%, rgba(255,255,255,.95) 0 2px, transparent 2.8px) 7px 7px / 20px 20px no-repeat,
+    radial-gradient(circle at 50% 50%, #050505 0 3.8px, #7ad13a 4.3px 6.6px, #2e6a10 7.2px 8.4px, transparent 9px) 7px 7px / 20px 20px no-repeat,
+    radial-gradient(circle at 50% 50%, #fffdf6 0 52%, #f6dcd3 72%, #d98478 94%, #9c3a30) center / 100% 100% no-repeat;
+}
+@keyframes hw-look {
+  0% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  9.375% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  9.75% { background-position: 0 0, 2px 7px, 2px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  15.313% { background-position: 0 0, 2px 7px, 2px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  15.688% { background-position: 0 0, 12px 6px, 12px 6px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  21.25% { background-position: 0 0, 12px 6px, 12px 6px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  21.625% { background-position: 0 0, 11px 3px, 11px 3px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  27.188% { background-position: 0 0, 11px 3px, 11px 3px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  27.563% { background-position: 0 0, 3px 11px, 3px 11px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  33.125% { background-position: 0 0, 3px 11px, 3px 11px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  33.5% { background-position: 0 0, 2px 5px, 2px 5px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  39.063% { background-position: 0 0, 2px 5px, 2px 5px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  39.438% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  43.125% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  43.406% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 100%, 20px 20px, 20px 20px, 100% 100%; }
+  43.688% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  56.188% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  56.563% { background-position: 0 0, 11px 3px, 11px 3px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  62.125% { background-position: 0 0, 11px 3px, 11px 3px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  62.5% { background-position: 0 0, 2px 7px, 2px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  68.063% { background-position: 0 0, 2px 7px, 2px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  68.438% { background-position: 0 0, 3px 11px, 3px 11px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  74% { background-position: 0 0, 3px 11px, 3px 11px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  74.375% { background-position: 0 0, 12px 6px, 12px 6px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  79.938% { background-position: 0 0, 12px 6px, 12px 6px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  80.313% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  84% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  84.281% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 100%, 20px 20px, 20px 20px, 100% 100%; }
+  84.563% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  85.563% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  85.844% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 100%, 20px 20px, 20px 20px, 100% 100%; }
+  86.125% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+  100% { background-position: 0 0, 7px 7px, 7px 7px, center; background-size: 100% 0%, 20px 20px, 20px 20px, 100% 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Two rules: a list naming both engines' thumbs is dropped whole by each. */
+  [data-theme="halloween"] .fader.volume input::-webkit-slider-thumb { animation: none; }
+  [data-theme="halloween"] .fader.volume input::-moz-range-thumb { animation: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="halloween"] .tuner::before,
+  [data-theme="halloween"] .tuner-bar::before,
+  [data-theme="halloween"] .brand::after { animation: none; }
+  /* Bats that cannot fly are not shown sitting on the glass; the wings
+     are animated inside the drawing and would still beat. */
+  [data-theme="halloween"] .tuner-bar::after { display: none; }
+}
+
+/* ================================================================== */
+/* S2 · HARVEST — a barn-red farmhouse set, a moon over the field       */
+/* ================================================================== */
+
+[data-theme="harvest"] .tuner {
+  --barn: #7c2418;
+  --trim: #efe4cf;
+  --paper-ink: #3b1d0c;
+  --pumpkin: #e0701f;
+  --gap: 24px;
+  --pad: 30px;
+  --by-mono: "Stardos Stencil", monospace;
+  --by-fg: #efe4cf;
+  --by-line: rgba(239,228,207,.45);
+  --by-plate: rgba(0,0,0,.28);
+  --by-emboss: rgba(255,230,200,.12);
+  --by-accent: linear-gradient(#f3a54a, #c7611a);
+  --by-on-accent: #3b1d0c;
+  font-family: "Stardos Stencil", "Oswald", sans-serif;
+  color: var(--trim);
+  /* Board and batten: wide planks, a dark seam between each, and the grain
+     running down them. */
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.22), transparent 30%, transparent 70%, rgba(0,0,0,.32)),
+    repeating-linear-gradient(180deg, rgba(0,0,0,.05) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(90deg, #86281b 0 58px, #4a130c 58px 61px, #7a2317 61px 119px, #4a130c 119px 122px);
+  box-shadow:
+    inset 0 0 0 6px var(--trim), inset 0 0 0 7px rgba(0,0,0,.35), inset 0 0 40px rgba(0,0,0,.4),
+    0 30px 60px -20px rgba(40,10,0,.6);
+  border-radius: 6px;
+}
+
+/* Leaves coming down across the whole set. The drawing is one tall tile
+   of scattered leaves that turn on their own; this element slides down
+   by exactly one tile and starts again, so the fall never visibly
+   restarts. */
+[data-theme="harvest"] .tuner::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -760px; bottom: 0;
+  z-index: 5; pointer-events: none; opacity: .9;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 760'><style>.l{transform-box:fill-box;transform-origin:center;animation:r 6s linear infinite}.b{animation-duration:9s;animation-direction:reverse}.c{animation-duration:4.5s}@keyframes r{to{transform:rotate(360deg)}}</style><g transform='translate(60 80) scale(1.6)'><path class='l' fill='%23d9531e' d='M0 -10L1.7 -6.3L3.9 -7.3L3 -2.9L6.5 -5.8L7.1 -3.9L9.9 -4.6L8.7 -1.6L10.3 -0.5L5.9 3.1L6.5 5L1.5 4.3L0.55 4.6L0.55 10L-0.55 10L-0.55 4.6L-1.5 4.3L-6.5 5L-5.9 3.1L-10.3 -0.5L-8.7 -1.6L-9.9 -4.6L-7.1 -3.9L-6.5 -5.8L-3 -2.9L-3.9 -7.3L-1.7 -6.3Z'/></g><g transform='translate(300 190) scale(1.2)'><path class='l b' fill='%23e8a23a' d='M0 -10L1.7 -6.3L3.9 -7.3L3 -2.9L6.5 -5.8L7.1 -3.9L9.9 -4.6L8.7 -1.6L10.3 -0.5L5.9 3.1L6.5 5L1.5 4.3L0.55 4.6L0.55 10L-0.55 10L-0.55 4.6L-1.5 4.3L-6.5 5L-5.9 3.1L-10.3 -0.5L-8.7 -1.6L-9.9 -4.6L-7.1 -3.9L-6.5 -5.8L-3 -2.9L-3.9 -7.3L-1.7 -6.3Z'/></g><g transform='translate(480 60) scale(1.8)'><path class='l c' fill='%23b8321a' d='M0 -10L1.7 -6.3L3.9 -7.3L3 -2.9L6.5 -5.8L7.1 -3.9L9.9 -4.6L8.7 -1.6L10.3 -0.5L5.9 3.1L6.5 5L1.5 4.3L0.55 4.6L0.55 10L-0.55 10L-0.55 4.6L-1.5 4.3L-6.5 5L-5.9 3.1L-10.3 -0.5L-8.7 -1.6L-9.9 -4.6L-7.1 -3.9L-6.5 -5.8L-3 -2.9L-3.9 -7.3L-1.7 -6.3Z'/></g><g transform='translate(170 380) scale(1.4)'><path class='l b' fill='%23c77d1f' d='M0 -10L1.7 -6.3L3.9 -7.3L3 -2.9L6.5 -5.8L7.1 -3.9L9.9 -4.6L8.7 -1.6L10.3 -0.5L5.9 3.1L6.5 5L1.5 4.3L0.55 4.6L0.55 10L-0.55 10L-0.55 4.6L-1.5 4.3L-6.5 5L-5.9 3.1L-10.3 -0.5L-8.7 -1.6L-9.9 -4.6L-7.1 -3.9L-6.5 -5.8L-3 -2.9L-3.9 -7.3L-1.7 -6.3Z'/></g><g transform='translate(410 470) scale(1.7)'><path class='l' fill='%23d9531e' d='M0 -10L1.7 -6.3L3.9 -7.3L3 -2.9L6.5 -5.8L7.1 -3.9L9.9 -4.6L8.7 -1.6L10.3 -0.5L5.9 3.1L6.5 5L1.5 4.3L0.55 4.6L0.55 10L-0.55 10L-0.55 4.6L-1.5 4.3L-6.5 5L-5.9 3.1L-10.3 -0.5L-8.7 -1.6L-9.9 -4.6L-7.1 -3.9L-6.5 -5.8L-3 -2.9L-3.9 -7.3L-1.7 -6.3Z'/></g><g transform='translate(80 620) scale(1.3)'><path class='l c' fill='%23e0b04a' d='M0 -10L1.7 -6.3L3.9 -7.3L3 -2.9L6.5 -5.8L7.1 -3.9L9.9 -4.6L8.7 -1.6L10.3 -0.5L5.9 3.1L6.5 5L1.5 4.3L0.55 4.6L0.55 10L-0.55 10L-0.55 4.6L-1.5 4.3L-6.5 5L-5.9 3.1L-10.3 -0.5L-8.7 -1.6L-9.9 -4.6L-7.1 -3.9L-6.5 -5.8L-3 -2.9L-3.9 -7.3L-1.7 -6.3Z'/></g><g transform='translate(330 700) scale(1.5)'><path class='l' fill='%23a8361a' d='M0 -10L1.7 -6.3L3.9 -7.3L3 -2.9L6.5 -5.8L7.1 -3.9L9.9 -4.6L8.7 -1.6L10.3 -0.5L5.9 3.1L6.5 5L1.5 4.3L0.55 4.6L0.55 10L-0.55 10L-0.55 4.6L-1.5 4.3L-6.5 5L-5.9 3.1L-10.3 -0.5L-8.7 -1.6L-9.9 -4.6L-7.1 -3.9L-6.5 -5.8L-3 -2.9L-3.9 -7.3L-1.7 -6.3Z'/></g></svg>") repeat 0 0 / 560px 760px;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,.3));
+  animation: hv-fall 26s linear infinite;
+  transition: opacity 1.1s ease, visibility 0s linear 0s;
+}
+@keyframes hv-fall {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(18px, 190px); }
+  50%  { transform: translate(-6px, 380px); }
+  75%  { transform: translate(14px, 570px); }
+  100% { transform: translate(0, 760px); }
+}
+/* Stopped, the leaves go rather than hang. The fall can be paused from
+   here but each leaf's turn is animated inside the drawing and cannot, so a
+   paused layer left them spinning in mid-air. They fade out instead, and
+   once gone are hidden outright so nothing keeps repainting them; the fall
+   is held where it was, and resumes from there when the set plays again. */
+[data-theme="harvest"] .tuner.is-quiet::before {
+  animation-play-state: paused; opacity: 0; visibility: hidden;
+  transition: opacity 1.1s ease, visibility 0s linear 1.1s;
+}
+
+[data-theme="harvest"] .tuner-bar { color: var(--trim); }
+[data-theme="harvest"] .brand-mark { display: none; }
+/* A painted farm sign: white board, barn-red letters. */
+[data-theme="harvest"] .brand-name {
+  font-family: "Rye", serif; font-size: 13px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--barn); background: var(--trim);
+  padding: 6px 10px 5px; border-radius: 2px;
+  box-shadow: inset 0 0 0 2px var(--barn), inset 0 0 0 3px var(--trim), 0 2px 3px rgba(0,0,0,.5);
+}
+[data-theme="harvest"] .clock { font-family: "Rye", serif; font-size: 24px; color: var(--trim); text-shadow: 0 2px 0 rgba(0,0,0,.45); }
+/* Buffalo check, the one piece of flannel on the set. */
+[data-theme="harvest"] .sched-chip {
+  font-size: 12px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700;
+  color: #fff4e2; padding: 6px 10px; border-radius: 3px;
+  text-shadow: 0 1px 2px #000, 0 0 4px rgba(0,0,0,.8);
+  background:
+    repeating-linear-gradient(90deg, rgba(10,4,2,.55) 0 7px, transparent 7px 14px),
+    repeating-linear-gradient(0deg, rgba(10,4,2,.55) 0 7px, transparent 7px 14px),
+    #a3241a;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.5);
+}
+[data-theme="harvest"] .sched-led { width: 10px; height: 10px; border-radius: 50%; background: var(--lamp-off, #6b7075); box-shadow: 0 0 0 1px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.22); }
+[data-theme="harvest"] .sched-chip[aria-pressed="true"] .sched-led { background: radial-gradient(circle at 35% 35%, #d8ffcc, #3fcf62 60%, #157a2d); box-shadow: 0 0 8px #47e06b; }
+[data-theme="harvest"] .icon-btn { color: var(--trim); }
+
+/* The panel is lamp-lit feed-store paper. */
+[data-theme="harvest"] .display {
+  padding: 24px 30px 30px;
+  color: var(--paper-ink);
+  background:
+    repeating-linear-gradient(0deg, rgba(90,50,10,.035) 0 1px, transparent 1px 4px),
+    radial-gradient(ellipse 120% 95% at 40% 110%, #fff4dc, #f2d9a8 62%, #d8b173);
+  border-radius: 5px;
+  box-shadow:
+    inset 0 0 0 3px #6b3a17, inset 0 0 0 5px #c79a5c, inset 0 0 50px rgba(150,80,20,.3),
+    0 4px 0 #2a0c06;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "band meter" "name meter" "tag meter" "status meter" "dial dial";
+  column-gap: 30px; row-gap: 4px; align-content: start;
+}
+[data-theme="harvest"] .display-band { grid-area: band; font-size: 18px; font-weight: 700; letter-spacing: .22em; color: #8a3a12; }
+[data-theme="harvest"] .display-name {
+  grid-area: name; margin: 0;
+  font-family: "Rye", serif; font-weight: 400;
+  font-size: clamp(42px, 6.2vw, 80px); line-height: 1.08; letter-spacing: .01em;
+  white-space: nowrap; overflow: hidden;
+  color: var(--barn);
+  text-shadow: 0 2px 0 rgba(255,244,220,.8);
+}
+[data-theme="harvest"] .display-tag { grid-area: tag; margin: 6px 0 0; font: italic 400 19px/1.3 "Fraunces", Georgia, serif; opacity: .85; }
+[data-theme="harvest"] .display-status { grid-area: status; margin-top: 10px; font-size: 14px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: #6a3a14; }
+
+[data-theme="harvest"] .dial { grid-area: dial; display: grid; gap: 26px; margin-top: 24px; padding: 0 16px 0 62px; }
+[data-theme="harvest"] .scale { color: #5a2e12; border-bottom: 1px solid #5a2e12; }
+[data-theme="harvest"] .scale-labels { font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #5a2e12; padding-top: 3px; }
+[data-theme="harvest"] .scale.is-sweeping::after { background: linear-gradient(90deg, transparent, rgba(255,236,190,.8), transparent); }
+[data-theme="harvest"] .scale-badge {
+  position: absolute; left: -58px; top: 50%; transform: translateY(-50%);
+  width: 46px; padding: 5px 0 4px; text-indent: 2px; text-align: center; border-radius: 3px;
+  font-size: 13px; font-weight: 700; letter-spacing: .16em;
+  color: #8a5a2b; background: rgba(90,46,18,.08); box-shadow: inset 0 0 0 1px rgba(90,46,18,.3);
+}
+[data-theme="harvest"] .scale.is-active .scale-badge {
+  color: #fff4e2; background: linear-gradient(#f08a2c, #b8521a);
+  box-shadow: 0 0 12px rgba(224,112,31,.55), inset 0 1px 0 rgba(255,255,255,.35);
+}
+[data-theme="harvest"] .needle { top: -11px; background: #a3241a; border-radius: 1px; box-shadow: 0 0 6px rgba(163,36,26,.6); }
+
+/* The meter is a window onto the field at dusk, and the moon over it
+   rises as the programme gets louder. */
+[data-theme="harvest"] .meter {
+  grid-area: meter; display: block; position: relative; align-self: start;
+  width: 228px; height: 188px; overflow: hidden;
+  border-radius: 114px 114px 6px 6px;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 18% 16%, #fff 0 1px, transparent 1.6px),
+    radial-gradient(circle at 72% 10%, #fff 0 1px, transparent 1.6px),
+    radial-gradient(circle at 86% 30%, rgba(255,255,255,.8) 0 .8px, transparent 1.4px),
+    radial-gradient(circle at 36% 26%, rgba(255,255,255,.7) 0 .8px, transparent 1.4px),
+    linear-gradient(#241a45 0%, #5a3160 38%, #c8634a 72%, #f5ae58 100%);
+  box-shadow: 0 0 0 6px var(--trim), 0 0 0 7px #6b3a17, 0 0 0 9px rgba(0,0,0,.18), 0 6px 12px 7px rgba(60,30,6,.25);
+}
+[data-theme="harvest"] .meter-face {
+  display: block; position: absolute; z-index: 1; left: 50%; top: 14%;
+  width: 56%; aspect-ratio: 1; margin: 0; border-radius: 50%; pointer-events: none;
+  background:
+    radial-gradient(circle at 34% 40%, rgba(190,120,40,.25) 0 9%, transparent 10%),
+    radial-gradient(circle at 62% 62%, rgba(190,120,40,.2) 0 12%, transparent 13%),
+    radial-gradient(circle at 60% 28%, rgba(190,120,40,.18) 0 6%, transparent 7%),
+    radial-gradient(circle at 40% 35%, #fff8dc, #ffd98a 55%, #f09a3e);
+  /* Low and dim when it is quiet, high and burning when it is not. */
+  transform: translate(-50%, calc((1 - var(--vu, 0)) * 62%));
+  box-shadow: 0 0 calc(18px + var(--vu, 0) * 40px) calc(2px + var(--vu, 0) * 10px) rgba(255,196,96,.55);
+  transition: transform .09s linear, box-shadow .09s linear;
+}
+[data-theme="harvest"] .meter-face > * { display: none; }
+[data-theme="harvest"] .meter-bar, [data-theme="harvest"] .meter-scale { display: none; }
+/* The field in front of it: hill, fence, a row of corn (stalks, arching
+   leaves, an ear on each and a tassel at the top), pumpkins, and a chestnut barn
+   with its window lit. The barn is drawn before the hill, so the ground
+   covers its foot -- drawn after, it stood on a line of its own and
+   floated. */
+[data-theme="harvest"] .meter::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 42%; z-index: 2; pointer-events: none;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 70' preserveAspectRatio='xMidYMax slice' fill='%231d130c'><path d='M146 50V27L164 15L182 27V50Z' fill='%234a2412'/><path d='M149 28.5H179' stroke='%232e1407' stroke-width='1.4'/><path d='M152.5 50V31H161.5V50' fill='none' stroke='%232e1407' stroke-width='1.1'/><circle cx='159.6' cy='39.8' r='.8' fill='%232e1407'/><rect x='164.5' y='31' width='9' height='9' fill='%23ffc86a'/><path d='M169 31V40M164.5 35.5H173.5' stroke='%234a2412' stroke-width='1.1'/><path d='M0 44Q50 30 110 40T220 34V70H0Z'/><g stroke='%231d130c' stroke-width='2'><path d='M8 42V58M24 40V56M40 38V54M56 37V53M8 46L56 42M8 52L56 48'/></g><g stroke='%231d130c' stroke-width='1.3' fill='none' stroke-linecap='round'><path d='M32 39.9Q31.8 28.4 31.4 16.9M31.4 17.9Q29.2 15.4 28 17.7M31.4 17.4L31.6 12.9M31.4 17.9Q33.6 15.4 34.8 17.7M43 38.7Q43.1 25.7 43.5 12.7M43.5 13.7Q41.3 11.2 40.1 13.5M43.5 13.2L43.7 8.7M43.5 13.7Q45.7 11.2 46.9 13.5M54 38Q53.9 26 53.6 14M53.6 15Q51.4 12.5 50.2 14.8M53.6 14.5L53.8 10M53.6 15Q55.8 12.5 57 14.8M66 37.8Q66.2 24.3 66.5 10.8M66.5 11.8Q64.3 9.3 63.1 11.6M66.5 11.3L66.7 6.8M66.5 11.8Q68.7 9.3 69.9 11.6M79 38.3Q78.8 26.3 78.5 14.3M78.5 15.3Q76.3 12.8 75.1 15.1M78.5 14.8L78.7 10.3M78.5 15.3Q80.7 12.8 81.9 15.1M108 41.6Q108.1 30.6 108.4 19.6M108.4 20.6Q106.2 18.1 105 20.4M108.4 20.1L108.6 15.6M108.4 20.6Q110.6 18.1 111.8 20.4'/></g><path d='M31.9 31.1Q27 25.6 20.9 34.1Q27.3 28.1 31.9 32.3ZM31.9 26.1Q36 20.6 41.1 29.1Q35.8 23.1 31.9 27.3ZM43.1 28.8Q48 23.3 54.1 31.8Q47.7 25.8 43.1 30ZM43.1 23.1Q39 17.6 33.9 26.1Q39.2 20.1 43.1 24.3ZM54 28.9Q49 23.4 43 31.9Q49.3 25.9 54 30.1ZM53.9 23.6Q58.1 18.1 63.1 26.6Q57.8 20.6 53.9 24.8ZM66.1 27.6Q71 22.1 77.1 30.6Q70.7 24.6 66.1 28.8ZM66.1 21.6Q62 16.1 56.9 24.6Q62.2 18.6 66.1 22.8ZM78.9 29.1Q74 23.6 67.9 32.1Q74.3 26.1 78.9 30.3ZM78.9 23.9Q83 18.4 88.1 26.9Q82.8 20.9 78.9 25.1ZM108 33.3Q113 27.8 119 36.3Q112.7 30.3 108 34.5ZM108.1 28.4Q103.9 22.9 98.9 31.4Q104.2 25.4 108.1 29.6Z'/><ellipse cx='72' cy='45' rx='6.5' ry='4.6'/><ellipse cx='82.5' cy='47' rx='4.2' ry='3.3'/><ellipse cx='198' cy='40' rx='5.2' ry='4' fill='%234a2412'/><path d='M72 40.5V38' stroke='%231d130c' stroke-width='1.5'/><path d='M198 36V34' stroke='%234a2412' stroke-width='1.5'/></svg>") no-repeat center bottom / 100% 100%;
+}
+/* Geese, going south, slowly. */
+[data-theme="harvest"] .meter::before {
+  content: ""; position: absolute; left: -70px; top: 16%; width: 60px; height: 28px; z-index: 1; pointer-events: none;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 28' fill='none' stroke='%231d130c' stroke-width='1.3' stroke-linecap='round'><path d='M49 13Q50.5 11 52 12Q53.5 11 55 13M41 9Q42.5 7 44 8Q45.5 7 47 9M33 5Q34.5 3 36 4Q37.5 3 39 5M41 17Q42.5 15 44 16Q45.5 15 47 17M33 21Q34.5 19 36 20Q37.5 19 39 21M25 25Q26.5 23 28 24Q29.5 23 31 25'/></svg>") no-repeat center / contain;
+  animation: hv-geese 34s linear 4s infinite;
+}
+@keyframes hv-geese {
+  0%        { transform: translate(0, 0); }
+  40%, 100% { transform: translate(370px, -10px); }
+}
+[data-theme="harvest"] .tuner.is-quiet .meter::before { animation: none; }
+
+/* The turkey that runs along the bottom, and the helicopter that drops one,
+   are seasonal.js's: a stylesheet has no chance in it and no "and then".
+   Their stage and parts are styled at the end of this sheet. */
+[data-theme="harvest"] .meter-blind {
+  position: absolute; left: 8%; right: 8%; top: 44%; z-index: 3; margin: 0;
+  font-size: 9px; line-height: 1.35; letter-spacing: .08em; text-transform: uppercase;
+  text-align: center; color: #fff4e2; text-shadow: 0 1px 2px rgba(0,0,0,.8);
+}
+
+/* Presets are crate labels, stencilled. Lit means chosen, as on the dial. */
+[data-theme="harvest"] .presets { gap: 14px; --presets-press: 4px; --presets-thumb: rgba(239,228,207,.5); }
+[data-theme="harvest"] .preset {
+  grid-template-columns: auto 1fr; grid-template-areas: "n name" "n band"; column-gap: 12px; align-items: center;
+  padding: 12px 14px 13px;
+  color: #4a2a12;
+  background:
+    repeating-linear-gradient(0deg, rgba(90,50,10,.06) 0 1px, transparent 1px 5px),
+    linear-gradient(#d9b98a, #c09a64);
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 2px rgba(74,42,18,.55), inset 0 0 0 4px rgba(217,185,138,.9), inset 0 0 0 5px rgba(74,42,18,.3),
+              0 5px 0 #3a1a0c, 0 8px 10px rgba(0,0,0,.45);
+  transition: transform .08s, box-shadow .08s, background .15s, color .15s;
+}
+[data-theme="harvest"] .preset:hover { background: repeating-linear-gradient(0deg, rgba(90,50,10,.06) 0 1px, transparent 1px 5px), linear-gradient(#e4c898, #cda872); }
+[data-theme="harvest"] .preset.is-active {
+  transform: translateY(4px);
+  color: #3a1406;
+  background:
+    repeating-linear-gradient(0deg, rgba(120,50,10,.06) 0 1px, transparent 1px 5px),
+    linear-gradient(#ffc676, #f08f33);
+  box-shadow: inset 0 0 0 2px rgba(74,20,6,.6), inset 0 0 0 4px rgba(255,210,140,.9), inset 0 0 0 5px rgba(74,20,6,.3),
+              0 1px 0 #3a1a0c, 0 0 24px rgba(255,160,60,.55), 0 2px 5px rgba(0,0,0,.4);
+}
+[data-theme="harvest"] .preset-n {
+  grid-area: n; width: 30px; height: 30px; display: grid; place-items: center;
+  font-size: 17px; font-weight: 700; color: var(--barn);
+  border-radius: 50%; box-shadow: inset 0 0 0 2px currentColor;
+}
+[data-theme="harvest"] .preset-name { grid-area: name; font-size: 21px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; line-height: 1.05; }
+[data-theme="harvest"] .preset-band { grid-area: band; font-size: 13px; letter-spacing: .18em; opacity: .75; }
+[data-theme="harvest"] .preset-add { background: rgba(0,0,0,.26); color: var(--trim); box-shadow: inset 0 0 0 1px rgba(239,228,207,.45); opacity: .85; }
+[data-theme="harvest"] .preset-add:hover { background: rgba(0,0,0,.18); }
+[data-theme="harvest"] .preset-add .preset-n { color: var(--trim); }
+
+[data-theme="harvest"] .controls { color: var(--trim); }
+/* A turned-wood knob. */
+[data-theme="harvest"] .play-btn {
+  width: 64px; height: 64px; border-radius: 50%; color: var(--trim);
+  display: grid; place-items: center;
+  background:
+    repeating-radial-gradient(circle at 50% 50%, rgba(0,0,0,.08) 0 2px, transparent 2px 5px),
+    radial-gradient(circle at 38% 32%, #c4864a, #8a5226 55%, #4d2a10);
+  box-shadow: 0 5px 0 #2a0c06, 0 8px 14px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,230,190,.5);
+}
+[data-theme="harvest"] .play-btn[aria-pressed="true"] { transform: translateY(3px); box-shadow: 0 2px 0 #2a0c06, 0 3px 6px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,230,190,.5); }
+[data-theme="harvest"] .fader label { font-size: 14px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
+[data-theme="harvest"] .fader output { font-family: "Rye", serif; font-size: 22px; }
+/* Twine for a track, a wooden peg to pull along it. */
+[data-theme="harvest"] .fader input {
+  -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px;
+  background: repeating-linear-gradient(60deg, #d8b577 0 3px, #9c7a44 3px 6px);
+  box-shadow: 0 1px 2px rgba(0,0,0,.6);
+}
+[data-theme="harvest"] .fader input::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; cursor: grab;
+  background: radial-gradient(circle at 36% 32%, #f0cc96, #b07a40 60%, #6b4118);
+  box-shadow: 0 2px 4px rgba(0,0,0,.7), inset 0 0 0 1px rgba(60,30,6,.6);
+}
+[data-theme="harvest"] .fader input::-moz-range-thumb {
+  width: 24px; height: 24px; border: 1px solid rgba(60,30,6,.6); border-radius: 50%;
+  background: radial-gradient(circle at 36% 32%, #f0cc96, #b07a40 60%, #6b4118);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The leaves turn inside the drawing, so they are taken away rather
+     than left spinning in place. */
+  [data-theme="harvest"] .tuner::before { display: none; }
+}
+
+/* ================================================================== */
+/* S3 · CHRISTMAS — a cranberry Bakelite set, snow in the window        */
+/* ================================================================== */
+
+[data-theme="christmas"] .tuner {
+  --cranberry: #8e1426;
+  --gold: #e3bd5a;
+  --gold-2: #a8822c;
+  --snow: #fff8ec;
+  --pine: #0f3b2a;
+  --gap: 22px;
+  --pad: 30px;
+  --by-mono: "Josefin Sans", sans-serif;
+  --by-fg: #f4dfa4;
+  --by-line: rgba(227,189,90,.55);
+  --by-plate: rgba(0,0,0,.25);
+  --by-emboss: rgba(255,230,180,.16);
+  --by-accent: linear-gradient(#f1d27a, #b98f2f);
+  --by-on-accent: #5e0b18;
+  font-family: "Josefin Sans", "Archivo", sans-serif;
+  color: var(--snow);
+  background:
+    radial-gradient(ellipse 70% 40% at 30% 0%, rgba(255,255,255,.16), transparent 70%),
+    linear-gradient(160deg, #a51a2e, #7a0f20 55%, #560916);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.35), inset 0 0 0 3px var(--gold-2), inset 0 0 0 4px var(--gold), inset 0 0 0 6px #4a0712,
+    inset 0 -30px 50px rgba(0,0,0,.25),
+    0 30px 60px -20px rgba(40,0,8,.6);
+  border-radius: 22px;
+}
+/* A sprig of holly on the top corner of the cabinet, on a twig the cardinal
+   stands on. seasonal.js works the perch out from this box -- move or resize
+   it there too. */
+[data-theme="christmas"] .tuner-bar::after {
+  content: ""; position: absolute; left: -8px; top: -10px; width: 105px; height: 70px; z-index: 5; pointer-events: none;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 60'><path d='M18 47Q46 42 78 45' stroke='%235a3a1e' stroke-width='2.4' stroke-linecap='round' fill='none'/><g fill='%231f6b3a' stroke='%230d3a1e' stroke-width='1'><path transform='translate(40 30) rotate(-155)' d='M0 0L6-5L10-2L16-7L20-3L27-6L31 0L27 6L20 3L16 7L10 2L6 5Z'/><path transform='translate(46 29) rotate(-15)' d='M0 0L6-5L10-2L16-7L20-3L27-6L31 0L27 6L20 3L16 7L10 2L6 5Z'/><path transform='translate(43 32) rotate(95)' d='M0 0L5-4L9-2L14-6L18-3L22 0L18 3L14 6L9 2L5 4Z'/></g><g fill='%23d1122e'><circle cx='41' cy='33' r='4.4'/><circle cx='49' cy='35' r='4.4'/><circle cx='45' cy='26.5' r='4.4'/></g><g fill='%23fff' fill-opacity='.6'><circle cx='39.6' cy='31.6' r='1.3'/><circle cx='47.6' cy='33.6' r='1.3'/><circle cx='43.6' cy='25.1' r='1.3'/></g></svg>") no-repeat center / contain;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,.4));
+}
+[data-theme="christmas"] .tuner-bar { color: var(--gold); padding-left: 60px; }
+[data-theme="christmas"] .brand-mark { display: none; }
+[data-theme="christmas"] .brand-name {
+  font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: #5e0b18; background: linear-gradient(#f5dc8e, #c79d3b);
+  padding: 7px 12px 4px; border-radius: 3px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 1px 2px rgba(0,0,0,.5);
+}
+[data-theme="christmas"] .clock { font-family: "Mountains of Christmas", serif; font-weight: 700; font-size: 24px; color: var(--gold); text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+[data-theme="christmas"] .sched-chip {
+  font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--snow); padding: 7px 10px 5px;
+  border: 1px solid rgba(227,189,90,.6); border-radius: 999px;
+  background: rgba(15,59,42,.7);
+}
+[data-theme="halloween"] .sched-label,
+[data-theme="harvest"] .sched-label,
+[data-theme="christmas"] .sched-label,
+[data-theme="spring"] .sched-label { white-space: nowrap; }
+/* The pill's text sits high for these faces' fonts (measured from a render:
+   the ink's middle against the pill's), so it alone is dropped and the dot
+   stays centred. Halloween Fun sat 2px high, Noel 1px; April Showers is
+   within a third of a pixel and left alone. Autumn Gobble measured 2px high
+   too, but its text-shadow skewed the reading, and at 2px it looked low to
+   Mark: 1px. */
+[data-theme="christmas"] :is(.sched-label, .sched-next),
+[data-theme="harvest"] :is(.sched-label, .sched-next) { position: relative; top: 1px; }
+[data-theme="halloween"] :is(.sched-label, .sched-next) { position: relative; top: 2px; }
+[data-theme="christmas"] .sched-led { width: 9px; height: 9px; border-radius: 50%; background: var(--lamp-off, #6b7075); box-shadow: 0 0 0 1px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.22); }
+[data-theme="christmas"] .sched-chip[aria-pressed="true"] .sched-led { background: radial-gradient(circle at 35% 35%, #d8ffcc, #3fcf62 60%, #157a2d); box-shadow: 0 0 8px #47e06b; }
+[data-theme="christmas"] .icon-btn { color: var(--gold); }
+
+/* The window: a winter night, snow coming down in it, and a string of
+   lights along the top that is the meter. */
+[data-theme="christmas"] .display {
+  /* The bottom is the snow on the ground, kept clear of the FM scale. */
+  padding: 58px 30px 72px;
+  color: var(--snow);
+  background:
+    radial-gradient(ellipse 60% 50% at 80% 20%, rgba(120,160,230,.22), transparent 70%),
+    linear-gradient(#0b1a3a, #16305e 60%, #27477a);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 0 0 3px var(--gold-2), inset 0 0 0 4px var(--gold), inset 0 0 40px rgba(0,0,20,.6),
+    0 4px 0 #3a0610;
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "band" "name" "tag" "status" "dial";
+  row-gap: 4px; align-content: start;
+  overflow: hidden; isolation: isolate;
+}
+/* The sky: a scatter of stars that do not move but twinkle, each on its
+   own timing, and one larger one on the right that twinkles harder. The
+   field is drawn from a fixed seed, so it is the same sky every time.
+   Stopped, the same stars hold still -- the twinkle is animated inside the
+   drawing, and a playing picture keeps the window repainting all day. */
+[data-theme="christmas"] .display::before {
+  content: ""; position: absolute; inset: 0 0 56px; z-index: -1; pointer-events: none;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 420' preserveAspectRatio='xMidYMid slice'><defs><radialGradient id='gl'><stop offset='0' stop-color='%23fff6d0' stop-opacity='.9'/><stop offset='1' stop-color='%23fff6d0' stop-opacity='0'/></radialGradient></defs><g fill='%23fff'><g transform='translate(295.2 54.6)' opacity='.9'><g><circle r='1.9'/><animate attributeName='opacity' values='0.7;0.7;1;0.3;0.95;0.7;0.7' keyTimes='0;0.3772;0.3975;0.4179;0.4382;0.4789;1' dur='5.9s' begin='-5.8s' repeatCount='indefinite'/></g></g><g transform='translate(270.2 247.7)' opacity='.9'><g><path d='M0 -4.2L1.2 -1.2L4.2 0L1.2 1.2L0 4.2L-1.2 1.2L-4.2 0L-1.2 -1.2Z'><animateTransform attributeName='transform' type='scale' values='1;1;1.35;0.85;1.25;1;1' keyTimes='0;0.3882;0.4022;0.4161;0.4301;0.458;1' dur='8.6s' begin='-0.6s' repeatCount='indefinite'/></path><animate attributeName='opacity' values='0.8;0.8;1;0.4;0.95;0.8;0.8' keyTimes='0;0.3882;0.4022;0.4161;0.4301;0.458;1' dur='8.6s' begin='-0.6s' repeatCount='indefinite'/></g></g><g transform='translate(666.3 313.3)' opacity='.9'><g><path d='M0 -3.5L1 -1L3.5 0L1 1L0 3.5L-1 1L-3.5 0L-1 -1Z'><animateTransform attributeName='transform' type='scale' values='1;1;1.35;0.85;1.25;1;1;1.35;0.85;1.25;1;1' keyTimes='0;0.5947;0.6178;0.6409;0.664;0.7101;0.8302;0.8533;0.8764;0.8995;0.9456;1' dur='5.2s' begin='-1.5s' repeatCount='indefinite'/></path><animate attributeName='opacity' values='0.6;0.6;1;0.3;0.95;0.6;0.6;1;0.3;0.95;0.6;0.6' keyTimes='0;0.5947;0.6178;0.6409;0.664;0.7101;0.8302;0.8533;0.8764;0.8995;0.9456;1' dur='5.2s' begin='-1.5s' repeatCount='indefinite'/></g></g><g transform='translate(636.2 153.4)' opacity='.9'><g><circle r='2'/><animate attributeName='opacity' values='0.6;0.6;1;0.3;0.95;0.6;0.6;1;0.3;0.95;0.6;0.6' keyTimes='0;0.2994;0.3224;0.3455;0.3686;0.4147;0.5587;0.5818;0.6048;0.6279;0.6741;1' dur='5.2s' begin='-0.8s' repeatCount='indefinite'/></g></g><g transform='translate(123.7 174.2)' opacity='.9'><g><circle r='1.5'/><animate attributeName='opacity' values='0.6;0.6;1;0.3;0.95;0.6;0.6' keyTimes='0;0.5826;0.5962;0.6099;0.6235;0.6508;1' dur='8.8s' begin='-2.8s' repeatCount='indefinite'/></g></g><g transform='translate(460.7 297.8)' opacity='.9'><g><circle r='1.7'/><animate attributeName='opacity' values='0.6;0.6;1;0.3;0.95;0.6;0.6' keyTimes='0;0.1984;0.2234;0.2484;0.2734;0.3234;1' dur='4.8s' begin='-2.6s' repeatCount='indefinite'/></g></g><g transform='translate(848.4 251.8)' opacity='.9'><g><path d='M0 -4.5L1.3 -1.3L4.5 0L1.3 1.3L0 4.5L-1.3 1.3L-4.5 0L-1.3 -1.3Z'><animateTransform attributeName='transform' type='scale' values='1;1;1.35;0.85;1.25;1;1;1.35;0.85;1.25;1;1' keyTimes='0;0.2365;0.2527;0.2689;0.2852;0.3176;0.4797;0.4959;0.5121;0.5284;0.5608;1' dur='7.4s' begin='-4.2s' repeatCount='indefinite'/></path><animate attributeName='opacity' values='0.6;0.6;1;0.3;0.95;0.6;0.6;1;0.3;0.95;0.6;0.6' keyTimes='0;0.2365;0.2527;0.2689;0.2852;0.3176;0.4797;0.4959;0.5121;0.5284;0.5608;1' dur='7.4s' begin='-4.2s' repeatCount='indefinite'/></g></g><g transform='translate(963.4 169.4)' opacity='.9'><g><circle r='1.4'/><animate attributeName='opacity' values='0.6;0.6;1;0.3;0.95;0.6;0.6' keyTimes='0;0.5576;0.5767;0.5957;0.6148;0.6529;1' dur='6.3s' begin='-5.8s' repeatCount='indefinite'/></g></g><g transform='translate(301.1 149.9)' opacity='.9'><g><path d='M0 -3.2L0.9 -0.9L3.2 0L0.9 0.9L0 3.2L-0.9 0.9L-3.2 0L-0.9 -0.9Z'><animateTransform attributeName='transform' type='scale' values='1;1;1.35;0.85;1.25;1;1;1.35;0.85;1.25;1;1' keyTimes='0;0.469;0.499;0.529;0.559;0.619;0.84;0.87;0.9;0.93;0.99;1' dur='4s' begin='-3.1s' repeatCount='indefinite'/></path><animate attributeName='opacity' values='0.7;0.7;1;0.3;0.95;0.7;0.7;1;0.3;0.95;0.7;0.7' keyTimes='0;0.469;0.499;0.529;0.559;0.619;0.84;0.87;0.9;0.93;0.99;1' dur='4s' begin='-3.1s' repeatCount='indefinite'/></g></g><g transform='translate(536.4 66.3)' opacity='.9'><g><path d='M0 -3L0.8 -0.8L3 0L0.8 0.8L0 3L-0.8 0.8L-3 0L-0.8 -0.8Z'><animateTransform attributeName='transform' type='scale' values='1;1;1.35;0.85;1.25;1;1' keyTimes='0;0.2955;0.3099;0.3244;0.3388;0.3677;1' dur='8.3s' begin='-1.2s' repeatCount='indefinite'/></path><animate attributeName='opacity' values='0.8;0.8;1;0.4;0.95;0.8;0.8' keyTimes='0;0.2955;0.3099;0.3244;0.3388;0.3677;1' dur='8.3s' begin='-1.2s' repeatCount='indefinite'/></g></g><g transform='translate(900.2 136.1)' opacity='.9'><g><circle r='1.2'/><animate attributeName='opacity' values='0.7;0.7;1;0.3;0.95;0.7;0.7' keyTimes='0;0.1679;0.1893;0.2107;0.2321;0.275;1' dur='5.6s' begin='-5.9s' repeatCount='indefinite'/></g></g><g transform='translate(676.3 56.2)' opacity='.9'><g><path d='M0 -3.6L1 -1L3.6 0L1 1L0 3.6L-1 1L-3.6 0L-1 -1Z'><animateTransform attributeName='transform' type='scale' values='1;1;1.35;0.85;1.25;1;1' keyTimes='0;0.2598;0.2817;0.3035;0.3253;0.3689;1' dur='5.5s' begin='-5.7s' repeatCount='indefinite'/></path><animate attributeName='opacity' values='0.6;0.6;1;0.3;0.95;0.6;0.6' keyTimes='0;0.2598;0.2817;0.3035;0.3253;0.3689;1' dur='5.5s' begin='-5.7s' repeatCount='indefinite'/></g></g><g transform='translate(621.5 207.7)' opacity='.9'><g><circle r='1.7'/><animate attributeName='opacity' values='0.6;0.6;1;0.3;0.95;0.6;0.6' keyTimes='0;0.4985;0.5195;0.5406;0.5616;0.6037;1' dur='5.7s' begin='-4.7s' repeatCount='indefinite'/></g></g><g transform='translate(409 209.5)' opacity='.9'><g><path d='M0 -3.7L1 -1L3.7 0L1 1L0 3.7L-1 1L-3.7 0L-1 -1Z'><animateTransform attributeName='transform' type='scale' values='1;1;1.35;0.85;1.25;1;1' keyTimes='0;0.5551;0.572;0.5889;0.6058;0.6397;1' dur='7.1s' begin='-0.8s' repeatCount='indefinite'/></path><animate attributeName='opacity' values='0.6;0.6;1;0.3;0.95;0.6;0.6' keyTimes='0;0.5551;0.572;0.5889;0.6058;0.6397;1' dur='7.1s' begin='-0.8s' repeatCount='indefinite'/></g></g><g transform='translate(195.9 90.8)' opacity='.9'><g><path d='M0 -4.9L1.4 -1.4L4.9 0L1.4 1.4L0 4.9L-1.4 1.4L-4.9 0L-1.4 -1.4Z'><animateTransform attributeName='transform' type='scale' values='1;1;1.35;0.85;1.25;1;1' keyTimes='0;0.3109;0.3283;0.3457;0.3631;0.3978;1' dur='6.9s' begin='-3.6s' repeatCount='indefinite'/></path><animate attributeName='opacity' values='0.8;0.8;1;0.4;0.95;0.8;0.8' keyTimes='0;0.3109;0.3283;0.3457;0.3631;0.3978;1' dur='6.9s' begin='-3.6s' repeatCount='indefinite'/></g></g><g transform='translate(107.1 304.8)' opacity='.9'><g><path d='M0 -4.9L1.4 -1.4L4.9 0L1.4 1.4L0 4.9L-1.4 1.4L-4.9 0L-1.4 -1.4Z'><animateTransform attributeName='transform' type='scale' values='1;1;1.35;0.85;1.25;1;1' keyTimes='0;0.5949;0.6265;0.6581;0.6897;0.7528;1' dur='3.8s' begin='-1.4s' repeatCount='indefinite'/></path><animate attributeName='opacity' values='0.6;0.6;1;0.3;0.95;0.6;0.6' keyTimes='0;0.5949;0.6265;0.6581;0.6897;0.7528;1' dur='3.8s' begin='-1.4s' repeatCount='indefinite'/></g></g><g transform='translate(853.4 40.6)' opacity='.9'><g><path d='M0 -4L1.1 -1.1L4 0L1.1 1.1L0 4L-1.1 1.1L-4 0L-1.1 -1.1Z'><animateTransform attributeName='transform' type='scale' values='1;1;1.35;0.85;1.25;1;1' keyTimes='0;0.354;0.3737;0.3933;0.413;0.4524;1' dur='6.1s' begin='-2.9s' repeatCount='indefinite'/></path><animate attributeName='opacity' values='0.7;0.7;1;0.3;0.95;0.7;0.7' keyTimes='0;0.354;0.3737;0.3933;0.413;0.4524;1' dur='6.1s' begin='-2.9s' repeatCount='indefinite'/></g></g><g transform='translate(118.4 42.2)' opacity='.9'><g><circle r='1.4'/><animate attributeName='opacity' values='0.8;0.8;1;0.4;0.95;0.8;0.8' keyTimes='0;0.2379;0.2601;0.2823;0.3046;0.349;1' dur='5.4s' begin='-2s' repeatCount='indefinite'/></g></g><g transform='translate(44.3 205.8)' opacity='.9'><g><path d='M0 -3.7L1 -1L3.7 0L1 1L0 3.7L-1 1L-3.7 0L-1 -1Z'><animateTransform attributeName='transform' type='scale' values='1;1;1.35;0.85;1.25;1;1;1.35;0.85;1.25;1;1' keyTimes='0;0.1675;0.1825;0.1975;0.2125;0.2425;0.5301;0.5451;0.5601;0.5751;0.6051;1' dur='8s' begin='-3.7s' repeatCount='indefinite'/></path><animate attributeName='opacity' values='0.8;0.8;1;0.4;0.95;0.8;0.8;1;0.4;0.95;0.8;0.8' keyTimes='0;0.1675;0.1825;0.1975;0.2125;0.2425;0.5301;0.5451;0.5601;0.5751;0.6051;1' dur='8s' begin='-3.7s' repeatCount='indefinite'/></g></g><g transform='translate(52.4 90.3)' opacity='.9'><g><path d='M0 -3.3L0.9 -0.9L3.3 0L0.9 0.9L0 3.3L-0.9 0.9L-3.3 0L-0.9 -0.9Z'><animateTransform attributeName='transform' type='scale' values='1;1;1.35;0.85;1.25;1;1' keyTimes='0;0.3461;0.3611;0.3761;0.3911;0.4211;1' dur='8s' begin='-4.5s' repeatCount='indefinite'/></path><animate attributeName='opacity' values='0.6;0.6;1;0.3;0.95;0.6;0.6' keyTimes='0;0.3461;0.3611;0.3761;0.3911;0.4211;1' dur='8s' begin='-4.5s' repeatCount='indefinite'/></g></g><g transform='translate(770 150)'><circle r='24' fill='url(%23gl)' opacity='.5'><animate attributeName='opacity' values='.5;.25;.55;.35;.5' keyTimes='0;.3;.55;.8;1' calcMode='spline' keySplines='.45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1' dur='3.6s' repeatCount='indefinite'/></circle><g opacity='0'><animate attributeName='opacity' values='0;0;.9;0;0' keyTimes='0;.78;.82;.9;1' dur='11.3s' repeatCount='indefinite'/><path d='M0 -26L7.3 -7.3L26 0L7.3 7.3L0 26L-7.3 7.3L-26 0L-7.3 -7.3Z' fill='%23fffbe8' opacity='.5'/><circle r='5' fill='%23fff'/></g><g><animate attributeName='opacity' values='1;.55;.95;.7;1' keyTimes='0;.3;.55;.8;1' calcMode='spline' keySplines='.45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1' dur='3.6s' repeatCount='indefinite'/><animateTransform attributeName='transform' type='scale' values='1;.82;1.06;.9;1' keyTimes='0;.3;.55;.8;1' calcMode='spline' keySplines='.45 0 .55 1;.45 0 .55 1;.45 0 .55 1;.45 0 .55 1' dur='3.6s' repeatCount='indefinite'/><path d='M0 -12L3.4 -3.4L12 0L3.4 3.4L0 12L-3.4 3.4L-12 0L-3.4 -3.4Z' fill='%23fffbe8'/><path d='M0 -6.5L1.8 -1.8L6.5 0L1.8 1.8L0 6.5L-1.8 1.8L-6.5 0L-1.8 -1.8Z' transform='rotate(45)' fill='%23fffbe8' opacity='.8'><animateTransform attributeName='transform' type='rotate' values='45;90;45' dur='9s' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' repeatCount='indefinite'/></path></g></g></g></svg>") center / cover no-repeat;
+}
+[data-theme="christmas"] .tuner.is-quiet .display::before {
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 420' preserveAspectRatio='xMidYMid slice'><defs><radialGradient id='gl'><stop offset='0' stop-color='%23fff6d0' stop-opacity='.9'/><stop offset='1' stop-color='%23fff6d0' stop-opacity='0'/></radialGradient></defs><g fill='%23fff'><g transform='translate(295.2 54.6)' opacity='.9'><g><circle r='1.9'/></g></g><g transform='translate(270.2 247.7)' opacity='.9'><g><path d='M0 -4.2L1.2 -1.2L4.2 0L1.2 1.2L0 4.2L-1.2 1.2L-4.2 0L-1.2 -1.2Z'></path></g></g><g transform='translate(666.3 313.3)' opacity='.9'><g><path d='M0 -3.5L1 -1L3.5 0L1 1L0 3.5L-1 1L-3.5 0L-1 -1Z'></path></g></g><g transform='translate(636.2 153.4)' opacity='.9'><g><circle r='2'/></g></g><g transform='translate(123.7 174.2)' opacity='.9'><g><circle r='1.5'/></g></g><g transform='translate(460.7 297.8)' opacity='.9'><g><circle r='1.7'/></g></g><g transform='translate(848.4 251.8)' opacity='.9'><g><path d='M0 -4.5L1.3 -1.3L4.5 0L1.3 1.3L0 4.5L-1.3 1.3L-4.5 0L-1.3 -1.3Z'></path></g></g><g transform='translate(963.4 169.4)' opacity='.9'><g><circle r='1.4'/></g></g><g transform='translate(301.1 149.9)' opacity='.9'><g><path d='M0 -3.2L0.9 -0.9L3.2 0L0.9 0.9L0 3.2L-0.9 0.9L-3.2 0L-0.9 -0.9Z'></path></g></g><g transform='translate(536.4 66.3)' opacity='.9'><g><path d='M0 -3L0.8 -0.8L3 0L0.8 0.8L0 3L-0.8 0.8L-3 0L-0.8 -0.8Z'></path></g></g><g transform='translate(900.2 136.1)' opacity='.9'><g><circle r='1.2'/></g></g><g transform='translate(676.3 56.2)' opacity='.9'><g><path d='M0 -3.6L1 -1L3.6 0L1 1L0 3.6L-1 1L-3.6 0L-1 -1Z'></path></g></g><g transform='translate(621.5 207.7)' opacity='.9'><g><circle r='1.7'/></g></g><g transform='translate(409 209.5)' opacity='.9'><g><path d='M0 -3.7L1 -1L3.7 0L1 1L0 3.7L-1 1L-3.7 0L-1 -1Z'></path></g></g><g transform='translate(195.9 90.8)' opacity='.9'><g><path d='M0 -4.9L1.4 -1.4L4.9 0L1.4 1.4L0 4.9L-1.4 1.4L-4.9 0L-1.4 -1.4Z'></path></g></g><g transform='translate(107.1 304.8)' opacity='.9'><g><path d='M0 -4.9L1.4 -1.4L4.9 0L1.4 1.4L0 4.9L-1.4 1.4L-4.9 0L-1.4 -1.4Z'></path></g></g><g transform='translate(853.4 40.6)' opacity='.9'><g><path d='M0 -4L1.1 -1.1L4 0L1.1 1.1L0 4L-1.1 1.1L-4 0L-1.1 -1.1Z'></path></g></g><g transform='translate(118.4 42.2)' opacity='.9'><g><circle r='1.4'/></g></g><g transform='translate(44.3 205.8)' opacity='.9'><g><path d='M0 -3.7L1 -1L3.7 0L1 1L0 3.7L-1 1L-3.7 0L-1 -1Z'></path></g></g><g transform='translate(52.4 90.3)' opacity='.9'><g><path d='M0 -3.3L0.9 -0.9L3.3 0L0.9 0.9L0 3.3L-0.9 0.9L-3.3 0L-0.9 -0.9Z'></path></g></g><g transform='translate(770 150)'><circle r='24' fill='url(%23gl)' opacity='.5'></circle><g><path d='M0 -12L3.4 -3.4L12 0L3.4 3.4L0 12L-3.4 3.4L-12 0L-3.4 -3.4Z' fill='%23fffbe8'/><path d='M0 -6.5L1.8 -1.8L6.5 0L1.8 1.8L0 6.5L-1.8 1.8L-6.5 0L-1.8 -1.8Z' transform='rotate(45)' fill='%23fffbe8' opacity='.8'></path></g></g></g></svg>") center / cover no-repeat;
+}
+/* Snowflakes, over the whole set as the leaves are over Autumn Gobble but
+   fewer of them: one tall tile of four, sliding down by exactly its own
+   height so the fall never visibly restarts. Stopped, they fade and go,
+   for the same reason the leaves do -- each one turns inside the drawing,
+   and a paused layer would leave them spinning in mid-air. */
+[data-theme="christmas"] .tuner::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -900px; bottom: 0;
+  z-index: 5; pointer-events: none; opacity: .95;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 900' fill='none' stroke='%23fff' stroke-width='1.3' stroke-linecap='round'><style>.a,.b,.c{transform-box:fill-box;transform-origin:center;animation:r 14s linear infinite}.b{animation-duration:19s;animation-direction:reverse}.c{animation-duration:11s}@keyframes r{to{transform:rotate(360deg)}}</style><g transform='translate(90 120) scale(0.91)'><g class='a'><path transform='rotate(0)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(60)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(120)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(180)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(240)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(300)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/></g></g><g transform='translate(380 330) scale(0.7)'><g class='b'><path transform='rotate(0)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(60)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(120)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(180)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(240)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(300)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/></g></g><g transform='translate(200 600) scale(1.12)'><g class='c'><path transform='rotate(0)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(60)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(120)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(180)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(240)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(300)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/></g></g><g transform='translate(470 780) scale(0.8)'><g class='a'><path transform='rotate(0)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(60)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(120)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(180)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(240)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/><path transform='rotate(300)' d='M0 0V-10M0-6.5L-2.6-9M0-6.5L2.6-9M0-3.5L-1.9-5.4M0-3.5L1.9-5.4'/></g></g></svg>") repeat 0 0 / 560px 900px;
+  filter: drop-shadow(0 0 1px rgba(30,60,110,.55));
+  animation: xm-fall 36s linear infinite;
+  transition: opacity 1.1s ease, visibility 0s linear 0s;
+}
+@keyframes xm-fall {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(-14px, 225px); }
+  50%  { transform: translate(8px, 450px); }
+  75%  { transform: translate(-10px, 675px); }
+  100% { transform: translate(0, 900px); }
+}
+[data-theme="christmas"] .tuner.is-quiet::before {
+  animation-play-state: paused; opacity: 0; visibility: hidden;
+  transition: opacity 1.1s ease, visibility 0s linear 1.1s;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="christmas"] .tuner::before { display: none; }
+  [data-theme="christmas"] .display::before { background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 420' preserveAspectRatio='xMidYMid slice'><defs><radialGradient id='gl'><stop offset='0' stop-color='%23fff6d0' stop-opacity='.9'/><stop offset='1' stop-color='%23fff6d0' stop-opacity='0'/></radialGradient></defs><g fill='%23fff'><g transform='translate(295.2 54.6)' opacity='.9'><g><circle r='1.9'/></g></g><g transform='translate(270.2 247.7)' opacity='.9'><g><path d='M0 -4.2L1.2 -1.2L4.2 0L1.2 1.2L0 4.2L-1.2 1.2L-4.2 0L-1.2 -1.2Z'></path></g></g><g transform='translate(666.3 313.3)' opacity='.9'><g><path d='M0 -3.5L1 -1L3.5 0L1 1L0 3.5L-1 1L-3.5 0L-1 -1Z'></path></g></g><g transform='translate(636.2 153.4)' opacity='.9'><g><circle r='2'/></g></g><g transform='translate(123.7 174.2)' opacity='.9'><g><circle r='1.5'/></g></g><g transform='translate(460.7 297.8)' opacity='.9'><g><circle r='1.7'/></g></g><g transform='translate(848.4 251.8)' opacity='.9'><g><path d='M0 -4.5L1.3 -1.3L4.5 0L1.3 1.3L0 4.5L-1.3 1.3L-4.5 0L-1.3 -1.3Z'></path></g></g><g transform='translate(963.4 169.4)' opacity='.9'><g><circle r='1.4'/></g></g><g transform='translate(301.1 149.9)' opacity='.9'><g><path d='M0 -3.2L0.9 -0.9L3.2 0L0.9 0.9L0 3.2L-0.9 0.9L-3.2 0L-0.9 -0.9Z'></path></g></g><g transform='translate(536.4 66.3)' opacity='.9'><g><path d='M0 -3L0.8 -0.8L3 0L0.8 0.8L0 3L-0.8 0.8L-3 0L-0.8 -0.8Z'></path></g></g><g transform='translate(900.2 136.1)' opacity='.9'><g><circle r='1.2'/></g></g><g transform='translate(676.3 56.2)' opacity='.9'><g><path d='M0 -3.6L1 -1L3.6 0L1 1L0 3.6L-1 1L-3.6 0L-1 -1Z'></path></g></g><g transform='translate(621.5 207.7)' opacity='.9'><g><circle r='1.7'/></g></g><g transform='translate(409 209.5)' opacity='.9'><g><path d='M0 -3.7L1 -1L3.7 0L1 1L0 3.7L-1 1L-3.7 0L-1 -1Z'></path></g></g><g transform='translate(195.9 90.8)' opacity='.9'><g><path d='M0 -4.9L1.4 -1.4L4.9 0L1.4 1.4L0 4.9L-1.4 1.4L-4.9 0L-1.4 -1.4Z'></path></g></g><g transform='translate(107.1 304.8)' opacity='.9'><g><path d='M0 -4.9L1.4 -1.4L4.9 0L1.4 1.4L0 4.9L-1.4 1.4L-4.9 0L-1.4 -1.4Z'></path></g></g><g transform='translate(853.4 40.6)' opacity='.9'><g><path d='M0 -4L1.1 -1.1L4 0L1.1 1.1L0 4L-1.1 1.1L-4 0L-1.1 -1.1Z'></path></g></g><g transform='translate(118.4 42.2)' opacity='.9'><g><circle r='1.4'/></g></g><g transform='translate(44.3 205.8)' opacity='.9'><g><path d='M0 -3.7L1 -1L3.7 0L1 1L0 3.7L-1 1L-3.7 0L-1 -1Z'></path></g></g><g transform='translate(52.4 90.3)' opacity='.9'><g><path d='M0 -3.3L0.9 -0.9L3.3 0L0.9 0.9L0 3.3L-0.9 0.9L-3.3 0L-0.9 -0.9Z'></path></g></g><g transform='translate(770 150)'><circle r='24' fill='url(%23gl)' opacity='.5'></circle><g><path d='M0 -12L3.4 -3.4L12 0L3.4 3.4L0 12L-3.4 3.4L-12 0L-3.4 -3.4Z' fill='%23fffbe8'/><path d='M0 -6.5L1.8 -1.8L6.5 0L1.8 1.8L0 6.5L-1.8 1.8L-6.5 0L-1.8 -1.8Z' transform='rotate(45)' fill='%23fffbe8' opacity='.8'></path></g></g></g></svg>") center / cover no-repeat; }
+}
+/* Snow lying on the hills, and three pines in it. Tiled so the ground
+   runs the width of any window; the hills meet themselves at the join. */
+[data-theme="christmas"] .display::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 64px; z-index: -1; pointer-events: none;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 64'><path d='M0 40Q100 20 200 38T400 40V64H0Z' fill='%23c9d8ec'/><rect x='68.7' y='26.6' width='2.6' height='6.4' fill='%234a2c16'/><path d='M70 -2Q71.6 3.6 76.5 10.4Q74.3 12.2 72.2 10.4Q70 12.2 67.8 10.4Q65.7 12.2 63.5 10.4Q68.4 3.6 70 -2ZM70 5.1Q72.4 11.4 79.8 19Q76.5 20.8 73.3 19Q70 20.8 66.8 19Q63.5 20.8 60.3 19Q67.6 11.4 70 5.1ZM70 12.2Q73.3 19.1 83 27.6Q78.7 29.4 74.3 27.6Q70 29.4 65.7 27.6Q61.3 29.4 57 27.6Q66.8 19.1 70 12.2Z' fill='%231e6b40'/><path d='M70 -2Q71.6 3.6 76.5 10.4Q74.3 12.2 72.2 10.4Q70.7 11.5 70 10.1ZM70 5.1Q72.4 11.4 79.8 19Q76.5 20.8 73.3 19Q71 20.1 70 18.6ZM70 12.2Q73.3 19.1 83 27.6Q78.7 29.4 74.3 27.6Q71.3 28.6 70 27.2Z' fill='%232f8a52'/><path d='M76.5 10.4Q74.3 12.2 72.2 10.4Q70 12.2 67.8 10.4Q65.7 12.2 63.5 10.4Q65.7 10 67.8 8.8Q70 10 72.2 8.8Q74.3 10 76.5 8.8ZM79.8 19Q76.5 20.8 73.3 19Q70 20.8 66.8 19Q63.5 20.8 60.3 19Q63.5 18.6 66.8 17.4Q70 18.6 73.3 17.4Q76.5 18.6 79.8 17.4ZM83 27.6Q78.7 29.4 74.3 27.6Q70 29.4 65.7 27.6Q61.3 29.4 57 27.6Q61.3 27.2 65.7 26Q70 27.2 74.3 26Q78.7 27.2 83 26ZM70 -2.5L71.8 1.5Q70 0.4 68.2 1.5Z' fill='%23f4f8ff' fill-opacity='.92'/><rect x='299' y='43.5' width='2' height='5.5' fill='%234a2c16'/><path d='M300 21Q301.3 25.4 305 30.9Q303.3 32.3 301.7 30.9Q300 32.3 298.3 30.9Q296.7 32.3 295 30.9Q298.8 25.4 300 21ZM300 26.6Q301.9 31.6 307.5 37.7Q305 39.1 302.5 37.7Q300 39.1 297.5 37.7Q295 39.1 292.5 37.7Q298.1 31.6 300 26.6ZM300 32.3Q302.5 37.8 310 44.5Q306.7 45.9 303.3 44.5Q300 45.9 296.7 44.5Q293.3 45.9 290 44.5Q297.5 37.8 300 32.3Z' fill='%231e6b40'/><path d='M300 21Q301.3 25.4 305 30.9Q303.3 32.3 301.7 30.9Q300.5 31.7 300 30.6ZM300 26.6Q301.9 31.6 307.5 37.7Q305 39.1 302.5 37.7Q300.8 38.5 300 37.4ZM300 32.3Q302.5 37.8 310 44.5Q306.7 45.9 303.3 44.5Q301 45.3 300 44.2Z' fill='%232f8a52'/><path d='M305 30.9Q303.3 32.3 301.7 30.9Q300 32.3 298.3 30.9Q296.7 32.3 295 30.9Q296.7 30.1 298.3 29.3Q300 30.1 301.7 29.3Q303.3 30.1 305 29.3ZM307.5 37.7Q305 39.1 302.5 37.7Q300 39.1 297.5 37.7Q295 39.1 292.5 37.7Q295 36.9 297.5 36.1Q300 36.9 302.5 36.1Q305 36.9 307.5 36.1ZM310 44.5Q306.7 45.9 303.3 44.5Q300 45.9 296.7 44.5Q293.3 45.9 290 44.5Q293.3 43.7 296.7 42.9Q300 43.7 303.3 42.9Q306.7 43.7 310 42.9ZM300 20.5L301.4 23.8Q300 22.9 298.6 23.8Z' fill='%23f4f8ff' fill-opacity='.92'/><rect x='330.2' y='44.7' width='1.6' height='4.3' fill='%234a2c16'/><path d='M331 30Q331.9 33 334.5 36.6Q333.3 37.5 332.2 36.6Q331 37.5 329.8 36.6Q328.7 37.5 327.5 36.6Q330.1 33 331 30ZM331 33.8Q332.3 37.1 336.3 41.1Q334.5 42.1 332.8 41.1Q331 42.1 329.3 41.1Q327.5 42.1 325.8 41.1Q329.7 37.1 331 33.8ZM331 37.5Q332.8 41.2 338 45.7Q335.7 46.6 333.3 45.7Q331 46.6 328.7 45.7Q326.3 46.6 324 45.7Q329.3 41.2 331 37.5Z' fill='%231e6b40'/><path d='M331 30Q331.9 33 334.5 36.6Q333.3 37.5 332.2 36.6Q331.4 37.1 331 36.4ZM331 33.8Q332.3 37.1 336.3 41.1Q334.5 42.1 332.8 41.1Q331.5 41.7 331 40.9ZM331 37.5Q332.8 41.2 338 45.7Q335.7 46.6 333.3 45.7Q331.7 46.2 331 45.5Z' fill='%232f8a52'/><path d='M334.5 36.6Q333.3 37.5 332.2 36.6Q331 37.5 329.8 36.6Q328.7 37.5 327.5 36.6Q328.7 35.3 329.8 35Q331 35.3 332.2 35Q333.3 35.3 334.5 35ZM336.3 41.1Q334.5 42.1 332.8 41.1Q331 42.1 329.3 41.1Q327.5 42.1 325.8 41.1Q327.5 39.9 329.3 39.5Q331 39.9 332.8 39.5Q334.5 39.9 336.3 39.5ZM338 45.7Q335.7 46.6 333.3 45.7Q331 46.6 328.7 45.7Q326.3 46.6 324 45.7Q326.3 44.4 328.7 44.1Q331 44.4 333.3 44.1Q335.7 44.4 338 44.1ZM331 29.5L332 31.9Q331 31.3 330 31.9Z' fill='%23f4f8ff' fill-opacity='.92'/><path d='M0 50Q120 36 250 50T400 50V64H0Z' fill='%23f4f8ff'/></svg>") repeat-x left bottom / 400px 64px;
+}
+
+[data-theme="christmas"] .display-band { grid-area: band; font-size: 15px; font-weight: 600; letter-spacing: .26em; color: var(--gold); }
+[data-theme="christmas"] .display-name {
+  grid-area: name; margin: 0;
+  font-family: "Mountains of Christmas", serif; font-weight: 700;
+  font-size: clamp(50px, 7.2vw, 92px); line-height: 1.04; letter-spacing: .01em;
+  white-space: nowrap; overflow: hidden;
+  color: var(--snow);
+  text-shadow: 0 0 22px rgba(255,220,140,.35), 0 3px 0 rgba(0,0,0,.35);
+}
+[data-theme="christmas"] .display-tag { grid-area: tag; margin: 4px 0 0; font: italic 500 21px/1.3 "Cormorant Garamond", Georgia, serif; opacity: .9; }
+[data-theme="christmas"] .display-status { grid-area: status; margin-top: 10px; font-size: 13px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: #d9c690; }
+
+[data-theme="christmas"] .dial { grid-area: dial; display: grid; gap: 26px; margin-top: 26px; padding: 0 16px 0 62px; }
+[data-theme="christmas"] .scale { color: rgba(255,248,236,.85); border-bottom: 1px solid rgba(255,248,236,.7); }
+[data-theme="christmas"] .scale-labels { font-size: 12px; font-weight: 600; letter-spacing: .04em; color: rgba(255,248,236,.8); padding-top: 3px; }
+[data-theme="christmas"] .scale.is-sweeping::after { background: linear-gradient(90deg, transparent, rgba(255,240,200,.6), transparent); }
+[data-theme="christmas"] .scale-badge {
+  position: absolute; left: -58px; top: 50%; transform: translateY(-50%);
+  width: 46px; padding: 6px 0 3px; text-indent: 2px; text-align: center; border-radius: 3px;
+  font-size: 13px; font-weight: 700; letter-spacing: .16em;
+  color: rgba(255,248,236,.55); box-shadow: inset 0 0 0 1px rgba(255,248,236,.3);
+}
+[data-theme="christmas"] .scale.is-active .scale-badge {
+  color: var(--snow); background: linear-gradient(#d11f38, #8e1426);
+  box-shadow: 0 0 14px rgba(209,31,56,.6), inset 0 0 0 1px var(--gold);
+}
+[data-theme="christmas"] .needle { top: -11px; background: var(--gold); border-radius: 1px; box-shadow: 0 0 10px rgba(255,214,110,.9); }
+
+/* The lights. The flex is drawn on .meter-face, the bulbs on .meter-bar:
+   dark glass along its whole length, and a lit copy on top revealed one
+   whole bulb at a time -- the cell grid the console and the 8-bit HUD
+   already use, so a bulb is either on or off and never half. */
+[data-theme="christmas"] .meter {
+  display: block; position: absolute; left: 8px; right: 8px; top: 2px; height: 42px;
+  margin: 0; z-index: 1; pointer-events: none;
+  --vu-cell: 34px; --vu-gap: 0px; --vu-step: .035;
+}
+[data-theme="christmas"] .meter-face {
+  position: absolute; inset: 0; margin: 0;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 42'><path d='M0 8Q17 22 34 8' fill='none' stroke='%23081a10' stroke-width='2.2'/><rect x='14.3' y='13' width='5.4' height='6' rx='1.2' fill='%232c5a34'/></svg>") repeat-x 0 0 / 34px 42px;
+}
+[data-theme="christmas"] .meter-face > *,
+[data-theme="christmas"] .meter-scale { display: none; }
+[data-theme="christmas"] .meter-bar {
+  position: absolute; inset: 0; margin: 0;
+  background:
+    radial-gradient(ellipse 5px 8px at 17px 26px, rgba(255,255,255,.3) 0 14%, #5a1414 46%, #360a0a 70%, transparent 76%),
+    radial-gradient(ellipse 5px 8px at 51px 26px, rgba(255,255,255,.3) 0 14%, #5a4212 46%, #36280a 70%, transparent 76%),
+    radial-gradient(ellipse 5px 8px at 85px 26px, rgba(255,255,255,.3) 0 14%, #14502a 46%, #0a3018 70%, transparent 76%),
+    radial-gradient(ellipse 5px 8px at 119px 26px, rgba(255,255,255,.3) 0 14%, #143a5a 46%, #0a2236 70%, transparent 76%),
+    radial-gradient(ellipse 5px 8px at 153px 26px, rgba(255,255,255,.3) 0 14%, #52144a 46%, #300a2c 70%, transparent 76%);
+  background-size: 170px 42px; background-repeat: repeat-x;
+}
+[data-theme="christmas"] .meter-bar::before {
+  content: ""; position: absolute; inset: 0;
+  /* A blend of the needle's level and the fast one (--glow, written by
+     app.js as it is for the pumpkin), a little more needle than not, over
+     the span programme actually moves in. On the needle alone broadcast sat
+     at .6 to .9 and three quarters of the string never went out; on the
+     fast level alone it flickered on every syllable. A kick brightens what
+     is lit, a little. */
+  --lit: round(down, calc(clamp(0, (var(--vu, 0) * .55 + var(--glow, var(--vu, 0)) * .45 - .42) * 1.9, 1) / var(--vu-step, .035)), 1);
+  filter: brightness(calc(1 + var(--thump, 0) * .25));
+  background:
+    radial-gradient(ellipse 5.5px 8.5px at 17px 26px, #fffbe6 0 22%, #ff4040 58%, transparent 78%),
+    radial-gradient(ellipse 5.5px 8.5px at 51px 26px, #fffbe6 0 22%, #ffc233 58%, transparent 78%),
+    radial-gradient(ellipse 5.5px 8.5px at 85px 26px, #fffbe6 0 22%, #3fe07a 58%, transparent 78%),
+    radial-gradient(ellipse 5.5px 8.5px at 119px 26px, #fffbe6 0 22%, #48b4ff 58%, transparent 78%),
+    radial-gradient(ellipse 5.5px 8.5px at 153px 26px, #fffbe6 0 22%, #ff5cd6 58%, transparent 78%),
+    radial-gradient(circle 16px at 17px 26px, rgba(255,64,64,.5), transparent),
+    radial-gradient(circle 16px at 51px 26px, rgba(255,194,51,.5), transparent),
+    radial-gradient(circle 16px at 85px 26px, rgba(63,224,122,.45), transparent),
+    radial-gradient(circle 16px at 119px 26px, rgba(72,180,255,.5), transparent),
+    radial-gradient(circle 16px at 153px 26px, rgba(255,92,214,.5), transparent);
+  background-size: 170px 42px; background-repeat: repeat-x;
+  clip-path: inset(0 calc(100% - var(--lit) * 34px) 0 0);
+  /* One bulb's place cut out, while the elf is changing it (seasonal.js sets
+     --dead-x to its centre). Off the end of the string otherwise. */
+  -webkit-mask: linear-gradient(90deg, #000 calc(var(--dead-x, -99px) - 18px), transparent 0 calc(var(--dead-x, -99px) + 18px), #000 0);
+          mask: linear-gradient(90deg, #000 calc(var(--dead-x, -99px) - 18px), transparent 0 calc(var(--dead-x, -99px) + 18px), #000 0);
+}
+[data-theme="christmas"] .meter-blind {
+  position: absolute; right: 12px; top: 44px; margin: 0;
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,248,236,.75);
+}
+
+/* Presets are gift tags: a notched card with the hole punched through
+   where the number sits. The chosen one is wrapped, ribbon and all. */
+[data-theme="christmas"] .presets { gap: 14px; --presets-press: 0px; --presets-thumb: rgba(227,189,90,.5); }
+[data-theme="christmas"] .preset {
+  grid-template-columns: auto 1fr; grid-template-areas: "n name" "n band"; column-gap: 12px; align-items: center;
+  padding: 12px 14px 11px 24px;
+  color: #4a1a14;
+  background: linear-gradient(#fbf3e0, #efe0bf);
+  clip-path: polygon(16px 0, 100% 0, 100% 100%, 16px 100%, 0 50%);
+  border-radius: 0 6px 6px 0;
+  transition: background .15s, color .15s;
+}
+[data-theme="christmas"] .preset:hover { background: linear-gradient(#fffaf0, #f6e9cc); }
+[data-theme="christmas"] .preset.is-active {
+  color: var(--snow);
+  background:
+    linear-gradient(90deg, transparent calc(100% - 34px), var(--gold) calc(100% - 34px) calc(100% - 22px), transparent calc(100% - 22px)),
+    linear-gradient(0deg, transparent calc(50% - 5px), rgba(227,189,90,.95) calc(50% - 5px) calc(50% + 5px), transparent calc(50% + 5px)) right / 34px 100% no-repeat,
+    linear-gradient(#e0263f, #9d1328);
+}
+[data-theme="christmas"] .preset-n {
+  grid-area: n; width: 26px; height: 26px; display: grid; place-items: center;
+  font-size: 13px; font-weight: 700; padding-top: 2px; color: #8e1426;
+  border-radius: 50%; background: rgba(142,20,38,.08);
+  box-shadow: inset 0 0 0 2px var(--gold-2);
+}
+[data-theme="christmas"] .preset.is-active .preset-n { color: #5e0b18; background: var(--gold); box-shadow: inset 0 1px 0 rgba(255,255,255,.6); }
+[data-theme="christmas"] .preset-name { grid-area: name; font-size: 18px; font-weight: 700; letter-spacing: .02em; line-height: 1.1; padding-top: 5px; }
+[data-theme="christmas"] .preset-band { grid-area: band; font-size: 12px; font-weight: 600; letter-spacing: .16em; opacity: .7; }
+[data-theme="christmas"] .preset-add { background: rgba(0,0,0,.2); color: var(--snow); opacity: .85; }
+[data-theme="christmas"] .preset-add:hover { background: rgba(0,0,0,.12); }
+[data-theme="christmas"] .preset-add .preset-n { background: none; color: var(--gold); }
+
+[data-theme="christmas"] .controls { color: var(--snow); }
+/* A bauble, cap and loop. */
+[data-theme="christmas"] .play-btn {
+  position: relative; width: 62px; height: 62px; border-radius: 50%; color: var(--snow); margin-top: 8px;
+  display: grid; place-items: center;
+  background: radial-gradient(circle at 36% 30%, #ff9a9a, #d1122e 42%, #7a0616 80%, #4a0410);
+  box-shadow: 0 6px 12px rgba(0,0,0,.5), inset 0 -4px 8px rgba(0,0,0,.25);
+}
+[data-theme="christmas"] .play-btn::before {
+  content: ""; position: absolute; left: 50%; top: -9px; width: 18px; height: 10px; transform: translateX(-50%);
+  border-radius: 2px 2px 1px 1px;
+  background: repeating-linear-gradient(90deg, #f5dc8e 0 2px, #b98f2f 2px 4px);
+  box-shadow: 0 1px 1px rgba(0,0,0,.4);
+}
+[data-theme="christmas"] .play-btn::after {
+  content: ""; position: absolute; left: 50%; top: -16px; width: 9px; height: 9px; transform: translateX(-50%);
+  border: 2px solid var(--gold); border-radius: 50%;
+}
+[data-theme="christmas"] .play-btn[aria-pressed="true"] { box-shadow: 0 3px 6px rgba(0,0,0,.5), 0 0 24px rgba(255,90,90,.55), inset 0 -4px 8px rgba(0,0,0,.25); }
+[data-theme="christmas"] .fader label { font-size: 13px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); padding-top: 3px; }
+[data-theme="christmas"] .fader output { font-family: "Mountains of Christmas", serif; font-weight: 700; font-size: 26px; color: var(--gold); }
+[data-theme="christmas"] .fader input {
+  -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px;
+  background: linear-gradient(var(--pine), #06201a);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.8), 0 0 0 1px rgba(227,189,90,.35);
+}
+/* A candy cane. */
+[data-theme="christmas"] .fader input::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 30px; border-radius: 9px; cursor: grab;
+  background: repeating-linear-gradient(135deg, #fff 0 4px, #d1122e 4px 8px);
+  box-shadow: 0 2px 4px rgba(0,0,0,.6), inset 0 0 0 1px rgba(0,0,0,.15);
+}
+[data-theme="christmas"] .fader input::-moz-range-thumb {
+  width: 18px; height: 30px; border: 0; border-radius: 9px;
+  background: repeating-linear-gradient(135deg, #fff 0 4px, #d1122e 4px 8px);
+}
+/* The volume's knob is a reindeer's red nose, glowing, slowly pulsing. */
+[data-theme="christmas"] .fader.volume input::-webkit-slider-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #fff 0 9%, #ff8a7a 20%, #ff2a2a 48%, #b0000f 100%);
+  animation: noel-nose 2s ease-in-out infinite;
+}
+[data-theme="christmas"] .fader.volume input::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #fff 0 9%, #ff8a7a 20%, #ff2a2a 48%, #b0000f 100%);
+  animation: noel-nose 2s ease-in-out infinite;
+}
+@keyframes noel-nose {
+  0%, 100% { box-shadow: 0 2px 3px rgba(0,0,0,.5), 0 0 6px 1px rgba(255,40,40,.45); }
+  50% { box-shadow: 0 2px 3px rgba(0,0,0,.5), 0 0 10px 4px rgba(255,140,110,1), 0 0 22px 9px rgba(255,70,50,.8), 0 0 40px 16px rgba(255,40,30,.45); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="christmas"] .fader.volume input::-webkit-slider-thumb { animation: none; box-shadow: 0 2px 3px rgba(0,0,0,.5), 0 0 10px 3px rgba(255,50,45,.65); }
+  [data-theme="christmas"] .fader.volume input::-moz-range-thumb { animation: none; box-shadow: 0 2px 3px rgba(0,0,0,.5), 0 0 10px 3px rgba(255,50,45,.65); }
+}
+
+/* ================================================================== */
+/* S4 · SPRING — April showers on a Rams body, flowers coming up        */
+/* ================================================================== */
+
+[data-theme="spring"] .tuner {
+  --body: #f6f5ef;
+  --rule: #d9dccf;
+  --ink: #22302a;
+  --mute: #6f7a70;
+  --tulip: #e0527a;
+  --leaf: #4f9a5a;
+  --gap: 26px;
+  --pad: 32px;
+  --by-mono: "IBM Plex Mono", monospace;
+  --by-fg: #6f7a70;
+  --by-line: #d9dccf;
+  --by-plate: transparent;
+  --by-emboss: transparent;
+  --by-accent: #e0527a;
+  --by-on-accent: #fff;
+  font-family: "Figtree", "Archivo", sans-serif;
+  color: var(--ink);
+  background: var(--body);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  box-shadow: 0 1px 0 #fff inset, 0 24px 50px -30px rgba(30,50,40,.35);
+}
+[data-theme="spring"] .fader label,
+[data-theme="spring"] .display-band,
+[data-theme="spring"] .preset-band,
+[data-theme="spring"] .display-status,
+[data-theme="spring"] .sched-chip {
+  font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--mute);
+}
+
+[data-theme="spring"] .tuner-bar { padding-bottom: 16px; border-bottom: 1px solid var(--rule); }
+[data-theme="spring"] .brand-mark { width: 9px; height: 9px; border-radius: 50% 0 50% 50%; transform: rotate(-45deg); background: var(--tulip); }
+[data-theme="spring"] .brand-name { font: italic 600 17px "Fraunces", Georgia, serif; letter-spacing: .005em; }
+[data-theme="spring"] .clock { font: 500 20px "Fraunces", Georgia, serif; }
+[data-theme="spring"] .sched-chip { gap: 8px; padding: 6px 12px; border: 1px solid var(--rule); border-radius: 999px; background: #fff; color: var(--ink); }
+/* On the white chip the rule colour was nearly white; a mid grey with a
+   darker ring reads as a lamp that is out. */
+[data-theme="spring"] .sched-led { width: 7px; height: 7px; border-radius: 50%; background: #a9b1a4; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+[data-theme="spring"] .sched-chip[aria-pressed="true"] .sched-led { background: var(--leaf); }
+[data-theme="spring"] .sched-next { color: var(--mute); opacity: 1; }
+[data-theme="spring"] .icon-btn { border-radius: 50%; background: #e9ece2; color: var(--ink); --dot-inset: 0; }
+
+/* A window onto a wet April sky. The meter runs along its sill: a bed of
+   tulips that comes up with the level, and a puddle the rain rings. */
+[data-theme="spring"] .display {
+  padding: 22px 28px 104px;
+  background: linear-gradient(#cfe3ee, #e4efee 58%, #eef2e6);
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(40,80,90,.12);
+  display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 6px; align-content: start;
+  overflow: hidden; isolation: isolate;
+}
+/* The rain. One tile of streaks (180 by 220), falling on a slant of 36
+   across for every 220 down. A loop of a single tile ended 36px out of
+   step across and jumped back; five tiles down is exactly one across, so
+   the loop comes round to the same picture. The layer reaches that far
+   up and across to have streaks to bring in. */
+[data-theme="spring"] .display::before {
+  content: ""; position: absolute; left: 0; right: -180px; top: -1100px; bottom: 0; z-index: -1; pointer-events: none;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 220' fill='none' stroke='%235a82a5' stroke-opacity='.42' stroke-width='1.3' stroke-linecap='round'><path d='M20 10l-3 18M70 40l-2.5 14M130 20l-3.5 20M160 90l-3 17M40 110l-2.5 15M100 130l-3.5 20M150 170l-2.5 14M15 180l-3 18M85 200l-2 12M120 70l-2.5 16M55 160l-2 12M175 20l-2 12'/></svg>") repeat 0 0 / 180px 220px;
+  animation: sp-rain 4.25s linear infinite;
+  transition: opacity 2.5s ease;
+}
+@keyframes sp-rain {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(-180px, 1100px); }
+}
+[data-theme="spring"] .tuner.is-quiet .display::before { animation-play-state: paused; opacity: .6; }
+/* The rain eases off for a scene (seasonal.js sets .sp-lull on the set). */
+[data-theme="spring"] .tuner.sp-lull .display::before { opacity: 0; }
+/* A downpour, for the ark: the streaks closer together and faster. */
+[data-theme="spring"] .tuner.sp-pour .display::before {
+  /* Pale streaks: the usual blue-grey ones were lost against the dark. */
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 220' fill='none' stroke='%23eef4fa' stroke-opacity='.62' stroke-width='1.5' stroke-linecap='round'><path d='M20 10l-3 18M70 40l-2.5 14M130 20l-3.5 20M160 90l-3 17M40 110l-2.5 15M100 130l-3.5 20M150 170l-2.5 14M15 180l-3 18M85 200l-2 12M120 70l-2.5 16M55 160l-2 12M175 20l-2 12'/></svg>");
+  background-size: 120px 147px; animation: sp-rain-pour 1.9s linear infinite; opacity: 1;
+}
+@keyframes sp-rain-pour { from { transform: translate(0, 0); } to { transform: translate(-120px, 735px); } }
+/* The rainbow, behind everything in the window, shown by the rainbow
+   scene (.sp-rainbow): an arc from a centre below the glass. */
+[data-theme="spring"] .display::after {
+  content: ""; position: absolute; inset: 0; z-index: -3; pointer-events: none;
+  opacity: 0; transition: opacity 3s ease;
+  background: radial-gradient(circle at 65% calc(100% + 120px), transparent 370px,
+    rgba(150, 110, 210, .85) 382px, rgba(90, 170, 235, .85) 395px, rgba(120, 210, 110, .85) 408px,
+    rgba(255, 226, 100, .85) 421px, rgba(255, 170, 70, .85) 434px, rgba(255, 95, 95, .85) 447px, transparent 459px);
+}
+[data-theme="spring"] .tuner.sp-rainbow .display::after { opacity: .5; }
+/* Clouds, behind the rain (seasonal.js plants them, each with its own
+   height, size, paleness, pace and start). Each is a strip the width of
+   the window, so one translate of its own width carries the cloud clean
+   across it. */
+.sp-sky { display: none; }
+[data-theme="spring"] .sp-sky { display: block; position: absolute; inset: 0; z-index: -2; pointer-events: none; overflow: hidden; }
+[data-theme="spring"] .sp-cloud {
+  position: absolute; left: 0; top: var(--ct); width: 100%; height: calc(var(--cw) * .46);
+  animation: sp-cloud var(--cd) linear var(--cdel) infinite;
+}
+[data-theme="spring"] .sp-cloud::before {
+  content: ""; position: absolute; top: 0; left: calc(-1 * var(--cw)); width: var(--cw); height: 100%; opacity: var(--co);
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 46'><g fill='%23cfdae4'><circle cx='20' cy='34.2' r='8'/><circle cx='34' cy='36.2' r='9'/><circle cx='50' cy='36.7' r='9.5'/><circle cx='65' cy='36.2' r='9'/><circle cx='79' cy='34.2' r='7.5'/></g><g fill='%23e6edf3'><circle cx='20' cy='33' r='8'/><circle cx='34' cy='35' r='9'/><circle cx='50' cy='35.5' r='9.5'/><circle cx='65' cy='35' r='9'/><circle cx='79' cy='33' r='7.5'/></g><g fill='%23fff'><circle cx='18' cy='27' r='9'/><circle cx='32' cy='22' r='13'/><circle cx='51' cy='16' r='16'/><circle cx='70' cy='22' r='12.5'/><circle cx='83' cy='27' r='9'/><circle cx='20' cy='32' r='8'/><circle cx='34' cy='34' r='9'/><circle cx='50' cy='34.5' r='9.5'/><circle cx='65' cy='34' r='9'/><circle cx='79' cy='32' r='7.5'/></g></svg>") no-repeat center / contain;
+}
+@keyframes sp-cloud { from { transform: translateX(0); } to { transform: translateX(calc(100% + var(--cw))); } }
+[data-theme="spring"] .tuner.is-quiet .sp-cloud { animation-play-state: paused; }
+/* In a downpour the sky goes dark and heavy cloud comes over; both clear
+   when it ends. The shade lies over the fair-weather clouds too, greying
+   them. */
+[data-theme="spring"] .sp-sky::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 3s ease;
+  background: linear-gradient(rgba(52, 64, 82, .55), rgba(70, 84, 100, .3) 70%, rgba(70, 84, 100, .15));
+}
+[data-theme="spring"] .tuner.sp-pour .sp-sky::after { opacity: 1; }
+[data-theme="spring"] .sp-storm { opacity: 0; transition: opacity 3s ease; z-index: 1; }
+[data-theme="spring"] .sp-storm::before { background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 46'><g fill='%2378838f'><circle cx='20' cy='34.2' r='8'/><circle cx='34' cy='36.2' r='9'/><circle cx='50' cy='36.7' r='9.5'/><circle cx='65' cy='36.2' r='9'/><circle cx='79' cy='34.2' r='7.5'/></g><g fill='%238f9aa7'><circle cx='20' cy='33' r='8'/><circle cx='34' cy='35' r='9'/><circle cx='50' cy='35.5' r='9.5'/><circle cx='65' cy='35' r='9'/><circle cx='79' cy='33' r='7.5'/></g><g fill='%23a3adb8'><circle cx='18' cy='27' r='9'/><circle cx='32' cy='22' r='13'/><circle cx='51' cy='16' r='16'/><circle cx='70' cy='22' r='12.5'/><circle cx='83' cy='27' r='9'/><circle cx='20' cy='32' r='8'/><circle cx='34' cy='34' r='9'/><circle cx='50' cy='34.5' r='9.5'/><circle cx='65' cy='34' r='9'/><circle cx='79' cy='32' r='7.5'/></g></svg>"); }
+[data-theme="spring"] .tuner.sp-pour .sp-storm { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="spring"] .sp-cloud { animation: none; transform: translateX(calc(40% + var(--cw))); }
+}
+
+[data-theme="spring"] .display-name {
+  margin: 2px 0 0;
+  font-family: "Fraunces", Georgia, serif; font-style: italic; font-weight: 600;
+  font-size: clamp(38px, 5.2vw, 64px); letter-spacing: -.015em; line-height: 1.08;
+  white-space: nowrap; overflow: hidden;
+}
+[data-theme="spring"] .display-tag { margin: 4px 0 0; font: italic 400 18px/1.35 "Fraunces", Georgia, serif; color: #3d4c44; }
+[data-theme="spring"] .display-status { margin-top: 8px; }
+
+[data-theme="spring"] .dial { display: grid; gap: 24px; margin-top: 26px; padding: 0 14px 0 54px; }
+[data-theme="spring"] .scale { color: var(--ink); border-bottom: 1px solid var(--ink); height: 22px; }
+[data-theme="spring"] .scale:not(.is-active) { opacity: .35; }
+[data-theme="spring"] .scale-labels { font-size: 11px; color: var(--mute); padding-top: 5px; }
+[data-theme="spring"] .scale.is-sweeping::after { background: linear-gradient(90deg, transparent, rgba(224,82,122,.3), transparent); }
+[data-theme="spring"] .scale-badge {
+  position: absolute; left: -50px; top: 50%; transform: translateY(-50%);
+  width: 38px; text-align: center; padding: 4px 0; border-radius: 999px;
+  font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--mute); box-shadow: inset 0 0 0 1px var(--rule);
+}
+[data-theme="spring"] .scale.is-active .scale-badge { color: #fff; background: var(--leaf); box-shadow: none; }
+/* A raindrop on a stem. */
+[data-theme="spring"] .needle { top: -8px; width: 2px; background: var(--tulip); border-radius: 1px; }
+[data-theme="spring"] .needle::before {
+  /* Centred on the scale's rule, which runs 29.5px down the needle. */
+  content: ""; position: absolute; left: 50%; top: 26px; width: 7px; height: 7px; transform: translateX(-50%) rotate(45deg);
+  border-radius: 0 50% 50% 50%; background: var(--tulip);
+}
+
+[data-theme="spring"] .meter {
+  display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 96px;
+  margin: 0; z-index: 1; pointer-events: none; overflow: hidden;
+  /* Behind the bed, low green hills, the far ones paler. In front of them
+     the puddle -- the near hill rising behind it, so the water always has
+     ground above it -- seen from above at a low angle: flattened, uneven at the
+     edge, its far side bright with the sky it gives back and its near side
+     deeper. A kick flashes light across it. */
+  background:
+    radial-gradient(ellipse 110px 13px at calc(100% - 133px) calc(100% - 21px), rgba(255,255,255, min(.9, var(--bass, 0) * 1.2)), transparent),
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 34' preserveAspectRatio='none'><defs><linearGradient id='w' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23f1f7f8'/><stop offset='.35' stop-color='%23c3dae6'/><stop offset='1' stop-color='%236f95b0'/></linearGradient></defs><path d='M8 20C8 12 36 7 70 5.5C105 4 135 4.5 165 3.8C198 3 228 8 231 15C234 23 212 29.5 170 30C135 30.5 110 28.8 75 29.8C40 30.8 8 28 8 20Z' fill='url(%23w)'/><path d='M32 10.8C62 8 100 7.2 130 6.8C160 6.4 195 6.2 220 11.5' stroke='%23fff' stroke-opacity='.75' stroke-width='.9' fill='none'/><path d='M70 12H140M150 10H195M90 20H160M50 24H95' stroke='%23fff' stroke-opacity='.3' stroke-width='1' stroke-linecap='round'/></svg>") no-repeat right 6px bottom 2px / 254px 34px,
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 60'><path d='M0 60C60 54 110 34 170 16C220 5 300 3 360 5V60Z' fill='%239cc794'/></svg>") no-repeat right bottom / 360px 60px,
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 70' preserveAspectRatio='none'><path d='M0 70V36C120 18 240 20 360 32C480 44 560 16 700 14C820 12 900 28 1000 24V70Z' fill='%23c4dbbb'/><path d='M0 70V52C150 36 300 40 420 50C540 60 650 38 780 36C880 34 950 44 1000 42V70Z' fill='%239cc794'/></svg>") no-repeat left bottom / 100% 70px;
+}
+/* The grass along the sill, in front of everything else in the bed, the
+   puddle's near edge included. */
+[data-theme="spring"] .meter::before {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 22px; z-index: 3;
+  background:
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 22'><path d='M0 22L3 8L6 22L9 3L12 22L15 10L18 22L22 5L25 22L28 9L31 22L34 4L37 22L40 11V22Z' fill='%235aa35e'/></svg>") repeat-x left bottom / 40px 22px,
+    linear-gradient(transparent 70%, #4b8c4f 70%);
+}
+/* The tulips, each its own (seasonal.js plants them), standing in the soil
+   below the grass and coming up out of it as far as the level lifts them --
+   the mini radio's bars, in flower. They share one quick level (--glow,
+   from app.js; the needle's --vu where that is missing), with its quiet
+   bottom fifth folded away as the bars have it, and each takes its own
+   share of it (--w) and its own time to settle, so the bed moves as a row
+   of bars rather than as one board. translate rather than scale, which
+   would squash the flowers. */
+.sp-bed { display: none; }
+[data-theme="spring"] .sp-bed {
+  display: flex; position: absolute; left: 0; right: 250px; bottom: 6px; height: 76px; z-index: 2; overflow: hidden;
+  --lvl: clamp(0, (var(--glow, var(--vu, 0)) - .2) / .8, 1);
+}
+[data-theme="spring"] .sp-tulip {
+  flex: 0 0 30px; height: 76px;
+  transform: translateY(calc((1 - min(1, var(--lvl) * var(--w, 1))) * 58%));
+  translate: 0 var(--dip, 0px);   /* a butterfly's weight on it */
+  transition: transform .04s linear, translate .4s ease-out;
+}
+[data-theme="spring"] .sp-tulip:nth-child(3n) { transition-duration: .07s, .4s; }
+[data-theme="spring"] .sp-tulip:nth-child(3n+1) { transition-duration: .03s, .4s; }
+/* The duck's ground: in front of the bed, behind the front grass. */
+.sp-yard { display: none; }
+[data-theme="spring"] .sp-yard { display: block; position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.sp-yard > * { position: absolute; left: 0; top: 0; will-change: transform; }
+/* The ark rocks as one, with the ducks and the dove on it; the flood is a
+   sheet of water with a moving wave along its top. */
+.st-arkbob { position: relative; width: 100%; height: 100%; transform-origin: 50% 85%; }
+.st-arkbob > div { position: absolute; left: 0; top: 0; }
+.st-flood { background: linear-gradient(rgba(120,170,205,.82), rgba(70,115,150,.9)); }
+.st-flood::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -7px; height: 8px;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 8'><path d='M0 8V4Q10 0 20 4T40 4V8Z' fill='%2378aacd' fill-opacity='.82'/><path d='M0 4Q10 0 20 4T40 4' stroke='%23fff' stroke-opacity='.7' stroke-width='1' fill='none'/></svg>") repeat-x 0 0 / 40px 8px;
+  animation: st-wave 1.2s linear infinite;
+}
+@keyframes st-wave { to { background-position: 40px 0; } }
+.st-fish { opacity: .6; filter: saturate(.9); }
+.st-bolt { filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 9px rgba(170,200,255,.9)); }
+.st-flash { background: rgba(235, 242, 255, .5); }
+.st-sparkle { border-radius: 50%; background: #fff3a0; box-shadow: 0 0 4px 1px rgba(255,220,90,.9); }
+/* The pilot's speech balloon: a comic balloon, its tail pointing right, at his window. */
+.st-bubble {
+  position: absolute; z-index: 9; max-width: 240px; padding: 6px 11px 7px;
+  font: 400 13px/1.25 "Comic Sans MS", "Comic Neue", "Chalkboard SE", cursive; color: #1a1a1a;
+  background: #fffdf6; border: 2px solid #1a1a1a; border-radius: 14px;
+  box-shadow: 0 2px 4px rgba(0,0,0,.35); transform-origin: 100% 50%; white-space: normal; pointer-events: none;
+}
+.st-bubble::before, .st-bubble::after {
+  content: ""; position: absolute; top: 50%; border-style: solid; transform: translateY(-50%);
+}
+.st-bubble::before { right: -13px; border-width: 7px 0 7px 13px; border-color: transparent transparent transparent #1a1a1a; }
+.st-bubble::after { right: -9px; border-width: 5px 0 5px 10px; border-color: transparent transparent transparent #fffdf6; }
+.st-smokering { border-radius: 50%; background: radial-gradient(closest-side, rgba(34,28,38,.9), rgba(52,44,58,.7) 55%, rgba(70,62,76,.3) 80%, transparent); filter: blur(1px); }
+.st-splash { box-sizing: border-box; border: 1.5px solid rgba(255,255,255,.9); border-radius: 50%; }
+.st-drop { border-radius: 50%; background: #eef6f9; box-shadow: 0 0 0 .6px rgba(90,130,160,.6); }
+[data-theme="spring"] .sp-tulip svg { display: block; width: 30px; height: 76px; transform-origin: 50% 100%; }
+/* Under the flood the tulips stop answering the music -- each settles, over
+   a second, to a fixed height of its own -- and sway, slowly and well over,
+   from the foot of the stem, each out of step with its neighbours.
+
+   Nothing may jump, going in or coming out. The swing (--sway-s, -1 to 1)
+   runs the whole time the water is up and for a while after (.sp-ebb); how
+   far it carries (--sway-amp) rises from nothing as the water comes and
+   falls back to nothing before the swing is stopped. On the way out the
+   tulips ease back to the music the same way they eased off it. */
+@property --sway-amp { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --sway-s { syntax: '<number>'; inherits: false; initial-value: 0; }
+[data-theme="spring"] .sp-bed { --sway-amp: 0; transition: --sway-amp 1.6s ease-in-out; }
+[data-theme="spring"] .tuner.sp-flooded .sp-bed { --sway-amp: 1; }
+[data-theme="spring"] .sp-tulip svg { rotate: calc(var(--sway-s) * var(--sway-amp) * 15deg); }
+[data-theme="spring"] .tuner.sp-flooded .sp-tulip {
+  transform: translateY(calc((1 - .75 * var(--w, 1)) * 58%));
+  transition: transform 1.2s ease-in-out, translate .4s ease-out;
+}
+[data-theme="spring"] .tuner.sp-ebb .sp-tulip { transition: transform 1.2s ease-in-out, translate .4s ease-out; }
+[data-theme="spring"] .tuner:is(.sp-flooded, .sp-ebb) .sp-tulip svg { animation: sp-sway 3.2s ease-in-out infinite alternate; }
+[data-theme="spring"] .tuner:is(.sp-flooded, .sp-ebb) .sp-tulip:nth-child(odd) svg { animation-delay: -1.6s; }
+[data-theme="spring"] .tuner:is(.sp-flooded, .sp-ebb) .sp-tulip:nth-child(3n) svg { animation-delay: -.9s; animation-duration: 3.8s; }
+@keyframes sp-sway { from { --sway-s: -1; } to { --sway-s: 1; } }
+/* The beat on the water: each beat throws a ring of its own (seasonal.js,
+   on the rise of --bass), which runs out to the edge of the puddle and
+   fades there -- one way, never drawn back. */
+.st-beatring {
+  position: absolute; right: 33px; bottom: 11px; width: 200px; height: 20px; z-index: 1; pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(55,95,125,.32), rgba(60,100,130,.14) 52%, rgba(45,85,115,.5) 66%,
+    rgba(255,255,255,.85) 75%, rgba(110,155,185,.3) 82%, rgba(255,255,255,.4) 88%, transparent 95%);
+}
+/* Rings on the puddle, three on one cycle -- the Model One's speaker, laid
+   flat and rained on: each runs all the way out to the rim, one way. The
+   beat has rings of its own (above); these are the rain's, faint. */
+[data-theme="spring"] .meter-face,
+[data-theme="spring"] .meter-bar,
+[data-theme="spring"] .meter-scale {
+  display: block; position: absolute; right: 33px; bottom: 11px; width: 200px; height: 20px; z-index: 1;
+  margin: 0; padding: 0; border-radius: 50%; opacity: 0;
+  background: radial-gradient(closest-side, transparent 56%, rgba(50,90,120,.38) 68%, rgba(255,255,255,.8) 78%, rgba(100,145,175,.3) 86%, rgba(255,255,255,.3) 91%, transparent 97%);
+  animation: sp-ripple 1.6s linear infinite;
+}
+[data-theme="spring"] .meter-face > *,
+[data-theme="spring"] .meter-scale > * { display: none; }
+[data-theme="spring"] .meter-bar { animation-delay: -.53s; }
+[data-theme="spring"] .meter-scale { animation-delay: -1.06s; }
+[data-theme="spring"] .tuner.is-quiet .meter-face,
+[data-theme="spring"] .tuner.is-quiet .meter-bar,
+[data-theme="spring"] .tuner.is-quiet .meter-scale { animation: none; opacity: 0; }
+@keyframes sp-ripple {
+  0%   { transform: scale(.08); opacity: 0; }
+  12%  { opacity: .4; }
+  70%  { opacity: .2; }
+  100% { transform: scale(1); opacity: 0; }
+}
+[data-theme="spring"] .meter-blind {
+  position: absolute; right: 60px; bottom: 44px; margin: 0; z-index: 4;
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--mute);
+}
+
+[data-theme="spring"] .presets { gap: 10px; }
+[data-theme="spring"] .preset {
+  grid-template-columns: 1fr auto; grid-template-areas: "name n" "band n"; align-items: center;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  transition: background .15s, border-color .15s, box-shadow .15s;
+}
+[data-theme="spring"] .preset:hover { border-color: #b9c2ad; }
+[data-theme="spring"] .preset.is-active { border-color: var(--leaf); box-shadow: inset 0 0 0 1px var(--leaf), 0 6px 16px -10px rgba(79,154,90,.6); }
+[data-theme="spring"] .preset-name { grid-area: name; font-size: 16px; font-weight: 600; }
+[data-theme="spring"] .preset-band { grid-area: band; margin-top: 3px; }
+/* A bud, green until chosen, then in flower. */
+[data-theme="spring"] .preset-n { grid-area: n; width: 11px; height: 11px; border-radius: 50% 0 50% 50%; transform: rotate(-45deg); background: #cdd8c2; font-size: 0; transition: background .15s; }
+[data-theme="spring"] .preset.is-active .preset-n { background: var(--tulip); }
+[data-theme="spring"] .preset-add { background: transparent; border: 1px dashed var(--rule); opacity: .85; }
+[data-theme="spring"] .preset-add .preset-n { background: none; }
+
+[data-theme="spring"] .controls { padding-top: 20px; border-top: 1px solid var(--rule); }
+[data-theme="spring"] .play-btn {
+  width: 56px; height: 56px; border-radius: 50%; color: #fff; display: grid; place-items: center;
+  background: var(--tulip); box-shadow: 0 8px 18px -8px rgba(224,82,122,.8);
+}
+[data-theme="spring"] .play-btn:hover { background: #cf3f68; }
+[data-theme="spring"] .fader output { font: italic 500 17px "Fraunces", Georgia, serif; color: var(--ink); }
+[data-theme="spring"] .fader input { -webkit-appearance: none; appearance: none; height: 3px; border-radius: 2px; background: #d3dccb; }
+[data-theme="spring"] .fader input::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; cursor: grab;
+  background: #fff; border: 2px solid var(--leaf); box-shadow: 0 1px 3px rgba(0,0,0,.15);
+}
+[data-theme="spring"] .fader input::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 2px solid var(--leaf); }
+/* The volume's knob is a daisy, rolling along the slider as it moves: turned
+   by the value (--v, 0-100, written by seasonal.js), six degrees a step. */
+[data-theme="spring"] .fader.volume input::-webkit-slider-thumb {
+  width: 26px; height: 26px; border: 0; border-radius: 50%; box-shadow: none;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g fill='%23fff' stroke='%23d8dccf' stroke-width='.5'><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(0 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(30 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(60 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(90 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(120 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(150 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(180 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(210 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(240 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(270 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(300 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(330 12 12)'/></g><circle cx='12' cy='12' r='3.8' fill='%23f2c14e' stroke='%23d19b25' stroke-width='.6'/><g fill='%23c98e1c'><circle cx='11' cy='11' r='.6'/><circle cx='13.2' cy='11.6' r='.6'/><circle cx='11.8' cy='13.4' r='.6'/></g></svg>") no-repeat center / 100% 100%;
+  filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.22));
+  transform: rotate(calc(var(--v, 0) * 6deg));
+}
+[data-theme="spring"] .fader.volume input::-moz-range-thumb {
+  width: 26px; height: 26px; border: 0; border-radius: 50%;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g fill='%23fff' stroke='%23d8dccf' stroke-width='.5'><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(0 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(30 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(60 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(90 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(120 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(150 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(180 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(210 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(240 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(270 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(300 12 12)'/><ellipse cx='12' cy='5.4' rx='2.3' ry='4.9' transform='rotate(330 12 12)'/></g><circle cx='12' cy='12' r='3.8' fill='%23f2c14e' stroke='%23d19b25' stroke-width='.6'/><g fill='%23c98e1c'><circle cx='11' cy='11' r='.6'/><circle cx='13.2' cy='11.6' r='.6'/><circle cx='11.8' cy='13.4' r='.6'/></g></svg>") no-repeat center / 100% 100%;
+  transform: rotate(calc(var(--v, 0) * 6deg));
+}
+
+/* ================================================================== */
+/* The picker: badges, the end of the dot trail, and the hidden cards   */
+/* ================================================================== */
+
+/* Out of their month the seasonal cards are not offered -- unless Shift+S
+   is held on the Theme tab, or the card is the one chosen, which must stay
+   in view or the choice would look as if it had vanished. */
+.theme-card.is-offseason { display: none; }
+/* A card is a button, not text: Shift is down while one is picked here. */
+.theme-card { -webkit-user-select: none; user-select: none; }
+.themes.show-seasons .theme-card.is-offseason,
+.theme-card.is-offseason:has(input:checked) { display: grid; }
+
+.theme-season {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 2px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--alert-ink, #b85c12);
+}
+/* The last mark on the trail: the gear, then the Theme tab, then this. */
+.season-dot {
+  flex: none; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--alert, #ff8f2e);
+}
+
+/* ---- thumbnails, mirroring the four tuners ------------------------ */
+
+.theme-thumb[data-theme="halloween"] {
+  --tint: #ff7a1a;
+  background: repeating-linear-gradient(88deg, #1d1422 0 4px, #150e19 4px 8px);
+  box-shadow: 0 0 0 1px var(--ui-line), inset 0 0 0 2px rgba(255,122,26,.55);
+}
+.theme-thumb[data-theme="halloween"] .tt { grid-template-rows: 1fr auto; }
+.theme-thumb[data-theme="halloween"] .tt-cap {
+  position: absolute; left: 12px; top: 12px; z-index: 1;
+  color: #1c0802; font-family: "Creepster", cursive; font-size: 10px; letter-spacing: .08em;
+}
+.theme-thumb[data-theme="halloween"] .tt-glass {
+  background:
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 20'><path d='M11 4Q10 1 13 0L14 1Q12 2 13 4Z' fill='%23455218'/><ellipse cx='7' cy='12' rx='6.5' ry='7.5' fill='%23e3600e'/><ellipse cx='17' cy='12' rx='6.5' ry='7.5' fill='%23e3600e'/><ellipse cx='12' cy='12' rx='5' ry='8' fill='%23f07a1c'/><path d='M6 9L9 7L9.5 11ZM18 9L15 7L14.5 11ZM6 14Q12 19 18 14L15 15L12 14L9 15Z' fill='%23fff1a8'/></svg>") right 8px top 5px / 25px 21px no-repeat,
+    radial-gradient(ellipse 120% 95% at 50% 120%, #ffd27a, #ff9a2e 52%, #d9560b 85%);
+}
+.theme-thumb[data-theme="halloween"] .tt-glass::before {
+  content: ""; position: absolute; left: 5px; right: 40px; bottom: 7px; height: 6px;
+  border-bottom: 1px solid #1c0802;
+  background: repeating-linear-gradient(90deg, #1c0802 0 1px, transparent 1px 4px) bottom / 100% 4px no-repeat;
+}
+.theme-thumb[data-theme="halloween"] .tt-glass::after {
+  content: ""; position: absolute; left: 40%; bottom: 5px; width: 1.5px; height: 13px; background: #9dff3a; box-shadow: 0 0 3px #9dff3a;
+}
+.theme-thumb[data-theme="halloween"] .tt-keys i { background: linear-gradient(#8f8c96, #5f5c66); border-radius: 5px 5px 1px 1px; }
+.theme-thumb[data-theme="halloween"] .tt-keys i:first-child { background: linear-gradient(#c9dcb4, #86a070); }
+
+.theme-thumb[data-theme="harvest"] {
+  --tint: #e0701f;
+  background: repeating-linear-gradient(90deg, #86281b 0 14px, #4a130c 14px 15px);
+  box-shadow: 0 0 0 1px var(--ui-line), inset 0 0 0 2px #efe4cf;
+}
+.theme-thumb[data-theme="harvest"] .tt { grid-template-rows: 1fr auto; }
+.theme-thumb[data-theme="harvest"] .tt-cap {
+  position: absolute; left: 12px; top: 12px; z-index: 1;
+  color: #7c2418; font-family: "Rye", serif; font-size: 8px;
+}
+.theme-thumb[data-theme="harvest"] .tt-glass {
+  background:
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 20'><defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23241a45'/><stop offset='.6' stop-color='%23c8634a'/><stop offset='1' stop-color='%23f5ae58'/></linearGradient></defs><path d='M1 20V10A10 10 0 0 1 21 10V20Z' fill='url(%23s)' stroke='%23efe4cf' stroke-width='1.4'/><circle cx='11' cy='11' r='4.5' fill='%23ffe3a0'/><path d='M1.7 16Q8 13 14 15T20.3 14V19.3H1.7Z' fill='%231d130c'/></svg>") right 8px top 4px / 22px 20px no-repeat,
+    radial-gradient(ellipse 120% 95% at 40% 110%, #fff4dc, #f2d9a8 62%, #d8b173);
+}
+.theme-thumb[data-theme="harvest"] .tt-glass::before {
+  content: ""; position: absolute; left: 5px; right: 38px; bottom: 7px; height: 6px;
+  border-bottom: 1px solid #5a2e12;
+  background: repeating-linear-gradient(90deg, #5a2e12 0 1px, transparent 1px 4px) bottom / 100% 4px no-repeat;
+}
+.theme-thumb[data-theme="harvest"] .tt-glass::after {
+  content: ""; position: absolute; left: 34%; bottom: 5px; width: 1.5px; height: 13px; background: #a3241a;
+}
+.theme-thumb[data-theme="harvest"] .tt-keys i { background: linear-gradient(#d9b98a, #c09a64); border-radius: 1px; }
+.theme-thumb[data-theme="harvest"] .tt-keys i:first-child { background: linear-gradient(#ffc676, #f08f33); }
+
+.theme-thumb[data-theme="christmas"] {
+  --tint: #d1122e;
+  background: linear-gradient(160deg, #a51a2e, #6a0c1b);
+  box-shadow: 0 0 0 1px var(--ui-line), inset 0 0 0 2px #e3bd5a;
+}
+.theme-thumb[data-theme="christmas"] .tt { grid-template-rows: 1fr auto; }
+.theme-thumb[data-theme="christmas"] .tt-cap {
+  position: absolute; left: 12px; top: 20px; z-index: 1;
+  color: #fff8ec; font-family: "Mountains of Christmas", serif; font-weight: 700; font-size: 10px;
+}
+.theme-thumb[data-theme="christmas"] .tt-glass {
+  background:
+    radial-gradient(circle at 20% 70%, #fff 0 .8px, transparent 1.2px),
+    radial-gradient(circle at 62% 40%, #fff 0 .8px, transparent 1.2px),
+    radial-gradient(circle at 84% 78%, #fff 0 .8px, transparent 1.2px),
+    radial-gradient(circle at 44% 88%, #fff 0 .7px, transparent 1.1px),
+    linear-gradient(#0b1a3a, #27477a);
+}
+/* The string of lights, most of the way along, as a meter would show it. */
+.theme-thumb[data-theme="christmas"] .tt-glass::before {
+  content: ""; position: absolute; left: 4px; right: 20%; top: 3px; height: 6px;
+  background:
+    radial-gradient(circle 2px at 4px 3px, #ff4040 0 1.6px, transparent 2px),
+    radial-gradient(circle 2px at 12px 3px, #ffc233 0 1.6px, transparent 2px),
+    radial-gradient(circle 2px at 20px 3px, #3fe07a 0 1.6px, transparent 2px),
+    radial-gradient(circle 2px at 28px 3px, #48b4ff 0 1.6px, transparent 2px),
+    radial-gradient(circle 2px at 36px 3px, #ff5cd6 0 1.6px, transparent 2px);
+  background-size: 40px 6px; background-repeat: repeat-x;
+}
+.theme-thumb[data-theme="christmas"] .tt-glass::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 7px;
+  background: radial-gradient(ellipse 70% 100% at 30% 100%, #f4f8ff 60%, transparent 62%), radial-gradient(ellipse 60% 90% at 90% 100%, #c9d8ec 60%, transparent 62%);
+}
+.theme-thumb[data-theme="christmas"] .tt-keys i { background: linear-gradient(#fbf3e0, #efe0bf); clip-path: polygon(4px 0, 100% 0, 100% 100%, 4px 100%, 0 50%); border-radius: 0 2px 2px 0; }
+.theme-thumb[data-theme="christmas"] .tt-keys i:first-child { background: linear-gradient(90deg, transparent 70%, #e3bd5a 70% 80%, transparent 80%), linear-gradient(#e0263f, #9d1328); }
+
+.theme-thumb[data-theme="spring"] { --tint: #4f9a5a; background: #f6f5ef; box-shadow: 0 0 0 1px #d9dccf; }
+.theme-thumb[data-theme="spring"] .tt-cap { color: #6f7a70; font-weight: 600; }
+.theme-thumb[data-theme="spring"] .tt-call { font: italic 600 10px "Fraunces", Georgia, serif; letter-spacing: 0; color: #22302a; }
+.theme-thumb[data-theme="spring"] .tt-glass {
+  background:
+    repeating-linear-gradient(100deg, transparent 0 9px, rgba(90,130,165,.35) 9px 10px, transparent 10px 17px),
+    linear-gradient(#cfe3ee, #eef2e6);
+}
+/* The bed along the sill, and the puddle beside it. */
+.theme-thumb[data-theme="spring"] .tt-glass::before {
+  content: ""; position: absolute; left: 0; right: 30%; bottom: 0; height: 13px;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 13'><g stroke='%234f9a5a' stroke-width='1'><path d='M4 6V13M11 8V13M18 5V13M25 7V13'/></g><circle cx='4' cy='5' r='2.2' fill='%23e0527a'/><circle cx='11' cy='7' r='2.2' fill='%23f2c14e'/><circle cx='18' cy='4' r='2.2' fill='%23a98bd6'/><circle cx='25' cy='6' r='2.2' fill='%23f07a5a'/><rect y='11' width='30' height='2' fill='%235aa35e'/></svg>") repeat-x left bottom / 30px 13px;
+}
+.theme-thumb[data-theme="spring"] .tt-glass::after {
+  content: ""; position: absolute; right: 6%; bottom: 1px; width: 22%; height: 5px; border-radius: 50%;
+  background: #a9cbdc; box-shadow: inset 0 0 0 1px rgba(255,255,255,.8);
+}
+.theme-thumb[data-theme="spring"] .tt-keys i { background: #fff; box-shadow: inset 0 0 0 1px #d9dccf; border-radius: 3px; }
+.theme-thumb[data-theme="spring"] .tt-keys i:first-child { box-shadow: inset 0 0 0 1px #4f9a5a; }
+
+/* ================================================================== */
+/* Scenes: the stage seasonal.js lays over a tuner                      */
+/* ================================================================== */
+
+/* Over everything on the set and taking no clicks. Positioned against the
+   tuner, which clips it to the cabinet. */
+.season-stage { position: absolute; inset: 0; z-index: 8; pointer-events: none; overflow: hidden; }
+.season-stage > * { position: absolute; left: 0; top: 0; will-change: transform; }
+.st-face, .st-bob { width: 100%; height: 100%; }
+/* The pilot's three faces. One shows at a time; he turns by trading one for
+   the next quickly, with a small move of the head to sell it. */
+.st-heli .p-fwd, .st-heli .p-back, .st-heli .p-shock, .st-heli .p-talk { transition: opacity .16s ease; }
+.st-heli .p-back, .st-heli .p-shock, .st-heli .p-talk { opacity: 0; }
+/* Talking to us: turned out of the window, lips going only while a balloon is up. */
+.st-heli.pilot-talk .p-fwd { opacity: 0; }
+.st-heli.pilot-talk .p-talk { opacity: 1; }
+.st-heli.pilot-talk .p-head { transform: translateX(-1px); }
+.st-heli .p-lips { opacity: 0; }
+.st-heli.speaking .p-lips { opacity: 1; }
+.st-heli.speaking .p-shut { opacity: 0; }
+.st-heli.pilot-back .p-fwd { opacity: 0; }
+.st-heli.pilot-back .p-back { opacity: 1; }
+.st-heli.pilot-shock .p-fwd { opacity: 0; }
+.st-heli.pilot-shock .p-shock { opacity: 1; }
+.st-heli .p-head { transform-box: view-box; transition: transform .2s ease; }
+.st-heli.pilot-back .p-head { transform: translateX(1.5px) rotate(4deg); transform-origin: 55px 60px; }
+.st-heli.pilot-shock .p-head { transform: translateY(-2.5px); }
+.st-face svg, .st-bob svg { display: block; }
+/* Squashes, stretches and turns about its feet. */
+.st-turkey { filter: drop-shadow(0 3px 2px rgba(0,0,0,.35)); transform-origin: 50% 100%; }
+.st-heli { filter: drop-shadow(0 8px 6px rgba(0,0,0,.3)); }
+/* SVG parts moved by the Web Animations API move in their own units. */
+.st-heli .door { transform-box: view-box; }
+.st-dust { width: 24px; height: 24px; border-radius: 50%; background: radial-gradient(circle, rgba(214,180,130,.9), rgba(214,180,130,0) 70%); }
+/* Noel's inner stage: the window of the set, clipped to its rounded glass,
+   so things arrive from its edges rather than across the cabinet. */
+.season-window { position: absolute; overflow: hidden; border-radius: 12px; pointer-events: none; }
+.season-window > * { position: absolute; left: 0; top: 0; will-change: transform; }
+.st-snowman, .st-present, .st-coon, .st-elf { filter: drop-shadow(0 2px 2px rgba(0,0,20,.35)); }
+.st-sleigh { filter: drop-shadow(0 6px 5px rgba(0,0,20,.35)); }
+/* A present in Santa's hand rides the sleigh's bobbing layer until he lets go. */
+.st-sleigh .st-bob { position: relative; }
+.st-sleigh .st-inhand { position: absolute; left: 0; top: 0; }
+.st-bird { filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
+/* The bird's drawings stack, so a turn or a take-off can cross-fade. */
+.st-bird .st-layer { position: absolute; inset: 0; }
+.st-bird .st-layer svg { display: block; }
+.st-snowpuff { width: 8px; height: 8px; border-radius: 50%; background: radial-gradient(circle, #fff, rgba(255,255,255,0) 70%); }
+.st-smoke { border-radius: 50%; background: radial-gradient(circle, rgba(200,200,210,.8), rgba(200,200,210,0) 70%); }

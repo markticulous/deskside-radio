@@ -199,7 +199,7 @@ test('volumeToGain leaves the top of the travel plenty to do', () => {
 
 test('volumeToGain spans a usable range and rises monotonically', () => {
   const db = (v) => 20 * Math.log10(S.volumeToGain(v));
-  near(db(100) - db(1), 39.6, 0.001);
+  near(db(100) - db(1), 66, 0.001);
   let prev = -1;
   for (let v = 0; v <= 100; v += 5) {
     const g = S.volumeToGain(v);
@@ -271,6 +271,18 @@ test('parseBand still reads every band shape it needs to', () => {
   assert.deepEqual(S.parseBand('88.1 fm'), { kind: 'fm', value: 88.1 });
 });
 
+test('the bottom of the fader tapers, and 1 is properly quiet', () => {
+  /* At 0.4 dB a step all the way down, 1 was -39.6 dB, and a loud station
+     there with Windows at 50% was nowhere near quiet (measured in the
+     running radio). The last ten steps fall away steeply, as real volume
+     controls do, and join the even part without a step. */
+  const db = (v) => 20 * Math.log10(S.volumeToGain(v));
+  near(db(1), -66, 0.001);
+  near(db(10), -36, 0.001);
+  for (let v = 1; v < 10; v++) near(db(v + 1) - db(v), 30 / 9, 0.001);
+  near(db(11) - db(10), 0.4, 0.001);
+});
+
 test('the bottom third of the fader is audible', () => {
   /* The reason the range is 40 dB. At 60, slider 33 was -40 dB, and on top of
      programme that already sits near -18 dBFS that is too quiet to hear on
@@ -287,6 +299,9 @@ test('a volume saved on the 60 dB fader keeps its loudness', () => {
       v + ' was ' + oldDb(v) + ' dB and came back ' + newDb(S.migrateVolume60(v)).toFixed(1));
   });
   assert.equal(S.migrateVolume60(0), 0, 'muted stays muted');
-  /* Quieter than the new range reaches: lands on 1, not 0. */
-  assert.equal(S.migrateVolume60(20), 1, 'a quiet setting was muted by the migration');
+  /* The old -48 dB is inside the taper now: it lands where that loudness is. */
+  assert.equal(S.migrateVolume60(20), 6, 'a quiet setting did not keep its loudness');
+  /* The quietest the old fader went (-59.7 dB) is inside the new range, and is
+     never carried across as muted. */
+  assert.equal(S.migrateVolume60(0.5), 3, 'the quietest old setting did not keep its loudness');
 });

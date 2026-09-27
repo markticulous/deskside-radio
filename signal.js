@@ -135,16 +135,32 @@
      is nothing at all. The whole of it was travel nobody could hear, and
      the sound then seemed to ramp in around the middle: not the curve
      bending, but audibility arriving. Measured as a table before it was
-     changed, and reported as exactly that. */
-  var VOL_RANGE_DB = 40;   // silence to unity across the travel
+     changed, and reported as exactly that.
+
+     And then the bottom ten steps get a taper of their own. At 0.4 dB all
+     the way down, slider 1 was only -39.6 dB: measured in the running radio
+     (gain 0.01047, applied, nothing going round it), a loud station at 1
+     with Windows at 50% was nowhere near quiet. Real volume controls fall
+     away steeply at the bottom -- Windows' own reaches about -64 dB at 1% --
+     so from 10 down the fader drops 3.3 dB a step, to -66 dB at 1. Above 10
+     nothing changed: every setting from 10 up sounds as it did. */
+  var VOL_RANGE_DB = 40;   // what 0.4 dB a step would span, 0 to 100
+  var TAPER_AT = 10;       // below this, the steep part
+  var FLOOR_DB = -66;      // slider 1
+  var TAPER_DB = TAPER_AT / 100 * VOL_RANGE_DB - VOL_RANGE_DB;   // -36, where the two meet
 
   /* The width it used to be, kept for carrying saved settings across. */
   var OLD_RANGE_DB = 60;
 
+  function volumeToDb(v) {
+    if (v >= TAPER_AT) return v / 100 * VOL_RANGE_DB - VOL_RANGE_DB;
+    return FLOOR_DB + (Math.max(1, v) - 1) / (TAPER_AT - 1) * (TAPER_DB - FLOOR_DB);
+  }
+
   function volumeToGain(percent) {
     var v = clamp(Number(percent) || 0, 0, 100);
     if (v <= 0) return 0;
-    return Math.pow(10, (v / 100 * VOL_RANGE_DB - VOL_RANGE_DB) / 20);
+    return Math.pow(10, volumeToDb(v) / 20);
   }
 
   // Loudest excursion in a frame of samples, for the scrolling waveform.
@@ -182,7 +198,9 @@
      the range reaches lands on 1 and not 0: quiet is not muted, and a
      migration must never be what silences somebody's radio. */
   function toSlider(db) {
-    return Math.round(clamp(100 + db / (VOL_RANGE_DB / 100), 1, 100));
+    var v = db >= TAPER_DB ? 100 + db / (VOL_RANGE_DB / 100)
+      : 1 + (db - FLOOR_DB) / (TAPER_DB - FLOOR_DB) * (TAPER_AT - 1);
+    return Math.round(clamp(v, 1, 100));
   }
 
   // Damped movement: quick to rise, slow to fall, like a real meter.
