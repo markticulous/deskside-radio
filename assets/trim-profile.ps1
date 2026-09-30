@@ -75,7 +75,7 @@ function Drop([string]$target) {
   if (-not (Test-Path -LiteralPath $target)) { $script:freed += [double]$size }
 }
 
-foreach ($name in @('profile-chrome', 'profile-edge')) {
+foreach ($name in @('profile-chrome', 'profile-edge', 'profile-brave')) {
   $dir = Join-Path $root $name
   if (-not (Test-Path -LiteralPath $dir)) { continue }
   if (Running $name) { continue }

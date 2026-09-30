@@ -148,6 +148,7 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
  'Win - Automatic Updates.cmd',
  'Win - Create Desktop Shortcut (Edge).cmd',
  'Win - Create Desktop Shortcut (Firefox).cmd',
+ 'Win - Create Desktop Shortcut (Brave).cmd',
  /* The installer ships inside the thing it installs, on purpose: once it
     has run once, a copy of it is always in the app folder and updating is
     double-clicking it. That is also why it needs no stored install path --

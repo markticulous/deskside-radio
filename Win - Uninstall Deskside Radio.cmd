@@ -44,12 +44,12 @@ rem to :worker and would otherwise arrive with no PS to call and no idea
 rem where the profile lives.
 set "DEFAULT=%LOCALAPPDATA%\DesksideRadio\app"
 set "PROFROOT=%LOCALAPPDATA%\DesksideRadio"
-rem There are up to four of these now -- one per browser, plus the name
+rem There are up to five of these now -- one per browser, plus the name
 rem the Chrome one had before it was told to say which browser it was for.
 rem Naming them rather than wildcarding: this is the line that deletes
 rem somebody's stations, and it should be possible to read it and know
 rem exactly what it can reach.
-set "PROFILES=profile profile-chrome profile-edge profile-firefox"
+set "PROFILES=profile profile-chrome profile-edge profile-firefox profile-brave"
 
 rem Full paths, for the same reason the other scripts use them: a
 rem double-clicked .cmd runs with its own folder as the current directory

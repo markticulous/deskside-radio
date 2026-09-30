@@ -200,26 +200,38 @@ rem Chrome's profile opened either a different set of stations or, on a
 rem machine without Chrome, Edge with none at all. The updater repoints this
 rem entry through this script, so every update used to make it again.
 rem
-rem The Edge shortcut alone means Edge and its profile. The Chrome one, both,
-rem only Firefox or none is the old behaviour, unchanged. The Desktop is asked
-rem for rather than assumed, because OneDrive and folder redirection move it.
+rem A bracketed shortcut alone means that browser and its profile. The
+rem Chrome one, both, only Firefox or none is the old behaviour, unchanged.
+rem The Desktop is asked for rather than assumed, because OneDrive and
+rem folder redirection move it.
+rem
+rem Edge was the only one of these until Brave arrived, and the shape did not
+rem have to change to take a second: one browser to find, one profile, one
+rem PROFARG. That matters -- the entry is written with a single set of
+rem arguments and a test counts them, so this had to stay a substitution
+rem rather than become another branch further down.
 rem
 rem After the migration above, which moves an old unnamed profile into PROFILE
 rem when PROFILE is missing: pointed at profile-edge first, it would carry a
 rem Chrome user's stations into Edge's folder.
 set "DESK="
-set "EDGEONLY="
+set "ONLYB="
 set "PROFARG="
 for /f "usebackq delims=" %%D in (`%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -Command "[Environment]::GetFolderPath('Desktop')"`) do set "DESK=%%D"
-if defined DESK if not exist "%DESK%\Deskside Radio.lnk" if exist "%DESK%\Deskside Radio (Edge).lnk" set "EDGEONLY=1"
+if defined DESK if not exist "%DESK%\Deskside Radio.lnk" if exist "%DESK%\Deskside Radio (Edge).lnk" set "ONLYB=edge"
+if defined DESK if not exist "%DESK%\Deskside Radio.lnk" if exist "%DESK%\Deskside Radio (Brave).lnk" set "ONLYB=brave"
 set "EB="
-if defined EDGEONLY if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" set "EB=%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"
-if defined EDGEONLY if not defined EB if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" set "EB=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
+if "%ONLYB%"=="edge" if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" set "EB=%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"
+if "%ONLYB%"=="edge" if not defined EB if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" set "EB=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
+if "%ONLYB%"=="brave" if exist "%ProgramFiles%\BraveSoftware\Brave-Browser\Application\brave.exe" set "EB=%ProgramFiles%\BraveSoftware\Brave-Browser\Application\brave.exe"
+if "%ONLYB%"=="brave" if not defined EB if exist "%ProgramFiles(x86)%\BraveSoftware\Brave-Browser\Application\brave.exe" set "EB=%ProgramFiles(x86)%\BraveSoftware\Brave-Browser\Application\brave.exe"
+if "%ONLYB%"=="brave" if not defined EB if exist "%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe" set "EB=%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe"
 if defined EB set "BROWSER=%EB%"
-if defined EB set "BROWSERNAME=Microsoft Edge"
-if defined EB set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile-edge"
+if defined EB if "%ONLYB%"=="edge" set "BROWSERNAME=Microsoft Edge"
+if defined EB if "%ONLYB%"=="brave" set "BROWSERNAME=Brave"
+if defined EB set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile-%ONLYB%"
 rem With a leading space, so it can be added to the opener's arguments as is.
-if defined EB set "PROFARG= profile-edge"
+if defined EB set "PROFARG= profile-%ONLYB%"
 
 rem The flags that keep the profile from filling with things a browser
 rem showing one local file will never consult. Word for word the line in
