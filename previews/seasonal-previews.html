@@ -1,0 +1,332 @@
+<meta charset="utf-8">
+<title>Deskside Radio — seasonal themes</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=Cinzel:wght@600;700&family=Cormorant+Garamond:ital,wght@1,500&family=IBM+Plex+Mono:wght@400;600;700&family=Oswald:wght@400;500;600&family=Poiret+One&family=Press+Start+2P&family=Saira+Condensed:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;500;600;700&family=Syne:wght@700;800&family=Figtree:wght@400;500;600&family=Creepster&family=Special+Elite&family=Rye&family=Stardos+Stencil:wght@400;700&family=Fraunces:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Mountains+of+Christmas:wght@700&family=Josefin+Sans:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../app.css">
+<link rel="stylesheet" href="../seasonal.css">
+<style>
+  :root {
+    --pg-bg: #efeee9; --pg-ink: #1a1a18; --pg-mute: #6b6a64; --pg-rule: #d8d6cf; --pg-accent: #b5461c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --pg-bg: #151513; --pg-ink: #ecebe6; --pg-mute: #9a9891; --pg-rule: #2c2c29; --pg-accent: #e8783f; }
+  }
+  :root[data-theme="dark"] { --pg-bg: #151513; --pg-ink: #ecebe6; --pg-mute: #9a9891; --pg-rule: #2c2c29; --pg-accent: #e8783f; }
+
+  body {
+    background: var(--pg-bg); color: var(--pg-ink);
+    font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    padding-inline: clamp(16px, 4vw, 48px); padding-block: 40px 80px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 64px; }
+  .intro h1 { font-family: "Syne", sans-serif; font-weight: 800; font-size: clamp(32px, 5vw, 54px); letter-spacing: -.03em; line-height: 1; margin: 0 0 14px; text-wrap: balance; }
+  .intro p { margin: 0; max-width: 64ch; color: var(--pg-mute); font-size: 16px; }
+  .intro p + p { margin-top: 8px; }
+  .intro-aside {
+    margin-top: 16px; padding-left: 14px;
+    border-left: 3px solid var(--pg-accent);
+  }
+  .intro-aside code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .92em; }
+  .intro strong { color: var(--pg-ink); font-weight: 600; }
+  .intro a { color: var(--pg-accent); }
+
+  .face { display: grid; gap: 18px; }
+  .face-head { display: grid; grid-template-columns: auto 1fr; column-gap: 18px; align-items: baseline; border-top: 1px solid var(--pg-rule); padding-top: 16px; }
+  .face-letter { font-family: "Syne", sans-serif; font-weight: 800; font-size: 30px; min-width: 2.6em; line-height: 1; color: var(--pg-accent); }
+  .face-title { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+  .face-note { margin: 0; grid-column: 2; font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--pg-accent); }
+  .face-why { margin: 4px 0 0; grid-column: 2; color: var(--pg-mute); font-size: 14px; max-width: 72ch; }
+
+  .scene-btns button { font: 600 13px/1 "Archivo", sans-serif; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--pg-rule); background: var(--pg-bg); color: var(--pg-ink); cursor: pointer; }
+  .scene-btns button:hover { border-color: var(--pg-accent); color: var(--pg-accent); }
+  .outro { border-top: 1px solid var(--pg-rule); padding-top: 20px; color: var(--pg-mute); font-size: 15px; max-width: 64ch; }
+  .outro strong { color: var(--pg-ink); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <h1>Four faces for the time of year</h1>
+    <p>Seasonal themes, drawn by the app's own stylesheet and instrument code, exactly as the other eight are. Each one is offered in Settings, Theme only during its month, with a badge saying when it goes. If one is still showing when its month ends, the radio quietly goes back to whatever theme it had before.</p>
+    <p>Each is built on a theme that already ships: Halloween and Harvest on the Analogue dial, Christmas on the dial's glass with the meter across the top, Spring on Rams. The meters run on a simulated signal here. <strong>Press stop on any of them</strong> to see it settle: the bats, leaves, snow and rain only move while the set is playing.</p>
+    <p class="intro-aside">The fourth letter column reads the month. Halloween is the one to judge first, since October starts next week.</p>
+  </header>
+
+  <section class="face">
+    <div class="face-head">
+      <span class="face-letter">Oct</span>
+      <h2 class="face-title">Halloween Fun</h2>
+      <p class="face-note">October only</p>
+      <p class="face-why">A 1930s wireless that has been left in the attic too long. The glass is lit by a candle and flickers with it; a spider keeps the corner. <strong>The meter is a jack-o&rsquo;-lantern</strong>: its face burns as bright as the programme is loud and spills a halo onto the glass. Presets are headstones, and the one playing has risen. While it plays, bats cross the cabinet, fog drifts along the floor, lightning cracks when it comes on air and now and then after, and something in the dark either side opens its eyes. The fader handles are candy corn.</p>
+    </div>
+    <div class="slot" data-theme="halloween"></div>
+  </section>
+
+  <section class="face">
+    <div class="face-head">
+      <span class="face-letter">Nov</span>
+      <h2 class="face-title">Autumn Gobble</h2>
+      <p class="face-note">November only</p>
+      <p class="face-why">A barn-red farmhouse set, board and batten with white trim. The panel is lamp-lit feed-store paper in Rye wood type. <strong>The meter is a window onto the field at dusk</strong>, and the moon over it rises and burns brighter as the level climbs. Geese go south across it, maple leaves come down over the whole set, and the presets are stencilled crate labels. Twine track, wooden pegs. Now and then a turkey runs along the bottom, and sometimes thinks better of it; very rarely, something else happens.</p>
+      <p class="face-why scene-btns"><button type="button" onclick="DesksideSeasonal.play('turkey', this)">Run the turkey</button> <button type="button" onclick="DesksideSeasonal.play('wkrp', this)">The WKRP drop</button></p>
+    </div>
+    <div class="slot" data-theme="harvest"></div>
+  </section>
+
+  <section class="face">
+    <div class="face-head">
+      <span class="face-letter">Dec</span>
+      <h2 class="face-title">Noel</h2>
+      <p class="face-note">December only</p>
+      <p class="face-why">A cranberry Bakelite cabinet with gold trim and holly on the corner. The window is a winter night under twinkling stars, one brighter than the rest, with snowflakes coming down and pines on the hills. <strong>The string of lights along the top is the meter</strong>: bulbs come on one whole bulb at a time, left to right, on the same cell grid the console uses. Presets are gift tags, and the chosen one is wrapped. The play button is a bauble, the handles are candy canes. Now and then a snowman builds himself, an elf changes a bulb, or a cardinal stops on the holly; very rarely, something else happens.</p>
+      <p class="face-why scene-btns"><button type="button" onclick="DesksideSeasonal.play('snowman', this)">Snowman</button> <button type="button" onclick="DesksideSeasonal.play('elf', this)">Elf</button> <button type="button" onclick="DesksideSeasonal.play('cardinal', this)">Cardinal</button> <button type="button" onclick="DesksideSeasonal.play('sleigh', this)">The sleigh</button></p>
+    </div>
+    <div class="slot" data-theme="christmas"></div>
+  </section>
+
+  <section class="face">
+    <div class="face-head">
+      <span class="face-letter">Apr</span>
+      <h2 class="face-title">April Showers</h2>
+      <p class="face-note">April only</p>
+      <p class="face-why">Rams&rsquo; restraint with the weather let in. The panel is a wet sky with rain running across it. <strong>The meter lies along the sill</strong>: a bed of tulips that comes up out of the grass as far as the level lifts it, and a puddle whose rain rings reach as far as the level sends them &mdash; the Model One speaker, laid flat. Fraunces italic over Figtree; buds on the presets flower when chosen.</p>
+    </div>
+    <div class="slot" data-theme="spring"></div>
+  </section>
+
+</div>
+
+<template id="tuner-tpl">
+  <main class="tuner is-playing">
+    <header class="tuner-bar">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <span class="brand-name">Deskside Radio</span>
+        <span class="byline" data-byline="plate">
+          <span class="byline-mark">M</span>
+          <span class="byline-by">A</span>
+          <span class="byline-name">Markticulous</span>
+          <span class="byline-suffix">build</span>
+        </span>
+      </div>
+      <time class="clock" data-clock>--:--</time>
+      <button class="sched-chip" data-sched aria-pressed="true">
+        <span class="sched-led"></span>
+        <span class="sched-label">Schedule on</span>
+        <span class="sched-next" data-next></span>
+      </button>
+      <button class="icon-btn settings-btn" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>
+      </button>
+    </header>
+
+    <section class="display">
+      <div class="display-band" data-band></div>
+      <h1 class="display-name" data-name></h1>
+      <p class="display-tag" data-tag></p>
+      <div class="display-status"><span class="status-led live"></span><span class="status-text" data-status></span></div>
+
+      <div class="dial" aria-hidden="true">
+        <div class="dial-reel">
+          <div class="scale" data-scale="am">
+            <span class="scale-badge">AM</span>
+            <div class="scale-ticks"></div>
+            <span class="needle"></span>
+            <div class="scale-labels"></div>
+          </div>
+          <div class="scale" data-scale="fm">
+            <span class="scale-badge">FM</span>
+            <div class="scale-ticks"></div>
+            <span class="needle"></span>
+            <div class="scale-labels"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="meter" aria-hidden="true">
+        <div class="meter-face"></div>
+        <div class="meter-bar"></div>
+        <div class="meter-scale"></div>
+        <canvas class="scope"></canvas>
+        <span class="meter-blind">meter off &middot; stream blocks analysis</span>
+      </div>
+    </section>
+
+    <nav class="presets" data-presets></nav>
+
+    <footer class="controls">
+      <button class="play-btn" data-play aria-pressed="true" aria-label="Play or stop">
+        <svg class="ic-play" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12-7.5z"/></svg>
+        <svg class="ic-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="5.5" y="5.5" width="13" height="13" rx="1"/></svg>
+        <span class="btn-text"></span>
+      </button>
+      <button class="rec-btn" data-rec aria-pressed="false" title="Record">
+        <span class="rec-dot" aria-hidden="true"></span>
+        <span class="rec-word">REC</span>
+      </button>
+      <div class="fader volume">
+        <label>Volume</label>
+        <input type="range" min="0" max="100" value="60" data-vol>
+        <output data-volout>60</output>
+      </div>
+      <div class="fader tone">
+        <label>Bass</label>
+        <input type="range" min="-12" max="12" step="1" value="0" data-tone="bass">
+        <output data-toneout="bass">0</output>
+      </div>
+      <div class="fader tone">
+        <label>Treble</label>
+        <input type="range" min="-12" max="12" step="1" value="0" data-tone="treble">
+        <output data-toneout="treble">0</output>
+      </div>
+    </footer>
+  </main>
+</template>
+
+<script src="../signal.js"></script>
+<script src="../tuner-ui.js"></script>
+<script src="../seasonal.js" defer></script>
+<script>
+(function () {
+  var STATIONS = [
+    { id: 'cfrb', name: 'NewsTalk 1010', band: '1010 AM', tag: "Toronto's news, traffic and weather, all day.", color: '#10307a', status: 'Live \u00b7 64 kbps MP3', loud: .48 },
+    { id: 'kiss', name: 'KISS 92.5', band: '92.5 FM', tag: "Toronto's hit music station.", color: '#e11d74', status: 'Live \u00b7 48 kbps AAC', loud: .78 }
+  ];
+
+  var tpl = document.getElementById('tuner-tpl');
+  var rigs = [];
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function clockText() { var d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function nextText() { return new Date().getHours() < 10 ? 'KISS 92.5 at 10:00' : 'NewsTalk 1010 at 07:00'; }
+
+  function mount(slot, index) {
+    var root = tpl.content.firstElementChild.cloneNode(true);
+    slot.appendChild(root);
+    var q = function (s) { return root.querySelector(s); };
+    var rig = { root: root, level: 0, playing: true, station: STATIONS[index % 2] };
+
+    STATIONS.forEach(function (s, i) {
+      var b = document.createElement('button');
+      b.className = 'preset';
+      b.dataset.id = s.id;
+      b.innerHTML = '<span class="preset-n">' + (i + 1) + '</span><span class="preset-name">' + s.name + '</span><span class="preset-band">' + s.band + '</span>';
+      b.addEventListener('click', function () { tune(s); });
+      q('[data-presets]').appendChild(b);
+    });
+    var add = document.createElement('button');
+    add.className = 'preset preset-add';
+    add.innerHTML = '<span class="preset-n">+</span><span class="preset-name">Add station</span><span class="preset-band">Name and stream URL</span>';
+    q('[data-presets]').appendChild(add);
+
+    function tune(s) {
+      rig.station = s;
+      root.style.setProperty('--station', s.color);
+      q('[data-band]').textContent = s.band;
+      q('[data-tag]').textContent = s.tag;
+      q('[data-status]').textContent = rig.playing ? s.status : 'Stopped';
+      var ps = root.querySelectorAll('.preset[data-id]');
+      for (var i = 0; i < ps.length; i++) ps[i].classList.toggle('is-active', ps[i].dataset.id === s.id);
+      TunerUI.setNeedle(root, s.band);
+      TunerUI.setName(q('[data-name]'), s.name);
+    }
+
+    q('[data-play]').addEventListener('click', function () {
+      rig.playing = this.getAttribute('aria-pressed') !== 'true';
+      this.setAttribute('aria-pressed', rig.playing);
+      root.classList.toggle('is-playing', rig.playing);
+      q('.status-led').classList.toggle('live', rig.playing);
+      q('[data-status]').textContent = rig.playing ? rig.station.status : 'Stopped';
+    });
+    /* The record button is shown here doing what it does in the app, but
+       there is no stream behind these mock-ups to record, so pressing it
+       only works the light. The radio itself writes the file. */
+    var recBtn = q('[data-rec]');
+    recBtn.addEventListener('click', function () {
+      var on = this.getAttribute('aria-pressed') !== 'true';
+      this.setAttribute('aria-pressed', on ? 'true' : 'false');
+      this.querySelector('.rec-word').textContent = on ? 'STOP' : 'REC';
+    });
+
+    q('[data-sched]').addEventListener('click', function () {
+      var on = this.getAttribute('aria-pressed') !== 'true';
+      this.setAttribute('aria-pressed', on);
+      q('.sched-label').textContent = on ? 'Schedule on' : 'Schedule off';
+      q('[data-next]').textContent = on ? nextText() : '';
+    });
+    var vol = q('[data-vol]'), out = q('[data-volout]');
+    vol.id = 'vol-' + index; q('.volume label').setAttribute('for', vol.id);
+    vol.addEventListener('input', function () { out.value = vol.value; });
+    root.querySelectorAll('[data-tone]').forEach(function (input) {
+      var kind = input.getAttribute('data-tone');
+      var display = root.querySelector('[data-toneout="' + kind + '"]');
+      input.id = kind + '-' + index;
+      input.closest('.tone').querySelector('label').setAttribute('for', input.id);
+      input.addEventListener('input', function () { display.value = input.value; });
+    });
+
+    TunerUI.init(root);
+    q('[data-next]').textContent = nextText();
+    q('[data-clock]').textContent = clockText();
+    tune(rig.station);
+    rigs.push(rig);
+  }
+
+  document.querySelectorAll('.slot').forEach(mount);
+
+  /* Shift reveals it, exactly as in the radio. One that is already running
+     stays out, so the button that would stop it cannot go away. */
+  function showRec(up) {
+    document.querySelectorAll('.rec-btn').forEach(function (b) {
+      b.classList.toggle('is-up', up || b.getAttribute('aria-pressed') === 'true');
+    });
+  }
+  window.addEventListener('keydown', function (e) { if (e.key === 'Shift') showRec(true); });
+  window.addEventListener('keyup', function (e) { if (e.key === 'Shift') showRec(false); });
+  window.addEventListener('blur', function () { showRec(false); });
+
+  setInterval(function () {
+    var t = clockText();
+    document.querySelectorAll('[data-clock]').forEach(function (c) { c.textContent = t; });
+  }, 1000);
+
+  // Simulated programme level and spectrum, so the instruments here read
+  // like the real ones will once a stream is playing.
+  var spectrum = new Uint8Array(256);
+  function fakeSpectrum(out, t, gain) {
+    for (var i = 0; i < out.length; i++) {
+      var f = i / out.length;
+      var tilt = Math.exp(-f * 2.6) * 230;
+      var wobble = Math.sin(t * 2.4 + f * 22) * 26 + Math.sin(t * 6.1 + f * 8) * 18;
+      var hiss = Math.random() * 20;
+      var bandLimit = f > 0.55 ? Math.max(0, 1 - (f - 0.55) * 6) : 1;
+      out[i] = Math.max(0, Math.min(255, (tilt + wobble + hiss) * gain * bandLimit));
+    }
+  }
+
+  var last = 0;
+  requestAnimationFrame(function loop(ts) {
+    requestAnimationFrame(loop);
+    var dt = last ? Math.min(ts - last, 250) : 16;
+    last = ts;
+    rigs.forEach(function (rig, i) {
+      var t = ts / 1000 + i * 1.7;
+      var swing = (Math.sin(t * 2.3) + Math.sin(t * 5.1) * .6 + Math.sin(t * 11.7) * .3) / 1.9;
+      var target = rig.playing ? Math.max(0, Math.min(1, rig.station.loud + swing * .22)) : 0;
+      rig.level = Signal.vuBallistics(rig.level, target, dt);
+      TunerUI.setLevel(rig.root, rig.level);
+      var quiet = !rig.playing && rig.level < 0.004;
+      if (quiet !== rig.quiet) {
+        rig.quiet = quiet;
+        rig.root.classList.toggle('is-quiet', quiet);
+        if (quiet) TunerUI.clearScope(rig.root);
+      }
+      if (rig.playing) {
+        fakeSpectrum(spectrum, t, 0.5 + rig.level * 0.6);
+        TunerUI.drawBars(rig.root, spectrum);
+      } else if (!quiet) {
+        TunerUI.drawBars(rig.root, null);
+      }
+    });
+  });
+})();
+</script>
