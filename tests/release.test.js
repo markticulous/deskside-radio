@@ -3080,3 +3080,46 @@ test('the opener knows every profile it can be sent to', () => {
   assert.ok(/set "PROFILE=%LOCALAPPDATA%\\DesksideRadio\\profile-chrome"/.test(opener),
     'the opener no longer defaults to the Chrome profile');
 });
+
+
+test('Brave opens without its first-run notice across the top', () => {
+  /* The one thing about Brave that is not Chrome. A new profile opens with
+     a bar offering Got it and Disable, and the cost is not only the bar:
+     the radio fits its window to its content, so the bar pushes the page
+     down, a scrollbar appears, and the window comes up wider and taller
+     than the cabinet inside it. Measured on a fresh profile -- 1800x1170
+     with the bar against 1722x1094 without.
+
+     Acknowledged in Local State, which is where Brave keeps browser-wide
+     settings; the download folder beside it goes in the profile's own
+     Preferences. Getting the two files the wrong way round writes a
+     setting nothing ever reads, and nothing would say so. */
+  const s = read('Win - Create Desktop Shortcut (Brave).cmd');
+
+  assert.ok(/Join-Path \$env:PROFILE 'Local State'/.test(s),
+    'the Brave shortcut no longer seeds Local State, so the first run shows the notice again');
+  assert.ok(/notice_acknowledged = \$true/.test(s),
+    'the Brave shortcut no longer acknowledges the first-run notice');
+
+  /* Turned off as well as acknowledged. This profile shows one local file,
+     it already runs with background networking, sync and pings disabled,
+     and both readmes promise nothing leaves the machine. */
+  assert.ok(/enabled = \$false/.test(s) && /reporting_enabled = \$false/.test(s),
+    'the Brave profile acknowledges the analytics notice but leaves the analytics on');
+
+  /* Only on a profile that has none -- the same rule the Preferences
+     seeding follows. One already in use has a Local State full of its own
+     state, and overwriting it would throw away more than it fixed. */
+  const at = s.indexOf("Join-Path $env:PROFILE 'Local State'");
+  const guard = s.indexOf('if (-not (Test-Path -LiteralPath $f)) {', at);
+  const write = s.indexOf('Set-Content -LiteralPath $f', at);
+  assert.ok(guard !== -1 && guard < write,
+    'the Brave shortcut overwrites an existing Local State instead of only seeding a new one');
+
+  /* And it is Brave's alone. Chrome and Edge have no such notice, and a
+     Chromium pref they do not read would be noise in their scripts. */
+  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Create Desktop Shortcut (Edge).cmd'].forEach(function (f) {
+    assert.equal(/notice_acknowledged/.test(read(f)), false,
+      f + ' seeds a Brave-only preference');
+  });
+});

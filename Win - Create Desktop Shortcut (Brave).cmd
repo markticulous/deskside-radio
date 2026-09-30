@@ -130,6 +130,36 @@ rem is the thing that edits one of those.
   "  Set-Content -LiteralPath $f -Value $j -Encoding ASCII;" ^
   "}"
 
+rem And Brave's own first-run notice, which is the one thing about Brave
+rem that is not Chrome. A new profile opens with a bar across the top of
+rem the window offering Got it and Disable, and it is worth being exact
+rem about what that costs here: the radio fits its window to its content,
+rem so the bar pushes the page down, a scrollbar appears, and the window
+rem comes up wider and taller than the cabinet in it. Measured on a fresh
+rem profile: 1800x1170 with the bar against 1722x1094 without.
+rem
+rem In Local State rather than the profile's Preferences, because these are
+rem browser-wide settings and that is the file Brave keeps them in -- found
+rem by reading back a profile that had been through the notice once.
+rem
+rem The analytics are turned off as well as acknowledged. This profile
+rem exists only to show one local file, it already runs with background
+rem networking, sync and pings disabled, and the readme promises nothing
+rem leaves the machine. Somebody's own Brave is untouched: this is the
+rem radio's own profile folder and nothing else reads it.
+rem
+rem Only when the file is absent, the same as the Preferences above. A
+rem profile already in use has a Local State full of its own state, and
+rem overwriting it would throw away more than it fixed.
+%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$f = Join-Path $env:PROFILE 'Local State';" ^
+  "if (-not (Test-Path -LiteralPath $f)) {" ^
+  "  New-Item -ItemType Directory -Path $env:PROFILE -Force | Out-Null;" ^
+  "  $j = @{ brave = @{ p3a = @{ notice_acknowledged = $true; enabled = $false };" ^
+  "                     stats = @{ reporting_enabled = $false } } } | ConvertTo-Json -Depth 5;" ^
+  "  Set-Content -LiteralPath $f -Value $j -Encoding ASCII;" ^
+  "}"
+
 rem Every value reaches PowerShell as an environment variable, and every
 rem quote inside the argument string is built with [char]34. A literal " in
 rem here would end the -Command line cmd is holding open.
