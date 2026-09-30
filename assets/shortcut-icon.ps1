@@ -32,8 +32,8 @@ param(
 $assets = Join-Path $env:APPDIR 'assets'
 $badged = Join-Path $assets 'badged'
 $exe = [IO.Path]::GetFileName($Browser).ToLower()
-$key = @{ 'chrome.exe' = 'chrome'; 'msedge.exe' = 'edge'; 'firefox.exe' = 'firefox' }[$exe]
-$names = @{ chrome = 'Chrome'; edge = 'Edge'; firefox = 'Firefox' }
+$key = @{ 'chrome.exe' = 'chrome'; 'msedge.exe' = 'edge'; 'firefox.exe' = 'firefox'; 'brave.exe' = 'brave' }[$exe]
+$names = @{ chrome = 'Chrome'; edge = 'Edge'; firefox = 'Firefox'; brave = 'Brave' }
 $byInstaller = [bool]$env:DESKSIDE_NOPAUSE
 
 $oldFile = ($Old -replace ',\s*-?\d+$', '').Trim()

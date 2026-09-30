@@ -220,7 +220,8 @@ test('the launcher grants no file access, in either script', () => {
      script on the page read anything the user can, for as long as the
      shortcut exists. The seed is a script tag now and needs no flag, so
      the only thing left to do about it is make sure it stays gone. */
-  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start with Windows (On-Off).cmd'].forEach(function (f) {
+  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start with Windows (On-Off).cmd',
+   'Win - Create Desktop Shortcut (Brave).cmd'].forEach(function (f) {
     assert.equal(read(f).indexOf('--allow-file-access-from-files'), -1,
       f + ' passes --allow-file-access-from-files again');
   });
@@ -231,7 +232,8 @@ test('both launchers name powershell and reg by their full paths', () => {
      directory, and a default Windows looks there before it looks along
      PATH. A bare `powershell` is therefore whatever sits next to the
      script, which on a shared or synced folder is not necessarily ours. */
-  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start with Windows (On-Off).cmd'].forEach(function (f) {
+  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start with Windows (On-Off).cmd',
+   'Win - Create Desktop Shortcut (Brave).cmd'].forEach(function (f) {
     const cmd = read(f);
     assert.ok(/%SystemRoot%\\System32\\WindowsPowerShell\\v1\.0\\powershell\.exe/.test(cmd),
       f + ' no longer calls powershell by its full path');
@@ -244,16 +246,23 @@ test('both launchers name powershell and reg by their full paths', () => {
 test('the launcher builds its quotes with [char]34, never a literal one', () => {
   /* cmd holds each PowerShell line inside "..." — a literal double quote in
      the body ends that string early and the shortcut comes out malformed. */
-  const powershell = read('Win - Create Desktop Shortcut (Chrome).cmd')
-    .split('\n')
-    .filter(function (ln) { return /^\s{2}"/.test(ln); });
-  assert.ok(powershell.length > 5, 'expected the inline PowerShell block');
-  powershell.forEach(function (ln) {
-    const body = ln.trim().replace(/^"/, '').replace(/"\s*\^?$/, '');
-    assert.equal(body.indexOf('"'), -1, 'literal quote inside a -Command line: ' + ln.trim());
+  /* Every one of them, not just Chrome's. These scripts are near-copies
+     of each other by design, and a copy is exactly where a stray quote
+     gets in. */
+  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Create Desktop Shortcut (Edge).cmd',
+   'Win - Create Desktop Shortcut (Firefox).cmd',
+   'Win - Create Desktop Shortcut (Brave).cmd'].forEach(function (f) {
+    const powershell = read(f)
+      .split('\n')
+      .filter(function (ln) { return /^\s{2}"/.test(ln); });
+    assert.ok(powershell.length > 5, f + ': expected the inline PowerShell block');
+    powershell.forEach(function (ln) {
+      const body = ln.trim().replace(/^"/, '').replace(/"\s*\^?$/, '');
+      assert.equal(body.indexOf('"'), -1, f + ': literal quote inside a -Command line: ' + ln.trim());
+    });
+    assert.ok(powershell.join('').indexOf('[char]34') !== -1,
+      f + ': the argument string should quote with [char]34');
   });
-  assert.ok(powershell.join('').indexOf('[char]34') !== -1,
-    'the argument string should quote with [char]34');
 });
 
 /* ---- the installer ----
@@ -1000,7 +1009,8 @@ test('the opener locks the window, and the shortcuts go through it', () => {
   /* Both shortcut writers go through it -- by way of the .vbs, which is
      what keeps a console from ever being created -- and fall back, first to
      the .cmd and then to the browser. */
-  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start with Windows (On-Off).cmd'].forEach(function (f) {
+  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Start with Windows (On-Off).cmd',
+   'Win - Create Desktop Shortcut (Brave).cmd'].forEach(function (f) {
     const s = read(f);
     assert.ok(s.indexOf('set "OPENER=%APPDIR%' + VBS + '"') !== -1,
       f + ' no longer names the .vbs opener');
@@ -1012,12 +1022,28 @@ test('the opener locks the window, and the shortcuts go through it', () => {
       f + ' would aim a shortcut at wscript.exe without checking it is there');
     assert.ok(/\$link\.TargetPath = \$env:WSCRIPT;/.test(s),
       f + ' does not start the opener through wscript, so the console flashes again');
-    assert.ok(/\$link\.Arguments = \$q \+ \$env:OPENER \+ \$q \+ ' ' \+ \$q \+ \$env:BROWSER \+ \$q( \+ \$env:PROFARG)?;/.test(s),
+    /* Three shapes, all of them right: nothing after the browser (Chrome,
+       which sends no token and lets the opener default), + $env:PROFARG
+       (the startup entry, which substitutes one), and a literal token
+       (a shortcut pinned to one browser, which always sends the same one). */
+    assert.ok(/\$link\.Arguments = \$q \+ \$env:OPENER \+ \$q \+ ' ' \+ \$q \+ \$env:BROWSER \+ \$q( \+ \$env:PROFARG| \+ ' profile-[a-z]+')?;/.test(s),
       f + ' does not hand the .vbs the browser to use');
     assert.ok(/\$link\.WindowStyle = 7;/.test(s),
       f + ' no longer minimises the .cmd on the fallback path, so its console shows');
-    assert.ok(/\} elseif \(\$env:BROWSER\) \{/.test(s),
+    /* The last branch aims straight at the browser, and its shape says
+       whether the script could have got this far without one. Chrome's and
+       the startup entry's can -- neither stops when nothing is found, they
+       write a shortcut that opens the page in whatever browser is default
+       -- so theirs is guarded on $env:BROWSER. A script pinned to a single
+       browser has already said so and exited, and a guard there would be
+       asking a question that was settled a hundred lines earlier. */
+    const browserless = f.indexOf('(Chrome)') !== -1 || f.indexOf('Start with Windows') !== -1;
+    assert.ok((browserless ? /\} elseif \(\$env:BROWSER\) \{/ : /\} else \{/).test(s),
       f + ' has lost the fallback that aims straight at the browser');
+    if (!browserless) {
+      assert.ok(/exit \/b 1/.test(s),
+        f + ' is pinned to one browser but does not stop when that browser is missing');
+    }
   });
 });
 
@@ -1053,7 +1079,8 @@ test('the launcher opens without a console window', () => {
    another is a profile that fetches the lot again. */
 test('the profile-trimming flags are the same wherever they are written', () => {
   const FLAGS = ['Win - Open Deskside Radio.cmd', 'Win - Create Desktop Shortcut (Chrome).cmd',
-    'Win - Create Desktop Shortcut (Edge).cmd', 'Win - Start with Windows (On-Off).cmd'];
+    'Win - Create Desktop Shortcut (Edge).cmd', 'Win - Create Desktop Shortcut (Brave).cmd',
+    'Win - Start with Windows (On-Off).cmd'];
   const lines = FLAGS.map(function (f) {
     const m = read(f).match(/^set "LEAN=.*$/m);
     assert.ok(m, f + ' no longer sets the lean-profile flags');
@@ -1091,7 +1118,7 @@ test('the chrome profile is named after chrome, and is moved rather than remade'
   /* And the uninstaller has to know about every one of them, or an
      uninstall leaves settings behind that reinstalling picks up again. */
   const un = read('Win - Uninstall Deskside Radio.cmd');
-  ['profile', 'profile-chrome', 'profile-edge', 'profile-firefox'].forEach(function (name) {
+  ['profile', 'profile-chrome', 'profile-edge', 'profile-firefox', 'profile-brave'].forEach(function (name) {
     assert.ok(new RegExp('PROFILES=[^\\n]*\\b' + name + '\\b').test(un),
       'the uninstaller does not know about ' + name);
   });
@@ -1252,13 +1279,14 @@ test('the installer says which version it is installing', () => {
 test('the installer rewrites the shortcuts that exist, and asks when there are none', () => {
   const src = read(INSTALLER);
 
-  ['Deskside Radio.lnk', 'Deskside Radio (Edge).lnk', 'Deskside Radio (Firefox).lnk'].forEach(function (lnk) {
+  ['Deskside Radio.lnk', 'Deskside Radio (Edge).lnk', 'Deskside Radio (Firefox).lnk',
+   'Deskside Radio (Brave).lnk'].forEach(function (lnk) {
     assert.ok(src.indexOf(lnk) !== -1, INSTALLER + ' does not look for ' + lnk);
   });
   assert.ok(/set \/p "PICK=/.test(src), INSTALLER + ' never asks which browser to use');
   assert.ok(/if defined WANT goto :haveshortcut/.test(src),
     INSTALLER + ' asks the question even when there is already a shortcut to refresh');
-  ['Chrome', 'Edge', 'Firefox'].forEach(function (b) {
+  ['Chrome', 'Edge', 'Firefox', 'Brave'].forEach(function (b) {
     assert.ok(src.indexOf('call :shortcut "Win - Create Desktop Shortcut (' + b + ').cmd"') !== -1,
       INSTALLER + ' cannot make the ' + b + ' shortcut');
   });
@@ -1311,7 +1339,8 @@ test('trimming the profile cannot reach the settings', () => {
    all three can see, so where a download lands decides whether settings can
    cross between them at all. Landing in Downloads, they cannot. */
 test('an export lands beside index.html, where the other browsers can read it', () => {
-  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Create Desktop Shortcut (Edge).cmd'].forEach(function (f) {
+  ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Create Desktop Shortcut (Edge).cmd',
+   'Win - Create Desktop Shortcut (Brave).cmd'].forEach(function (f) {
     const s = read(f);
     assert.ok(/default_directory = \$env:APPROOT/.test(s),
       f + ' does not point the profile\'s downloads at the app folder');
@@ -1772,8 +1801,8 @@ test('the installer closes the radio, and nothing else', () => {
      closes somebody's browser, and the path alone would match anything
      that happened to mention the folder -- this script included, which is
      why it is a .cmd and not one of these three. */
-  assert.ok(/'chrome\.exe', 'msedge\.exe', 'firefox\.exe'/.test(block),
-    'the set of things that may be closed is no longer three browsers');
+  assert.ok(/'chrome\.exe', 'msedge\.exe', 'firefox\.exe', 'brave\.exe'/.test(block),
+    'the set of things that may be closed is no longer the four browsers this app opens');
   assert.ok(/\$names -contains \$_\.Name/.test(block) && /CommandLine -like '\*DesksideRadio.profile\*'/.test(block),
     'the installer no longer requires BOTH the browser name and this app\'s profile path');
 
@@ -2801,10 +2830,12 @@ test('the Start-with-Windows entry opens the radio the Desktop shortcut opens', 
      entry through this script, so every update made the mistake again. */
   const src = read('Win - Start with Windows (On-Off).cmd');
 
-  /* The Edge shortcut alone decides it; with the Chrome one present nothing
-     changes. Both halves, or 'both shortcuts' would switch to Edge. */
-  assert.ok(/if not exist "%DESK%.Deskside Radio\.lnk" if exist "%DESK%.Deskside Radio \(Edge\)\.lnk"/.test(src),
-    'the start-up entry does not follow the Edge shortcut, so its stations are not the ones that open at sign-in');
+  /* A bracketed shortcut alone decides it; with the Chrome one present
+     nothing changes. Both halves, or 'both shortcuts' would switch. */
+  ['Edge', 'Brave'].forEach(function (b) {
+    assert.ok(new RegExp('if not exist "%DESK%.Deskside Radio\\.lnk" if exist "%DESK%.Deskside Radio \\(' + b + '\\)\\.lnk"').test(src),
+      'the start-up entry does not follow the ' + b + ' shortcut, so its stations are not the ones that open at sign-in');
+  });
 
   /* And the profile reaches the opener on both routes to it. */
   const passes = src.match(/\$env:BROWSER \+ \$q \+ \$env:PROFARG/g) || [];
@@ -2814,10 +2845,10 @@ test('the Start-with-Windows entry opens the radio the Desktop shortcut opens', 
   /* After the legacy migration, which moves an old unnamed profile into
      PROFILE when PROFILE is missing -- pointed at profile-edge first, it would
      carry a Chrome user's stations into Edge's folder. */
-  const pick = src.indexOf('profile-edge"');
+  const pick = src.indexOf('profile-%ONLYB%"');
   const migrate = src.indexOf('An empty profile is the alarming outcome');
   assert.ok(migrate !== -1 && pick > migrate,
-    'the start-up entry picks the Edge profile before the legacy migration');
+    'the start-up entry picks the bracketed browser\'s profile before the legacy migration');
 });
 
 test('Firefox opens at the radio size, through the launcher', () => {
@@ -2936,7 +2967,8 @@ test('Desktop shortcuts carry the browser badge, made on the PC, and never lose 
      theme icon is always what a shortcut falls back to, and "plain" asks
      for it outright. */
   ['Win - Create Desktop Shortcut (Chrome).cmd', 'Win - Create Desktop Shortcut (Edge).cmd',
-   'Win - Create Desktop Shortcut (Firefox).cmd'].forEach(function (name) {
+   'Win - Create Desktop Shortcut (Firefox).cmd',
+   'Win - Create Desktop Shortcut (Brave).cmd'].forEach(function (name) {
     const s = read(name);
     assert.ok(s.indexOf("assets\\shortcut-icon.ps1") !== -1, name + ' does not ask the helper for its icon');
     assert.ok(s.indexOf("$ic = $env:ICON + ',0'") !== -1 && s.indexOf('$link.IconLocation = $ic;') !== -1,
@@ -2962,10 +2994,11 @@ test('a new install offers only the browsers that are on this PC', () => {
   /* All three were offered whether they were there or not, and picking a
      missing one ended at "was not found" with no shortcut made. */
   const s = read(INSTALLER);
-  ['chrome.exe', 'msedge.exe', 'firefox.exe'].forEach(function (exe) {
+  ['chrome.exe', 'msedge.exe', 'firefox.exe', 'brave.exe'].forEach(function (exe) {
     assert.ok(s.indexOf('App Paths\\' + exe) !== -1, INSTALLER + ' does not look for ' + exe + ' where the shortcut scripts do');
   });
-  [['HAVEC', 'C   Chrome'], ['HAVEE', 'E   Microsoft Edge'], ['HAVEF', 'F   Firefox']].forEach(function (p) {
+  [['HAVEC', 'C   Chrome'], ['HAVEE', 'E   Microsoft Edge'], ['HAVEF', 'F   Firefox'],
+   ['HAVEB', 'B   Brave']].forEach(function (p) {
     assert.ok(s.indexOf('if defined ' + p[0] + ' echo      ' + p[1]) !== -1,
       INSTALLER + ' offers ' + p[1].slice(4) + ' whether or not it is installed');
   });
@@ -3007,4 +3040,43 @@ test('an inlined stylesheet cannot end the page\'s <style> early', () => {
   ['app.css', 'seasonal.css'].forEach(function (f) {
     assert.ok(!/<\/style/i.test(safe(read(f))), f + ' still holds a "</style" after escaping');
   });
+});
+
+
+test('the opener knows every profile it can be sent to', () => {
+  /* The opener takes a profile token as its second argument and accepts
+     only the ones it names; anything else falls through to profile-chrome
+     without a word. That silence is the danger. A shortcut sent with a
+     token the opener has never heard of opens the right browser, plays
+     perfectly, and is quietly sharing Chrome's stations -- no error, no
+     empty profile, nothing to notice.
+
+     So every token a shortcut script sends has to be one the opener
+     answers to. Read out of the shortcut scripts rather than listed here,
+     so a fifth browser cannot arrive with a token that goes nowhere. */
+  const fs2 = require('node:fs');
+  const opener = read('Win - Open Deskside Radio.cmd');
+
+  const sent = [];
+  fs2.readdirSync(ROOT)
+    .filter(function (f) { return /^Win - Create Desktop Shortcut \(.*\)\.cmd$/.test(f); })
+    .forEach(function (f) {
+      (read(f).match(/' (profile-[a-z]+)'/g) || []).forEach(function (tok) {
+        const name = tok.replace(/[' ]/g, '');
+        if (sent.indexOf(name) === -1) sent.push(name);
+      });
+    });
+
+  assert.ok(sent.length >= 2,
+    'no shortcut script sends the opener a profile token any more, which is how they stopped sharing one');
+
+  sent.forEach(function (tok) {
+    assert.ok(opener.indexOf('"%~2"=="' + tok + '"') !== -1,
+      'a shortcut sends the opener "' + tok + '" and the opener does not know it, so that browser ' +
+      'silently opens Chrome\'s profile');
+  });
+
+  /* And the default is still Chrome's, for the shortcut that sends nothing. */
+  assert.ok(/set "PROFILE=%LOCALAPPDATA%\\DesksideRadio\\profile-chrome"/.test(opener),
+    'the opener no longer defaults to the Chrome profile');
 });

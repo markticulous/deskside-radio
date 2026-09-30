@@ -309,13 +309,14 @@ set "CLOSEDB=C"
 if defined DESKSIDE_QUIET goto :radioleftalone
 set "ANSWER=%TEMP%\deskside-radio-answer.txt"
 "%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$names = 'chrome.exe', 'msedge.exe', 'firefox.exe';" ^
+  "$names = 'chrome.exe', 'msedge.exe', 'firefox.exe', 'brave.exe';" ^
   "$mine = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {" ^
   "  $names -contains $_.Name -and $_.CommandLine -and" ^
   "  $_.CommandLine -like '*DesksideRadio\profile*' };" ^
   "$key = 'C';" ^
   "if ($mine | Where-Object { $_.Name -eq 'firefox.exe' }) { $key = 'F' }" ^
   "elseif ($mine | Where-Object { $_.Name -eq 'msedge.exe' }) { $key = 'E' }" ^
+  "elseif ($mine | Where-Object { $_.Name -eq 'brave.exe' }) { $key = 'B' }" ^
   "$n = 0;" ^
   "foreach ($p in $mine) {" ^
   "  Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue;" ^
@@ -514,12 +515,15 @@ set "WANT="
 set "DOC="
 set "DOE="
 set "DOF="
+set "DOB="
 if defined DESK if exist "%DESK%\Deskside Radio.lnk" set "DOC=1"
 if defined DESK if exist "%DESK%\Deskside Radio (Edge).lnk" set "DOE=1"
 if defined DESK if exist "%DESK%\Deskside Radio (Firefox).lnk" set "DOF=1"
+if defined DESK if exist "%DESK%\Deskside Radio (Brave).lnk" set "DOB=1"
 if defined DOC set "WANT=1"
 if defined DOE set "WANT=1"
 if defined DOF set "WANT=1"
+if defined DOB set "WANT=1"
 if defined WANT goto :haveshortcut
 rem Nobody is there to answer. A launcher-driven update is by definition
 rem running for somebody who already has a shortcut, so there is nothing
@@ -535,6 +539,7 @@ rem in a bracketed block, because %ProgramFiles(x86)% ends a block early.
 set "HAVEC="
 set "HAVEE="
 set "HAVEF="
+set "HAVEB="
 if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "HAVEC=1"
 if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" set "HAVEC=1"
 if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" set "HAVEC=1"
@@ -546,14 +551,24 @@ if exist "%ProgramFiles%\Mozilla Firefox\firefox.exe" set "HAVEF=1"
 if exist "%ProgramFiles(x86)%\Mozilla Firefox\firefox.exe" set "HAVEF=1"
 if exist "%LOCALAPPDATA%\Mozilla Firefox\firefox.exe" set "HAVEF=1"
 if not defined HAVEF for /f "skip=2 tokens=2,*" %%A in ('%SystemRoot%\System32\reg.exe query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\firefox.exe" /ve 2^>nul') do if exist "%%B" set "HAVEF=1"
+rem Brave keeps its per-user folder in the list for a reason the other two
+rem do not need: it installs there by default on a machine where nobody has
+rem administrator rights, and App Paths is only ever read from HKLM.
+if exist "%ProgramFiles%\BraveSoftware\Brave-Browser\Application\brave.exe" set "HAVEB=1"
+if exist "%ProgramFiles(x86)%\BraveSoftware\Brave-Browser\Application\brave.exe" set "HAVEB=1"
+if exist "%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe" set "HAVEB=1"
+if not defined HAVEB for /f "skip=2 tokens=2,*" %%A in ('%SystemRoot%\System32\reg.exe query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\brave.exe" /ve 2^>nul') do if exist "%%B" set "HAVEB=1"
 
-rem The first found is the default, in the order the old menu had them;
-rem the last is only needed to say "C or F" when there are two.
+rem The first found is the default, in the order the old menu had them.
+rem Written last-wins, so Chrome beats Edge beats Firefox beats Brave and
+rem the default stays what it has always been. LAST is the mirror of it.
 set /a NB=0
 if defined HAVEC set /a NB+=1
 if defined HAVEE set /a NB+=1
 if defined HAVEF set /a NB+=1
+if defined HAVEB set /a NB+=1
 set "FIRST="
+if defined HAVEB set "FIRST=B"
 if defined HAVEF set "FIRST=F"
 if defined HAVEE set "FIRST=E"
 if defined HAVEC set "FIRST=C"
@@ -561,6 +576,7 @@ set "LAST="
 if defined HAVEC set "LAST=C"
 if defined HAVEE set "LAST=E"
 if defined HAVEF set "LAST=F"
+if defined HAVEB set "LAST=B"
 
 echo.
 echo   There is no Deskside Radio shortcut on your Desktop yet.
@@ -572,11 +588,13 @@ rem shortcut that opens the page in the default browser.
 if defined HAVEC echo   Chrome is the browser here, so it opens in Chrome.
 if defined HAVEE echo   Microsoft Edge is the browser here, so it opens in Edge.
 if defined HAVEF echo   Firefox is the browser here, so it opens in Firefox.
-if %NB%==0 echo   No Chrome, Edge or Firefox was found, so it opens in your usual
-if %NB%==0 echo   browser, which needs one click before the radio will play.
+if defined HAVEB echo   Brave is the browser here, so it opens in Brave.
+if %NB%==0 echo   No Chrome, Edge, Firefox or Brave was found, so it opens in your
+if %NB%==0 echo   usual browser, which needs one click before the radio will play.
 if defined HAVEE set "DOE=1"
 if defined HAVEF set "DOF=1"
-if not defined DOE if not defined DOF set "DOC=1"
+if defined HAVEB set "DOB=1"
+if not defined DOE if not defined DOF if not defined DOB set "DOC=1"
 echo.
 goto :haveshortcut
 
@@ -586,19 +604,24 @@ echo.
 if defined HAVEC echo      C   Chrome
 if defined HAVEE echo      E   Microsoft Edge
 if defined HAVEF echo      F   Firefox
+if defined HAVEB echo      B   Brave
 echo.
-set "SAY=%FIRST% or %LAST%"
-if %NB%==3 set "SAY=C, E or F"
+rem The letters are printed directly above, so the question no longer lists
+rem them again. It used to -- "C or F" for two and a hard-coded "C, E or F"
+rem for three -- which was already two shapes for one sentence and would
+rem have needed a third with a fourth browser on the machine.
 set "PICK="
-set /p "PICK=  Type %SAY% and press Enter, or just Enter for %FIRST%: "
+set /p "PICK=  Type a letter and press Enter, or just Enter for %FIRST%: "
 rem A letter for a browser that is not offered is the same as Enter.
 set "CH=%FIRST%"
 if defined HAVEC if /i "%PICK%"=="C" set "CH=C"
 if defined HAVEE if /i "%PICK%"=="E" set "CH=E"
 if defined HAVEF if /i "%PICK%"=="F" set "CH=F"
+if defined HAVEB if /i "%PICK%"=="B" set "CH=B"
 if "%CH%"=="C" set "DOC=1"
 if "%CH%"=="E" set "DOE=1"
 if "%CH%"=="F" set "DOF=1"
+if "%CH%"=="B" set "DOB=1"
 echo.
 
 :haveshortcut
@@ -606,6 +629,7 @@ set "DESKSIDE_NOPAUSE=1"
 if defined DOC call :shortcut "Win - Create Desktop Shortcut (Chrome).cmd" "Chrome or Edge"
 if defined DOE call :shortcut "Win - Create Desktop Shortcut (Edge).cmd" "Edge"
 if defined DOF call :shortcut "Win - Create Desktop Shortcut (Firefox).cmd" "Firefox"
+if defined DOB call :shortcut "Win - Create Desktop Shortcut (Brave).cmd" "Brave"
 
 rem The Startup entry, if there is one, for the same reason: it holds the
 rem same stale path and nothing else ever rewrites it.
@@ -804,6 +828,7 @@ rem which is the one nearly everybody has.
 set "RELNK=Deskside Radio.lnk"
 if /i "%CLOSEDB%"=="E" set "RELNK=Deskside Radio (Edge).lnk"
 if /i "%CLOSEDB%"=="F" set "RELNK=Deskside Radio (Firefox).lnk"
+if /i "%CLOSEDB%"=="B" set "RELNK=Deskside Radio (Brave).lnk"
 "%PS%" -NoProfile -ExecutionPolicy Bypass -Command ^
   "$d = [Environment]::GetFolderPath('Desktop');" ^
   "$p = Join-Path $d $env:RELNK;" ^

@@ -21,7 +21,7 @@ rem and a banner in the middle of somebody else's output is not a
 rem banner. DESKSIDE_NOPAUSE already means "you are being called".
 if not defined DESKSIDE_NOPAUSE (
   echo.
-  echo   DESKSIDE RADIO - DESKTOP SHORTCUT (EDGE)
+  echo   DESKSIDE RADIO - DESKTOP SHORTCUT ^(EDGE^)
   echo.
 )
 

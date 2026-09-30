@@ -70,6 +70,7 @@ rem Here and not above, deliberately. The block above moves an old unnamed
 rem profile into PROFILE when PROFILE does not exist yet; pointed at
 rem profile-edge, it would carry a Chrome user's stations into Edge's folder.
 if /i "%~2"=="profile-edge" set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile-edge"
+if /i "%~2"=="profile-brave" set "PROFILE=%LOCALAPPDATA%\DesksideRadio\profile-brave"
 
 rem ---------------------------------------------------------------------
 rem  The flags that keep the profile small.

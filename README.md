@@ -12,7 +12,7 @@ Download **Win-Install-or-Update-Deskside-Radio.cmd** from the [latest release](
 
 That's all — it installs the radio, puts a shortcut on your Desktop and opens it.
 
-If there is no Deskside Radio shortcut on the Desktop yet it asks which browser to open in, offering only the ones installed — **C** for Chrome, **E** for Edge, **F** for Firefox — and pressing Enter takes the first offered. With one browser it asks nothing and uses that one; with none of the three, the shortcut opens the radio in the default browser, which needs a click before it plays. If there are already shortcuts it asks nothing and rewrites the ones that are there, which matters more than it sounds: a `.lnk` holds the full path to the app folder, so an install that moved leaves every shortcut, and the Startup entry, aimed at where the folder used to be.
+If there is no Deskside Radio shortcut on the Desktop yet it asks which browser to open in, offering only the ones installed — **C** for Chrome, **E** for Edge, **F** for Firefox, **B** for Brave — and pressing Enter takes the first offered. With one browser it asks nothing and uses that one; with none of the four, the shortcut opens the radio in the default browser, which needs a click before it plays. If there are already shortcuts it asks nothing and rewrites the ones that are there, which matters more than it sounds: a `.lnk` holds the full path to the app folder, so an install that moved leaves every shortcut, and the Startup entry, aimed at where the folder used to be.
 
 It also says which version it is putting in, and which one that replaces, read out of the archive it just downloaded rather than off the release page.
 
@@ -36,7 +36,7 @@ The old way still works and is unchanged — download `deskside-radio.zip`, unzi
 "Win - Create Desktop Shortcut (Chrome).cmd" console
 ```
 
-With no argument it uses the analogue dial icon. The icon carries the browser's logo in its top-left corner, on a thin dark disc, so the Chrome, Edge and Firefox shortcuts can be told apart on one Desktop; add `plain` (`"Win - Create Desktop Shortcut (Chrome).cmd" console plain`) for the icon without it. The logo is never shipped: `assets/shortcut-icon.ps1` takes it from the browser installed on that PC and draws it onto the theme's icon there, into `assets/badged/`, which is gitignored. Every update rewrites the shortcuts, and keeps what each one had — the theme, a plain icon, or an icon chosen in Properties that is not ours at all — except that a plain icon from before badges existed gets the badge once.
+With no argument it uses the analogue dial icon. The icon carries the browser's logo in its top-left corner, on a thin dark disc, so the Chrome, Edge, Firefox and Brave shortcuts can be told apart on one Desktop; add `plain` (`"Win - Create Desktop Shortcut (Chrome).cmd" console plain`) for the icon without it. The logo is never shipped: `assets/shortcut-icon.ps1` takes it from the browser installed on that PC and draws it onto the theme's icon there, into `assets/badged/`, which is gitignored. Every update rewrites the shortcuts, and keeps what each one had — the theme, a plain icon, or an icon chosen in Properties that is not ours at all — except that a plain icon from before badges existed gets the badge once.
 
 The app's own shortcut button shows the exact line to run, because a web page is not allowed to write a shortcut file itself — Chrome renames `.url` downloads to `.download`, on the grounds that such a file can point anywhere.
 
@@ -78,12 +78,13 @@ Unblock-File "$env:USERPROFILE\Desktop\Deskside Radio.url"
 
 ### Picking the browser, and other platforms
 
-`Win - Create Desktop Shortcut (Chrome).cmd` takes Chrome or Edge, whichever it finds first. Three more scripts exist for when that is not the one you want:
+`Win - Create Desktop Shortcut (Chrome).cmd` takes Chrome or Edge, whichever it finds first. Four more scripts exist for when that is not the one you want:
 
 | Script | Makes | Notes |
 |---|---|---|
 | `Win - Create Desktop Shortcut (Edge).cmd` | *Deskside Radio (Edge)* | Pinned to Edge, with a profile of its own |
 | `Win - Create Desktop Shortcut (Firefox).cmd` | *Deskside Radio (Firefox)* | See below |
+| `Win - Create Desktop Shortcut (Brave).cmd` | *Deskside Radio (Brave)* | Pinned to Brave, with a profile of its own |
 | `Linux - Create Desktop Shortcut.sh` | a `.desktop` entry | `--autostart` also starts it at login, `--off` removes both |
 
 Each has its own browser profile, so stations and settings do not carry between them; the settings export is how you move a setup across.
@@ -261,7 +262,7 @@ What it removes has to name **this** app — the whole name, or this install's o
 
 The installer does a narrower pass: a dead protocol key, and a start-up entry pointing at a Deskside Radio folder that is no longer there — the same fault as the stale Startup shortcut, in the place nobody thinks to look. An entry pointing at a folder that still exists is left alone, whoever made it.
 
-## Settings, and the three browsers
+## Settings, and the other browsers
 
 Each shortcut opens a browser profile of its own, and no profile can read another's storage. So the settings file beside `index.html` is the only thing all of them can see, and moving a setup between browsers means putting one there.
 
@@ -383,7 +384,7 @@ Deleting the file costs nothing except that the next run in that folder installs
 
 `Win - Uninstall Deskside Radio.cmd` ships inside the zip, so it is sitting in the app folder. Double-click it and it removes that folder and every shortcut the scripts wrote — on the Desktop, in the Startup folder and in the Start menu. Shortcuts are found three ways: by name (`Deskside Radio*.lnk`), by where they point, and by whether their target, working directory or arguments name a Deskside Radio folder at all. That third test was added for the stale Startup entry above — its target was `chrome.exe`, which very much exists, and the folder it pointed into was not this one, so neither of the first two reached it and it survived every uninstall.
 
-Your stations, schedule and settings are in the browser profile, not the app folder, so they survive by default. All four profile names are checked — `profile`, `profile-chrome`, `profile-edge`, `profile-firefox` — named rather than wildcarded, because this is the line that deletes somebody's stations and it should be possible to read it and know exactly what it can reach. It asks about them separately at the end, and the answer you get by pressing Enter is to keep them — that is the one part of this that reinstalling cannot undo.
+Your stations, schedule and settings are in the browser profile, not the app folder, so they survive by default. All five profile names are checked — `profile`, `profile-chrome`, `profile-edge`, `profile-firefox`, `profile-brave` — named rather than wildcarded, because this is the line that deletes somebody's stations and it should be possible to read it and know exactly what it can reach. It asks about them separately at the end, and the answer you get by pressing Enter is to keep them — that is the one part of this that reinstalling cannot undo.
 
 When the install was in its default place it also removes `%LOCALAPPDATA%\DesksideRadio` itself, the folder the app and the profile sit side by side in. That is the whole point of putting them there: everything the radio ever writes is under one folder, and an uninstall that leaves that folder standing has not finished. It is removed with `rd` and no `/s`, which only works on an empty directory — so keeping your settings simply makes the call fail quietly and the folder stays, holding the profile. It is only ever attempted at the default path: an install at `D:\Radio` has `D:\` above it, and that is emphatically not ours to remove.
 
