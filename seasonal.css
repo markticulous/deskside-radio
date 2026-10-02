@@ -97,25 +97,27 @@
   21%, 100% { transform: translate(1520px, -34px); }
 }
 
-/* Lightning, down the left side of the set. Once when it comes on air --
+/* Lightning, somewhere along the set. Once when it comes on air --
    the animation runs the moment .is-playing lands -- and then rarely, and
    not on a beat: two storms on cycles of 97 and 151 seconds, a strike in
    each at a different point, so the gaps between strikes keep changing
-   and the pattern takes hours to come round again. */
+   and the pattern takes hours to come round again. Where it falls, and
+   how far down, seasonal.js picks afresh before each strike (--hw-x,
+   --hw-h); these are only the places it starts from. */
 [data-theme="halloween"] .tuner-bar::before,
 [data-theme="halloween"] .brand::after {
   content: ""; position: absolute; inset: 0; z-index: 6; pointer-events: none; opacity: 0;
   background:
-    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 420' fill='none' stroke-linecap='round' stroke-linejoin='round'><path d='M70 0L52 70L78 96L40 190L66 214L30 330L50 352L34 420' stroke='%23b9a4ff' stroke-opacity='.55' stroke-width='12'/><path d='M70 0L52 70L78 96L40 190L66 214L30 330L50 352L34 420' stroke='%23fff' stroke-width='3.5'/><path d='M52 70L28 118M40 190L14 226M66 214L92 262' stroke='%23fff' stroke-opacity='.8' stroke-width='2'/></svg>") no-repeat 7% 0 / auto 78%,
-    radial-gradient(ellipse 45% 95% at 10% 0%, rgba(240,234,255,.95), rgba(186,160,255,.4) 45%, transparent 78%);
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 420' fill='none' stroke-linecap='round' stroke-linejoin='round'><path d='M70 0L52 70L78 96L40 190L66 214L30 330L50 352L34 420' stroke='%23b9a4ff' stroke-opacity='.55' stroke-width='12'/><path d='M70 0L52 70L78 96L40 190L66 214L30 330L50 352L34 420' stroke='%23fff' stroke-width='3.5'/><path d='M52 70L28 118M40 190L14 226M66 214L92 262' stroke='%23fff' stroke-opacity='.8' stroke-width='2'/></svg>") no-repeat var(--hw-x, 7%) 0 / auto var(--hw-h, 78%),
+    radial-gradient(ellipse 45% 95% at var(--hw-x, 10%) 0%, rgba(240,234,255,.95), rgba(186,160,255,.4) 45%, transparent 78%);
   mix-blend-mode: screen;
 }
 /* The second strike falls a little further in, so two in a row are not the
    same bolt twice. */
 [data-theme="halloween"] .brand::after {
   background:
-    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 420' fill='none' stroke-linecap='round' stroke-linejoin='round'><path d='M70 0L52 70L78 96L40 190L66 214L30 330L50 352L34 420' stroke='%23b9a4ff' stroke-opacity='.55' stroke-width='12'/><path d='M70 0L52 70L78 96L40 190L66 214L30 330L50 352L34 420' stroke='%23fff' stroke-width='3.5'/><path d='M52 70L28 118M40 190L14 226M66 214L92 262' stroke='%23fff' stroke-opacity='.8' stroke-width='2'/></svg>") no-repeat 15% 0 / auto 64%,
-    radial-gradient(ellipse 40% 90% at 16% 0%, rgba(240,234,255,.9), rgba(186,160,255,.35) 45%, transparent 78%);
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 420' fill='none' stroke-linecap='round' stroke-linejoin='round'><path d='M70 0L52 70L78 96L40 190L66 214L30 330L50 352L34 420' stroke='%23b9a4ff' stroke-opacity='.55' stroke-width='12'/><path d='M70 0L52 70L78 96L40 190L66 214L30 330L50 352L34 420' stroke='%23fff' stroke-width='3.5'/><path d='M52 70L28 118M40 190L14 226M66 214L92 262' stroke='%23fff' stroke-opacity='.8' stroke-width='2'/></svg>") no-repeat var(--hw-x, 15%) 0 / auto var(--hw-h, 64%),
+    radial-gradient(ellipse 40% 90% at var(--hw-x, 16%) 0%, rgba(240,234,255,.9), rgba(186,160,255,.35) 45%, transparent 78%);
 }
 [data-theme="halloween"] .tuner.is-playing .tuner-bar::before {
   animation: hw-bolt .8s ease-out 1, hw-storm-a 97s linear 25s infinite;
@@ -305,15 +307,18 @@
   /* --glow and --thump are written here by paintPumpkin in app.js: the
      programme with a quick attack and a quicker fall, and the kick band
      below 150 Hz. The preview pages only write --vu, which is why every
-     use falls back to it. A kick bumps the whole lantern, just. */
-  transform: scale(calc(1 + var(--thump, 0) * .05)); transform-origin: 50% 85%;
+     use falls back to it. The whole lantern bumps on the bass (--bass,
+     the steadier reading the mini pumpkin uses: the sharp kick sits at 0 on
+     compressed radio), or on a kick if that is the bigger. */
+  transform: scale(calc(1 + max(var(--thump, 0) * .05, var(--bass, 0) * .07))); transform-origin: 50% 85%;
+  transition: transform .06s linear;
   /* Above the candle's shade on the glass: the pumpkin is a light of its
      own, and that shade over it browned the carved face to khaki. */
   isolation: isolate; z-index: 4;
 }
 [data-theme="halloween"] .meter::before {
   content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
-  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 210'><defs><radialGradient id='p' cx='.42' cy='.34' r='.8'><stop offset='0' stop-color='%23ffac48'/><stop offset='.5' stop-color='%23e3600e'/><stop offset='1' stop-color='%23702203'/></radialGradient><mask id='m'><rect width='240' height='210' fill='white'/><g fill='black'><path d='M60 96L94 70L102 108Z'/><path d='M180 96L146 70L138 108Z'/><path d='M120 110L108 132L132 132Z'/><path d='M54 140Q120 206 186 140L170 150L158 146L150 158L140 150L120 156L100 150L90 158L82 146L70 150Z'/></g></mask></defs><path d='M114 62Q104 34 126 16L137 25Q121 38 130 62Z' fill='%23455218'/><path d='M126 16Q136 8 146 12' fill='none' stroke='%23455218' stroke-width='3' stroke-linecap='round'/><g mask='url(%23m)'><ellipse cx='68' cy='132' rx='58' ry='70' fill='url(%23p)'/><ellipse cx='172' cy='132' rx='58' ry='70' fill='url(%23p)'/><ellipse cx='96' cy='130' rx='50' ry='76' fill='url(%23p)'/><ellipse cx='144' cy='130' rx='50' ry='76' fill='url(%23p)'/><ellipse cx='120' cy='130' rx='38' ry='78' fill='url(%23p)'/></g><g fill='none' stroke='%23ffd27a' stroke-opacity='.45' stroke-width='2.5' stroke-linejoin='round'><path d='M60 96L94 70L102 108Z'/><path d='M180 96L146 70L138 108Z'/><path d='M120 110L108 132L132 132Z'/><path d='M54 140Q120 206 186 140L170 150L158 146L150 158L140 150L120 156L100 150L90 158L82 146L70 150Z'/></g></svg>") no-repeat center / contain;
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 210'><defs><radialGradient id='p' cx='.42' cy='.34' r='.8'><stop offset='0' stop-color='%23ffac48'/><stop offset='.5' stop-color='%23e3600e'/><stop offset='1' stop-color='%23702203'/></radialGradient><linearGradient id='st' x1='0' y1='0' x2='1' y2='0'><stop offset='0' stop-color='%23282810'/><stop offset='.3' stop-color='%23676a32'/><stop offset='.45' stop-color='%239a9a66'/><stop offset='.65' stop-color='%234d5022'/><stop offset='1' stop-color='%231f1e0a'/></linearGradient><linearGradient id='sb' x1='0' y1='0' x2='0' y2='1'><stop offset='.6' stop-color='%23000' stop-opacity='0'/><stop offset='1' stop-color='%23000' stop-opacity='.45'/></linearGradient><mask id='m'><rect width='240' height='210' fill='white'/><g fill='black'><path d='M60 96L94 70L102 108Z'/><path d='M180 96L146 70L138 108Z'/><path d='M120 110L108 132L132 132Z'/><path d='M54 140Q120 206 186 140L170 150L158 146L150 158L140 150L120 156L100 150L90 158L82 146L70 150Z'/></g></mask></defs><path d='M114 62Q104 34 126 16L137 25Q121 38 130 62Z' fill='url(%23st)' stroke='%231f1e0a' stroke-width='1.2'/><path d='M114 62Q104 34 126 16L137 25Q121 38 130 62Z' fill='url(%23sb)'/><path d='M120 58Q113 38 129 21' fill='none' stroke='%23d8d4a4' stroke-opacity='.4' stroke-width='1.6' stroke-linecap='round'/><path d='M126 16Q136 8 146 12' fill='none' stroke='%231f1e0a' stroke-width='4.2' stroke-linecap='round'/><path d='M126 16Q136 8 146 12' fill='none' stroke='%23676a32' stroke-width='2.4' stroke-linecap='round'/><g mask='url(%23m)'><ellipse cx='68' cy='132' rx='58' ry='70' fill='url(%23p)'/><ellipse cx='172' cy='132' rx='58' ry='70' fill='url(%23p)'/><ellipse cx='96' cy='130' rx='50' ry='76' fill='url(%23p)'/><ellipse cx='144' cy='130' rx='50' ry='76' fill='url(%23p)'/><ellipse cx='120' cy='130' rx='38' ry='78' fill='url(%23p)'/></g><g fill='none' stroke='%23ffd27a' stroke-opacity='.45' stroke-width='2.5' stroke-linejoin='round'><path d='M60 96L94 70L102 108Z'/><path d='M180 96L146 70L138 108Z'/><path d='M120 110L108 132L132 132Z'/><path d='M54 140Q120 206 186 140L170 150L158 146L150 158L140 150L120 156L100 150L90 158L82 146L70 150Z'/></g></svg>") no-repeat center / contain;
   /* No drop shadow: a shadow cast by the shell falls into its own carved
      holes, where there is nothing to cover it, and dulled the face. */
 }
@@ -1521,7 +1526,7 @@
 }
 .theme-thumb[data-theme="halloween"] .tt-glass {
   background:
-    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 20'><path d='M11 4Q10 1 13 0L14 1Q12 2 13 4Z' fill='%23455218'/><ellipse cx='7' cy='12' rx='6.5' ry='7.5' fill='%23e3600e'/><ellipse cx='17' cy='12' rx='6.5' ry='7.5' fill='%23e3600e'/><ellipse cx='12' cy='12' rx='5' ry='8' fill='%23f07a1c'/><path d='M6 9L9 7L9.5 11ZM18 9L15 7L14.5 11ZM6 14Q12 19 18 14L15 15L12 14L9 15Z' fill='%23fff1a8'/></svg>") right 8px top 5px / 25px 21px no-repeat,
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 20'><path d='M11 4Q10 1 13 0L14 1Q12 2 13 4Z' fill='%234f7a22' stroke='%231c0802' stroke-width='.6'/><g stroke='%231c0802' stroke-width='.9'><ellipse cx='7' cy='12' rx='6.5' ry='7.5' fill='%23e3600e'/><ellipse cx='17' cy='12' rx='6.5' ry='7.5' fill='%23e3600e'/><ellipse cx='12' cy='12' rx='5' ry='8' fill='%23f7862a'/></g><path d='M6 9L9 7L9.5 11ZM18 9L15 7L14.5 11ZM6 14Q12 19 18 14L15 15L12 14L9 15Z' fill='%23fff1a8' stroke='%231c0802' stroke-width='.7'/></svg>") right 8px top 5px / 25px 21px no-repeat,
     radial-gradient(ellipse 120% 95% at 50% 120%, #ffd27a, #ff9a2e 52%, #d9560b 85%);
 }
 .theme-thumb[data-theme="halloween"] .tt-glass::before {
@@ -1547,11 +1552,12 @@
 }
 .theme-thumb[data-theme="harvest"] .tt-glass {
   background:
-    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 20'><defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23241a45'/><stop offset='.6' stop-color='%23c8634a'/><stop offset='1' stop-color='%23f5ae58'/></linearGradient></defs><path d='M1 20V10A10 10 0 0 1 21 10V20Z' fill='url(%23s)' stroke='%23efe4cf' stroke-width='1.4'/><circle cx='11' cy='11' r='4.5' fill='%23ffe3a0'/><path d='M1.7 16Q8 13 14 15T20.3 14V19.3H1.7Z' fill='%231d130c'/></svg>") right 8px top 4px / 22px 20px no-repeat,
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-16 0 106 80'><ellipse cx='24' cy='20' rx='5' ry='15' transform='rotate(-70 26 38)' fill='%238a4a1e' stroke='%234a240e'/><ellipse cx='24' cy='20' rx='5' ry='15' transform='rotate(-48 26 38)' fill='%23c9772a' stroke='%234a240e'/><ellipse cx='24' cy='20' rx='5' ry='15' transform='rotate(-26 26 38)' fill='%23e8b24a' stroke='%234a240e'/><ellipse cx='24' cy='20' rx='5' ry='15' transform='rotate(-4 26 38)' fill='%23c9772a' stroke='%234a240e'/><ellipse cx='24' cy='20' rx='5' ry='15' transform='rotate(18 26 38)' fill='%238a4a1e' stroke='%234a240e'/><path d='M40 52L40 68M40 68L46 70M40 68L44 73M40 68L36 71M44 52L44 68M44 68L50 70M44 68L48 73M44 68L40 71' stroke='%23e0a030' stroke-width='2.6' stroke-linecap='round' fill='none'/><ellipse cx='42' cy='42' rx='17' ry='14' fill='%236b3a1c' stroke='%233a1c0a' stroke-width='1.2'/><path d='M30 44Q42 52 56 42' fill='none' stroke='%238a4a24' stroke-width='2'/><path d='M38 36Q30 30 22 36Q28 40 26 46Q34 44 40 42Z' fill='%234a240e' stroke='%23301606'/><path d='M52 38Q58 28 58 20' fill='none' stroke='%23c96a5a' stroke-width='6' stroke-linecap='round'/><circle cx='60' cy='17' r='7' fill='%23d07a66'/><path d='M66 16L74 18.5L66 21Z' fill='%23f2b233'/><path d='M65 16Q70 22 67 29' fill='none' stroke='%23d1122e' stroke-width='2.6' stroke-linecap='round'/><path d='M60 23Q61 31 57 33Q55 28 57 23Z' fill='%23d1122e'/><circle cx='61' cy='13.5' r='4.2' fill='%23fff' stroke='%23301606' stroke-width='.8'/><circle cx='62.6' cy='13.6' r='1.9' fill='%23000'/></svg>") right 38px bottom 1px / 27px 20px no-repeat,
+    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 20'><defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23241a45'/><stop offset='.6' stop-color='%23c8634a'/><stop offset='1' stop-color='%23f5ae58'/></linearGradient></defs><path d='M1 20V10A10 10 0 0 1 21 10V20Z' fill='url(%23s)' stroke='%23efe4cf' stroke-width='1.4'/><circle cx='11' cy='11' r='8' fill='%23ffe3a0' opacity='.3'/><circle cx='11' cy='11' r='6.2' fill='%23ffe3a0'/><path d='M1.7 16Q8 13 14 15T20.3 14V19.3H1.7Z' fill='%231d130c'/></svg>") right 6px top 3px / 31px 28px no-repeat,
     radial-gradient(ellipse 120% 95% at 40% 110%, #fff4dc, #f2d9a8 62%, #d8b173);
 }
 .theme-thumb[data-theme="harvest"] .tt-glass::before {
-  content: ""; position: absolute; left: 5px; right: 38px; bottom: 7px; height: 6px;
+  content: ""; position: absolute; left: 5px; right: 64px; bottom: 7px; height: 6px;
   border-bottom: 1px solid #5a2e12;
   background: repeating-linear-gradient(90deg, #5a2e12 0 1px, transparent 1px 4px) bottom / 100% 4px no-repeat;
 }

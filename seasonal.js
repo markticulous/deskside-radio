@@ -3452,8 +3452,19 @@
     });
   }
 
+  /* Halloween's lightning is CSS, on two slow loops; this only moves it. A
+     loop starts or comes round with the bolt dark, a good while before it
+     strikes, so a new place set then is never seen to jump. */
+  function moveBolt(e) {
+    if (!/^hw-(bolt|storm-[ab])$/.test(e.animationName)) return;
+    e.target.style.setProperty('--hw-x', (4 + Math.random() * 92).toFixed(1) + '%');
+    e.target.style.setProperty('--hw-h', (58 + Math.random() * 28).toFixed(1) + '%');
+  }
+
   function start() {
     Array.prototype.forEach.call(document.querySelectorAll('.tuner'), adopt);
+    document.addEventListener('animationstart', moveBolt, true);
+    document.addEventListener('animationiteration', moveBolt, true);
     setInterval(tick, TICK);
     setInterval(watchBeats, TICK);
     watchVolume();

@@ -10,7 +10,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.6.1';
+  var APP_VERSION = '1.6.2';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -2424,6 +2424,8 @@
   function applyLook() {
     var from = lookWas;
     lookWas = state.theme;
+    if (SEASON_VIZ[state.theme] && from && from !== state.theme) state.miniViz = SEASON_VIZ[state.theme];
+    if (strip && strip.viz) strip.viz.setAttribute('data-viz', vizName(state.miniViz));
     // Measured per look; see lampWidth.
     faderCell = null;
     document.documentElement.setAttribute('data-theme', state.theme);
@@ -2519,8 +2521,17 @@
      that was here before, so an existing listener sees no change until
      they ask for one. */
   var VIZ = ['bars', 'needle', 'matrix', 'scope', 'sonar'];
-  function vizName(v) { return VIZ.indexOf(v) === -1 ? VIZ[0] : v; }
-  function nextViz(v) { return VIZ[(VIZ.indexOf(vizName(v)) + 1) % VIZ.length]; }
+  /* Halloween Fun adds a sixth, a little jack-o'-lantern, at the front of the
+     round -- and only while that face is on: anywhere else a saved
+     'pumpkin' falls back to the bars, as any unknown name does. */
+  /* Each seasonal face brings a meter of its own, at the front of the round,
+     only while it is on: a jack-o'-lantern, a harvest moon, a wreath of
+     lights, a bed of tulips. Elsewhere a saved one falls back to the bars. */
+  var SEASON_VIZ = { halloween: 'pumpkin', harvest: 'moon', christmas: 'wreath', spring: 'flowers' };
+  function isSeasonViz(v) { for (var k in SEASON_VIZ) if (SEASON_VIZ[k] === v) return true; return false; }
+  function vizList() { var sv = SEASON_VIZ[state.theme]; return sv ? [sv].concat(VIZ) : VIZ; }
+  function vizName(v) { var l = vizList(); return l.indexOf(v) === -1 ? l[0] : v; }
+  function nextViz(v) { var l = vizList(); return l[(l.indexOf(vizName(v)) + 1) % l.length]; }
 
   var pipWin = null;
   var strip = null;
@@ -2627,7 +2638,46 @@
     ".dr-viz[data-viz=\"needle\"] .dr-needle,",
     ".dr-viz[data-viz=\"matrix\"] .dr-matrix,",
     ".dr-viz[data-viz=\"scope\"] .dr-scope,",
-    ".dr-viz[data-viz=\"sonar\"] .dr-sonar { display: flex; }",
+    ".dr-viz[data-viz=\"sonar\"] .dr-sonar,",
+    ".dr-viz[data-viz=\"pumpkin\"] .dr-pumpkin,",
+    ".dr-viz[data-viz=\"moon\"] .dr-moon,",
+    ".dr-viz[data-viz=\"wreath\"] .dr-wreath,",
+    ".dr-viz[data-viz=\"flowers\"] .dr-flowers { display: flex; }",
+    "/* All four seasonal meters read the same two numbers: --dr-flame, the",
+    "   level against its own last couple of seconds, and --dr-thump, the bass.",
+    "   All four drawn half as big again as their box. */",
+    ".dr-moon, .dr-wreath, .dr-flowers { align-items: center; justify-content: center; }",
+    ".dr-moon svg, .dr-wreath svg, .dr-flowers svg { overflow: visible; }",
+    "/* The harvest moon bounces up with the level and swells on the bass; its",
+    "   glow brightens with it. */",
+    ".dr-moon svg { transform: translateY(calc((.5 - var(--dr-flame, 0)) * 7px)) scale(calc(1.9 + var(--dr-thump, 0) * .3)); transform-origin: 50% 55%; transition: transform .08s linear; }",
+    ".dr-moon .dr-halo { opacity: calc(.2 + var(--dr-flame, 0) * .55); transform-box: fill-box; transform-origin: center;",
+    "  transform: scale(calc(1 + var(--dr-thump, 0) * .7)); transition: transform .08s linear; }",
+    "/* The wreath: its lights come on round it with the level, and the whole",
+    "   wreath thumps to the bass. */",
+    ".dr-wreath svg { transform: scale(calc(1.5 + var(--dr-thump, 0) * .3)); transform-origin: 50% 50%; }",
+    ".dr-wreath .dr-bulb { opacity: clamp(.35, (var(--dr-flame, 0) * 10.5 - var(--i)) * 1.5, 1); transition: opacity .06s linear;",
+    "  filter: drop-shadow(0 0 1.5px currentColor) drop-shadow(0 0 3px currentColor) brightness(1.15); }",
+    "/* The tulips dance: each comes up by its own share of the level, and all",
+    "   of them sway on the bass. */",
+    ".dr-flowers svg { transform: scale(1.5); transform-origin: 50% 70%; }",
+    ".dr-flowers .dr-tulip { transform-box: fill-box; transform-origin: 50% 100%;",
+    "  transform: translateY(calc((1 - var(--dr-flame, 0) * var(--w)) * 10px)) rotate(calc(var(--dr-thump, 0) * var(--s) * 7deg));",
+    "  transition: transform .07s linear; }",
+    "/* The jack-o'-lantern: its face lit by the level, the whole of it bumped",
+    "   by the kick. Its own colours -- a pumpkin is orange on either face. */",
+    ".dr-pumpkin { align-items: center; justify-content: center; }",
+    "/* Larger than its box: the other five keep to 46x26, the pumpkin spills",
+    "   over it a little, which the row has room for above and below. */",
+    ".dr-pumpkin svg { transform: scale(calc(1.5 + var(--dr-thump, 0) * .3)); transform-origin: 50% 58%; }",
+    "/* Lit in two stages, as the big one is: a deep orange ember, then the",
+    "   yellow-white flame over it, which follows --dr-flame: the level against",
+    "   its own recent average, written by app.js. And a candle's own flicker",
+    "   over the top, so it is never still. */",
+    ".dr-pumpkin .dr-ember { opacity: clamp(0, (var(--dr-vu, 0) - .3) * 4, 1); }",
+    ".dr-pumpkin .dr-glow { opacity: var(--dr-flame, 0); filter: drop-shadow(0 0 2.5px rgba(255,170,40,.95)); animation: dr-flick 1.3s steps(1) infinite; }",
+    "@keyframes dr-flick { 0% { filter: drop-shadow(0 0 3px rgba(255,170,40,1)) brightness(1.05); } 17% { filter: drop-shadow(0 0 1px rgba(255,140,20,.6)) brightness(.7); } 31% { filter: drop-shadow(0 0 3.5px rgba(255,200,70,1)) brightness(1.2); } 52% { filter: drop-shadow(0 0 1.5px rgba(255,150,20,.75)) brightness(.8); } 68% { filter: drop-shadow(0 0 3px rgba(255,190,60,1)) brightness(1.12); } 86% { filter: drop-shadow(0 0 2px rgba(255,160,30,.85)) brightness(.88); } }",
+    "@media (prefers-reduced-motion: reduce) { .dr-pumpkin .dr-glow { animation: none; } }",
     ".dr-viz:focus-visible { outline: 2px solid var(--dr-hot); outline-offset: 2px; border-radius: 3px; }",
     ".dr-viz svg { width: 100%; height: 100%; overflow: visible; }",
     "",
@@ -2933,6 +2983,41 @@
         '<span class="dr-sonar" aria-hidden="true">' +
           '<i></i><i></i><i></i><b></b>' +
         '</span>' +
+        '<span class="dr-moon" aria-hidden="true">' +
+          '<svg viewBox="0 0 46 26">' +
+            '<defs><radialGradient id="dr-moon-halo"><stop offset=".55" stop-color="#ffd27a" stop-opacity=".55"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>' +
+              '<radialGradient id="dr-moon-face" cx="40%" cy="38%" r="70%"><stop offset="0" stop-color="#fff4d0"/><stop offset=".6" stop-color="#ffd98a"/><stop offset="1" stop-color="#e8a84a"/></radialGradient></defs>' +
+            '<circle class="dr-halo" cx="23" cy="13" r="12.5" fill="url(#dr-moon-halo)"/>' +
+            '<circle cx="23" cy="13" r="8.2" fill="url(#dr-moon-face)"/>' +
+            '<g fill="#d9a35a" opacity=".45"><circle cx="20" cy="11" r="1.8"/><circle cx="25.6" cy="9.6" r="1.1"/><circle cx="24.6" cy="15.6" r="2.2"/><circle cx="19.6" cy="16" r=".9"/></g>' +
+          '</svg>' +
+        '</span>' +
+        '<span class="dr-wreath" aria-hidden="true">' +
+          '<svg viewBox="0 0 46 26">' +
+            '<circle cx="23" cy="13" r="9.4" fill="none" stroke="#14482a" stroke-width="4.6"/>' +
+            '<g stroke-width=".7" stroke-linecap="round"><path d="M30.9 13l1.62 1.34" stroke="#1d5e32"/><path d="M30.9 13l-1.04 1.82" stroke="#45a35a"/><path d="M32.36 13.82l0.88 1.91" stroke="#2b7d43"/><path d="M32.36 13.82l-1.73 1.19" stroke="#1d5e32"/><path d="M33.73 14.89l0.94 1.88" stroke="#45a35a"/><path d="M33.73 14.89l-1.69 1.25" stroke="#2b7d43"/><path d="M31.36 15.24l1 1.84" stroke="#1d5e32"/><path d="M31.36 15.24l-1.65 1.3" stroke="#45a35a"/><path d="M32.54 16.47l1.06 1.81" stroke="#2b7d43"/><path d="M32.54 16.47l-1.6 1.36" stroke="#1d5e32"/><path d="M30.16 16.34l0.18 2.09" stroke="#45a35a"/><path d="M30.16 16.34l-2.03 0.53" stroke="#2b7d43"/><path d="M31.14 17.7l0.24 2.09" stroke="#1d5e32"/><path d="M31.14 17.7l-2.01 0.59" stroke="#45a35a"/><path d="M31.93 19.25l0.31 2.08" stroke="#2b7d43"/><path d="M31.93 19.25l-1.99 0.66" stroke="#1d5e32"/><path d="M29.63 18.56l0.38 2.07" stroke="#45a35a"/><path d="M29.63 18.56l-1.97 0.73" stroke="#2b7d43"/><path d="M30.18 20.18l-0.55 2.03" stroke="#1d5e32"/><path d="M30.18 20.18l-2.09 -0.2" stroke="#45a35a"/><path d="M28.08 19.05l-0.48 2.04" stroke="#2b7d43"/><path d="M28.08 19.05l-2.1 -0.13" stroke="#1d5e32"/><path d="M28.39 20.7l-0.42 2.06" stroke="#45a35a"/><path d="M28.39 20.7l-2.1 -0.06" stroke="#2b7d43"/><path d="M28.45 22.44l-0.35 2.07" stroke="#1d5e32"/><path d="M28.45 22.44l-2.1 0.01" stroke="#45a35a"/><path d="M26.66 20.84l-1.21 1.72" stroke="#2b7d43"/><path d="M26.66 20.84l-1.9 -0.9" stroke="#1d5e32"/><path d="M26.47 22.54l-1.15 1.75" stroke="#45a35a"/><path d="M26.47 22.54l-1.93 -0.84" stroke="#2b7d43"/><path d="M25.04 20.63l-1.1 1.79" stroke="#1d5e32"/><path d="M25.04 20.63l-1.95 -0.78" stroke="#45a35a"/><path d="M24.63 22.26l-1.04 1.83" stroke="#2b7d43"/><path d="M24.63 22.26l-1.98 -0.71" stroke="#1d5e32"/><path d="M23.95 23.86l-1.72 1.2" stroke="#45a35a"/><path d="M23.95 23.86l-1.47 -1.5" stroke="#2b7d43"/><path d="M23 21.65l-1.68 1.25" stroke="#1d5e32"/><path d="M23 21.65l-1.52 -1.45" stroke="#45a35a"/><path d="M22.12 23.11l-1.64 1.31" stroke="#2b7d43"/><path d="M22.12 23.11l-1.57 -1.4" stroke="#1d5e32"/><path d="M21.63 20.78l-1.6 1.36" stroke="#45a35a"/><path d="M21.63 20.78l-1.61 -1.34" stroke="#2b7d43"/><path d="M20.57 22.08l-2.03 0.54" stroke="#1d5e32"/><path d="M20.57 22.08l-0.87 -1.91" stroke="#45a35a"/><path d="M19.27 23.24l-2.01 0.6" stroke="#2b7d43"/><path d="M19.27 23.24l-0.94 -1.88" stroke="#1d5e32"/><path d="M19.34 20.84l-1.99 0.67" stroke="#45a35a"/><path d="M19.34 20.84l-1 -1.85" stroke="#2b7d43"/><path d="M17.93 21.79l-1.97 0.73" stroke="#1d5e32"/><path d="M17.93 21.79l-1.06 -1.81" stroke="#45a35a"/><path d="M18.47 19.47l-2.09 -0.19" stroke="#2b7d43"/><path d="M18.47 19.47l-0.17 -2.09" stroke="#1d5e32"/><path d="M16.96 20.2l-2.1 -0.12" stroke="#45a35a"/><path d="M16.96 20.2l-0.24 -2.09" stroke="#2b7d43"/><path d="M15.29 20.71l-2.1 -0.05" stroke="#1d5e32"/><path d="M15.29 20.71l-0.3 -2.08" stroke="#45a35a"/><path d="M16.37 18.56l-2.1 0.02" stroke="#2b7d43"/><path d="M16.37 18.56l-0.37 -2.07" stroke="#1d5e32"/><path d="M14.69 18.82l-1.9 -0.89" stroke="#45a35a"/><path d="M14.69 18.82l0.56 -2.02" stroke="#2b7d43"/><path d="M16.16 16.95l-1.93 -0.83" stroke="#1d5e32"/><path d="M16.16 16.95l0.49 -2.04" stroke="#45a35a"/><path d="M14.48 16.97l-1.95 -0.77" stroke="#2b7d43"/><path d="M14.48 16.97l0.42 -2.06" stroke="#1d5e32"/><path d="M12.76 16.73l-1.98 -0.7" stroke="#45a35a"/><path d="M12.76 16.73l0.36 -2.07" stroke="#2b7d43"/><path d="M14.64 15.24l-1.48 -1.49" stroke="#1d5e32"/><path d="M14.64 15.24l1.22 -1.71" stroke="#45a35a"/><path d="M13 14.76l-1.53 -1.44" stroke="#2b7d43"/><path d="M13 14.76l1.16 -1.75" stroke="#1d5e32"/><path d="M15.13 13.69l-1.57 -1.39" stroke="#45a35a"/><path d="M15.13 13.69l1.1 -1.79" stroke="#2b7d43"/><path d="M13.6 13l-1.62 -1.34" stroke="#1d5e32"/><path d="M13.6 13l1.04 -1.82" stroke="#45a35a"/><path d="M12.14 12.05l-0.88 -1.91" stroke="#2b7d43"/><path d="M12.14 12.05l1.73 -1.19" stroke="#1d5e32"/><path d="M14.48 11.5l-0.94 -1.88" stroke="#45a35a"/><path d="M14.48 11.5l1.69 -1.25" stroke="#2b7d43"/><path d="M13.2 10.37l-1 -1.84" stroke="#1d5e32"/><path d="M13.2 10.37l1.65 -1.3" stroke="#45a35a"/><path d="M15.58 10.3l-1.06 -1.81" stroke="#2b7d43"/><path d="M15.58 10.3l1.6 -1.36" stroke="#1d5e32"/><path d="M14.48 9.03l-0.18 -2.09" stroke="#45a35a"/><path d="M14.48 9.03l2.03 -0.53" stroke="#2b7d43"/><path d="M13.56 7.55l-0.24 -2.09" stroke="#1d5e32"/><path d="M13.56 7.55l2.01 -0.59" stroke="#45a35a"/><path d="M15.91 8.04l-0.31 -2.08" stroke="#2b7d43"/><path d="M15.91 8.04l1.99 -0.66" stroke="#1d5e32"/><path d="M15.22 6.48l-0.38 -2.07" stroke="#45a35a"/><path d="M15.22 6.48l1.97 -0.73" stroke="#2b7d43"/><path d="M17.41 7.41l0.55 -2.03" stroke="#1d5e32"/><path d="M17.41 7.41l2.09 0.2" stroke="#45a35a"/><path d="M16.96 5.8l0.48 -2.04" stroke="#2b7d43"/><path d="M16.96 5.8l2.1 0.13" stroke="#1d5e32"/><path d="M16.75 4.07l0.42 -2.06" stroke="#45a35a"/><path d="M16.75 4.07l2.1 0.06" stroke="#2b7d43"/><path d="M18.67 5.51l0.35 -2.07" stroke="#1d5e32"/><path d="M18.67 5.51l2.1 -0.01" stroke="#45a35a"/><path d="M18.71 3.8l1.21 -1.72" stroke="#2b7d43"/><path d="M18.71 3.8l1.9 0.9" stroke="#1d5e32"/><path d="M20.3 5.58l1.15 -1.75" stroke="#45a35a"/><path d="M20.3 5.58l1.93 0.84" stroke="#2b7d43"/><path d="M20.57 3.92l1.1 -1.79" stroke="#1d5e32"/><path d="M20.57 3.92l1.95 0.78" stroke="#45a35a"/><path d="M21.11 2.27l1.04 -1.83" stroke="#2b7d43"/><path d="M21.11 2.27l1.98 0.71" stroke="#1d5e32"/><path d="M22.25 4.38l1.72 -1.2" stroke="#45a35a"/><path d="M22.25 4.38l1.47 1.5" stroke="#2b7d43"/><path d="M23 2.85l1.68 -1.25" stroke="#1d5e32"/><path d="M23 2.85l1.52 1.45" stroke="#45a35a"/><path d="M23.69 5.13l1.64 -1.31" stroke="#2b7d43"/><path d="M23.69 5.13l1.57 1.4" stroke="#1d5e32"/><path d="M24.63 3.74l1.6 -1.36" stroke="#45a35a"/><path d="M24.63 3.74l1.61 1.34" stroke="#2b7d43"/><path d="M25.82 2.47l2.03 -0.54" stroke="#1d5e32"/><path d="M25.82 2.47l0.87 1.91" stroke="#45a35a"/><path d="M25.96 4.87l2.01 -0.6" stroke="#2b7d43"/><path d="M25.96 4.87l0.94 1.88" stroke="#1d5e32"/><path d="M27.29 3.8l1.99 -0.67" stroke="#45a35a"/><path d="M27.29 3.8l1 1.85" stroke="#2b7d43"/><path d="M26.95 6.16l1.97 -0.73" stroke="#1d5e32"/><path d="M26.95 6.16l1.06 1.81" stroke="#45a35a"/><path d="M28.39 5.3l2.09 0.19" stroke="#2b7d43"/><path d="M28.39 5.3l0.17 2.09" stroke="#1d5e32"/><path d="M30.01 4.65l2.1 0.12" stroke="#45a35a"/><path d="M30.01 4.65l0.24 2.09" stroke="#2b7d43"/><path d="M29.12 6.88l2.1 0.05" stroke="#1d5e32"/><path d="M29.12 6.88l0.3 2.08" stroke="#45a35a"/><path d="M30.78 6.48l2.1 -0.02" stroke="#2b7d43"/><path d="M30.78 6.48l0.37 2.07" stroke="#1d5e32"/><path d="M29.47 8.47l1.9 0.89" stroke="#45a35a"/><path d="M29.47 8.47l-0.56 2.02" stroke="#2b7d43"/><path d="M31.14 8.3l1.93 0.83" stroke="#1d5e32"/><path d="M31.14 8.3l-0.49 2.04" stroke="#45a35a"/><path d="M32.88 8.39l1.95 0.77" stroke="#2b7d43"/><path d="M32.88 8.39l-0.42 2.06" stroke="#1d5e32"/><path d="M31.13 10.04l1.98 0.7" stroke="#45a35a"/><path d="M31.13 10.04l-0.36 2.07" stroke="#2b7d43"/><path d="M32.8 10.37l1.48 1.49" stroke="#1d5e32"/><path d="M32.8 10.37l-1.22 1.71" stroke="#45a35a"/><path d="M30.78 11.63l1.53 1.44" stroke="#2b7d43"/><path d="M30.78 11.63l-1.16 1.75" stroke="#1d5e32"/><path d="M32.36 12.18l1.57 1.39" stroke="#45a35a"/><path d="M32.36 12.18l-1.1 1.79" stroke="#2b7d43"/></g>' +
+            '<path d="M23 21.6L18.6 19L19.4 23.6ZM23 21.6L27.4 19L26.6 23.6Z" fill="#d1122e"/><path d="M23 21.6L21 26.4M23 21.6L25 26.4" stroke="#d1122e" stroke-width="1.2" stroke-linecap="round"/><circle cx="23" cy="21.6" r="1.4" fill="#a00d24"/>' +
+            '<g class="dr-bulb" style="--i:0" color="#ff4040"><circle cx="23.00" cy="3.60" r="1.7" fill="#ff4040"/><circle cx="22.55" cy="3.15" r=".6" fill="#fff" opacity=".85"/></g><g class="dr-bulb" style="--i:1" color="#ffc233"><circle cx="28.53" cy="5.40" r="1.7" fill="#ffc233"/><circle cx="28.08" cy="4.95" r=".6" fill="#fff" opacity=".85"/></g><g class="dr-bulb" style="--i:2" color="#3fe07a"><circle cx="31.94" cy="10.10" r="1.7" fill="#3fe07a"/><circle cx="31.49" cy="9.65" r=".6" fill="#fff" opacity=".85"/></g><g class="dr-bulb" style="--i:3" color="#48b4ff"><circle cx="31.94" cy="15.90" r="1.7" fill="#48b4ff"/><circle cx="31.49" cy="15.45" r=".6" fill="#fff" opacity=".85"/></g><g class="dr-bulb" style="--i:4" color="#ff5cd6"><circle cx="28.53" cy="20.60" r="1.7" fill="#ff5cd6"/><circle cx="28.08" cy="20.15" r=".6" fill="#fff" opacity=".85"/></g><g class="dr-bulb" style="--i:5" color="#ff4040"><circle cx="23.00" cy="22.40" r="1.7" fill="#ff4040"/><circle cx="22.55" cy="21.95" r=".6" fill="#fff" opacity=".85"/></g><g class="dr-bulb" style="--i:6" color="#ffc233"><circle cx="17.47" cy="20.60" r="1.7" fill="#ffc233"/><circle cx="17.02" cy="20.15" r=".6" fill="#fff" opacity=".85"/></g><g class="dr-bulb" style="--i:7" color="#3fe07a"><circle cx="14.06" cy="15.90" r="1.7" fill="#3fe07a"/><circle cx="13.61" cy="15.45" r=".6" fill="#fff" opacity=".85"/></g><g class="dr-bulb" style="--i:8" color="#48b4ff"><circle cx="14.06" cy="10.10" r="1.7" fill="#48b4ff"/><circle cx="13.61" cy="9.65" r=".6" fill="#fff" opacity=".85"/></g><g class="dr-bulb" style="--i:9" color="#ff5cd6"><circle cx="17.47" cy="5.40" r="1.7" fill="#ff5cd6"/><circle cx="17.02" cy="4.95" r=".6" fill="#fff" opacity=".85"/></g>' +
+          '</svg>' +
+        '</span>' +
+        '<span class="dr-flowers" aria-hidden="true">' +
+          '<svg viewBox="0 0 46 26">' +
+            '<g class="dr-tulip" style="--w:0.85;--s:-1"><path d="M15 24V13" stroke="#4f9a5a" stroke-width="1.2"/><path d="M15 21Q11 18 10.5 15Q13.5 17.5 15 19.5Z" fill="#4f9a5a"/><path d="M12 10C11.6 6 13.4 4.6 13.6 6.6L15 4.4L16.4 6.6C16.6 4.6 18.4 6 18 10C17.6 12.6 12.4 12.6 12 10Z" fill="#e0527a"/></g><g class="dr-tulip" style="--w:1;--s:1"><path d="M23 24V10" stroke="#4f9a5a" stroke-width="1.2"/><path d="M23 21Q19 18 18.5 15Q21.5 17.5 23 19.5Z" fill="#4f9a5a"/><path d="M20 7C19.6 3 21.4 1.5999999999999996 21.6 3.6L23 1.4000000000000004L24.4 3.6C24.6 1.5999999999999996 26.4 3 26 7C25.6 9.6 20.4 9.6 20 7Z" fill="#f2c14e"/></g><g class="dr-tulip" style="--w:0.75;--s:-1"><path d="M31 24V14" stroke="#4f9a5a" stroke-width="1.2"/><path d="M31 21Q27 18 26.5 15Q29.5 17.5 31 19.5Z" fill="#4f9a5a"/><path d="M28 11C27.6 7 29.4 5.6 29.6 7.6L31 5.4L32.4 7.6C32.6 5.6 34.4 7 34 11C33.6 13.6 28.4 13.6 28 11Z" fill="#a98bd6"/></g>' +
+          '</svg>' +
+        '</span>' +
+        '<span class="dr-pumpkin" aria-hidden="true">' +
+          '<svg viewBox="0 0 46 26">' +
+            '<defs><radialGradient id="dr-pk-shell" cx="45%" cy="38%" r="65%"><stop offset="0" stop-color="#ffac48"/><stop offset=".6" stop-color="#e3600e"/><stop offset="1" stop-color="#702203"/></radialGradient>' +
+              '<radialGradient id="dr-pk-lit" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#fffbe0"/><stop offset=".45" stop-color="#ffe066"/><stop offset="1" stop-color="#ff8a10"/></radialGradient></defs>' +
+            '<path d="M22.2 5Q22.6 1.4 25.6 1.2L25 5.2Z" fill="#4f7a22"/>' +
+            '<g fill="url(#dr-pk-shell)" stroke="#702203" stroke-width=".6">' +
+              '<ellipse cx="17.4" cy="15" rx="7" ry="9.4"/><ellipse cx="28.6" cy="15" rx="7" ry="9.4"/><ellipse cx="23" cy="15" rx="7.6" ry="9.9"/>' +
+            '</g>' +
+            '<path d="M15.6 12.4L20 12.4L17.8 8.4ZM26 12.4L30.4 12.4L28.2 8.4ZM22 15.2L24 15.2L23 13.2ZM15.2 17.4Q23 23.4 30.8 17.4L28.6 18.5L27 17.3L25.2 18.9L23 17.7L20.8 18.9L19 17.3L17.4 18.5Z" fill="#2a0a02"/>' +
+            '<path class="dr-ember" d="M15.6 12.4L20 12.4L17.8 8.4ZM26 12.4L30.4 12.4L28.2 8.4ZM22 15.2L24 15.2L23 13.2ZM15.2 17.4Q23 23.4 30.8 17.4L28.6 18.5L27 17.3L25.2 18.9L23 17.7L20.8 18.9L19 17.3L17.4 18.5Z" fill="#e0400a" stroke="#4a1404" stroke-width=".7" stroke-linejoin="round"/>' +
+            '<path class="dr-glow" d="M15.6 12.4L20 12.4L17.8 8.4ZM26 12.4L30.4 12.4L28.2 8.4ZM22 15.2L24 15.2L23 13.2ZM15.2 17.4Q23 23.4 30.8 17.4L28.6 18.5L27 17.3L25.2 18.9L23 17.7L20.8 18.9L19 17.3L17.4 18.5Z" fill="url(#dr-pk-lit)" stroke="#4a1404" stroke-width=".7" stroke-linejoin="round"/>' +
+          '</svg>' +
+        '</span>' +
       '</button>' +
     '</div>' +
     /* A circle half filled: the one glyph that reads as light-or-dark either way. */
@@ -3204,6 +3289,7 @@
        inheritance, so changing visualisation changes nothing about what
        this does or how often. */
     strip.viz.style.setProperty('--dr-vu', shown.toFixed(3));
+    stripShown = shown;
     /* The bars and the dots, a touch livelier on the way down. They already
        follow every frame -- measured at 60 updates a second while pinned --
        so a quicker fall has to come from a longer one: the bottom fifth of
@@ -3259,11 +3345,30 @@
      beats outright -- far too little to throw a ripple. This one, on the
      same programme, read 0.5-1.0 on every beat and fell near 0 between.
      Measured live. */
+  var stripShown = 0, flameAvg = 0, flameAt = 0;
   var bassEnv = 0, BASS_GAIN = 14, BASS_OVER = 1.04, BASS_FALL_MS = 320;
 
   function paintStripThump(ts) {
-    if (!strip || !strip.viz || strip.viz.getAttribute('data-viz') !== 'sonar') return;
-    strip.viz.style.setProperty('--dr-thump', readThump(ts).toFixed(3));
+    var shown = strip && strip.viz && strip.viz.getAttribute('data-viz');
+    var season = isSeasonViz(shown);
+    if (shown !== 'sonar' && !season) return;
+    var k = readThump(ts);
+    /* The pumpkin's flame follows the level against its own last couple of
+       seconds, not against fixed marks: measured, one stretch of a station
+       sat at .85 and kept it blazing, the next at .7 and kept it out. Above
+       its recent average it flares, below it dims, whatever the station's
+       loudness. */
+    if (season) {
+      var dt = flameAt ? Math.min(100, ts - flameAt) : 16;
+      flameAt = ts;
+      flameAvg += (stripShown - flameAvg) * (1 - Math.exp(-dt / 1800));
+      strip.viz.style.setProperty('--dr-flame', Math.max(0, Math.min(1, 0.4 + (stripShown - flameAvg) * 6)).toFixed(3));
+    }
+    /* The pumpkin bumps on the steadier bass reading the April puddle uses:
+       measured on a compressed music station, the sharp kick above stayed at
+       0 for eight seconds together, and a pumpkin that never moves to the
+       beat might as well be a picture. */
+    strip.viz.style.setProperty('--dr-thump', (season ? bassEnv : k).toFixed(3));
   }
 
   /* Measured once a frame for whoever wants it -- the mini radio's speaker
@@ -3316,7 +3421,7 @@
     glowAt += (target - glowAt) * (1 - Math.exp(-dt / (target > glowAt ? GLOW_RISE_MS : GLOW_FALL_MS)));
     pumpkinMeter.style.setProperty('--glow', glowAt.toFixed(3));
     pumpkinMeter.style.setProperty('--thump', (analyser && ctx && freqData ? readThump(ts) : 0).toFixed(3));
-    if (face === 'spring') pumpkinMeter.style.setProperty('--bass', (analyser && ctx && freqData ? bassEnv : 0).toFixed(3));
+    if (face === 'spring' || face === 'halloween') pumpkinMeter.style.setProperty('--bass', (analyser && ctx && freqData ? bassEnv : 0).toFixed(3));
   }
 
   var SCOPE_PTS = 30;
@@ -7066,7 +7171,7 @@
        the reduced-motion choice, the remembered city. Each is checked, and a
        file without it -- anything written before 1.5.10 -- leaves the radio's
        own choice where it was rather than putting it back to the default. */
-    if (VIZ.indexOf(data.miniViz) !== -1) target.miniViz = data.miniViz;
+    if (VIZ.indexOf(data.miniViz) !== -1 || isSeasonViz(data.miniViz)) target.miniViz = data.miniViz;
     if (typeof data.miniLight === 'boolean') target.miniLight = data.miniLight;
     if (typeof data.versionCheck === 'boolean') target.versionCheck = data.versionCheck;
     if (typeof data.scrollAnyway === 'boolean') target.scrollAnyway = data.scrollAnyway;
