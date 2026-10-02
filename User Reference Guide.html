@@ -570,7 +570,7 @@ html { scroll-behavior: smooth; }
   <span class="byline">
     <span class="byline-by">A</span><span class="byline-name">Markticulous</span><span class="byline-suffix">build</span>
   </span>
-  <span class="ver" id="verChip">v1.6.1</span>
+  <span class="ver" id="verChip">v1.6.2</span>
   <span class="find">
     <input type="search" id="findInput" class="find-input" autocomplete="off" spellcheck="false"
            placeholder="Search the manual…" aria-label="Search the manual"
@@ -671,7 +671,7 @@ html { scroll-behavior: smooth; }
 
       <h3>The window nothing can size</h3>
       <p>A page cannot decide how big one of these windows is. Chrome ignores the size it is given &mdash; 440&times;150, 440&times;240 and 600&times;400 were each measured opening at 1119&times;700, which is simply its default for the display &mdash; and although the window can be resized afterwards, that needs a live user gesture, and the gesture that opened it was spent opening it.</p>
-      <p>So on Windows the opener starts <span class="path">strip-fit.ps1</span> beside the radio. <strong>It is the only thing this project leaves running</strong>, and the only file in the folder nobody is meant to double-click. It waits for the floating window, sets it to the right size, takes its resize grip off so it cannot be dragged to some other shape, and does nothing else. It stops when the radio&rsquo;s window goes, with a twelve-hour backstop in case it never sees that happen, and only one ever runs at a time. The uninstaller stops it before removing the folder.</p>
+      <p>So on Windows the opener starts <span class="path">strip-fit.ps1</span> beside the radio. <strong>It is the only thing this project leaves running</strong>, and the only file in the folder nobody is meant to double-click. It waits for the floating window, sets it to the right size, takes its resize grip off so it cannot be dragged to some other shape, and does nothing else. It knows the floating window by its title, or, where a browser captions it with the page&rsquo;s file path instead (some Edge builds do), by the radio&rsquo;s folder in that path. It stops once the radio&rsquo;s window has been gone for three seconds together, with a twelve-hour backstop in case it never sees that happen, and only one ever runs at a time. The uninstaller stops it before removing the folder.</p>
       <p>It picks the right window by asking Windows which one floats. Both windows answer to the same name &mdash; Windows captions a picture-in-picture window with the title of the page that opened it, not the title of the page inside it &mdash; and only the floating one carries the always-on-top flag.</p>
       <p><strong>Everywhere else &mdash; macOS and Linux &mdash; nothing is started and nothing runs.</strong> The strip opens at whatever size the browser chose and says so in its top-left corner: <em>Click here to show Deskside Radio Mini</em>. One click sizes it. That prompt is keyed to the window actually being too big rather than to the platform, so it never appears on Windows, and it will stop appearing anywhere a browser begins honouring the size it is asked for.</p>
 

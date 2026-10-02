@@ -1,6 +1,6 @@
 {
-  "version": "1.6.1",
-  "released": "2026-09-30",
-  "notes": "## New features & enhancements\n\n- Brave is a browser the radio knows about: its own Desktop shortcut script, its own profile, its own badged icon, and a letter in the installer's browser prompt.\n- A Brave radio opens without Brave's first-run analytics notice, which otherwise pushed the page down and put a scrollbar beside it.\n- The installer's browser question stopped listing the letters a second time; they are printed directly above it.\n\n## Bug fixes\n\n- The Edge and Firefox shortcut scripts printed a truncated banner - \"DESKTOP SHORTCUT (EDGE\" - because a closing bracket inside an if block ended the block.\n- Starting with Windows follows whichever single-browser Desktop shortcut is there, rather than only Edge's.",
+  "version": "1.6.2",
+  "released": "2026-10-02",
+  "notes": "## New features & enhancements\n\n- Enhancements to seasonal themes.\n\n## Bug fixes\n\n- The mini radio sizes itself again on PCs where Edge captions its floating window with the page's file path; it used to open at the browser's size and ask you to click.\n- The mini radio's size watcher no longer stops if it glances at the radio window while the strip is still opening, which also left the strip asking you to click.\n- Fixes in seasonal themes.",
   "url": "https://github.com/Markticulous/deskside-radio/releases/latest"
 }

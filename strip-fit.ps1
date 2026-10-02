@@ -197,14 +197,21 @@ function Get-RadioWindows {
             $sb = New-Object System.Text.StringBuilder 512
             [void][DsFit.Win]::GetWindowTextW($h, $sb, 512)
             $t = $sb.ToString()
-            if ($t -and ($t.EndsWith($script:tail) -or $t.EndsWith($script:fxtail))) {
-                $ex = [DsFit.Win]::GetWindowLongPtr($h, $script:gwl).ToInt64()
+            $ex = [DsFit.Win]::GetWindowLongPtr($h, $script:gwl).ToInt64()
+            $top = (($ex -band $script:topmost) -ne 0)
+            # Some Edge builds caption the float with the page's file path
+            # ("File  C:/Users/.../DesksideRadio/app/index.html") rather than
+            # the opener's title -- seen on a work PC, where the strip was
+            # never found and so never sized. A floating window whose title
+            # names the radio's folder is the strip too.
+            $isFloat = $top -and $t -and ($t -match $script:pathRe)
+            if ($t -and ($t.EndsWith($script:tail) -or $t.EndsWith($script:fxtail) -or $isFloat)) {
                 $r = New-Object DsFit.Win+RECT
                 [void][DsFit.Win]::GetWindowRect($h, [ref]$r)
                 [void]$script:found.Add([pscustomobject]@{
                     H       = $h
                     Title   = $t
-                    Topmost = (($ex -band $script:topmost) -ne 0)
+                    Topmost = $top
                     X       = $r.L
                     Y       = $r.T
                     W       = $r.R - $r.L
@@ -225,6 +232,9 @@ $script:tail = $RADIO_TAIL
 # something else and never match.
 $script:fxtail = $RADIO_TAIL + ' ' + [char]0x2014 + ' Mozilla Firefox'
 $stowed = $null
+# The radio's folder as it appears in a file path or URL: the installed
+# DesksideRadio, or a copy in a folder named Deskside Radio (%20 in a URL).
+$script:pathRe = 'Deskside(Radio| Radio|%20Radio)[\\/]'
 $script:gwl = $GWL_EXSTYLE
 $script:topmost = $WS_EX_TOPMOST
 
@@ -239,6 +249,7 @@ $script:topmost = $WS_EX_TOPMOST
 $done = New-Object System.Collections.Generic.HashSet[System.IntPtr]
 $until = (Get-Date).AddMinutes($MAX_MINUTES)
 $sawRadio = $false
+$goneSince = $null
 $lastSeen = ''
 
 while ($true) {
@@ -268,8 +279,16 @@ while ($true) {
     # The radio's own window is the one that does not float. Until it has been
     # seen once this is still starting up and its absence means nothing; after
     # that, its absence means the app has been closed.
-    if ($wins | Where-Object { -not $_.Topmost }) { $sawRadio = $true }
-    elseif ($sawRadio) { Note "the radio has gone; stopping"; break }
+    #
+    # Gone for three seconds together, not for one pass: while the strip opens
+    # the radio's window is shrunk and tucked away, and a pass that caught it
+    # between states took the radio for closed -- this stopped, and the strip
+    # it had been started for came up at the browser's size with "Click here".
+    if ($wins | Where-Object { -not $_.Topmost }) { $sawRadio = $true; $goneSince = $null }
+    elseif ($sawRadio) {
+        if (-not $goneSince) { $goneSince = Get-Date }
+        elseif (((Get-Date) - $goneSince).TotalSeconds -ge 3) { Note "the radio has gone; stopping"; break }
+    }
 
     # Firefox: out of the way on pin, back on unpin. The float is the topmost
     # one; the big window is the other. Remembered by handle and rectangle, so
