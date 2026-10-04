@@ -1873,6 +1873,359 @@ test('a profile that could not be renamed is still used', () => {
    Traced in a browser from document-start: the text appears at 24ms, goes
    dark at 206, 572, 922, 1289 and 1656, and the station returns at 1839
    with the fade running. */
+/* Every comment in the stylesheet opens and closes.
+
+   This is here because of a real one. A new block was pasted into the
+   middle of the comment over .display-name.can-scroll, which swallowed
+   that comment's terminator and left its last line stranded fifty lines
+   further down, ending in a terminator that by then closed nothing. CSS
+   has no error for it: the orphan and the selector after it are read as
+   one invalid selector and the whole rule is dropped, silently. The
+   readout lost its text-overflow: clip and nobody noticed for months.
+
+   Counting is enough, because CSS comments do not nest: an opener seen
+   while already inside one, or a terminator seen outside one, is the
+   fault. */
+test('no comment in the stylesheet runs past its end', () => {
+  ['app.css', 'seasonal.css'].forEach((file) => {
+    const css = read(file);
+    let open = false;
+    for (let i = 0; i < css.length; i++) {
+      if (!open && css.startsWith('/*', i)) { open = true; i += 1; continue; }
+      if (open && css.startsWith('*/', i)) { open = false; i += 1; continue; }
+      assert.ok(open || !css.startsWith('*/', i),
+        file + ' closes a comment at character ' + i + ' that was never opened, which drops the rule after it');
+    }
+    assert.ok(!open, file + ' ends inside a comment');
+  });
+});
+
+/* A name wider than the readout fades out at both ends rather than being
+   cut on a hard vertical edge -- except on the three faces made of cells,
+   where the hard edge is what the hardware itself does. */
+/* The two readout state rules sit below the feather, and have to.
+
+   Both set `animation` on .display-name and so does the feather, at the
+   same specificity, so source order decides. Coming back from the version
+   announcement the station name is restored and .is-returning added in
+   the same frame, so a long name carries .can-scroll and .is-returning at
+   once -- and written above the feather, the fade back is replaced by it
+   and the readout snaps in at full instead of arriving. */
+test('the readout fade survives the feather', () => {
+  const css = read('app.css');
+  const feather = css.indexOf('animation: name-feather');
+  assert.ok(feather !== -1, 'the feather animation is gone');
+  ['.display-name.is-announcing { animation: name-flash',
+    '.display-name.is-returning { animation: name-return'].forEach((rule) => {
+    const at = css.indexOf(rule);
+    assert.ok(at !== -1, rule + ' is gone from app.css');
+    assert.ok(at > feather,
+      rule.split(' {')[0] + ' is written above the feather, which has the same specificity and so replaces it');
+  });
+});
+
+/* The add key's label is ours, not a station's, so it is set to fit
+   rather than scrolled. It was being cut mid-word -- ADD STATIO -- on the
+   faces that set their keys in a wide display type. */
+test("the add key's label is sized to fit, not scrolled", () => {
+  const js = read('app.js');
+  assert.ok(js.indexOf('function fitAddLabel() {') !== -1,
+    'nothing sizes the add key\'s label to its button');
+  const fit = js.slice(js.indexOf('function fitAddLabel() {'),
+    js.indexOf('function fitAddLabel() {') + 800);
+  assert.ok(fit.indexOf(".querySelector('.preset-add .preset-name')") !== -1,
+    'the add key\'s label is no longer the thing being sized');
+  /* Only this one. A station's name is as long as it is, and shrinking
+     the type to fit the message is the one thing no piece of hardware
+     does -- which is why the others scroll. */
+  assert.ok(fit.indexOf('.preset-name\'') === fit.lastIndexOf('.preset-name\''),
+    'the add key is no longer the only label being shrunk');
+  assert.ok(/parseFloat\(cs\.letterSpacing\) \|\| 0/.test(fit),
+    'the trailing letter-spacing is no longer taken off, so a label ending at the edge shrinks for ever');
+  assert.ok(/var floor = Math\.max\(8, px \* 0?\.\d+\);/.test(fit),
+    'the floor is gone, so a narrow column can shrink the label away to nothing');
+
+  /* It has to be sized before the others are measured, or fitLine
+     measures the label at its old size and sets it scrolling anyway. */
+  const measure = js.slice(js.indexOf('function measurePresetNames(pass) {'),
+    js.indexOf('function measurePresetNames(pass) {') + 1600);
+  assert.ok(measure.indexOf('fitAddLabel();') !== -1,
+    'the add key is no longer re-fitted on a resize or a theme change');
+  assert.ok(measure.indexOf('fitAddLabel();') < measure.indexOf('TunerUI.fitLine'),
+    'the add key is sized after the names are fitted, so fitLine measures the old size and scrolls it anyway');
+});
+
+/* The marquee's four phases live in app.css as percentages and its pace
+   lives in tuner-ui.js as two constants, and they have to describe the
+   same animation.
+
+   The outward leg is the one that must not change: a split-flap name is
+   paced one flap at a time against it, so a different share turns the
+   board over at a different speed. Everything around it has been cut
+   twice -- the far pause from 24 parts to 17, the way back from 18 to 12
+   and then to 7 -- and each time the cycle got shorter, which would have
+   sped the travel up with it had the constants not been re-cut to
+   compensate. CYCLE_TRIM scales the whole cycle; TRAVEL_SHARE takes the
+   travel back out of it; their product is the outward leg's share of the
+   cycle this was all cut down from, and that product is what has to
+   survive, whatever either number reads on its own. */
+test('the readout marquee is paced the same in both files', () => {
+  const css = read('app.css');
+  const ui = read('tuner-ui.js');
+
+  const kf = /@keyframes name-marquee \{\s*0%, ([\d.]+)%\s*\{ transform: translateX\(0\); \}\s*([\d.]+)%, ([\d.]+)%\s*\{ transform: translateX\(var\(--marquee-by, 0\)\); \}/.exec(css);
+  assert.ok(kf, 'the marquee keyframes are gone, or no longer hold at each end');
+  const [hold, travelEnd, farEnd] = [Number(kf[1]), Number(kf[2]), Number(kf[3])];
+
+  const share = Number(/var TRAVEL_SHARE = ([\d.]+);/.exec(ui)[1]);
+  const trim = Number(/var CYCLE_TRIM = ([\d.]+);/.exec(ui)[1]);
+
+  assert.ok(Math.abs((travelEnd - hold) / 100 - share) < 0.001,
+    'the keyframes travel for ' + ((travelEnd - hold) / 100).toFixed(4)
+      + ' of the cycle and TRAVEL_SHARE says ' + share
+      + ', so a split-flap name is paced against a leg of a different length');
+  assert.ok(Math.abs(trim * share - 0.46) < 0.002,
+    'CYCLE_TRIM x TRAVEL_SHARE is ' + (trim * share).toFixed(4) + ' rather than 0.46, so the outward leg no longer '
+      + 'lasts what it used to -- shortening the cycle has sped up the travel with it');
+
+  /* Ordered, and the way home is the short part. */
+  assert.ok(hold < travelEnd && travelEnd < farEnd && farEnd < 100,
+    'the marquee phases are out of order');
+  assert.ok(100 - farEnd < travelEnd - hold,
+    'the return now takes longer than the outward leg, which reads as the name being dragged back rather than reset');
+});
+
+/* No two functions in a file share a name at the same depth.
+
+   seasonal.js had two called batSvg: the one that draws the bat shut in
+   the witch's broom, and the one that draws the flock crossing the strip.
+   Function declarations hoist, so the second won for the whole file and
+   the scene's call reached it with no arguments -- which returned a <g>
+   with undefined coordinates and no <svg> around it. That draws nothing.
+   No error, no warning; the bat simply never came out, and the only way
+   to find out was to watch the scene and notice something missing.
+
+   Indentation stands in for scope here, which is rough but is what the
+   bug looked like, and these files are written at one level per nesting
+   throughout. */
+test('no function in a file is shadowed by a later one of the same name', () => {
+  ['app.js', 'seasonal.js', 'tuner-ui.js', 'scheduler.js', 'signal.js', 'radio-directory.js'].forEach((file) => {
+    const decls = [];
+    read(file).split('\n').forEach((line, i) => {
+      const m = /^(\s*)function ([A-Za-z_$][\w$]*)\s*\(/.exec(line);
+      if (m) decls.push({ depth: m[1].length, name: m[2], line: i + 1 });
+    });
+    assert.ok(decls.length, file + ' declares no functions at all, so this is reading the wrong thing');
+
+    /* The module level only -- every one of these files is a single IIFE,
+       so that is the shallowest depth any function is declared at, and it
+       is the one scope the whole file shares.
+
+       Deeper than that, equal indentation stops meaning equal scope: two
+       helpers called done() inside two different functions are not in
+       each other's way, and an earlier cut of this test failed on exactly
+       that. Catching those as well would mean tracking braces through
+       every string and comment in a file that is mostly SVG, for a much
+       smaller prize -- a collision inside one function is visible in the
+       one screen it happens on. */
+    const top = Math.min(...decls.map((d) => d.depth));
+    const seen = new Map();
+    decls.filter((d) => d.depth === top).forEach((d) => {
+      if (seen.has(d.name)) {
+        assert.fail(file + ' declares ' + d.name + '() twice at the module level, on lines '
+          + seen.get(d.name) + ' and ' + d.line + '. Declarations hoist, so the later one wins for the '
+          + 'whole file -- above itself included -- and every call meant for the first silently reaches '
+          + 'the second with whatever arguments the caller had in mind for the other one.');
+      }
+      seen.set(d.name, d.line);
+    });
+  });
+});
+
+test('the scrolling name is feathered, except where the display has cells', () => {
+  const css = read('app.css');
+  const rule = css.slice(css.indexOf('.display-name.can-scroll {'),
+    css.indexOf('.display-name.can-scroll .name-line {'));
+  assert.ok(rule, 'the .display-name.can-scroll rule is gone');
+  assert.ok(/--feather: [\d.]+em;/.test(rule),
+    'the feather is no longer quoted in em, so it will not track the type size from one theme to the next');
+  /* One gradient does both edges, each through a width of its own that
+     comes and goes: --feather-l for the head, --feather-r for the tail.
+     At 0 the stop collapses onto the edge, which is simply a hard edge.
+     Those two declarations are also the fallback where @property is not
+     understood -- there they never move, and the readout keeps a soft
+     tail and a hard head for ever, which is the old behaviour and not a
+     broken one. */
+  assert.ok(/--feather-l: 0px;/.test(rule),
+    'the head of the name no longer rests un-feathered, or the fallback for a browser without @property is gone');
+  assert.ok(/--feather-r: var\(--feather\);/.test(rule),
+    'the tail of the name no longer rests feathered, or the fallback for a browser without @property is gone');
+  /* The two edges do different jobs. The tail is the edge of a window
+     with more name behind it and wants enough gradient to read as depth;
+     the head is a letter leaving, and only needs enough not to be sheared
+     off. A head as wide as the tail rubs out a character still being
+     read -- which is what was reported. */
+  const head = /--feather-head: ([\d.]+)em;/.exec(rule);
+  const tail = /--feather: ([\d.]+)em;/.exec(rule);
+  assert.ok(head && tail, 'the readout no longer gives its two edges their own widths');
+  assert.ok(Number(head[1]) < Number(tail[1]),
+    'the head feather is ' + head[1] + 'em against the tail\'s ' + tail[1]
+      + 'em, so the leaving character is rubbed out rather than softened');
+  ['mask-image', '-webkit-mask-image'].forEach((prop) => {
+    assert.ok(rule.indexOf(prop + ': linear-gradient(to right, transparent 0, #000 var(--feather-l), '
+      + '#000 calc(100% - var(--feather-r)), transparent 100%);') !== -1,
+      "the readout's " + prop + ' no longer fades the head by --feather-l and the tail by --feather-r');
+  });
+
+  /* An unregistered custom property is a string to an animation and would
+     jump between values. Registered as a length it interpolates, which is
+     the whole of the difference between a fade arriving and a fade
+     appearing. */
+  ['--feather-l', '--feather-r'].forEach((prop) => {
+    assert.ok(new RegExp('@property ' + prop + ' \\{\\s*syntax: "<length>";\\s*inherits: false;\\s*initial-value: 0px;\\s*\\}').test(css),
+      prop + ' is not registered as a length, so that edge snaps instead of arriving');
+  });
+
+  /* An edge is faded only while there is name on the other side of it.
+
+     At the top of the cycle the name stands at its start: nothing has
+     gone past the head, so a fade there just prints the first character
+     faint for the length of the pause. At the bottom of the travel the
+     name has run out and its last characters sit against the right edge
+     with nothing beyond them, so a fade there does the same to the end of
+     the name -- during the pause that exists so the end can be read. Both
+     were reported, in that order.
+
+     So the two edges take turns, and the turns are taken against
+     name-marquee's own percentages. Read as stops rather than matched as
+     text, because this block has now been re-cut three times and a test
+     that pins its spelling only ever reports that it changed. */
+  assert.ok(/animation: name-feather var\(--marquee-ms, 6s\) linear infinite;/.test(rule),
+    'the feather no longer runs linear, so the ramps are not the shape the keyframes assume');
+
+  const legs = /@keyframes name-marquee \{\s*0%, ([\d.]+)%\s*\{ transform: translateX\(0\); \}\s*([\d.]+)%, ([\d.]+)%\s*\{/.exec(css);
+  assert.ok(legs, 'the marquee keyframes are gone, or no longer hold at both ends');
+  const [moves, lands, leaves] = [Number(legs[1]), Number(legs[2]), Number(legs[3])];
+
+  const body = /@keyframes name-feather \{([\s\S]*?)\n\}/.exec(css);
+  assert.ok(body, 'the feather keyframes are gone');
+  const stops = [];
+  body[1].split('\n').forEach((line) => {
+    const m = /^\s*([\d.%,\s]+?)\s*\{(.*)\}\s*$/.exec(line);
+    if (!m) return;
+    const l = /--feather-l:\s*([^;]+);/.exec(m[2]);
+    const r = /--feather-r:\s*([^;]+);/.exec(m[2]);
+    assert.ok(l && r, 'a feather keyframe sets only one edge, so the other jumps to whatever the next stop says: ' + line.trim());
+    m[1].split(',').forEach((p) => stops.push({ at: parseFloat(p), l: l[1].trim(), r: r[1].trim() }));
+  });
+  stops.sort((a, b) => a.at - b.at);
+  const at = (p) => stops.filter((x) => x.at === p)[0];
+
+  /* Standing at the start, and standing at the start again. */
+  [0, 100].forEach((p) => {
+    const st = at(p);
+    assert.ok(st, 'the feather no longer says what the edges do at ' + p + '%');
+    assert.equal(st.l, '0px',
+      'at ' + p + '% the name is at rest with nothing past its head, but the head is faded by ' + st.l);
+    assert.equal(st.r, 'var(--feather)',
+      'at ' + p + '% the rest of the name is waiting past the tail, but the tail is ' + st.r);
+  });
+
+  /* The head is clear until the name moves, and clear again by the time
+     it is home. */
+  assert.ok(at(moves) && at(moves).l === '0px',
+    'the head is not held clear right up to ' + moves + '%, where the name starts moving');
+  const headUp = stops.filter((x) => x.l !== '0px').map((x) => x.at);
+  assert.ok(headUp.length && Math.min(...headUp) > moves,
+    'the head feathers at ' + Math.min(...headUp) + '%, at or before the name starts moving at ' + moves
+      + '%, so it is faded while there is still nothing to fade');
+  assert.ok(Math.max(...headUp) < 100,
+    'the head is still faded at the end of the cycle, so the first character is dimmed the moment it comes to rest');
+
+  /* The tail lifts once the name has run out, and is back before it sets
+     off home. */
+  const tailOff = stops.filter((x) => x.r === '0px').map((x) => x.at);
+  assert.ok(tailOff.length, 'the tail is never lifted, so the end of the name is faded through the pause that exists to read it');
+  assert.ok(Math.min(...tailOff) > lands,
+    'the tail lifts at ' + Math.min(...tailOff) + '%, before the name finishes arriving at ' + lands
+      + '%, so a hard edge shows while there is still name running past it');
+  assert.ok(Math.max(...tailOff) <= leaves,
+    'the tail is still lifted at ' + Math.max(...tailOff) + '%, after the name sets off home at ' + leaves
+      + '%, so it runs past a hard edge on the way back');
+
+  /* A VFD, a split-flap board and an 8-bit matrix light a cell or they do
+     not, and there is no half-lit state to fade through. Feathering those
+     reads as a photograph of a screen rather than as the screen. */
+  ['console', 'departures', 'retro'].forEach((theme) => {
+    /* On its own line, or the longer :root.scroll-anyway selector below
+       satisfies the search on its own and this finds nothing missing. */
+    assert.ok(new RegExp('^\\[data-theme="' + theme + '"\\] \\.display-name\\.can-scroll[,{ ]', 'm').test(css),
+      'the ' + theme + ' readout is no longer let off the feather');
+  });
+  /* An animation outranks a normal declaration, so dropping the mask
+     without dropping the keyframes brings it back as soon as the name
+     travels -- which is the only time it would have shown anyway, so the
+     exemption would look right standing still and fail in motion. */
+  const off = css.slice(css.indexOf('[data-theme="console"] .display-name.can-scroll,'));
+  assert.ok(/animation: none;/.test(off.slice(0, off.indexOf('}'))),
+    'the cell displays drop the mask but keep the feather animation, which puts the mask back the moment the name moves');
+  /* data-theme sits on the root element itself, so the reduced-motion
+     escape has to be compound. Written as a descendant it matches nothing
+     and all three get feathered after all, for anyone who asked for
+     motion anyway. */
+  ['console', 'departures', 'retro'].forEach((theme) => {
+    assert.ok(css.indexOf(':root.scroll-anyway[data-theme="' + theme + '"] .display-name.can-scroll') !== -1,
+      'scroll-anyway does not let ' + theme + ' off the feather, or looks for data-theme on a descendant');
+  });
+});
+
+/* A search result says Added or Add station by reading the station list,
+   not by remembering that it was once pressed. */
+test('a deleted station is offered by the finder again', () => {
+  const js = read('app.js');
+  assert.ok(js.indexOf('function syncResultButtons() {') !== -1,
+    'nothing reconciles the finder results against the station list');
+  const sync = js.slice(js.indexOf('function syncResultButtons() {'),
+    js.indexOf('function syncResultButtons() {') + 700);
+  assert.ok(sync.indexOf("li.getAttribute('data-url')") !== -1,
+    'the results are no longer matched on the stream address, which is what addFoundStation refuses duplicates on');
+
+  /* Every add, delete and reorder goes through renderStationRows, which
+     makes it the one place the results have to hear about. Deleting was
+     the broken path: it redrew the list and the result stayed disabled,
+     with re-running the search the only way back to the station. */
+  const rows = js.slice(js.indexOf('function renderStationRows() {'),
+    js.indexOf('function renderStationRows() {') + 400);
+  assert.ok(rows.indexOf('syncResultButtons();') !== -1,
+    'renderStationRows no longer tells the finder results, so a deleted station still reads Added');
+
+  /* And the click must not set the label itself. Doing both is how it
+     went stale, because only one of the two was ever revisited. */
+  const click = js.slice(js.indexOf("btn.className = 'result-add';"),
+    js.indexOf("btn.className = 'result-add';") + 900);
+  assert.ok(click.indexOf("btn.textContent = 'Added';") === -1,
+    'the result button sets its own label again, which is what went stale');
+  assert.ok(click.indexOf("li.setAttribute('data-url'") !== -1,
+    'a result row no longer carries the address its button is worked out from');
+});
+
+/* A found station's address is the directory's. It is the one part of
+   such a station known to work, and a changed character is a station that
+   stops playing with nothing to say why. One added by hand has nowhere
+   else to get an address, so that one stays editable. */
+test("a found station's stream address is shown, not offered for editing", () => {
+  const js = read('app.js');
+  const rows = js.slice(js.indexOf('function renderStationRows() {'),
+    js.indexOf('function renderStationRows() {') + 6000);
+  assert.ok(rows.indexOf("var found = !/^st_/.test(String(st.id || ''));") !== -1,
+    'nothing tells a station from the directory apart from one added by hand');
+  assert.ok(rows.indexOf("(found ? ' readonly' : '')") !== -1,
+    'the stream address is no longer read-only on a found station');
+  /* The stamp the line above leans on. */
+  assert.ok(js.indexOf("id: 'st_' + Date.now().toString(36)") !== -1,
+    'a hand-added station is no longer stamped st_, so every station counts as found and locks its address');
+});
+
 test('the readout says the version once, after an update', () => {
   const js = read('app.js');
   const css = read('app.css');

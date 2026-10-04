@@ -2449,8 +2449,14 @@
     return { x: k.left + tw / 2 + u * (k.width - tw), y: k.top + k.height / 2 };
   }
 
-  // A small bat, wings beating, facing right.
-  function batSvg() {
+  /* A small bat, wings beating, facing right: the one that is shut in the
+     broom and comes out when the bristles are lifted.
+
+     Named for its scene because the flock that crosses the strip has a
+     batSvg of its own further down, and the two of them sharing a name is
+     why this one never appeared -- the flock's declaration hoisted over
+     it and took the call. */
+  function broomBatSvg() {
     var wing = function (s) {
       return '<g><animateTransform attributeName="transform" type="rotate" values="' + (s * -35) + ' 14 8;' + (s * 30) + ' 14 8;' + (s * -35) + ' 14 8" dur=".16s" repeatCount="indefinite"/>' +
         '<path d="M14 8Q' + (14 + s * 6) + ' 1 ' + (14 + s * 13) + ' 3Q' + (14 + s * 10) + ' 6 ' + (14 + s * 11) + ' 9Q' + (14 + s * 7) + ' 7 ' + (14 + s * 6) + ' 10Q' + (14 + s * 3) + ' 8 14 10Z" fill="#1e1624"/></g>';
@@ -2861,7 +2867,7 @@
       ghost.innerHTML = ghostSvg('jump', 0);
       move(ghost, [{ transform: tr(ghost.gx + 5, ghost.gy, ' rotate(9deg)') }, { transform: tr(ghost.gx - 8, ghost.gy - 14, ' rotate(-8deg)'), offset: 0.4 }, { transform: tr(ghost.gx, ghost.gy, ' rotate(0deg)') }], { duration: 700, easing: 'ease-out' });
       // Up and away, right out through the top of the window, flitting as it goes.
-      var bat = drawn(ws, 'st-bat', 28 * 1.4, 16 * 1.4, batSvg()), bx = xs + 8 * S, by = ys + 40 * S, fr = [], rise = by + 16 * 1.4 + 40;
+      var bat = drawn(ws, 'st-bat', 28 * 1.4, 16 * 1.4, broomBatSvg()), bx = xs + 8 * S, by = ys + 40 * S, fr = [], rise = by + 16 * 1.4 + 40;
       for (var q = 0; q <= 24; q++) {
         var u = q / 24;
         fr.push({ transform: tr(bx + u * (W * 0.45) + Math.sin(u * 14) * 10, by - u * rise + Math.cos(u * 11) * 8 * (1 - u)) });
@@ -2991,14 +2997,65 @@
       return frames([[0.8, 45], [1, 350], [0.6, 45], [0.2, 45], [-0.2, 45], [-0.6, 45], [-1, 350], [-0.6, 45], [-0.2, 45], [0.2, 45], [0.55, 45]],
         ok, function (h) { redrawCoon(coon, raccoonSvg('look', h)); });
     }).then(ok).then(function () {
-      // On with the hat, and off.
-      redrawCoon(coon, raccoonSvg('run'));
-      hat.remove();
+      /* The hat comes up off the ground and onto its head.
+
+         This used to be a cut: the hat gone from the floor and already
+         worn in the same frame, which reads as a glitch rather than as a
+         theft. The theft is the joke, so it is worth the second it takes.
+
+         The lift ends on exactly the transform the worn hat will have, so
+         the swap afterwards cannot be seen -- same place, same size, same
+         angle. Three things have to agree for that. The scale, because
+         the hat is drawn at ghw on the ground and worn at wornW. The
+         rotation. And the origin, which is the awkward one: this hat has
+         been turning about 50% 85% since it fell, and the worn one turns
+         about its middle, so left alone the two would land a few pixels
+         out. It is moved to the middle here, which costs nothing because
+         the hat is sitting at rotate(0) and has nothing to jump. */
+      var k = 1.1, wornW = 30 * k * 0.9;
+      var sc = wornW / ghw;
+      var headX = coon.sx + 51 * 1.1 - wornW / 2, headY = coon.ry + 17 * 1.1 - 22 * k * 0.9;
+      /* A box scales about its origin, so the translate that puts the
+         top-left where the worn hat's will be has to give back what the
+         shrink takes off either side of the middle. */
+      var endX = headX - ghw / 2 * (1 - sc), endY = headY - ghh / 2 * (1 - sc);
+      hat.style.transformOrigin = '50% 50%';
+
+      /* Up in an arc and not in a straight line: a hat swung onto a head
+         goes through the air above both of them. The little dip at the
+         start is it taking hold before it lifts. */
+      var LIFT = 660;
+      var lift = move(hat, [
+        { transform: tr(hat.lx, hat.ly, ' rotate(0deg) scale(1)') },
+        { transform: tr(hat.lx - 4, hat.ly - 2, ' rotate(-6deg) scale(1)'), offset: 0.16 },
+        { transform: tr((hat.lx + endX) / 2, Math.min(hat.ly, endY) - 20, ' rotate(-14deg) scale(' + ((1 + sc) / 2).toFixed(3) + ')'), offset: 0.58 },
+        { transform: tr(endX, endY, ' rotate(8deg) scale(' + sc.toFixed(3) + ')') }
+      ], { duration: LIFT, easing: 'ease-in-out' });
+
+      // The raccoon under it: a dip as it takes hold, and up again.
+      var dip = move(coon, [
+        { transform: tr(coon.sx, coon.ry) },
+        { transform: tr(coon.sx, coon.ry + 3), offset: 0.18 },
+        { transform: tr(coon.sx, coon.ry + 1), offset: 0.55 },
+        { transform: tr(coon.sx, coon.ry) }
+      ], { duration: LIFT, easing: 'ease-in-out' });
+
+      /* Its head follows the hat: down to the brim, up with it, and level
+         by the time it lands. The same 660ms, spread over the turns. */
+      var watch = frames([[0.15, 120], [0, 120], [-0.15, 160], [0.1, 160], [0.55, 100]],
+        ok, function (h) { redrawCoon(coon, raccoonSvg('look', h)); });
+
+      return Promise.all([lift, dip, watch]);
+    }).then(ok).then(function () {
+      /* The swap, and away. The worn hat goes on at the transform the
+         lift just ended on, so nothing moves in this frame. */
       var k = 1.1, onHead = document.createElement('div');
       onHead.style.cssText = 'position:absolute;left:0;top:0;width:' + (30 * k * 0.9) + 'px;height:' + (26 * k * 0.9) + 'px;transform:translate(' +
         (51 * 1.1 - 15 * k * 0.9) + 'px,' + (17 * 1.1 - 22 * k * 0.9) + 'px) rotate(8deg)';
       onHead.innerHTML = hatSvg();
       coon.appendChild(onHead);
+      hat.remove();
+      redrawCoon(coon, raccoonSvg('run'));
       return move(coon, [{ transform: tr(coon.sx, coon.ry) }, { transform: tr(W + 30, coon.ry) }], { duration: (W + 30 - coon.sx) / 320 * 1000, easing: 'ease-in' });
     }).then(function () {
       if (stopEye) stopEye();

@@ -909,14 +909,17 @@
      stepped path needs it, and the stepped path is only ever a display
      name, so this tracks that one keyframe block and not preset-marquee,
      which spends a different share of its cycle travelling. */
-  /* 46 parts of a cycle that is now 87 of its old 100 -- see the note over
+  /* 46 parts of a cycle that is now 82 of its old 100 -- see the note over
      @keyframes name-marquee. Quoted against the shortened cycle so the
-     outward leg still lasts exactly as long as it used to. */
-  var TRAVEL_SHARE = 0.5287;
+     outward leg still lasts exactly as long as it used to. 46/82. */
+  var TRAVEL_SHARE = 0.5610;
   /* What the cycle lost when the far pause and the return were cut back.
      The slide is quoted for the travel, so it is scaled by the same amount
-     or shortening the tail would speed the whole thing up. */
-  var CYCLE_TRIM = 0.87;
+     or shortening the tail would speed the whole thing up.
+     CYCLE_TRIM * TRAVEL_SHARE is 0.46 -- the outward leg's share of the
+     cycle this was all cut from -- and that product is what must hold,
+     whatever either number is on its own. */
+  var CYCLE_TRIM = 0.82;
   /* preset-marquee travels from 14% to 74% of its cycle. Written down here
      because the floor below has to convert between a travel time and a
      whole cycle, and the two keyframe blocks do not share a share. */
