@@ -123,7 +123,7 @@ The fit itself used to resize the window three times while the user watched. Two
 
 ## What it does
 
-- **Stations.** Any stream URL with a name, frequency, colour and tagline. A built-in finder looks up stations near a city through [radio-browser](https://www.radio-browser.info/), which is public and key-free.
+- **Stations.** Any stream URL with a name, frequency, colour and tagline. A built-in finder looks up stations near a city through [radio-browser](https://www.radio-browser.info/), which is public and key-free. A result reads its button from the station list rather than remembering that it was pressed, so a station added and then deleted in the same sitting is offered again. A station the finder added shows its stream address rather than offering it for editing — it is the one part of such a station already known to work, and a changed character is a station that stops playing with nothing to say why. One added by hand still has an address you can type.
 - **Schedule.** Weekday and weekend time slots, each choosing a station and optionally forcing volume, bass, treble or theme when it starts. A slot hands over at its end time: `07:00` to `10:00` runs from `07:00:00` and stops at `10:00:00`, so an adjacent slot starting at `10:00` picks it up cleanly. Slots may run past midnight, and one whose two times are the same plays all day. A handover is announced and eased rather than sprung — see below.
 - **Themes.** Analogue dial, broadcast console, Rams minimal, editorial, retro 8-bit, departures board, Marconi deco, Model One. Each has its own desktop icon. A few surprises turn up in **Settings → Theme** through the year, too. The departures board turns its panels when the station changes, and again when you first arrive on it from another theme — once the Settings drawer has finished closing, so the turn is not spent behind it.
 - **Watchdog.** A frozen media clock plus a starved buffer means the stream died; it reconnects with exponential backoff rather than sitting silent.
@@ -309,6 +309,20 @@ What is left over is an internet-only station, which genuinely has no dial posit
 A station can answer perfectly and have nothing behind it. BBC World Service serves a valid HLS playlist, with CORS, listing one variant that has returned `410 Gone` since the stream was retired — so the app dutifully handed a dead playlist to the audio element and reconnected forever.
 
 Each rung of an HLS ladder is now asked whether it is there before any of it is played. If none of them are, the radio says **Stream is gone · check the station**, lights the lamp a steady amber — not the blinking amber of connecting, because it has finished and found nothing — and stops retrying. Only `400`, `403`, `404` and `410` count. A network error with no status at all stays temporary, so being offline is never mistaken for a station closing down. Pressing play clears what it learned and looks again.
+
+## A name that does not fit
+
+A station's name is as long as it is, and the readout is the width it is, so a name that overruns scrolls. What it must not do is end on a hard vertical line: on a face with any colour behind it that edge reads as a seam in the cabinet rather than as a word going past a window.
+
+So each edge of the readout is feathered — but only while there is name on the other side of it, which is the whole of the trick. At rest the name stands at its start with nothing past its head, so the head is crisp and only the tail is soft. At the far end of the travel the name has run out and its last characters sit against the right-hand edge, so the tail lifts and the head stays soft. An edge faded when there is nothing beyond it is not depth, it is the first or last word of the station's name printed faint for the whole of a pause that exists so it can be read.
+
+The widths are quoted in `em`, so they track the type from one face to the next rather than being one thing on a 40px readout and another on an 82px one. The head's is about a third of the tail's: the tail is a window with more name behind it and wants enough gradient to read as depth, while the head is only a letter leaving and needs just enough not to be sheared off.
+
+Three faces are left out of it entirely — the segment display, the split-flap board and the 8-bit matrix. Those are made of cells, and a cell is lit or it is not; there is no half-lit state to fade through, and the edge of the window is simply a row of cells nobody is driving. Feathering them read as a photograph of a screen rather than as the screen.
+
+The switching costs almost nothing. Each edge is a registered custom property holding its current width, so the mask is one static gradient and the only thing that moves is a number in it — with a short ramp at each change and a long flat either side, rather than a gradient re-resolved on every frame. The marquee itself was deliberately moved to a compositor transform to keep it off the main thread, and a mask animated the whole way round would have put it straight back.
+
+The way home is quick: nobody reads a name backwards, so the only thing the return has to do is be over. It takes a little under a seventh of the cycle. The outward leg is untouched, and has to be — a split-flap name is paced one flap at a time against it, so a different share would turn the board over at a different speed.
 
 ## Reduced motion
 

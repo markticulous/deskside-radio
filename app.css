@@ -683,6 +683,7 @@
 /* The readout scrolls by moving its line, for the reason given above the
    preset keyframes. setName already puts every line in a .name-line, and
    that span is display:block with width:max-content, so it is the right
+   thing to move and needs no wrapper of its own. */
 /* ---- what the readout says once, after an update ----------------------
    The version that has just been installed, blinked five times and then
    given back to the station. The radio has no other way to tell anybody
@@ -721,21 +722,124 @@
    separate fade -- and on a machine still busy starting up, the
    animation began late while the timer did not, so the blinks were cut
    short, or the station came back over the last one. */
-.display-name.is-announcing { animation: name-flash 1s linear 4.5 forwards; }
+.display-name.can-scroll {
+  text-overflow: clip;
+  /* Feathered, rather than cut. overflow: hidden ends the name on a hard
+     vertical edge, and on a face with any colour behind it -- the orange
+     of the seasonal ones most of all -- that edge reads as a seam in the
+     cabinet rather than as a word going past a window. A letter should
+     arrive and leave the way it would behind real glass.
+     Only on .can-scroll, which is set when the name actually overruns, so
+     a name that fits is never faded at the ends for no reason. The width
+     is in em so it tracks the type: the console sits at 82px and the
+     departures board far smaller, and a fixed pixel fade would be a
+     different thing on each. */
+  --feather: .36em;
+  /* The head is much the narrower of the two, because it is doing a
+     smaller job. The tail is the edge of a window with more name behind
+     it, and wants enough of a gradient to read as depth. The head is a
+     letter leaving, and it is only there so the last of it is not sheared
+     off against a vertical edge -- a hair of softening does that, and
+     anything more starts rubbing out a character that is still being
+     read. */
+  --feather-head: .12em;
 
-/* And back, at the speed the update pill arrives at. */
-@keyframes name-return { from { opacity: 0; } to { opacity: 1; } }
-.display-name.is-returning { animation: name-return .22s ease-out; }
+  /* The two edges are not the same problem.
 
-@media (prefers-reduced-motion: reduce) {
-  /* Held, and then simply exchanged. The announcement is information;
-     the flashing is only how it asks to be looked at. */
-  .display-name.is-announcing,
-  .display-name.is-returning { animation: none; }
+     The tail always has a name running past it: that is what it means for
+     a name not to fit, and it is true standing still. The head does not.
+     At rest the name begins flush with the left edge with nothing beyond
+     it, and a fade there is not a letter arriving from behind the
+     cabinet, it is the first character of the station's name printed
+     faint -- for the whole of the pause, which is most of the time. It
+     was tried at 1.1em and at a quarter of that, and the B of BOOM 97.3
+     was washed out either way. There is no width that fades an edge
+     nothing is crossing.
+
+     So the tail is feathered always, and the head only while the name is
+     travelling. One gradient does both: --feather-l is the head's width
+     and sits at 0 the rest of the time, where `transparent 0, #000 0`
+     is simply an opaque edge. */
+  /* What each edge is doing right now, as opposed to how wide it is when
+     it is doing it. Both start where they belong for a name standing
+     still at the top of its travel: nothing has passed the head, and the
+     whole rest of the name is waiting past the tail. */
+  --feather-l: 0px;
+  --feather-r: var(--feather);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--feather-l), #000 calc(100% - var(--feather-r)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--feather-l), #000 calc(100% - var(--feather-r)), transparent 100%);
+  animation: name-feather var(--marquee-ms, 6s) linear infinite;
+  animation-delay: .9s;
 }
+/* --feather-l has to be registered or it cannot be animated: an ordinary
+   custom property is a string as far as the animation is concerned and
+   would jump from one value to the other. Registered as a length, it
+   interpolates, which is what turns the fade on gradually instead of
+   snapping it on.
 
-   thing to move and needs no wrapper of its own. */
-.display-name.can-scroll { text-overflow: clip; }
+   Where @property is not understood the declaration above stands at 0 and
+   never moves -- the tail stays feathered, the head stays crisp, and
+   nothing looks broken. */
+@property --feather-l {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --feather-r {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+/* Each edge is faded only while there is name on the other side of it,
+   and the two edges take turns.
+
+   At the top of the cycle the name stands at its start: nothing has gone
+   past the head, so the head is hard, and the whole rest of the name is
+   waiting past the tail, so the tail is soft. At the bottom of the travel
+   it is the other way about -- the name has run out, the last characters
+   are sitting against the right edge with nothing beyond them, and a fade
+   there is not depth, it is the end of the station's name printed faint
+   for the whole of the pause that exists so it can be read.
+
+   So the tail lifts as the name arrives and comes back as it sets off
+   home. It lifts quickly -- the pause exists so the end of the name can
+   be read, and a fade still clearing while you are reading is just the
+   last characters dim for no reason; it comes back at leisure, because
+   by then there is name running past that edge again and nothing to
+   read through it. 14.63% and 70.73% are where name-marquee below starts and stops
+   moving, and the same delay is set above; a test holds those to each
+   other, because an edge that changes at the wrong moment shows exactly
+   the thing it is there to hide.
+
+   Each change is a short ramp with a long flat either side, which is what
+   keeps this cheap: the marquee was moved to a transform on the
+   compositor to get it off the main thread, and a mask gradient
+   re-resolved on every frame of the cycle would put it straight back. */
+@keyframes name-feather {
+  0%, 14.63%  { --feather-l: 0px;                   --feather-r: var(--feather); }
+  19.8%       { --feather-l: var(--feather-head);   --feather-r: var(--feather); }
+  70.73%      { --feather-l: var(--feather-head);   --feather-r: var(--feather); }
+  72.5%, 91.46% { --feather-l: var(--feather-head); --feather-r: 0px; }
+  96%         { --feather-l: var(--feather-head);   --feather-r: var(--feather); }
+  100%        { --feather-l: 0px;                   --feather-r: var(--feather); }
+}
+/* Except where the display is made of cells. A VFD, a split-flap board and
+   an 8-bit matrix all draw a character by lighting or turning one, and
+   there is no half-lit state to fade through: the edge of the window is a
+   row of cells that are simply not being driven, which is a hard edge in
+   the hardware and should be a hard edge here. Feathering those reads as a
+   photograph of a screen rather than as the screen. The painted faces are
+   the ones that want it -- there the name is going past glass. */
+[data-theme="console"] .display-name.can-scroll,
+[data-theme="departures"] .display-name.can-scroll,
+[data-theme="retro"] .display-name.can-scroll {
+  -webkit-mask-image: none;
+  mask-image: none;
+  /* The animation goes too. Keyframes outrank a normal declaration, so
+     the mask above would come back the moment the name started to
+     travel. */
+  animation: none;
+}
 .display-name.can-scroll .name-line {
   animation: name-marquee var(--marquee-ms, 6s) ease-in-out infinite;
   /* Long enough that a station change is read before anything moves. */
@@ -748,29 +852,75 @@
 
    The other three were re-cut against the old cycle, which is what these
    percentages are fractions of. Holding 12, travelling 46, the pause at
-   the far end came down from 24 to 17 and the way back from 18 to 12 --
-   the end of a name is read in a glance and does not need a quarter of
-   the cycle sitting still, and the return is a reset rather than a second
-   reading, so it can move.
+   the far end came down from 24 to 17, and the way back from 18 to 12 and
+   now to 7 -- the end of a name is read in a glance and does not need a
+   quarter of the cycle sitting still, and the return is a reset rather
+   than a second reading. Nobody reads a name backwards, so the only thing
+   the journey home has to do is be over.
 
-   Those add to 87 rather than 100, so the cycle itself is 13% shorter and
-   every share is written here as its part of the new, shorter whole:
-   12/87, 58/87, 75/87. TRAVEL_SHARE and the slide duration in tuner-ui
-   carry the same 0.87, which is what keeps the outward leg at exactly the
-   pace it had. */
+   Those add to 82 rather than 100, so the cycle itself is 18% shorter and
+   every share is written here as its part of that shorter whole:
+   12/82, 58/82, 75/82. TRAVEL_SHARE and the slide duration in tuner-ui
+   carry the matching 0.82, which is what keeps the outward leg at exactly
+   the pace it had while everything around it gets shorter. The product of
+   the two is the outward leg's share of the original cycle, 0.46, and a
+   test holds them to it. */
 @keyframes name-marquee {
-  0%, 13.79%     { transform: translateX(0); }
-  66.67%, 86.21% { transform: translateX(var(--marquee-by, 0)); }
+  0%, 14.63%     { transform: translateX(0); }
+  70.73%, 91.46% { transform: translateX(var(--marquee-by, 0)); }
   100%           { transform: translateX(0); }
+}
+
+/* Below the feather, and it has to stay below it.
+
+   Both of these set `animation` on .display-name and so does the feather,
+   at the same specificity, so the last one written is the one that runs.
+   Coming back from the announcement, the station's name is restored and
+   .is-returning added in the same frame -- so a long name carries
+   .can-scroll and .is-returning together, and written above the feather
+   this fade would simply be replaced by it. The readout would snap in at
+   full instead of arriving. */
+.display-name.is-announcing { animation: name-flash 1s linear 4.5 forwards; }
+
+/* And back, at the speed the update pill arrives at. */
+@keyframes name-return { from { opacity: 0; } to { opacity: 1; } }
+.display-name.is-returning { animation: name-return .22s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Held, and then simply exchanged. The announcement is information;
+     the flashing is only how it asks to be looked at. */
+  .display-name.is-announcing,
+  .display-name.is-returning { animation: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .display-name.can-scroll .name-line { animation: none; }
-  .display-name.can-scroll { text-overflow: ellipsis; }
+  /* Standing still, the end of the name is marked with an ellipsis, and a
+     fade over the top of one would only make it hard to read. The feather
+     is for a word in motion. */
+  .display-name.can-scroll {
+    text-overflow: ellipsis;
+    -webkit-mask-image: none;
+    mask-image: none;
+    animation: none;
+  }
   :root.scroll-anyway .display-name.can-scroll .name-line {
     animation: name-marquee var(--marquee-ms, 6s) ease-in-out infinite;
     animation-delay: .9s;
   }
-  :root.scroll-anyway .display-name.can-scroll { text-overflow: clip; }
+  :root.scroll-anyway .display-name.can-scroll {
+    text-overflow: clip;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--feather-l), #000 calc(100% - var(--feather-r)), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 var(--feather-l), #000 calc(100% - var(--feather-r)), transparent 100%);
+    animation: name-feather var(--marquee-ms, 6s) linear infinite;
+    animation-delay: .9s;
+  }
+  :root.scroll-anyway[data-theme="console"] .display-name.can-scroll,
+  :root.scroll-anyway[data-theme="departures"] .display-name.can-scroll,
+  :root.scroll-anyway[data-theme="retro"] .display-name.can-scroll {
+    -webkit-mask-image: none;
+    mask-image: none;
+    animation: none;
+  }
 }
 .scope { display: none; }
 /* Read once per theme by setLevel. A theme whose meter is drawn some

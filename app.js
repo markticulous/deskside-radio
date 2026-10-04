@@ -10,7 +10,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.6.3';
+  var APP_VERSION = '1.6.4';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -2024,9 +2024,46 @@
       // Cleared for all of them first, so each is measured against the
       // button rather than against its own previous fit.
       for (var i = 0; i < names.length; i++) TunerUI.clearFit(names[i]);
+      /* Before the others are fitted, because this one is sized rather
+         than scrolled and fitLine has to measure what it ends up as. */
+      fitAddLabel();
       for (var k = 0; k < names.length; k++) TunerUI.fitLine(names[k]);
       if (pass + 1 < MEASURE_PASSES.length) measurePresetNames(pass + 1);
     }, MEASURE_PASSES[pass]);
+  }
+
+  /* The add key is the one preset whose label is ours rather than a
+     station's, and the difference matters: a station's name is as long as
+     it is and scrolling is the only honest way to show all of it, but
+     "Add station" is two words we chose, and a control that scrolls its
+     own label to tell you what it does reads as broken. It was being cut
+     mid-word -- ADD STATIO -- on the faces set in a wide display type.
+
+     So this one is set smaller until it fits. In half-pixel steps, which
+     is finer than the eye and cheap: the loop can only run a dozen times
+     before it reaches the floor. The floor is a proportion of whatever
+     the theme asked for rather than a fixed size, because the themes do
+     not set their keys at the same size to begin with, and it is there so
+     an impossibly narrow column gets a small label rather than an
+     unreadable one.
+
+     scrollWidth carries the trailing letter-spacing of the last
+     character, which draws nothing -- the same phantom overflow fitLine
+     documents -- so it comes off before the comparison or a label that
+     ends exactly at the edge shrinks for ever. */
+  function fitAddLabel() {
+    var name = el.presets.querySelector('.preset-add .preset-name');
+    if (!name) return;
+    name.style.fontSize = '';
+    if (!name.clientWidth) return;
+    var px = parseFloat(getComputedStyle(name).fontSize) || 14;
+    var floor = Math.max(8, px * 0.62);
+    while (px > floor) {
+      var cs = getComputedStyle(name);
+      if (name.scrollWidth - name.clientWidth - (parseFloat(cs.letterSpacing) || 0) <= 1) return;
+      px -= 0.5;
+      name.style.fontSize = px.toFixed(2) + 'px';
+    }
   }
 
   /* With no name wrapping, every row is the same height, so the scrolling
@@ -5469,9 +5506,19 @@
   });
 
   function renderStationRows() {
+    /* Every path that adds, removes or reorders a station comes through
+       here, which makes it the one place the search results need to hear
+       about. */
+    syncResultButtons();
     var box = $('stationRows');
     box.innerHTML = '';
     draft.stations.forEach(function (st, i) {
+      /* Where this station came from. The directory's own id is kept on a
+         found station; one added by hand is stamped st_ and the clock, in
+         $('addStation') below. That is already the only difference
+         between them, so it is what decides whether the address is a
+         thing to be edited or a thing to be shown. */
+      var found = !/^st_/.test(String(st.id || ''));
       var card = document.createElement('div');
       card.className = 'card' + (st.id === openStation ? ' is-open' : '');
       card.style.setProperty('--c', st.color || '#8a8a84');
@@ -5516,7 +5563,10 @@
             '<input class="in in-color" data-k="color" type="color" aria-label="Colour"' +
             ' data-tip-head="Colour" data-tip="The colour this station is drawn in. The editorial and departures themes use it; the others ignore it.">' +
             '<div class="fw fw-url"><input class="in in-url" data-k="url" placeholder="https://stream.example.com/live.mp3" aria-label="Stream URL"' +
-            ' data-tip-head="Stream URL" data-tip="The direct address of the audio itself. MP3 and AAC play here; a .pls or .m3u is a list of streams rather than one and will not."></div>' +
+            (found ? ' readonly' : '') +
+            ' data-tip-head="Stream URL" data-tip="' + (found
+              ? 'The address the directory gave for this station. It is shown rather than offered for editing: it is the one part of a found station that is known to work, and a changed character is a station that stops playing with nothing to say why. Delete it and search again to replace it.'
+              : 'The direct address of the audio itself. MP3 and AAC play here; a .pls or .m3u is a list of streams rather than one and will not.') + '"></div>' +
             '<input class="in in-tag" data-k="tag" placeholder="AAC+ \u00b7 48 kbps \u00b7 Toronto" aria-label="Tagline"' +
             ' data-tip-head="Station tag" data-tip="The small line under the name. Found stations arrive with the format, the bitrate and the city; yours can say anything.">' +
           '</div>' +
@@ -6241,16 +6291,45 @@
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'result-add';
-      btn.textContent = s.playable ? 'Add station' : 'Add anyway';
+      /* What the row is, kept on the row, so its button can be worked out
+         again later rather than only at the moment it was pressed. */
+      li.setAttribute('data-url', s.url || '');
+      li.setAttribute('data-add-label', s.playable ? 'Add station' : 'Add anyway');
       tipOn(btn, s.playable ? '' : 'This link is a playlist file listing streams, not a stream, so it may not play. Adding it is still worth a try.');
       btn.addEventListener('click', function () {
-        if (!addFoundStation(s)) return;
-        li.classList.add('is-added');
-        btn.textContent = 'Added';
-        btn.disabled = true;
+        /* No state set here. addFoundStation redraws the station list,
+           and that is what tells every result where it stands. */
+        addFoundStation(s);
       });
       li.appendChild(btn);
       box.appendChild(li);
+    });
+    syncResultButtons();
+  }
+
+  /* Each result says Added or Add station according to the list as it is
+     now, not according to what was last pressed.
+
+     It used to be set once, at the click, and never looked at again -- so
+     a station added and then deleted in the same sitting still read
+     "Added", with its button disabled. The only way back to it was to run
+     the search again. The list is the truth; this just reads it.
+
+     Matched on the stream address, which is what addFoundStation refuses
+     duplicates on, so the two agree about what "already on the list"
+     means. */
+  function syncResultButtons() {
+    var box = $('finderResults');
+    if (!box || !draft) return;
+    var have = {};
+    draft.stations.forEach(function (st) { if (st.url) have[st.url] = true; });
+    Array.prototype.forEach.call(box.querySelectorAll('.result'), function (li) {
+      var btn = li.querySelector('.result-add');
+      if (!btn) return;
+      var on = !!have[li.getAttribute('data-url')];
+      li.classList.toggle('is-added', on);
+      btn.disabled = on;
+      btn.textContent = on ? 'Added' : (li.getAttribute('data-add-label') || 'Add station');
     });
   }
 
