@@ -607,8 +607,8 @@ test('the pill fades in, and the dot still snaps', () => {
 
   /* Neither animation runs where the machine has asked for stillness. */
   const reduced = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)', css.indexOf('update-dot-blink')));
-  assert.ok(/\.update-dot \{ animation: none/.test(reduced) && /\.update-pill[^{]*\{ animation: none/.test(reduced),
-    'reduced motion no longer holds the dot and the pill still');
+  assert.ok(/\.update-dot, \.update-dot\.is-fetching \{ animation: none/.test(reduced) && /\.update-pill[^{]*\{ animation: none/.test(reduced),
+    'reduced motion no longer holds the dot -- blinking or breathing -- and the pill still');
 
   /* And the pill is seen going, not gone. It used to be set hidden on the
      press, which is display: none in the same frame -- a control that
@@ -1097,10 +1097,14 @@ test('the profile-trimming flags are the same wherever they are written', () => 
    '--no-pings', 'OptimizationHints', 'SegmentationPlatform'].forEach(function (flag) {
     assert.ok(lines[0].indexOf(flag) !== -1, 'the lean-profile flags no longer pass ' + flag);
   });
-  /* Not the shader caches. They are small and they are what stops every
-     launch recompiling the same shaders. */
-  assert.equal(/disable-gpu-shader-disk-cache/.test(lines[0]), false,
-    'the lean-profile flags disable the shader cache, which costs time at every launch to save a few MB once');
+  /* The shader caches too, now. They were kept once as small and as what
+     stops every launch recompiling; measured on 2026-10-04 they were 6 to
+     11 MB a profile and growing, and Mark chose the space over the time. */
+  assert.ok(/--disable-gpu-shader-disk-cache/.test(lines[0]),
+    'the lean-profile flags no longer stop the shader caches being written');
+  /* Small caches: a local page has almost nothing worth keeping. */
+  assert.ok(/--disk-cache-size=4194304 --media-cache-size=4194304/.test(lines[0]),
+    'the lean-profile caches are no longer capped at 4 MB');
 });
 
 /* The Chrome profile was the only one of the three not named after its
@@ -1880,44 +1884,38 @@ test('the readout says the version once, after an update', () => {
   const flashes = js.match(/var ANNOUNCE_FLASHES = (\d+);/);
   const step = js.match(/var ANNOUNCE_STEP_MS = (\d+);/);
   assert.ok(flashes && step, 'the announcement timings are gone from app.js');
-  const anim = css.match(/\.display-name\.is-announcing \{ animation: name-flash ([\d.]+)s linear (\d+); \}/);
-  assert.ok(anim, 'the flash animation is gone from app.css');
-  assert.equal(Number(flashes[1]) - 1, Number(anim[2]),
-    'app.js blinks ' + flashes[1] + ' times, so the snap should run ' + (Number(flashes[1]) - 1)
-      + ' and the last blink be the fade; the animation runs ' + anim[2]);
+  const anim = css.match(/\.display-name\.is-announcing \{ animation: name-flash ([\d.]+)s linear ([\d.]+) forwards; \}/);
+  assert.ok(anim, 'the flash animation is gone from app.css, or no longer holds its end');
+  assert.equal(Number(flashes[1]) - 0.5, Number(anim[2]),
+    'app.js blinks ' + flashes[1] + ' times, so the snap should run ' + (Number(flashes[1]) - 0.5)
+      + ' cycles and end dark; the animation runs ' + anim[2]);
+  assert.equal(Math.round(parseFloat(anim[1]) * 1000), Number(step[1]),
+    'the flash cycle is ' + anim[1] + 's and app.js counts ' + step[1] + 'ms a blink');
+  /* Half a cycle lands on the 50% stop, which has to be the dark one. */
+  assert.ok(/@keyframes name-flash \{[^@]*?50%, 95%\s*\{ opacity: 0; \}/.test(css),
+    'half way through a flash cycle is no longer dark, so the last blink does not stay out');
 
-  /* That last blink: a fade out, held dark by forwards through the beat
-     before the station arrives. */
-  const out = css.match(/\.display-name\.is-fading \{ animation: name-fade-out ([\d.]+)s linear forwards; \}/);
-  assert.ok(out, 'the last blink no longer goes out and stays out');
-  /* Taken from the step rather than written out, so changing the blink
-     rate carries the fade and the lit stretch with it. */
-  assert.ok(/var ANNOUNCE_FADE_MS = Math\.round\(ANNOUNCE_STEP_MS \* 0\.05\);/.test(js),
-    'the last blink no longer goes out at the same speed as the other four');
+  /* What moves the readout on is the animation ending, not a timer
+     started beside it: the two drifted apart on a machine busy starting
+     up, and the station came back over the last blink. */
+  assert.ok(/addEventListener\('animationend', onEnd\)/.test(js) && /e\.animationName === 'name-flash'/.test(js),
+    'the announcement no longer waits for its own animation to end');
+  assert.ok(!/is-fading/.test(css) && !/is-fading/.test(js), 'the separate last-blink fade is back');
   const gapMs = js.match(/var ANNOUNCE_GAP_MS = (\d+);/);
   assert.ok(gapMs, 'the dark beat is gone from app.js');
-  const fadeMs = [null, String(Math.round(Number(step[1]) * 0.05))];
   assert.ok(Number(gapMs[1]) >= Number(step[1]) * 0.5,
     'the pause is ' + gapMs[1] + 'ms, too short to read as the end of the announcement');
-
-  /* And the fifth blink gets its own lit stretch before it goes out. A
-     flash cycle ends lit -- its last 5% ramps the text back up for the
-     next one -- so starting the fade the moment the fourth cycle ends
-     showed the fifth blink for 65ms and took it away again. A stutter,
-     reported off a screen recording. */
   assert.ok(/var ANNOUNCE_ON_MS = Math\.round\(ANNOUNCE_STEP_MS \* 0\.45\);/.test(js),
     'the lit part of a blink is no longer taken from the step');
   assert.ok(/ANNOUNCE_MS = \(ANNOUNCE_FLASHES - 1\) \* ANNOUNCE_STEP_MS \+ ANNOUNCE_ON_MS;/.test(js),
-    'the last blink is cut off the instant the fourth cycle ends, which is the stutter');
-  assert.equal(Math.round(parseFloat(out[1]) * 1000), Number(fadeMs[1]),
-    'the fade-out animation is ' + out[1] + 's and app.js waits ' + fadeMs[1] + 'ms');
+    'the reduced-motion hold no longer matches the blinking it stands in for');
   assert.ok(Number(gapMs[1]) > 0, 'there is no dark beat between the announcement and the station');
 
   /* And the readout is never seen at full between the two: the classes are
      exchanged in one go rather than over two frames. */
-  const backFn = js.slice(js.indexOf('var back = function () {'), js.indexOf('var leave = function () {'));
-  assert.ok(backFn.indexOf("remove('is-fading')") < backFn.indexOf("add('is-returning')"),
-    'the fade-out is dropped after the return is added');
+  const backFn = js.slice(js.indexOf('var back = function () {'), js.indexOf('announcing = true;', js.indexOf('var back = function () {')));
+  assert.ok(backFn.indexOf("remove('is-announcing')") !== -1 && backFn.indexOf("remove('is-announcing')") < backFn.indexOf("add('is-returning')"),
+    'the held-dark blink is dropped after the return is added');
   assert.equal(/void el\.name\.offsetWidth;/.test(backFn), false,
     'the hand-back forces a reflow between the two classes, which shows one frame of the name at full');
   assert.equal(Number(step[1]), Math.round(parseFloat(anim[1]) * 1000),
@@ -1966,25 +1964,21 @@ test('the readout says the version once, after an update', () => {
   /* The preview has a second copy of the timing, in its own stylesheet,
      and changing only the script left the page blinking at the old rate
      while its timer waited for the new one. Both halves, or neither. */
-  const pvCss = preview.match(/\.ann-name\.is-announcing \{ animation: ann-flash ([\d.]+)s linear (\d+); \}/);
+  const pvCss = preview.match(/\.ann-name\.is-announcing \{ animation: ann-flash ([\d.]+)s linear ([\d.]+) forwards; \}/);
   assert.ok(pvCss, 'the preview flash animation is gone');
   assert.equal(Math.round(parseFloat(pvCss[1]) * 1000), Number(step[1]),
     'the preview animates every ' + pvCss[1] + 's while its script steps every ' + step[1] + 'ms');
-  assert.equal(Number(pvCss[2]), Number(flashes[1]) - 1,
-    'the preview animation runs ' + pvCss[2] + ' times; it should snap ' + (Number(flashes[1]) - 1)
-      + ' times and fade the last');
-  assert.ok(/\.ann-name\.is-fading \{ animation: ann-fade-out/.test(preview),
-    'the preview no longer takes the last blink out and leaves it out');
-  assert.ok(/\}, STEP \* \(FLASHES - 1\) \+ ON\);/.test(preview),
-    'the preview cuts the last blink short, which is the stutter');
+  assert.equal(Number(pvCss[2]), Number(flashes[1]) - 0.5,
+    'the preview animation runs ' + pvCss[2] + ' cycles; it should run ' + (Number(flashes[1]) - 0.5)
+      + ' and end dark');
+  assert.ok(/addEventListener\('animationend'/.test(preview),
+    'the preview moves on by a timer again, not by its animation ending');
   /* Read off the app, not written out here: the dark beat has already been
      lengthened once and a hardcoded number means editing this file to do
      it, which is how the preview fell behind the app before. */
-  const pvGap = preview.match(/FADE = (\d+), GAP = (\d+)/);
-  assert.ok(pvGap, 'the preview no longer runs the fade-out and the beat');
-  assert.equal(pvGap[1], fadeMs[1],
-    'the preview fades out over ' + pvGap[1] + 'ms and the app over ' + fadeMs[1]);
-  assert.equal(pvGap[2], gapMs[1], 'the preview holds dark for ' + pvGap[2] + 'ms and the app for ' + gapMs[1]);
+  const pvGap = preview.match(/FLASHES = \d+, GAP = (\d+)/);
+  assert.ok(pvGap, 'the preview no longer holds the beat');
+  assert.equal(pvGap[1], gapMs[1], 'the preview holds dark for ' + pvGap[1] + 'ms and the app for ' + gapMs[1]);
 });
 
 

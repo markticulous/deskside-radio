@@ -10,7 +10,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.6.2';
+  var APP_VERSION = '1.6.3';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -1712,28 +1712,24 @@
   }
 
   /* Five blinks. The first four snap on and off; the fifth goes out the
-     same way and stays out, which is why the CSS runs the snap four
-     times and a separate rule holds the last one dark. Then the pause,
+     same way and stays out, which is why the CSS runs the snap four and
+     a half times and holds the end. Then the pause,
      which is what makes the ending an ending -- it used to be carried
      by a slow fade, and a fade eight times slower than the blinks it
      followed read as winding down rather than finishing. A test holds
      these numbers to the ones in app.css. */
   var ANNOUNCE_FLASHES = 5;
   var ANNOUNCE_STEP_MS = 1000;
-  /* The lit part of one blink, and the ramp that ends it: 45% and 5% of
-     the step, which is what the keyframes say. */
+  /* The lit part of one blink: 45% of the step, which is what the
+     keyframes say. */
   var ANNOUNCE_ON_MS = Math.round(ANNOUNCE_STEP_MS * 0.45);
-  var ANNOUNCE_FADE_MS = Math.round(ANNOUNCE_STEP_MS * 0.05);
   var ANNOUNCE_GAP_MS = 900;
-  /* Four whole cycles, and then the fifth blink's own lit stretch
-     before it goes out for good.
-
-     Without that last term this fired the moment the fourth cycle
-     ended -- and a cycle ends lit, because its final 5% ramps the text
-     back up ready for the next one. So the fifth blink came on and was
-     taken away again 65 milliseconds later: a stutter, not a blink.
-     Reported off a screen recording, and visible in the trace as a
-     fade-out beginning 15ms after the flash animation finished. */
+  /* How long the blinking takes: four whole cycles and the fifth blink's
+     lit stretch. Only a hold for reduced motion and a backstop now --
+     the animation's own end is what moves things on, because a timer
+     started alongside it ran ahead of it wherever start-up kept the
+     first frames back: fewer blinks on one machine, and on another the
+     station coming back over the last blink with no pause before it. */
   var ANNOUNCE_MS = (ANNOUNCE_FLASHES - 1) * ANNOUNCE_STEP_MS + ANNOUNCE_ON_MS;
   var announcing = false;
 
@@ -1747,7 +1743,7 @@
          recalculation, so the readout goes straight from dark into the
          fade. Removing the fade first and adding the return afterwards
          in two frames would show one frame of the name at full. */
-      el.name.classList.remove('is-fading');
+      el.name.classList.remove('is-announcing');
       el.name.classList.add('is-returning');
       setTimeout(function () { el.name.classList.remove('is-returning'); }, 400);
       /* Nothing theme-specific here. setName strikes the console's cells
@@ -1756,23 +1752,39 @@
          is a change like any other. */
     };
 
-    /* The last blink, as a fade. The snaps stop here and the text goes
-       out over ANNOUNCE_FADE_MS, then holds dark for the beat. */
-    var leave = function () {
-      el.name.classList.remove('is-announcing');
-      el.name.classList.add('is-fading');
-      setTimeout(back, ANNOUNCE_FADE_MS + ANNOUNCE_GAP_MS);
-    };
-
     announcing = true;
     TunerUI.setName(el.name, 'UPDATED TO V' + APP_VERSION);
     var still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    if (!still) {
-      el.name.classList.remove('is-announcing');
-      void el.name.offsetWidth;
-      el.name.classList.add('is-announcing');
-    }
-    setTimeout(still ? back : leave, ANNOUNCE_MS);
+    if (still) { setTimeout(back, ANNOUNCE_MS); return; }
+
+    /* The last blink has gone out and is held dark: the beat, then the
+       station. Once, whichever of the animation's end and the backstop
+       comes first -- the backstop is for an animation that never ends,
+       cancelled by something redrawing the readout. */
+    var done = false;
+    var onEnd = function (e) { if (e.target === el.name && e.animationName === 'name-flash') finish(); };
+    var finish = function () {
+      if (done) return;
+      done = true;
+      el.name.removeEventListener('animationend', onEnd);
+      setTimeout(back, ANNOUNCE_GAP_MS);
+    };
+    el.name.addEventListener('animationend', onEnd);
+    /* Started only once the window is showing and has drawn twice, so the
+       first blink is a blink somebody can see rather than one spent while
+       the window was still coming up. */
+    var go = function () {
+      if (document.hidden) { document.addEventListener('visibilitychange', go, { once: true }); return; }
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          el.name.classList.remove('is-announcing');
+          void el.name.offsetWidth;
+          el.name.classList.add('is-announcing');
+          setTimeout(finish, ANNOUNCE_MS + 3000);
+        });
+      });
+    };
+    go();
   }
 
   /* The next-up text, and the width the chip should become to hold it.
@@ -2465,6 +2477,7 @@
      kept for the month it was picked in. */
   function takeTheme(next) {
     var now = seasonNow();
+    if (SEASON_VIZ[next] && next !== state.theme) state.miniViz = SEASON_VIZ[next];
     if (Scheduler.isSeasonal(next) && !Scheduler.isSeasonal(state.theme)) state.themeBeforeSeason = state.theme;
     if (next !== state.theme) {
       state.seasonHold = Scheduler.isSeasonal(next) && !Scheduler.inSeason(next, now) ? Scheduler.monthTag(now) : null;
@@ -2669,7 +2682,7 @@
     ".dr-pumpkin { align-items: center; justify-content: center; }",
     "/* Larger than its box: the other five keep to 46x26, the pumpkin spills",
     "   over it a little, which the row has room for above and below. */",
-    ".dr-pumpkin svg { transform: scale(calc(1.5 + var(--dr-thump, 0) * .3)); transform-origin: 50% 58%; }",
+    ".dr-pumpkin svg { transform: scale(calc(1.7 + var(--dr-thump, 0) * .3)); transform-origin: 50% 58%; }",
     "/* Lit in two stages, as the big one is: a deep orange ember, then the",
     "   yellow-white flame over it, which follows --dr-flame: the level against",
     "   its own recent average, written by app.js. And a candle's own flicker",
@@ -3010,12 +3023,12 @@
             '<defs><radialGradient id="dr-pk-shell" cx="45%" cy="38%" r="65%"><stop offset="0" stop-color="#ffac48"/><stop offset=".6" stop-color="#e3600e"/><stop offset="1" stop-color="#702203"/></radialGradient>' +
               '<radialGradient id="dr-pk-lit" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#fffbe0"/><stop offset=".45" stop-color="#ffe066"/><stop offset="1" stop-color="#ff8a10"/></radialGradient></defs>' +
             '<path d="M22.2 5Q22.6 1.4 25.6 1.2L25 5.2Z" fill="#4f7a22"/>' +
-            '<g fill="url(#dr-pk-shell)" stroke="#702203" stroke-width=".6">' +
+            '<g fill="url(#dr-pk-shell)" stroke="#8a3206" stroke-opacity=".7" stroke-width=".35">' +
               '<ellipse cx="17.4" cy="15" rx="7" ry="9.4"/><ellipse cx="28.6" cy="15" rx="7" ry="9.4"/><ellipse cx="23" cy="15" rx="7.6" ry="9.9"/>' +
             '</g>' +
             '<path d="M15.6 12.4L20 12.4L17.8 8.4ZM26 12.4L30.4 12.4L28.2 8.4ZM22 15.2L24 15.2L23 13.2ZM15.2 17.4Q23 23.4 30.8 17.4L28.6 18.5L27 17.3L25.2 18.9L23 17.7L20.8 18.9L19 17.3L17.4 18.5Z" fill="#2a0a02"/>' +
-            '<path class="dr-ember" d="M15.6 12.4L20 12.4L17.8 8.4ZM26 12.4L30.4 12.4L28.2 8.4ZM22 15.2L24 15.2L23 13.2ZM15.2 17.4Q23 23.4 30.8 17.4L28.6 18.5L27 17.3L25.2 18.9L23 17.7L20.8 18.9L19 17.3L17.4 18.5Z" fill="#e0400a" stroke="#4a1404" stroke-width=".7" stroke-linejoin="round"/>' +
-            '<path class="dr-glow" d="M15.6 12.4L20 12.4L17.8 8.4ZM26 12.4L30.4 12.4L28.2 8.4ZM22 15.2L24 15.2L23 13.2ZM15.2 17.4Q23 23.4 30.8 17.4L28.6 18.5L27 17.3L25.2 18.9L23 17.7L20.8 18.9L19 17.3L17.4 18.5Z" fill="url(#dr-pk-lit)" stroke="#4a1404" stroke-width=".7" stroke-linejoin="round"/>' +
+            '<path class="dr-ember" d="M15.6 12.4L20 12.4L17.8 8.4ZM26 12.4L30.4 12.4L28.2 8.4ZM22 15.2L24 15.2L23 13.2ZM15.2 17.4Q23 23.4 30.8 17.4L28.6 18.5L27 17.3L25.2 18.9L23 17.7L20.8 18.9L19 17.3L17.4 18.5Z" fill="#e0400a" stroke="#6e2006" stroke-opacity=".75" stroke-width=".4" stroke-linejoin="round"/>' +
+            '<path class="dr-glow" d="M15.6 12.4L20 12.4L17.8 8.4ZM26 12.4L30.4 12.4L28.2 8.4ZM22 15.2L24 15.2L23 13.2ZM15.2 17.4Q23 23.4 30.8 17.4L28.6 18.5L27 17.3L25.2 18.9L23 17.7L20.8 18.9L19 17.3L17.4 18.5Z" fill="url(#dr-pk-lit)" stroke="#6e2006" stroke-opacity=".75" stroke-width=".4" stroke-linejoin="round"/>' +
           '</svg>' +
         '</span>' +
       '</button>' +
@@ -6756,12 +6769,33 @@
        leaving the drawer to be searched. Same fact, one level down. */
     var tab = $('tabService');
     if (tab) tab.classList.toggle('has-update', on);
+    syncFetchDot();
     if (!on) return;
     var link = $('updatePillLink');
     if (link) {
       link.href = RELEASES_URL;
       tipOn(link, 'Version ' + state.versionLatest + ' has been published. Running ' + APP_VERSION + '.');
     }
+  }
+
+  /* The pill's dot breathes while the update has been published but the
+     opener has not yet fetched it -- the files on disk are still the ones
+     running -- and blinks as before once they are newer. Asked again every
+     minute until then, because the fetch happens in the background while
+     the radio plays. Windows only: nowhere else is anything fetched, and a
+     folder that cannot say what is on disk keeps the ordinary blink rather
+     than promising a download. */
+  var fetchDotTimer = null;
+  function syncFetchDot() {
+    var dot = document.querySelector('#updatePill .update-dot');
+    clearTimeout(fetchDotTimer);
+    if (!dot) return;
+    if (!updateAvailable() || !onWindows()) { dot.classList.remove('is-fetching'); return; }
+    readDiskVersion().then(function (disk) {
+      var fetching = !!disk && !newerThan(disk, APP_VERSION) && updateAvailable();
+      dot.classList.toggle('is-fetching', fetching);
+      if (fetching) fetchDotTimer = setTimeout(syncFetchDot, 60000);
+    });
   }
 
   function renderUpdateLine(note) {

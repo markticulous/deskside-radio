@@ -661,6 +661,21 @@
     var changed = nameEl.getAttribute('data-name') !== str;
     nameEl.setAttribute('data-name', str);
 
+    /* Halloween crossfades one name into the next: the old lines are kept,
+       at the size they were fitted to, laid over the new ones and faded
+       out while the new ones fade in. Not over the version announcement,
+       which has its own way in and out. */
+    var calm = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var ghost = null;
+    if (theme === 'halloween' && changed && !calm && nameEl.textContent.trim() &&
+        !nameEl.classList.contains('is-announcing') && !nameEl.classList.contains('is-returning')) {
+      ghost = document.createElement('span');
+      ghost.className = 'name-ghost';
+      ghost.setAttribute('aria-hidden', 'true');
+      ghost.style.fontSize = getComputedStyle(nameEl).fontSize;
+      Array.prototype.slice.call(nameEl.querySelectorAll('.name-line')).forEach(function (l) { ghost.appendChild(l); });
+      Array.prototype.forEach.call(nameEl.querySelectorAll('.name-ghost'), function (g) { g.remove(); });
+    }
     nameEl.textContent = '';
     lines.forEach(function (line) {
       var s = document.createElement('span');
@@ -671,6 +686,15 @@
       nameEl.appendChild(s);
     });
     fitName(nameEl);
+    if (ghost) {
+      // Added after the fit, so the old words take no part in measuring the new.
+      nameEl.appendChild(ghost);
+      var fade = { duration: 650, easing: 'ease-in-out' };
+      ghost.animate([{ opacity: 1 }, { opacity: 0 }], fade).finished.then(function () { ghost.remove(); }, function () { ghost.remove(); });
+      Array.prototype.forEach.call(nameEl.querySelectorAll('.name-line'), function (l) {
+        if (l.parentNode === nameEl) l.animate([{ opacity: 0 }, { opacity: 1 }], fade);
+      });
+    }
 
     var still = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (theme === 'departures' && changed && !still) flapReveal(nameEl);
