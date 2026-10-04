@@ -2042,13 +2042,113 @@ test('no function in a file is shadowed by a later one of the same name', () => 
   });
 });
 
+/* The preset keys scroll a station's name too -- on hover, and all the
+   time for the one that is playing -- and for a while the readout above
+   them faded its edges while they still cut theirs against a hard line.
+   On a painted face that join is visible. They now take the same
+   treatment, off the same two widths.
+
+   Not on .can-scroll alone, though. A key whose name merely overflows
+   keeps an ellipsis, and an ellipsis says "there is more" better than a
+   fade does; a fade over the top of one only makes it hard to read. So
+   the mask rides on the same hover/playing selectors as the clip. */
+test("the preset keys fade their names the way the readout does", () => {
+  const css = read('app.css');
+  const moving = css.slice(css.indexOf('.preset:hover .preset-name.can-scroll,'),
+    css.indexOf('@keyframes preset-feather'));
+  assert.ok(moving, 'the rule that turns a preset name loose is gone');
+
+  ['mask-image', '-webkit-mask-image'].forEach((prop) => {
+    assert.ok(moving.indexOf(prop + ': linear-gradient(to right, transparent 0, #000 var(--feather-l), '
+      + '#000 calc(100% - var(--feather-r)), transparent 100%);') !== -1,
+      'a preset name being scrolled has no ' + prop + ', so it is still cut against a hard edge');
+  });
+  assert.ok(/animation: preset-feather var\(--marquee-ms, 6s\) linear infinite;/.test(moving),
+    'the preset feather is not driven from the same --marquee-ms as the travel it belongs to');
+
+  /* Both edges take their width from the shared pair, never their own
+     copy -- a second copy is how these drift. */
+  assert.ok(!/--feather(-head)?: [\d.]+em/.test(moving),
+    'the preset keys declare a feather width of their own instead of using the shared one');
+
+  /* The fade has to start when the travel does, and the travel has two
+     delays depending on why it is moving. */
+  [['hover', '.55s'], ['is-active', '.9s']].forEach((pair) => {
+    const re = new RegExp('\\.preset[.:]' + pair[0]
+      + ' \\.preset-name\\.can-scroll \\{ animation-delay: ' + pair[1].replace('.', '\\.') + '; \\}');
+    assert.ok(re.test(css),
+      'the ' + pair[0] + ' feather does not wait ' + pair[1] + ' like the travel it belongs to, so the two drift apart');
+  });
+
+  /* Turn-taking, against preset-marquee's own percentages rather than
+     the readout's -- the two keyframe blocks do not share a shape. */
+  const legs = /@keyframes preset-marquee \{\s*0%, ([\d.]+)%\s*\{ transform: translateX\(0\); \}\s*([\d.]+)%, ([\d.]+)%\s*\{/.exec(css);
+  assert.ok(legs, 'the preset marquee keyframes are gone, or no longer hold at both ends');
+  const [moves, lands, leaves] = [Number(legs[1]), Number(legs[2]), Number(legs[3])];
+
+  const body = /@keyframes preset-feather \{([\s\S]*?)\n\}/.exec(css);
+  assert.ok(body, 'the preset feather keyframes are gone');
+  const stops = [];
+  body[1].split('\n').forEach((line) => {
+    const m = /^\s*([\d.%,\s]+?)\s*\{(.*)\}\s*$/.exec(line);
+    if (!m) return;
+    const l = /--feather-l:\s*([^;]+);/.exec(m[2]);
+    const r = /--feather-r:\s*([^;]+);/.exec(m[2]);
+    assert.ok(l && r, 'a preset feather keyframe sets only one edge: ' + line.trim());
+    m[1].split(',').forEach((x) => stops.push({ at: parseFloat(x), l: l[1].trim(), r: r[1].trim() }));
+  });
+  const at = (x) => stops.filter((y) => y.at === x)[0];
+
+  [0, 100].forEach((x) => {
+    const st = at(x);
+    assert.ok(st, 'the preset feather does not say what the edges do at ' + x + '%');
+    assert.equal(st.l, '0px', 'at ' + x + '% a preset name is at rest, but its head is faded by ' + st.l);
+    assert.equal(st.r, 'var(--feather)', 'at ' + x + '% the rest of the name waits past the tail, but the tail is ' + st.r);
+  });
+  const headUp = stops.filter((x) => x.l !== '0px').map((x) => x.at);
+  assert.ok(headUp.length && Math.min(...headUp) > moves,
+    'a preset name feathers its head at ' + Math.min(...headUp) + '%, at or before it starts moving at ' + moves + '%');
+  const tailOff = stops.filter((x) => x.r === '0px').map((x) => x.at);
+  assert.ok(tailOff.length, 'a preset name never lifts its tail, so the end of it is faded through the pause meant for reading it');
+  assert.ok(Math.min(...tailOff) > lands && Math.max(...tailOff) <= leaves,
+    'the preset tail lifts from ' + Math.min(...tailOff) + '% to ' + Math.max(...tailOff)
+      + '%, which does not match the pause at ' + lands + '% to ' + leaves + '%');
+
+  /* And the same three faces are left out, mask and animation both.
+
+     Checked by weight, not by spelling. The first attempt at this
+     exemption was written `[data-theme="console"] .preset-name.can-scroll`
+     -- three classes against the four of `.preset.is-active
+     .preset-name.can-scroll` -- so it lost, and the console's keys were
+     masked after all while a test that only looked for the selector
+     passed. What matters is that it out-ranks what it is overriding. */
+  const weigh = (sel) => (sel.match(/[.:[]/g) || []).length;
+  const masking = '.preset.is-active .preset-name.can-scroll';
+  ['console', 'departures', 'retro'].forEach((theme) => {
+    const re = new RegExp('^\\[data-theme="' + theme + '"\\][^,{]*\\.preset-name\\.can-scroll[,{ ]', 'm');
+    const line = (css.match(re) || [''])[0].replace(/[,{ ]$/, '');
+    assert.ok(line, 'the ' + theme + ' preset keys are no longer let off the feather');
+    assert.ok(weigh(line) > weigh(masking),
+      'the ' + theme + ' exemption "' + line + '" is no heavier than the "' + masking
+        + '" it has to beat, so the mask wins and those keys are feathered after all');
+  });
+  const off = css.slice(css.indexOf('[data-theme="console"] .preset:hover .preset-name.can-scroll,'));
+  assert.ok(/animation: none;/.test(off.slice(0, off.indexOf('}'))),
+    'the cell faces drop the preset mask but keep its animation, which puts the mask back as soon as a key scrolls');
+});
+
 test('the scrolling name is feathered, except where the display has cells', () => {
   const css = read('app.css');
   const rule = css.slice(css.indexOf('.display-name.can-scroll {'),
     css.indexOf('.display-name.can-scroll .name-line {'));
   assert.ok(rule, 'the .display-name.can-scroll rule is gone');
-  assert.ok(/--feather: [\d.]+em;/.test(rule),
-    'the feather is no longer quoted in em, so it will not track the type size from one theme to the next');
+  /* One pair of widths, shared by the readout and the preset keys, so
+     the two cannot drift apart -- which they did for exactly as long as
+     the keys had none. In em, so they track the type rather than the
+     screen: the readout runs 40px to 82px across the faces and a key's
+     name is smaller again. */
+  const widths = /:root \{ --feather: ([\d.]+)em; --feather-head: ([\d.]+)em; \}/.exec(css);
+  assert.ok(widths, 'the two feather widths are no longer declared once, together, in em');
   /* One gradient does both edges, each through a width of its own that
      comes and goes: --feather-l for the head, --feather-r for the tail.
      At 0 the stop collapses onto the edge, which is simply a hard edge.
@@ -2065,11 +2165,9 @@ test('the scrolling name is feathered, except where the display has cells', () =
      the head is a letter leaving, and only needs enough not to be sheared
      off. A head as wide as the tail rubs out a character still being
      read -- which is what was reported. */
-  const head = /--feather-head: ([\d.]+)em;/.exec(rule);
-  const tail = /--feather: ([\d.]+)em;/.exec(rule);
-  assert.ok(head && tail, 'the readout no longer gives its two edges their own widths');
-  assert.ok(Number(head[1]) < Number(tail[1]),
-    'the head feather is ' + head[1] + 'em against the tail\'s ' + tail[1]
+  const tailW = Number(widths[1]), headW = Number(widths[2]);
+  assert.ok(headW < tailW,
+    'the head feather is ' + headW + 'em against the tail\'s ' + tailW
       + 'em, so the leaving character is rubbed out rather than softened');
   ['mask-image', '-webkit-mask-image'].forEach((prop) => {
     assert.ok(rule.indexOf(prop + ': linear-gradient(to right, transparent 0, #000 var(--feather-l), '
