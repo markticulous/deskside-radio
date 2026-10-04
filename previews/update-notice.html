@@ -357,12 +357,10 @@ h2 {
   100%      { opacity: 1; }
 }
 @keyframes ann-return { from { opacity: 0; } to { opacity: 1; } }
-.ann-name.is-announcing { animation: ann-flash 1s linear 4; }
-@keyframes ann-fade-out { from { opacity: 1; } to { opacity: 0; } }
-.ann-name.is-fading { animation: ann-fade-out .05s linear forwards; }
+.ann-name.is-announcing { animation: ann-flash 1s linear 4.5 forwards; }
 .ann-name.is-returning  { animation: ann-return .22s ease-out; }
 @media (prefers-reduced-motion: reduce) {
-  .ann-name.is-announcing, .ann-name.is-fading,
+  .ann-name.is-announcing,
   .ann-name.is-returning { animation: none; }
 }
 /* Three cabinets, because two of them do not set the readout as text. The
@@ -1032,11 +1030,24 @@ document.querySelectorAll('.s-x').forEach(function (x) {
   var names = [].slice.call(document.querySelectorAll('.ann-name'));
   var play = document.getElementById('annPlay');
   if (!names.length || !play) return;
-  var STEP = 1000, FLASHES = 5, FADE = 50, GAP = 900, STATION = 'KISS 92.5';
-  /* The lit part of one blink. The last blink needs its own, or it is
-     taken away in the same breath as the cycle before it hands it back. */
-  var ON = Math.round(STEP * 0.45);
+  var STEP = 1000, FLASHES = 5, GAP = 900, STATION = 'KISS 92.5';
   var timer = null;
+  /* Moved on by the animation ending, as the app is: four and a half
+     cycles, the last blink out and held dark by the stylesheet. */
+  names[0].addEventListener('animationend', function (e) {
+    if (e.animationName !== 'ann-flash') return;
+    timer = setTimeout(function () {
+      each(function (n) {
+        write(n, STATION);
+        n.classList.remove('is-announcing');
+        n.classList.add('is-returning');
+        if (n.getAttribute('data-cab') === 'console') vfdReveal(n);
+      });
+      timer = setTimeout(function () {
+        each(function (n) { n.classList.remove('is-returning'); });
+      }, 400);
+    }, GAP);
+  });
 
   /* The departures board is built a character at a time, and it turns:
      each flap runs through glyphs and lands, one cell a little after the
@@ -1137,30 +1148,11 @@ document.querySelectorAll('.s-x').forEach(function (x) {
     stopFlapping();
     stopVfd();
     each(function (n) {
-      n.classList.remove('is-announcing', 'is-fading', 'is-returning');
+      n.classList.remove('is-announcing', 'is-returning');
       write(n, 'UPDATED TO V1.4.12');
       void n.offsetWidth;
       n.classList.add('is-announcing');
     });
-    /* Five snaps, then the last blink out and held dark for the pause,
-       then the station. The same shape and numbers as the app. */
-    timer = setTimeout(function () {
-      each(function (n) {
-        n.classList.remove('is-announcing');
-        n.classList.add('is-fading');
-      });
-      timer = setTimeout(function () {
-        each(function (n) {
-          write(n, STATION);
-          n.classList.remove('is-fading');
-          n.classList.add('is-returning');
-          if (n.getAttribute('data-cab') === 'console') vfdReveal(n);
-        });
-        timer = setTimeout(function () {
-          each(function (n) { n.classList.remove('is-returning'); });
-        }, 400);
-      }, FADE + GAP);
-    }, STEP * (FLASHES - 1) + ON);
   }
 
   play.addEventListener('click', run);

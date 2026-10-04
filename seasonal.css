@@ -77,24 +77,28 @@
 }
 
 /* Three bats. Their wings are animated inside the drawing itself; the
-   flight across the cabinet is this element, once every twenty seconds,
-   so most of the time the sky is empty and a crossing is an event. */
+   flight across the cabinet is this element, once every thirty seconds
+   -- it was twenty-one, which was a little too often -- so most of
+   the time the sky is empty and a crossing is an event. The crossing
+   itself still takes four and a half seconds. */
 [data-theme="halloween"] .tuner-bar::after {
   content: ""; position: absolute; left: -340px; top: 70px; width: 300px; height: 90px;
   z-index: 5; pointer-events: none;
-  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 90' fill='%23080407'><g transform='translate(40 50) scale(1.6)'><g><animateTransform attributeName='transform' type='translate' values='0 0;0 1.6;0 0' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='0s' dur='.34s' repeatCount='indefinite'/><path d='M1.5-2C6-7 12-9 20-6C17-3.5 16-.5 17 3C14 1 11 1.5 9 4.5C7 1.8 4 1.2 1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='-38 1.5 -1;30 1.5 -1;-38 1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='0s' dur='.34s' repeatCount='indefinite'/></path><path d='M-1.5-2C-6-7-12-9-20-6C-17-3.5-16-.5-17 3C-14 1-11 1.5-9 4.5C-7 1.8-4 1.2-1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='38 -1.5 -1;-30 -1.5 -1;38 -1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='0s' dur='.34s' repeatCount='indefinite'/></path><ellipse cx='0' cy='0' rx='2.6' ry='4.4'/><circle cx='0' cy='-4.6' r='2.3'/><path d='M-2-5.6L-2.7-9.4L-.5-6.6ZM2-5.6L2.7-9.4L.5-6.6Z'/></g></g><g transform='translate(150 24) scale(1)'><g><animateTransform attributeName='transform' type='translate' values='0 0;0 1.6;0 0' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.12s' dur='.34s' repeatCount='indefinite'/><path d='M1.5-2C6-7 12-9 20-6C17-3.5 16-.5 17 3C14 1 11 1.5 9 4.5C7 1.8 4 1.2 1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='-38 1.5 -1;30 1.5 -1;-38 1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.12s' dur='.34s' repeatCount='indefinite'/></path><path d='M-1.5-2C-6-7-12-9-20-6C-17-3.5-16-.5-17 3C-14 1-11 1.5-9 4.5C-7 1.8-4 1.2-1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='38 -1.5 -1;-30 -1.5 -1;38 -1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.12s' dur='.34s' repeatCount='indefinite'/></path><ellipse cx='0' cy='0' rx='2.6' ry='4.4'/><circle cx='0' cy='-4.6' r='2.3'/><path d='M-2-5.6L-2.7-9.4L-.5-6.6ZM2-5.6L2.7-9.4L.5-6.6Z'/></g></g><g transform='translate(250 62) scale(1.25)'><g><animateTransform attributeName='transform' type='translate' values='0 0;0 1.6;0 0' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.21s' dur='.34s' repeatCount='indefinite'/><path d='M1.5-2C6-7 12-9 20-6C17-3.5 16-.5 17 3C14 1 11 1.5 9 4.5C7 1.8 4 1.2 1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='-38 1.5 -1;30 1.5 -1;-38 1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.21s' dur='.34s' repeatCount='indefinite'/></path><path d='M-1.5-2C-6-7-12-9-20-6C-17-3.5-16-.5-17 3C-14 1-11 1.5-9 4.5C-7 1.8-4 1.2-1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='38 -1.5 -1;-30 -1.5 -1;38 -1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.21s' dur='.34s' repeatCount='indefinite'/></path><ellipse cx='0' cy='0' rx='2.6' ry='4.4'/><circle cx='0' cy='-4.6' r='2.3'/><path d='M-2-5.6L-2.7-9.4L-.5-6.6ZM2-5.6L2.7-9.4L.5-6.6Z'/></g></g></svg>") no-repeat center / contain;
+  /* --hw-bats is a new flock of two to five, drawn by seasonal.js before
+     each crossing; this flock of three is what shows until it does. */
+  background: var(--hw-bats, url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 90' fill='%23080407'><g transform='translate(40 50) scale(1.6)'><g><animateTransform attributeName='transform' type='translate' values='0 0;0 1.6;0 0' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='0s' dur='.34s' repeatCount='indefinite'/><path d='M1.5-2C6-7 12-9 20-6C17-3.5 16-.5 17 3C14 1 11 1.5 9 4.5C7 1.8 4 1.2 1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='-38 1.5 -1;30 1.5 -1;-38 1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='0s' dur='.34s' repeatCount='indefinite'/></path><path d='M-1.5-2C-6-7-12-9-20-6C-17-3.5-16-.5-17 3C-14 1-11 1.5-9 4.5C-7 1.8-4 1.2-1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='38 -1.5 -1;-30 -1.5 -1;38 -1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='0s' dur='.34s' repeatCount='indefinite'/></path><ellipse cx='0' cy='0' rx='2.6' ry='4.4'/><circle cx='0' cy='-4.6' r='2.3'/><path d='M-2-5.6L-2.7-9.4L-.5-6.6ZM2-5.6L2.7-9.4L.5-6.6Z'/></g></g><g transform='translate(150 24) scale(1)'><g><animateTransform attributeName='transform' type='translate' values='0 0;0 1.6;0 0' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.12s' dur='.34s' repeatCount='indefinite'/><path d='M1.5-2C6-7 12-9 20-6C17-3.5 16-.5 17 3C14 1 11 1.5 9 4.5C7 1.8 4 1.2 1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='-38 1.5 -1;30 1.5 -1;-38 1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.12s' dur='.34s' repeatCount='indefinite'/></path><path d='M-1.5-2C-6-7-12-9-20-6C-17-3.5-16-.5-17 3C-14 1-11 1.5-9 4.5C-7 1.8-4 1.2-1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='38 -1.5 -1;-30 -1.5 -1;38 -1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.12s' dur='.34s' repeatCount='indefinite'/></path><ellipse cx='0' cy='0' rx='2.6' ry='4.4'/><circle cx='0' cy='-4.6' r='2.3'/><path d='M-2-5.6L-2.7-9.4L-.5-6.6ZM2-5.6L2.7-9.4L.5-6.6Z'/></g></g><g transform='translate(250 62) scale(1.25)'><g><animateTransform attributeName='transform' type='translate' values='0 0;0 1.6;0 0' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.21s' dur='.34s' repeatCount='indefinite'/><path d='M1.5-2C6-7 12-9 20-6C17-3.5 16-.5 17 3C14 1 11 1.5 9 4.5C7 1.8 4 1.2 1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='-38 1.5 -1;30 1.5 -1;-38 1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.21s' dur='.34s' repeatCount='indefinite'/></path><path d='M-1.5-2C-6-7-12-9-20-6C-17-3.5-16-.5-17 3C-14 1-11 1.5-9 4.5C-7 1.8-4 1.2-1.5 2.5Z'><animateTransform attributeName='transform' type='rotate' values='38 -1.5 -1;-30 -1.5 -1;38 -1.5 -1' calcMode='spline' keyTimes='0;.5;1' keySplines='.45 0 .55 1;.45 0 .55 1' begin='-0.21s' dur='.34s' repeatCount='indefinite'/></path><ellipse cx='0' cy='0' rx='2.6' ry='4.4'/><circle cx='0' cy='-4.6' r='2.3'/><path d='M-2-5.6L-2.7-9.4L-.5-6.6ZM2-5.6L2.7-9.4L.5-6.6Z'/></g></g></svg>")) no-repeat center / contain;
   filter: drop-shadow(0 0 6px rgba(255,122,26,.35));
-  animation: hw-bats 21s linear 2.5s infinite;
+  animation: hw-bats 30s linear 2.5s infinite;
   transition: opacity .6s ease;
 }
 /* Not while the broomstick scene is on (seasonal.js sets .hw-scene): it has
    a bat of its own, and the flock crossing over it only muddled things. */
 [data-theme="halloween"] .tuner.hw-scene .tuner-bar::after { opacity: 0; }
 @keyframes hw-bats {
-  0%        { transform: translate(0, 0); }
-  7%        { transform: translate(480px, -26px); }
-  14%       { transform: translate(960px, 14px); }
-  21%, 100% { transform: translate(1520px, -34px); }
+  0%          { transform: translate(0, 0); }
+  4.9%        { transform: translate(480px, -26px); }
+  9.8%        { transform: translate(960px, 14px); }
+  14.7%, 100% { transform: translate(1520px, -34px); }
 }
 
 /* Lightning, somewhere along the set. Once when it comes on air --
@@ -232,12 +236,22 @@
   column-gap: 30px; row-gap: 4px; align-content: start;
   isolation: isolate;
 }
-/* A cobweb in the corner of the glass, with its owner. */
-[data-theme="halloween"] .display::before {
-  content: ""; position: absolute; left: 3px; top: 3px; width: 118px; height: 118px;
-  z-index: 1; pointer-events: none;
-  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 110' fill='none' stroke='%231c0802' stroke-opacity='.55' stroke-width='.9'><path d='M0 0L110 18M0 0L96 60M0 0L64 96M0 0L20 110'/><path d='M27.5 4.5Q21.9 8.3 24 15Q17 16.6 16 24Q8.9 21.9 5 27.5'/><path d='M55 9Q43.8 16.6 48 30Q34 33.2 32 48Q17.9 43.8 10 55'/><path d='M82.5 13.5Q65.7 24.9 72 45Q51 49.7 48 72Q26.8 65.7 15 82.5'/><path d='M110 18Q87.6 33.2 96 60Q68 66.3 64 96Q35.7 87.6 20 110' stroke-opacity='.35'/><path d='M60 58V92' stroke-width='.6'/><g fill='%231c0802' stroke='none'><ellipse cx='60' cy='96' rx='3.6' ry='4.4'/><circle cx='60' cy='90.6' r='2.4'/></g><path d='M57 94L51 90M57 96L50 97M57 98L52 103M63 94L69 90M63 96L70 97M63 98L68 103' stroke-opacity='.8' stroke-width='.8'/></svg>") no-repeat left top / contain;
-}
+/* A cobweb in the corner of the glass, its spider, and the threads that
+   tie it to the station name: all drawn by seasonal.js (.hw-web), which
+   fits the web to wherever the name is. */
+.hw-web { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.hw-threads { position: absolute; inset: 0; overflow: visible; }
+.hw-silk { position: absolute; width: 0; height: 0; transform-origin: 0 0; }
+/* Once placed, the spider's anchor glides when the web is refitted. */
+.hw-web.is-fitted .hw-silk { transition: left .7s ease-in-out, top .7s ease-in-out; }
+.hw-thread { position: absolute; left: 0; top: 0; overflow: visible; transform-origin: 0 0; }
+.hw-spider { position: absolute; left: 0; top: 0; width: 20px; height: 17px; }
+.hw-spider svg { display: block; transform-origin: 50% 0; }
+.hw-spider.is-climbing .hw-legs-l { animation: hw-climb-l .22s steps(2) infinite; transform-box: fill-box; transform-origin: 100% 40%; }
+.hw-spider.is-climbing .hw-legs-r { animation: hw-climb-r .22s steps(2) infinite; transform-box: fill-box; transform-origin: 0 40%; }
+@keyframes hw-climb-l { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
+@keyframes hw-climb-r { from { transform: rotate(9deg); } to { transform: rotate(-9deg); } }
+
 /* The candle. A layer of dark over the whole glass whose opacity stumbles
    the way a flame does -- opacity only, so the compositor does it and the
    glass is not repainted. */
@@ -263,13 +277,15 @@
 
 [data-theme="halloween"] .display-band { grid-area: band; font-size: 17px; letter-spacing: .22em; opacity: .75; }
 [data-theme="halloween"] .display-name {
-  grid-area: name; margin: 0;
+  grid-area: name; margin: 0; position: relative;
   font-family: "Creepster", "Special Elite", cursive; font-weight: 400;
   font-size: clamp(52px, 7.4vw, 96px); line-height: 1.02; letter-spacing: .03em;
   white-space: nowrap; overflow: hidden;
   color: var(--glass-ink);
   text-shadow: 0 0 18px rgba(255,236,170,.45);
 }
+/* The old name, laid over the new one while they crossfade (tuner-ui.js). */
+[data-theme="halloween"] .name-ghost { position: absolute; left: 0; top: 0; pointer-events: none; }
 [data-theme="halloween"] .display-tag { grid-area: tag; margin: 6px 0 0; font-size: 17px; line-height: 1.35; opacity: .82; }
 [data-theme="halloween"] .display-status {
   grid-area: status; margin-top: 10px; font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: #4a1604;
@@ -1653,6 +1669,11 @@
 .st-face svg, .st-bob svg { display: block; }
 /* Squashes, stretches and turns about its feet. */
 .st-turkey { filter: drop-shadow(0 3px 2px rgba(0,0,0,.35)); transform-origin: 50% 100%; }
+/* The skeleton's layer covers the stage and is masked by the headstones,
+   so it is behind every stone and in front of everything else. */
+.st-graveyard { -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.st-graveyard > * { position: absolute; left: 0; top: 0; will-change: transform; }
+.st-skeleton { filter: drop-shadow(0 0 3px rgba(190,255,120,.35)) drop-shadow(0 2px 2px rgba(0,0,0,.5)); }
 .st-heli { filter: drop-shadow(0 8px 6px rgba(0,0,0,.3)); }
 /* SVG parts moved by the Web Animations API move in their own units. */
 .st-heli .door { transform-box: view-box; }

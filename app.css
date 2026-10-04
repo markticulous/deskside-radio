@@ -609,10 +609,16 @@
   width: 5px; height: 5px; border-radius: 50%; background: var(--alert, #ff8f2e); flex: none;
   animation: update-dot-blink 2s linear infinite;
 }
+/* Before that, while the new version is published but not yet on this
+   disk -- the opener is still to fetch it -- the dot breathes instead: a
+   slow, even swell with nothing snapping, which is what "still loading"
+   looks like. The change to the snap is itself the news that it is here. */
+@keyframes update-dot-breathe { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.update-dot.is-fetching { animation: update-dot-breathe 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
   /* Held lit. The dot's job is to mark the notice; the blink is only the
      part that asks for the glance, and that is what is being declined. */
-  .update-dot { animation: none; opacity: 1; }
+  .update-dot, .update-dot.is-fetching { animation: none; opacity: 1; }
   /* And the pill is simply there, and simply gone, for the same reason. */
   .update-pill, .update-pill.is-going { animation: none; }
 }
@@ -708,15 +714,14 @@
   100%      { opacity: 1; }
 }
 /* Four snaps, and then a fifth that goes out exactly like them and
-   stays out. The blink's own off-ramp is 50ms -- 45% to 50% of a one
-   second cycle, linear -- and the last one matches it to the
-   millisecond and the easing. It was 400ms and ease-in, which was eight
-   times slower than the four before it and read as the announcement
-   winding down rather than finishing. The pause carries the ending now,
-   not the fade. forwards is what holds it dark through that pause. */
-.display-name.is-announcing { animation: name-flash 1s linear 4; }
-@keyframes name-fade-out { from { opacity: 1; } to { opacity: 0; } }
-.display-name.is-fading { animation: name-fade-out .05s linear forwards; }
+   stays out: four and a half cycles end at the 50% stop, dark, by the
+   same 50ms ramp as every blink before it, and forwards holds it dark
+   through the pause. The animation's own end is what app.js waits on.
+   It used to run four cycles and hand the fifth to a timer and a
+   separate fade -- and on a machine still busy starting up, the
+   animation began late while the timer did not, so the blinks were cut
+   short, or the station came back over the last one. */
+.display-name.is-announcing { animation: name-flash 1s linear 4.5 forwards; }
 
 /* And back, at the speed the update pill arrives at. */
 @keyframes name-return { from { opacity: 0; } to { opacity: 1; } }
@@ -725,7 +730,7 @@
 @media (prefers-reduced-motion: reduce) {
   /* Held, and then simply exchanged. The announcement is information;
      the flashing is only how it asks to be looked at. */
-  .display-name.is-announcing, .display-name.is-fading,
+  .display-name.is-announcing,
   .display-name.is-returning { animation: none; }
 }
 

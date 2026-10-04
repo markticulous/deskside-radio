@@ -86,8 +86,11 @@ rem  The same flags shorten the first launch, which is where they were
 rem  first noticed: a brand new profile spends that time fetching them,
 rem  and that is the white window somebody sees after a clean install.
 rem
-rem  The shader caches are deliberately NOT disabled. They are small, and
-rem  they are the reason every launch is not recompiling the same shaders.
+rem  The shader caches are not kept either. They were left alone once as
+rem  small and as saving every launch from recompiling; measured on
+rem  2026-10-04 they were 6 to 11 MB a profile and still growing, so they
+rem  go, and a launch compiles its shaders afresh. The caches are capped at
+rem  4 MB: the page is a local file and there is almost nothing to keep.
 rem
 rem  --disable-extensions because the radio uses none, and because PDF tools
 rem  register their extensions with every Chrome profile on the machine --
@@ -98,7 +101,7 @@ rem
 rem  This exact line also appears in the two shortcut scripts, which build
 rem  their own command lines. A test holds the three to the same wording.
 rem ---------------------------------------------------------------------
-set "LEAN= --disable-background-networking --disable-component-update --disable-breakpad --disable-domain-reliability --disable-sync --no-pings --disable-features=OptimizationHints,OptimizationGuideModelDownloading,SegmentationPlatform,MediaRouter --disk-cache-size=16777216 --media-cache-size=16777216 --disable-extensions --force-dark-mode"
+set "LEAN= --disable-background-networking --disable-component-update --disable-breakpad --disable-domain-reliability --disable-sync --no-pings --disable-features=OptimizationHints,OptimizationGuideModelDownloading,SegmentationPlatform,MediaRouter --disk-cache-size=4194304 --media-cache-size=4194304 --disable-gpu-shader-disk-cache --disable-extensions --force-dark-mode"
 
 if not exist "%TARGET%" (
   echo.
@@ -265,9 +268,13 @@ rem Any copy of either line is removed first. The one line is replaced, not
 rem appended, so the file does not grow per launch; the lines the shortcut
 rem script wrote there (autoplay, the download folder) are kept.
 rem
-rem And lean: the cache capped at 16 MB where Firefox would size it to the
+rem And lean: the cache capped at 4 MB where Firefox would size it to the
 rem disk, and the DRM plugin and telemetry off. The profile was 177 MB, 70 of
-rem it cache and 22 a copy-protection plugin no radio stream uses.
+rem it cache and 22 a copy-protection plugin no radio stream uses. Since
+rem 2026-10-04 also the Safe Browsing and certificate-revocation lists (29 MB
+rem between them; the page is a local file) and the OpenH264 video plugin --
+rem the second list below, one name and value apiece, kept short because
+rem this whole command is one line to cmd.
 rem
 rem And no maximise button. Firefox draws its own title-bar buttons, so the
 rem watcher taking WS_MAXIMIZEBOX off from outside leaves them drawn; a
@@ -313,7 +320,7 @@ set "FXPROFILE=%LOCALAPPDATA%\DesksideRadio\profile-firefox"
   "  $keep += 'user_pref(' + [char]34 + 'ui.systemUsesDarkTheme' + [char]34 + ', 1);';" ^
   "  $keep += 'user_pref(' + [char]34 + 'toolkit.legacyUserProfileCustomizations.stylesheets' + [char]34 + ', true);';" ^
   "  $keep += 'user_pref(~browser.tabs.inTitlebar~, 0);'.Replace('~', [string][char]34);" ^
-  "  $keep += 'user_pref(~browser.cache.disk.capacity~, 16384);'.Replace('~', [string][char]34);" ^
+  "  $keep += 'user_pref(~browser.cache.disk.capacity~, 4096);'.Replace('~', [string][char]34);" ^
   "  $keep += 'user_pref(~browser.cache.disk.smart_size.enabled~, false);'.Replace('~', [string][char]34);" ^
   "  $keep += 'user_pref(~media.eme.enabled~, false);'.Replace('~', [string][char]34);" ^
   "  $keep += 'user_pref(~media.gmp-widevinecdm.enabled~, false);'.Replace('~', [string][char]34);" ^
@@ -323,6 +330,13 @@ set "FXPROFILE=%LOCALAPPDATA%\DesksideRadio\profile-firefox"
   "  $keep += 'user_pref(~toolkit.telemetry.enabled~, false);'.Replace('~', [string][char]34);" ^
   "  $keep += 'user_pref(~app.normandy.enabled~, false);'.Replace('~', [string][char]34);" ^
   "  $keep += 'user_pref(~app.shield.optoutstudies.enabled~, false);'.Replace('~', [string][char]34);" ^
+  "  foreach ($kv in @('browser.safebrowsing.malware.enabled false', 'browser.safebrowsing.phishing.enabled false'," ^
+  "    'browser.safebrowsing.downloads.enabled false', 'browser.safebrowsing.downloads.remote.enabled false'," ^
+  "    'browser.safebrowsing.blockedURIs.enabled false', 'browser.safebrowsing.update.enabled false', 'security.pki.crlite_mode 0'," ^
+  "    'security.remote_settings.crlite_filters.enabled false', 'security.remote_settings.intermediates.enabled false'," ^
+  "    'media.gmp-gmpopenh264.enabled false', 'media.gmp-gmpopenh264.autoupdate false', 'media.gmp-manager.updateEnabled false')) {" ^
+  "    $nv = $kv.Split(' '); $nm = [char]34 + $nv[0] + [char]34;" ^
+  "    $keep = @($keep | Where-Object { -not $_.Contains($nm) }); $keep += 'user_pref(' + $nm + ', ' + $nv[1] + ');' };" ^
   "  [System.IO.File]::WriteAllLines($uj, [string[]]$keep);" ^
   "  $cd = Join-Path $p 'chrome'; New-Item -ItemType Directory -Force -Path $cd | Out-Null;" ^
   "  [System.IO.File]::WriteAllText((Join-Path $cd 'userChrome.css'), '#TabsToolbar, #nav-bar, #PersonalToolbar { visibility: collapse !important; } .titlebar-max, .titlebar-restore { display: none !important; }');" ^

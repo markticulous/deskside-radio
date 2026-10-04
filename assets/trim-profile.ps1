@@ -53,7 +53,15 @@ $junk = @(
   'PKIMetadata', 'PrivacySandboxAttestationsPreloaded', 'RecoveryImproved',
   'Safe Browsing', 'SafetyTips', 'segmentation_platform', 'Snapshots',
   'SSLErrorAssistant', 'Subresource Filter', 'TrustTokenKeyCommitments',
-  'WasmTtsEngine', 'WidevineCdm', 'ZxcvbnData'
+  'WasmTtsEngine', 'WidevineCdm', 'ZxcvbnData',
+  # Edge's own, unpacked from its install rather than fetched, so they come
+  # back whenever Edge runs; 27 MB in a profile that had only been opened.
+  'Edge Entity Extraction', 'EdgeLanguageDetectionModel', 'ProvenanceDataTensors',
+  'Typosquatting', 'Well Known Domains', 'Autofill', 'Default\EdgeCoupons', 'Default\Storage\ext',
+  # Shader caches. The launch flags stop them being written now; these are
+  # what was written before they did -- 6 to 11 MB a profile.
+  'GrShaderCache', 'ShaderCache', 'GraphiteDawnCache', 'Default\GPUCache',
+  'Default\DawnGraphiteCache', 'Default\DawnWebGPUCache'
 )
 
 $freed = 0
@@ -87,17 +95,16 @@ foreach ($name in @('profile-chrome', 'profile-edge', 'profile-brave')) {
   # What piles up. Service Worker data is all from browser pages -- a file://
   # page cannot register a worker -- and was 22.6 MB in Edge after one visit
   # to its settings. The metrics files are Edge's, 4 MB apiece and
-  # accumulating. The cache is capped at 16 MB by the launch flags and was
-  # found at 26, so past the cap it goes, and grows back only to the cap.
-  # Shader caches are not here: they are rebuilt at every launch, so clearing
-  # them frees nothing that lasts and slows the next start.
+  # accumulating. The cache is capped at 4 MB by the launch flags (16 until
+  # 2026-10-04, and found at 26) and runs over its cap, so past the cap it
+  # goes, and grows back only to the cap.
   Drop (Join-Path $dir 'Default\Service Worker')
   Drop (Join-Path $dir 'BrowserMetrics')
   Drop (Join-Path $dir 'BrowserMetrics-spare.pma')
   $cache = Join-Path $dir 'Default\Cache'
   if (Test-Path -LiteralPath $cache) {
     $held = (Get-ChildItem -LiteralPath $cache -Recurse -Force -File | Measure-Object -Property Length -Sum).Sum
-    if ($held -gt 16MB) { Drop $cache; Drop (Join-Path $dir 'Default\Code Cache') }
+    if ($held -gt 4MB) { Drop $cache; Drop (Join-Path $dir 'Default\Code Cache') }
   }
 
   foreach ($j in $junk) {
@@ -163,8 +170,15 @@ foreach ($name in @('profile-chrome', 'profile-edge', 'profile-brave')) {
 # 'storage', which is where Firefox keeps the stations and settings.
 $fx = Join-Path $root 'profile-firefox'
 if ((Test-Path -LiteralPath $fx) -and -not (Running 'profile-firefox')) {
+  # Since 2026-10-04 also the Safe Browsing and certificate-revocation lists,
+  # which the launcher now turns off (29 MB), and the OpenH264 plugin.
+  # Measured after two launches: those stay gone. Not here, because they
+  # were back on the first launch: storage\permanent\chrome (17 MB, Firefox's
+  # own settings, rebuilt from copies inside Firefox at every start) and the
+  # new-tab add-on in extensions (3.6 MB) -- deleting them buys nothing.
   foreach ($j in @('cache2', 'startupCache', 'gmp-widevinecdm', 'crashes', 'minidumps',
-                   'datareporting', 'saved-telemetry-pings', 'shader-cache')) {
+                   'datareporting', 'saved-telemetry-pings', 'shader-cache',
+                   'security_state', 'safebrowsing', 'gmp-gmpopenh264')) {
     Drop (Join-Path $fx $j)
   }
 }

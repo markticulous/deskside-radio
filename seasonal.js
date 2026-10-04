@@ -28,9 +28,13 @@
      sleigh   -- rarely: the sleigh crosses the top of the window and drops
                  presents in the snow, and a raccoon comes for them.
 
-   Halloween Fun (key: halloween) has a big one:
+   Halloween Fun (key: halloween) has a small one and a big one:
+     skeleton -- rises from behind one headstone, walks along to another,
+                 waves, and sinks back down behind that one.
      broom    -- rarely: a witch's broom breaks down in mid-air, a ghost
                  mends it and keeps her hat, and the raccoon ends up with it.
+   And, not a scene, the spider in the cobweb, which now and then lets
+   itself down on a thread, turns in the draught and climbs back.
 
    April Showers (key: spring) has four small ones and a big one:
      duck, umbrella, butterfly, rainbow
@@ -65,8 +69,7 @@
   /* Which scenes each face stages, how often the small ones come, and the
      letters that send for the big one. */
   var CAST = {
-    // Halloween Fun has its big scene only, so far.
-    halloween: { small: [], gap: [600, 900], big: 'broom', combo: 'hal' },
+    halloween: { small: ['skeleton'], gap: [150, 360], big: 'broom', combo: 'hal' },
     harvest:   { small: ['turkey'], gap: [25, 70], big: 'wkrp', combo: 'aut' },
     christmas: { small: ['snowman', 'elf', 'cardinal'], gap: [90, 240], big: 'sleigh', combo: 'noe' },
     spring:    { small: ['duck', 'umbrella', 'butterfly', 'rainbow'], gap: [70, 200], big: 'ark', combo: 'apr' }
@@ -3282,7 +3285,275 @@
     });
   }
 
-  var SCENES = { turkey: turkeyRun, wkrp: wkrp, snowman: snowman, elf: elfFix, cardinal: cardinal, sleigh: sleigh,
+  /* ------------------------------------------------------------------ */
+  /* The skeleton, Halloween's small scene. Drawn front-on with its feet  */
+  /* turned the way it goes, the way a cartoon skeleton walks: a loose,  */
+  /* bouncing stride, knees kicking up on the swing, arms swinging       */
+  /* against the legs, the skull bobbing and the jaw chattering.         */
+  /* ------------------------------------------------------------------ */
+
+  var BONE = '#f1ecdc', BONE_LINE = '#2b2233', BONE_SHADE = '#cfc6b0';
+  // A bone: a rounded bar with a knuckle at each end, from (x1,y1) to (x2,y2).
+  function bone(x1, y1, x2, y2, w) {
+    return '<path d="M' + x1 + ' ' + y1 + 'L' + x2 + ' ' + y2 + '" stroke="' + BONE_LINE + '" stroke-width="' + (w + 1.6) + '" stroke-linecap="round"/>' +
+      '<path d="M' + x1 + ' ' + y1 + 'L' + x2 + ' ' + y2 + '" stroke="' + BONE + '" stroke-width="' + w + '" stroke-linecap="round"/>' +
+      '<circle cx="' + x1 + '" cy="' + y1 + '" r="' + (w * 0.75) + '" fill="' + BONE + '" stroke="' + BONE_LINE + '" stroke-width=".8"/>' +
+      '<circle cx="' + x2 + '" cy="' + y2 + '" r="' + (w * 0.75) + '" fill="' + BONE + '" stroke="' + BONE_LINE + '" stroke-width=".8"/>';
+  }
+  /* Rotations about a joint. vals in degrees; a leg hanging down turned
+     clockwise (positive) swings its foot back, the skeleton facing right. */
+  function swing(vals, cx, cy, dur, keys) {
+    return '<animateTransform attributeName="transform" type="rotate" values="' +
+      vals.map(function (v) { return v + ' ' + cx + ' ' + cy; }).join(';') + '"' +
+      (keys ? ' keyTimes="' + keys + '" calcMode="spline" keySplines="' + keys.split(';').slice(1).map(function () { return '.45 0 .55 1'; }).join(';') + '"' : '') +
+      ' dur="' + dur + 's" repeatCount="indefinite"/>';
+  }
+  function still(deg, cx, cy) { return deg ? ' transform="rotate(' + deg + ' ' + cx + ' ' + cy + ')"' : ''; }
+
+  /* A leg from the hip at (x, 62): thigh to the knee at y 77, shin to the
+     ankle at y 92, and the foot pointing right. thigh/knee are either
+     fixed angles or animation markup. */
+  function skelLeg(x, thigh, knee) {
+    var tA = typeof thigh === 'number', kA = typeof knee === 'number';
+    return '<g' + (tA ? still(thigh, x, 62) : '') + '>' + (tA ? '' : thigh) + bone(x, 62, x, 77, 3.2) +
+      '<g' + (kA ? still(knee, x, 77) : '') + '>' + (kA ? '' : knee) + bone(x, 77, x, 92, 2.8) +
+      '<path d="M' + (x - 2) + ' 92.5Q' + x + ' 90.5 ' + (x + 6.5) + ' 93.2Q' + (x + 7.4) + ' 95.2 ' + (x + 5) + ' 95.4L' + (x - 2) + ' 95.2Q' + (x - 3.2) + ' 94 ' + (x - 2) + ' 92.5Z" fill="' + BONE + '" stroke="' + BONE_LINE + '" stroke-width=".9"/>' +
+      '</g></g>';
+  }
+  // An arm from the shoulder at (x, 33): upper arm to the elbow at y 45, forearm to the wrist at y 56, a hand of three fingers.
+  function skelArm(x, shoulder, elbow) {
+    var sA = typeof shoulder === 'number', eA = typeof elbow === 'number';
+    return '<g' + (sA ? still(shoulder, x, 33) : '') + '>' + (sA ? '' : shoulder) + bone(x, 33, x, 45, 2.6) +
+      '<g' + (eA ? still(elbow, x, 45) : '') + '>' + (eA ? '' : elbow) + bone(x, 45, x, 56, 2.2) +
+      '<path d="M' + x + ' 56l-1.8 4M' + x + ' 56l0 4.4M' + x + ' 56l1.8 4" stroke="' + BONE_LINE + '" stroke-width="2.4" stroke-linecap="round"/>' +
+      '<path d="M' + x + ' 56l-1.8 4M' + x + ' 56l0 4.4M' + x + ' 56l1.8 4" stroke="' + BONE + '" stroke-width="1.2" stroke-linecap="round"/>' +
+      '</g></g>';
+  }
+  var SKEL_TRUNK =
+    // Spine, neck to tail.
+    '<path d="M30 25V60" stroke="' + BONE_LINE + '" stroke-width="3.6" stroke-linecap="round"/>' +
+    '<path d="M30 25V60" stroke="' + BONE + '" stroke-width="2" stroke-dasharray="2.2 .9" stroke-linecap="round"/>' +
+    // Collarbones.
+    '<path d="M19 33Q24 30.5 30 31.5Q36 30.5 41 33" fill="none" stroke="' + BONE_LINE + '" stroke-width="3.4" stroke-linecap="round"/>' +
+    '<path d="M19 33Q24 30.5 30 31.5Q36 30.5 41 33" fill="none" stroke="' + BONE + '" stroke-width="1.8" stroke-linecap="round"/>' +
+    // Ribs, four a side, getting shorter towards the bottom.
+    [35, 39, 43, 47].map(function (y, i) {
+      var w = 9.5 - i * 1.3, d = 'M30 ' + y + 'Q' + (30 - w) + ' ' + (y - 1) + ' ' + (30 - w + 1) + ' ' + (y + 3.4) + 'M30 ' + y + 'Q' + (30 + w) + ' ' + (y - 1) + ' ' + (30 + w - 1) + ' ' + (y + 3.4);
+      return '<path d="' + d + '" fill="none" stroke="' + BONE_LINE + '" stroke-width="2.9" stroke-linecap="round"/>' +
+        '<path d="' + d + '" fill="none" stroke="' + BONE + '" stroke-width="1.5" stroke-linecap="round"/>';
+    }).join('') +
+    // Pelvis.
+    '<path d="M23 58Q30 55 37 58Q38.5 63 35 65Q30 62 25 65Q21.5 63 23 58Z" fill="' + BONE + '" stroke="' + BONE_LINE + '" stroke-width="1"/>' +
+    '<circle cx="30" cy="61" r="1.3" fill="' + BONE_SHADE + '"/>';
+  /* The skull, big and goofy: round dome, huge sockets with a glint each,
+     a grin of teeth, and a jaw of its own that chatters. tilt is animation
+     markup or a fixed angle. */
+  function skelSkull(tilt, chatter, look) {
+    var tA = typeof tilt === 'number';
+    var eyeX = look || 0;
+    return '<g' + (tA ? still(tilt, 30, 25) : '') + '>' + (tA ? '' : tilt) +
+      '<path d="M18.5 15C18.5 6 23.8 2.5 30 2.5S41.5 6 41.5 15C41.5 19.5 39 21.5 37.5 22.5L22.5 22.5C21 21.5 18.5 19.5 18.5 15Z" fill="' + BONE + '" stroke="' + BONE_LINE + '" stroke-width="1.2"/>' +
+      '<path d="M21 8Q24 4.6 28 4.4" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity=".8"/>' +
+      '<ellipse cx="25.3" cy="13.6" rx="3.6" ry="4.3" fill="' + BONE_LINE + '"/><ellipse cx="34.7" cy="13.6" rx="3.6" ry="4.3" fill="' + BONE_LINE + '"/>' +
+      '<circle cx="' + (26.2 + eyeX) + '" cy="12.6" r="1.1" fill="#fff"/><circle cx="' + (35.6 + eyeX) + '" cy="12.6" r="1.1" fill="#fff"/>' +
+      '<path d="M30 16.6L28.6 19.4H31.4Z" fill="' + BONE_LINE + '"/>' +
+      '<path d="M23.4 21.4H36.6" stroke="' + BONE_LINE + '" stroke-width="1"/>' +
+      '<g>' + (chatter ? '<animateTransform attributeName="transform" type="translate" values="0 0;0 1.8;0 0" dur="' + chatter + 's" repeatCount="indefinite"/>' : '') +
+        '<path d="M22.8 21.6H37.2V24.2Q30 27.4 22.8 24.2Z" fill="' + BONE + '" stroke="' + BONE_LINE + '" stroke-width="1.1"/>' +
+        '<path d="M25.4 21.8V24.6M28 21.8V25.4M30.6 21.8V25.6M33.2 21.8V25.2M35.6 21.8V24.4" stroke="' + BONE_LINE + '" stroke-width=".7"/>' +
+      '</g></g>';
+  }
+
+  var STRIDE = 0.86;   // seconds a full stride takes: both feet once
+  /* Each pose as the angle of every joint: a number held, or a loop
+     { v: [...], dur, keys }. A new pose does not cut to its angles: each
+     joint turns from wherever it is at that moment -- read off the drawing
+     being replaced, mid-swing and all -- over EASE seconds, and only then
+     starts its loop. Turning from the old pose's first angle instead
+     snapped a limb caught mid-swing back to it first: a stutter. */
+  var EASE = 0.4;
+  var SKEL_JOINTS = {
+    aBs: [41, 33], aBe: [41, 45], aFs: [19, 33], aFe: [19, 45],
+    lBh: [31.5, 62], lBk: [31.5, 77], lFh: [28.5, 62], lFk: [28.5, 77],
+    sk: [30, 25], rock: [30, 95], up: [30, 60]
+  };
+  function skelPose(pose) {
+    var T = STRIDE, K = '0;.25;.5;.75;1', W = function (v, keys) { return { v: v, dur: T, keys: keys || K }; };
+    if (pose === 'walk') {
+      /* A loose, wobbly stride. Thighs swing ±28°, out of step with each
+         other; each knee kicks high on its forward swing. The whole frame
+         rocks from foot to foot, the bones above the pelvis rock the other
+         way on top of that, the arms flop, and the skull lolls a beat
+         behind. Down at each foot-fall, up as the legs pass. */
+      return { aBs: W([-34, 4, 38, 4, -34]), aBe: W([-8, -52, -14, -36, -8]), aFs: W([38, 4, -34, 4, 38]), aFe: W([-14, -36, -8, -52, -14]),
+        lBh: W([24, 0, -28, 0, 24]), lBk: W([6, 52, 10, 2, 6]), lFh: W([-28, 0, 24, 0, -28]), lFk: W([10, 2, 6, 52, 10]),
+        sk: W([-13, 2, 11, -2, -13], '0;.3;.55;.8;1'), rock: W([-6, 6, -6], '0;.5;1'), up: W([7, -7, 7], '0;.5;1'),
+        bob: W([3.2, 0, 3.2, 0, 3.2]), chatter: 0.2, look: 0.8 };
+    }
+    var still = { lBh: -4, lBk: 0, lFh: 4, lFk: 0, rock: 0, up: 0, bob: 0 };
+    var o = function (x) { for (var k in still) if (!(k in x)) x[k] = still[k]; return x; };
+    if (pose === 'wave') {
+      // Turned to us: one arm up and waving from the elbow, the other hand on its hip.
+      return o({ aBs: -168, aBe: { v: [-30, 30, -30], dur: 0.5 }, aFs: 38, aFe: -95, sk: { v: [-8, 8, -8], dur: 1 }, chatter: 0.3, look: 0 });
+    }
+    if (pose === 'look') {
+      // Just up: looks one way, then the other, jaw going.
+      return o({ aBs: -12, aBe: -20, aFs: 12, aFe: 20, sk: { v: [-14, -14, 14, 14, -14], dur: 1.6, keys: '0;.3;.4;.8;1' }, chatter: 0.25, look: 0 });
+    }
+    // 'rise' and 'sink': arms up over its head, waving slowly, jaw chattering.
+    return o({ lBh: -3, lFh: 3, aBs: -160, aBe: { v: [10, -10, 10], dur: 0.8 }, aFs: 160, aFe: { v: [-10, 10, -10], dur: 0.8 },
+      sk: { v: [-6, 6, -6], dur: 0.7 }, chatter: 0.18, look: 0 });
+  }
+  function first(j) { return typeof j === 'number' ? j : j.v[0]; }
+  /* A joint's animation: the turn from its old angle to its new one, held,
+     and its loop starting when the turn is done. */
+  function joint(key, cur, from, cx, cy, type) {
+    var to = first(cur);
+    if (from == null) from = to;
+    var fmt = function (a) { return type === 'translate' ? '0 ' + a : a + ' ' + cx + ' ' + cy; };
+    var s = '<animateTransform data-j="' + key + '" data-base="' + (type === 'translate' ? 'translate(' : 'rotate(') + fmt(+from.toFixed(2)) + ')" attributeName="transform" type="' + (type || 'rotate') + '" values="' + fmt(+from.toFixed(2)) + ';' + fmt(to) +
+      '" dur="' + EASE + 's" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".45 0 .55 1"/>';
+    if (typeof cur !== 'number') {
+      var keys = cur.keys;
+      s += '<animateTransform attributeName="transform" type="' + (type || 'rotate') + '" values="' + cur.v.map(fmt).join(';') + '"' +
+        (keys ? ' keyTimes="' + keys + '" calcMode="spline" keySplines="' + keys.split(';').slice(1).map(function () { return '.45 0 .55 1'; }).join(';') + '"' : '') +
+        ' dur="' + cur.dur + 's" begin="' + EASE + 's" repeatCount="indefinite"/>';
+    }
+    return s;
+  }
+  /* Where every joint is right now in a drawing: its angle (or, for the
+     bob, its height), from the transform the animations have it at. */
+  function skelNow(svg) {
+    var at = {};
+    if (!svg) return at;
+    Array.prototype.forEach.call(svg.querySelectorAll('[data-j]'), function (a) {
+      // The animated value is read-only (consolidate() throws on it); each group carries one transform.
+      var list = a.parentNode.transform && a.parentNode.transform.animVal;
+      if (!list || !list.numberOfItems) return;
+      var t = list.getItem(list.numberOfItems - 1), k = a.getAttribute('data-j');
+      at[k] = k === 'bob' ? t.matrix.f : t.angle;
+    });
+    return at;
+  }
+  function skelSvg(pose, from) {
+    var P = skelPose(pose), Q = from || {};
+    var J = function (k) { return joint(k, P[k], Q[k], SKEL_JOINTS[k][0], SKEL_JOINTS[k][1]); };
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 100" width="100%" height="100%" overflow="visible">' +
+      '<g>' + joint('bob', P.bob, Q.bob, 0, 0, 'translate') +
+        '<g>' + J('rock') +
+          '<g>' + J('up') + skelArm(41, J('aBs'), J('aBe')) + '</g>' +
+          skelLeg(31.5, J('lBh'), J('lBk')) + skelLeg(28.5, J('lFh'), J('lFk')) +
+          '<g>' + J('up') + SKEL_TRUNK + skelArm(19, J('aFs'), J('aFe')) + skelSkull(J('sk'), P.chatter, P.look) + '</g>' +
+        '</g></g></svg>';
+  }
+
+  /* The stone it climbs, as a shape it can be hidden behind -- and below,
+     to the foot of the stage, so it can wait out of sight under the stone
+     before it rises. Drawn in the stone's own frame and turned by the
+     stone's own lean, so the edge it walks is the edge you see. */
+  function stoneMask(W, H, s) {
+    var w = s.w + 2, h = s.h + 2, rx = w * 0.46, ry = h * 0.4, x = -1, y = -1;
+    var d = 'M' + x + ' ' + (y + ry) + 'A' + rx + ' ' + ry + ' 0 0 1 ' + (x + rx) + ' ' + y + 'H' + (x + w - rx) +
+      'A' + rx + ' ' + ry + ' 0 0 1 ' + (x + w) + ' ' + (y + ry) + 'V' + (H + h) + 'H' + x + 'Z';
+    // Read by alpha, so the stone must be a hole: an SVG mask cuts it out of a full rectangle.
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '"><defs><mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="' + W + '" height="' + H + '">' +
+      '<rect width="' + W + '" height="' + H + '" fill="white"/>' +
+      '<path fill="black" d="' + d + '" transform="translate(' + s.left + ' ' + s.top + ') rotate(' + s.deg + ' ' + s.w / 2 + ' ' + s.h / 2 + ')"/></mask></defs>' +
+      '<rect width="' + W + '" height="' + H + '" mask="url(#m)"/></svg>';
+    return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+  }
+  /* A point on the stone's top edge, x along it from its left end, in
+     stage pixels; and the slope there, in degrees. The top corners are
+     quarter-ellipses rx = .46w across and ry = .4h down, as the
+     stylesheet's border-radius draws them. */
+  function stoneEdge(s, x) {
+    var rx = s.w * 0.46, ry = s.h * 0.4, y = 0, dx = 0;
+    if (x < rx) dx = rx - x; else if (x > s.w - rx) dx = x - (s.w - rx);
+    if (dx) y = ry - ry * Math.sqrt(Math.max(0, 1 - (dx / rx) * (dx / rx)));
+    var a = s.deg * Math.PI / 180, cx = s.w / 2, cy = s.h / 2;
+    var px = x - cx, py = y - cy;
+    return { x: s.left + cx + px * Math.cos(a) - py * Math.sin(a), y: s.top + cy + px * Math.sin(a) + py * Math.cos(a) };
+  }
+
+  function skeletonWalk(rig) {
+    var stage = stageOf(rig), gen = rig.gen, ok = guard(rig, gen);
+    var W = stage.clientWidth, H = stage.clientHeight;
+    var row = boxIn(rig, '.presets'), t = rig.tuner.getBoundingClientRect();
+    if (!row) return Promise.resolve();
+    // A station's stone wholly in view in the row, not the add button.
+    var stones = Array.prototype.map.call(rig.tuner.querySelectorAll('.preset:not(.preset-add)'), function (el) {
+      var r = el.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+      var deg = parseFloat(getComputedStyle(el).rotate) || 0;
+      // The bounding box is the turned stone's; its centre is the stone's centre.
+      return { w: w, h: h, deg: deg, left: r.left - t.left + r.width / 2 - w / 2, top: r.top - t.top + r.height / 2 - h / 2, bt: r.top - t.top, bb: r.bottom - t.top };
+    }).filter(function (s) { return s.w > 0 && s.bt >= row.y - 4 && s.bb <= row.y + row.h + 4; });
+    if (!stones.length) return Promise.resolve();
+    var S = stones[Math.floor(Math.random() * stones.length)];
+
+    var yard = document.createElement('div');
+    yard.className = 'st-graveyard';
+    yard.style.width = W + 'px'; yard.style.height = H + 'px';
+    yard.style.webkitMaskImage = yard.style.maskImage = stoneMask(W, H, S);
+    stage.appendChild(yard);
+
+    // As tall as a stone and a half; its feet are 95.4% of the way down its box.
+    var h = Math.round(Math.max(70, Math.min(110, S.h * 1.45))), w = Math.round(h * 0.6), FEET = 0.954;
+    var dir = Math.random() < 0.5 ? 1 : -1;
+    var xa = S.w * (dir > 0 ? 0.13 : 0.87), xb = S.w * (dir > 0 ? 0.87 : 0.13);
+    var sk = drawn(yard, 'st-skeleton', w, h, '<div class="st-face"></div>');
+    sk.style.transformOrigin = '50% ' + FEET * 100 + '%';
+    var face = sk.firstChild;
+    /* Each joint is also given its starting angle as its resting one, in
+       the same task as the drawing goes in: a new drawing was painted once
+       with every joint at rest -- arms hanging straight -- before its
+       animations took hold, which flashed at each change of pose. */
+    var show = function (p) {
+      face.innerHTML = skelSvg(p, skelNow(face.querySelector('svg')));
+      Array.prototype.forEach.call(face.querySelectorAll('[data-base]'), function (a) { a.parentNode.setAttribute('transform', a.getAttribute('data-base')); });
+      face.style.transform = dir < 0 ? 'scaleX(-1)' : '';
+    };
+    /* Standing at x along the stone: feet on the edge, leaning a little
+       with the slope -- half of it, so it reads as climbing rather than
+       as falling over. drop pushes it straight down behind the stone. */
+    var at = function (x, drop) {
+      var p = stoneEdge(S, x), q = stoneEdge(S, x + 1);
+      var lean = Math.atan2(q.y - p.y, q.x - p.x) * 180 / Math.PI * 0.5;
+      return tr(p.x - w / 2, p.y - h * FEET + (drop || 0), ' rotate(' + lean.toFixed(1) + 'deg)');
+    };
+    var hidden = h + 6;
+    var path = function (x0, x1) {
+      var n = 28, pts = [], len = [0];
+      for (var i = 0; i <= n; i++) pts.push(x0 + (x1 - x0) * i / n);
+      for (var j = 1; j <= n; j++) {
+        var p = stoneEdge(S, pts[j - 1]), q = stoneEdge(S, pts[j]);
+        len.push(len[j - 1] + Math.hypot(q.x - p.x, q.y - p.y));
+      }
+      var total = len[n];
+      return { total: total, frames: pts.map(function (x, k) { return { transform: at(x), offset: total ? len[k] / total : k / n }; }) };
+    };
+
+    sk.style.transform = at(xa, hidden);
+    show('rise');
+    return wait(10).then(ok).then(function () {
+      return move(sk, [{ transform: at(xa, hidden) }, { transform: at(xa) }], { duration: 1600, easing: 'cubic-bezier(.3,.7,.4,1)' });
+    }).then(ok).then(function () {
+      show('look');
+      return wait(1700);
+    }).then(ok).then(function () {
+      show('walk');
+      // About two-thirds of its height a stride, walked at that pace so the feet do not slide.
+      var p = path(xa, xb), pace = h * 0.62 / STRIDE;
+      return move(sk, p.frames, { duration: p.total / pace * 1000, easing: 'linear' });
+    }).then(ok).then(function () {
+      show('wave');
+      return wait(2400);
+    }).then(ok).then(function () {
+      show('rise');
+      return move(sk, [{ transform: at(xb) }, { transform: at(xb, hidden) }], { duration: 1400, easing: 'cubic-bezier(.6,0,.8,.4)' });
+    }).then(function () { yard.remove(); }, function (e) { yard.remove(); throw e; });
+  }
+
+  var SCENES = { skeleton: skeletonWalk, turkey: turkeyRun, wkrp: wkrp, snowman: snowman, elf: elfFix, cardinal: cardinal, sleigh: sleigh,
     duck: duck, umbrella: umbrella, butterfly: butterfly, rainbow: rainbow, ark: ark, broom: broomRepair };
 
   function play(rig, name) {
@@ -3313,8 +3584,223 @@
     return cast;
   }
 
+  /* ------------------------------------------------------------------ */
+  /* Halloween's cobweb and its spider. The web is drawn here rather    */
+  /* than in the stylesheet so that it can reach the station name: its  */
+  /* spokes run straight out of the corner, the lower ones ending on    */
+  /* the tops of the letters, and the outer thread runs along them. It  */
+  /* is measured again every second, so it fits any window and any name. */
+  /* The spider now and then lets itself down on a thread, drifts in    */
+  /* the draught, and climbs back up; its eyes blink.                   */
+  /* ------------------------------------------------------------------ */
+
+  var SILK_REST = 12;
+  var SPIDER_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 -3 20 17" width="20" height="17" overflow="visible">' +
+    '<g class="hw-legs" fill="none" stroke="#1c0802" stroke-width=".9" stroke-linecap="round">' +
+      '<path class="hw-legs-l" d="M-2.4 2.6Q-6 -1.4 -9 .8M-3 4.2Q-7 2.2 -9.6 5M-3 6Q-7 6.6 -9 10.2M-2.4 7.6Q-5 10.4 -7 13.4"/>' +
+      '<path class="hw-legs-r" d="M2.4 2.6Q6 -1.4 9 .8M3 4.2Q7 2.2 9.6 5M3 6Q7 6.6 9 10.2M2.4 7.6Q5 10.4 7 13.4"/>' +
+    '</g>' +
+    '<ellipse cx="0" cy="6" rx="3.9" ry="4.8" fill="#3a1c10"/><circle cx="0" cy=".6" r="2.6" fill="#3a1c10"/>' +
+    '<g class="hw-eyes"><circle cx="-.9" cy=".2" r=".75" fill="#ffe08a"/><circle cx=".9" cy=".2" r=".75" fill="#ffe08a"/></g></svg>';
+
+  function spiderOff(rig) {
+    if (!rig.web) return;
+    clearTimeout(rig.web.blinkT);
+    rig.web.root.getAnimations({ subtree: true }).forEach(function (a) { a.cancel(); });
+    rig.web.root.remove();
+    rig.web = null;
+  }
+  function spiderOn(rig) {
+    var disp = rig.tuner.querySelector('.display');
+    if (!disp) return null;
+    if (rig.web && rig.web.root.isConnected) return rig.web;
+    var root = document.createElement('div');
+    root.className = 'hw-web';
+    root.setAttribute('aria-hidden', 'true');
+    root.innerHTML = '<svg class="hw-threads" width="100%" height="100%" fill="none" stroke="#1c0802" stroke-width=".9">' +
+      '<path class="hw-spokes" stroke-opacity=".55"/><path class="hw-rings" stroke-opacity=".55"/><path class="hw-rim" stroke-opacity=".38"/></svg>' +
+      '<div class="hw-silk"><svg class="hw-thread" width="1" height="1" overflow="visible"><path d="M0 0V1" stroke="rgba(28,8,2,.62)" stroke-width=".8" vector-effect="non-scaling-stroke"/></svg><div class="hw-spider">' + SPIDER_SVG + '</div></div>';
+    disp.appendChild(root);
+    var web = rig.web = { root: root, spokes: root.querySelector('.hw-spokes'), rings: root.querySelector('.hw-rings'), rim: root.querySelector('.hw-rim'),
+      silk: root.querySelector('.hw-silk'), thread: root.querySelector('.hw-thread'), spider: root.querySelector('.hw-spider'),
+      eyes: root.querySelector('.hw-eyes'), len: SILK_REST, busy: false, next: Date.now() + rand(20, 60) * 1000, gen: 0, key: '' };
+    setSilk(web, SILK_REST);
+    blinkLater(web);
+    return web;
+  }
+  function setSilk(web, len) {
+    web.len = len;
+    web.thread.style.transform = 'scaleY(' + len.toFixed(1) + ')';
+    web.spider.style.transform = 'translate(-10px,' + len.toFixed(1) + 'px)';
+  }
+  /* The eyes blink at random: now and then, once in a while twice. */
+  function blinkLater(web) {
+    web.blinkT = setTimeout(function () {
+      if (!web.root.isConnected) return;
+      if (!document.hidden && !(reduced && reduced.matches)) {
+        var shut = [{ transform: 'scaleY(1)' }, { transform: 'scaleY(.08)', offset: 0.45 }, { transform: 'scaleY(.08)', offset: 0.6 }, { transform: 'scaleY(1)' }];
+        var twice = Math.random() < 0.25;
+        web.eyes.animate(shut, { duration: 170, easing: 'ease-in-out' });
+        if (twice) setTimeout(function () { if (web.root.isConnected) web.eyes.animate(shut, { duration: 170, easing: 'ease-in-out' }); }, 300);
+      }
+      blinkLater(web);
+    }, rand(1800, 7000));
+  }
+
+  /* The web, fitted to the name. The corner is the glass's top left, and
+     every spoke is one straight line from it to the top of a letter: the
+     top spoke to the fifth letter, then the third, the second, and the
+     first. Where the top of a letter is comes from the font's own
+     measurements of that glyph, not from its box -- the box runs well
+     above the ink, by an amount that changes with the face and the size,
+     and a fixed share of it left the web hanging short of the name on a
+     bigger window. The rings sag towards the corner, as a web's do. */
+  var inkCanvas = null;
+  function inkTop(ch, font) {
+    inkCanvas = inkCanvas || document.createElement('canvas').getContext('2d');
+    inkCanvas.font = font;
+    var m = inkCanvas.measureText(ch);
+    // From the top of the glyph's box down to the top of its ink.
+    return (m.fontBoundingBoxAscent || 0) - (m.actualBoundingBoxAscent || 0);
+  }
+  function fitWeb(rig, web) {
+    var disp = rig.tuner.querySelector('.display'), name = rig.tuner.querySelector('.display-name');
+    if (!disp || !name) return;
+    var line = name.querySelector('.name-line') || name;
+    var d = disp.getBoundingClientRect(), n = name.getBoundingClientRect(), l = line.getBoundingClientRect();
+    var glyphs = [], range = document.createRange(), walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT), node;
+    var cs = getComputedStyle(line), font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+    while ((node = walker.nextNode()) && glyphs.length < 6) {
+      for (var i = 0; i < node.length && glyphs.length < 6; i++) {
+        // Letters and digits only: a thread tied to a full stop or a dot between words hangs in the air.
+        if (!/[\p{L}\p{N}]/u.test(node.data[i])) continue;
+        range.setStart(node, i); range.setEnd(node, i + 1);
+        var r = range.getBoundingClientRect();
+        // Against the line the letters sit in, not where a scrolling name has carried them.
+        if (r.width) glyphs.push({ x: r.left - l.left + n.left - d.left, w: r.width, ink: r.top - d.top + inkTop(node.data[i], font) });
+      }
+    }
+    var C = { x: 3, y: 3 }, ends;
+    if (glyphs.length) {
+      // A pixel into the ink, so the thread is seen to touch it.
+      var on = function (i, across) { var g = glyphs[Math.min(i, glyphs.length - 1)]; return { x: g.x + g.w * across, y: g.ink + 1 }; };
+      ends = [on(4, 0.45), on(2, 0.5), on(1, 0.5), on(0, 0.35)];
+    } else {
+      ends = [{ x: 110, y: 20 }, { x: 100, y: 64 }, { x: 64, y: 100 }, { x: 22, y: 112 }];
+    }
+    // In order round from the top, which is the order the rings join them in.
+    ends.sort(function (p, q) { return Math.atan2(p.y - C.y, p.x - C.x) - Math.atan2(q.y - C.y, q.x - C.x); });
+    var key = ends.map(function (e) { return Math.round(e.x) + ':' + Math.round(e.y); }).join(',');
+    // How far the spider must let itself down to hang clear below the name.
+    web.below = n.bottom - d.top;
+    if (key === web.key) return;
+    /* A web that was already up dissolves into the new one -- a new
+       station's name, or the window changed size -- rather than jumping:
+       the old threads fade out over the new ones fading in. */
+    var was = web.key && !(reduced && reduced.matches) ? web.root.querySelector('.hw-threads:not(.is-going)') : null;
+    if (was) {
+      var ghost = was.cloneNode(true);
+      ghost.classList.add('is-going');
+      web.root.insertBefore(ghost, was);
+      ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, easing: 'ease-in-out' }).finished.then(function () { ghost.remove(); }, function () { ghost.remove(); });
+      was.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, easing: 'ease-in-out' });
+    }
+    web.key = key;
+
+    var f = function (v) { return v.toFixed(1); };
+    var at = function (e, k) { return { x: C.x + (e.x - C.x) * k, y: C.y + (e.y - C.y) * k }; };
+    web.spokes.setAttribute('d', ends.map(function (e) { return 'M' + C.x + ' ' + C.y + 'L' + f(e.x) + ' ' + f(e.y); }).join(''));
+    var ring = function (k) {
+      var dd = '';
+      for (var j = 0; j < ends.length - 1; j++) {
+        var p = at(ends[j], k), q = at(ends[j + 1], k);
+        var c = { x: C.x + ((p.x + q.x) / 2 - C.x) * 0.8, y: C.y + ((p.y + q.y) / 2 - C.y) * 0.8 };
+        dd += (j ? '' : 'M' + f(p.x) + ' ' + f(p.y)) + 'Q' + f(c.x) + ' ' + f(c.y) + ' ' + f(q.x) + ' ' + f(q.y);
+      }
+      return dd;
+    };
+    web.rings.setAttribute('d', ring(0.26) + ring(0.5) + ring(0.75));
+    web.rim.setAttribute('d', ring(1));
+    // The spider hangs from the middle ring, between spokes two and three.
+    var p2 = at(ends[1], 0.5), p3 = at(ends[2], 0.5);
+    var c2 = { x: C.x + ((p2.x + p3.x) / 2 - C.x) * 0.8, y: C.y + ((p2.y + p3.y) / 2 - C.y) * 0.8 };
+    web.silk.style.left = f(0.25 * p2.x + 0.5 * c2.x + 0.25 * p3.x) + 'px';
+    web.silk.style.top = f(0.25 * p2.y + 0.5 * c2.y + 0.25 * p3.y) + 'px';
+    web.top = 0.25 * p2.y + 0.5 * c2.y + 0.25 * p3.y;
+    web.root.classList.add('is-fitted');
+  }
+
+  /* Down, slowly, sometimes in two goes; a while drifting in the draught;
+     back up, legs going. The thread is exactly as long as the drop -- it
+     ends at the spider. Every move is checked against web.gen, so taking
+     the face away stops it dead. */
+  function spiderDrop(rig, web) {
+    var gen = ++web.gen;
+    var live = function (v) { if (!rig.web || rig.web !== web || web.gen !== gen) throw ABORT; return v; };
+    var let_ = function (to, pxPerS, easing) {
+      var from = web.len, dur = Math.abs(to - from) / pxPerS * 1000;
+      var o = { duration: dur, easing: easing || 'ease-in-out', fill: 'forwards' };
+      var a = web.thread.animate([{ transform: 'scaleY(' + from + ')' }, { transform: 'scaleY(' + to + ')' }], o);
+      var b = web.spider.animate([{ transform: 'translate(-10px,' + from + 'px)' }, { transform: 'translate(-10px,' + to + 'px)' }], o);
+      return a.finished.then(function () { setSilk(web, to); a.cancel(); b.cancel(); });
+    };
+    /* A draught, not a pendulum: a gust that builds, flutters and dies,
+       a few degrees either way at most, at uneven moments, while the
+       spider turns slowly on its thread. */
+    var drift = function () {
+      var dur = rand(7000, 11000), dirn = Math.random() < 0.5 ? -1 : 1, A = rand(2.5, 4.5), n = 12, frames = [], spin = [];
+      for (var i = 0; i <= n; i++) {
+        var t = i / n, env = t < 0.3 ? t / 0.3 : Math.pow(1 - (t - 0.3) / 0.7, 1.4);
+        var v = i === 0 || i === n ? 0 : env * A * (0.65 * dirn + rand(-0.45, 0.45));
+        frames.push({ transform: 'rotate(' + v.toFixed(2) + 'deg)', offset: i === 0 || i === n ? t : Math.min(1, Math.max(0, t + rand(-0.03, 0.03))) });
+      }
+      frames.sort(function (p, q) { return p.offset - q.offset; });
+      var turn = rand(15, 35) * (Math.random() < 0.5 ? -1 : 1);
+      spin = [{ transform: 'rotate(0deg)' }, { transform: 'rotate(' + turn + 'deg)', offset: 0.45 }, { transform: 'rotate(' + (turn * 0.4) + 'deg)', offset: 0.75 }, { transform: 'rotate(0deg)' }];
+      web.spider.querySelector('svg').animate(spin, { duration: dur, easing: 'ease-in-out' });
+      return web.silk.animate(frames, { duration: dur, easing: 'ease-in-out' }).finished;
+    };
+    web.busy = true;
+    /* Down in two goes, a pause between: part way, then on until it hangs
+       clear below the name -- never stopping in front of the letters --
+       and short of the bottom of the glass. */
+    var disp = rig.tuner.querySelector('.display');
+    var floor = (disp ? disp.clientHeight : 300) - (web.top || 0) - 24;
+    var clear_ = Math.min(floor, Math.max(SILK_REST + 40, (web.below || 0) - (web.top || 0) + 4));
+    var deep = Math.min(floor, clear_ + rand(0, 22));
+    return Promise.resolve().then(function () { return let_(SILK_REST + (deep - SILK_REST) * rand(0.4, 0.65), rand(7, 11)); }).then(live)
+      .then(function () { return wait(rand(1200, 3500)); }).then(live)
+      .then(function () { return let_(deep, rand(7, 11)); }).then(live)
+      .then(drift).then(live)
+      .then(function () { return wait(rand(800, 2500)); }).then(live)
+      .then(function () {
+        web.spider.classList.add('is-climbing');
+        return let_(SILK_REST + (web.len - SILK_REST) * rand(0.35, 0.6), rand(12, 16), 'linear');
+      }).then(live)
+      .then(function () { web.spider.classList.remove('is-climbing'); return wait(rand(600, 1500)); }).then(live)
+      .then(function () { web.spider.classList.add('is-climbing'); return let_(SILK_REST, rand(12, 16), 'ease-out'); })
+      .then(function () {
+        web.spider.classList.remove('is-climbing');
+        web.busy = false;
+        web.next = Date.now() + rand(40, 120) * 1000;
+      }, function (e) { if (e !== ABORT && !(e && e.name === 'AbortError')) throw e; });
+  }
+
+  /* Once a second, with the scenes: on the Halloween face the web is
+     fitted to the name and the spider kept; anywhere else, both gone. The
+     spider only moves while it can be seen and motion is allowed. */
+  function spiderTick(rig) {
+    if (themeOf(rig.tuner) !== 'halloween') { spiderOff(rig); return; }
+    var web = spiderOn(rig);
+    if (!web) return;
+    fitWeb(rig, web);
+    if (web.busy || document.hidden || (reduced && reduced.matches) || Date.now() < web.next) return;
+    spiderDrop(rig, web);
+  }
+
   function tick() {
     rigs.forEach(function (rig) {
+      spiderTick(rig);
       var cast = syncFace(rig);
       if (!cast || !active(rig) || rig.busy) return;
       rig.smallIn -= TICK;
@@ -3461,8 +3947,36 @@
     e.target.style.setProperty('--hw-h', (58 + Math.random() * 28).toFixed(1) + '%');
   }
 
+  /* The bats cross on a CSS loop too. Each time it starts or comes round,
+     with the flock still off the left of the set, a new flock is drawn for
+     the next crossing: two to five of them, spread out across the strip at
+     different heights and sizes, wings out of step. */
+  function batSvg(x, y, k, lag) {
+    var t = function (vals) { return '<animateTransform attributeName="transform" type="' + vals + '" calcMode="spline" keyTimes="0;.5;1" keySplines=".45 0 .55 1;.45 0 .55 1" begin="-' + lag + 's" dur=".34s" repeatCount="indefinite"/>'; };
+    return '<g transform="translate(' + x + ' ' + y + ') scale(' + k + ')"><g>' +
+      t('translate" values="0 0;0 1.6;0 0') +
+      '<path d="M1.5-2C6-7 12-9 20-6C17-3.5 16-.5 17 3C14 1 11 1.5 9 4.5C7 1.8 4 1.2 1.5 2.5Z">' + t('rotate" values="-38 1.5 -1;30 1.5 -1;-38 1.5 -1') + '</path>' +
+      '<path d="M-1.5-2C-6-7-12-9-20-6C-17-3.5-16-.5-17 3C-14 1-11 1.5-9 4.5C-7 1.8-4 1.2-1.5 2.5Z">' + t('rotate" values="38 -1.5 -1;-30 -1.5 -1;38 -1.5 -1') + '</path>' +
+      '<ellipse cx="0" cy="0" rx="2.6" ry="4.4"/><circle cx="0" cy="-4.6" r="2.3"/><path d="M-2-5.6L-2.7-9.4L-.5-6.6ZM2-5.6L2.7-9.4L.5-6.6Z"/></g></g>';
+  }
+  function newFlock(e) {
+    if (e.animationName !== 'hw-bats') return;
+    // Never the same number twice running: one of the other three.
+    var last = e.target.batCount || 3, n = 2 + Math.floor(Math.random() * 3), bats = '';
+    if (n >= last) n++;
+    e.target.batCount = n;
+    for (var i = 0; i < n; i++) {
+      var x = 34 + i * 232 / (n - 1) + rand(-10, 10), k = rand(0.95, 1.65);
+      bats += batSvg(x.toFixed(1), (rand(22, 66)).toFixed(1), k.toFixed(2), rand(0, 0.34).toFixed(2));
+    }
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 90" fill="#080407">' + bats + '</svg>';
+    e.target.style.setProperty('--hw-bats', 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")');
+  }
+
   function start() {
     Array.prototype.forEach.call(document.querySelectorAll('.tuner'), adopt);
+    document.addEventListener('animationstart', newFlock, true);
+    document.addEventListener('animationiteration', newFlock, true);
     document.addEventListener('animationstart', moveBolt, true);
     document.addEventListener('animationiteration', moveBolt, true);
     setInterval(tick, TICK);
