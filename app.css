@@ -316,6 +316,22 @@
    theme's own near-black, because a lamp that disappears into the panel
    it sits on is not saying anything about being off. */
 :root { --live: #2ee56a; --lamp-off: #6b7075; }
+
+/* How far a scrolling name fades at each edge, for the readout and for
+   the preset keys alike -- one pair of values so the two cannot drift
+   apart, which they did for exactly as long as the keys had none.
+
+   In em, so they track the type rather than the screen: a custom
+   property is substituted where it is used, so the em resolves against
+   whichever name is being faded. The readout runs from 40px to 82px
+   depending on the face and a preset's name is smaller again, and a
+   fixed pixel fade would be a different thing on each.
+
+   The head is about a third of the tail. The tail is the edge of a
+   window with more name behind it and wants enough gradient to read as
+   depth; the head is only a letter leaving, and wants just enough not to
+   be sheared off against a vertical line. */
+:root { --feather: .36em; --feather-head: .12em; }
 [data-theme] .status-led.live {
   background: var(--live);
   box-shadow: 0 0 7px color-mix(in srgb, var(--live) 70%, transparent),
@@ -378,21 +394,82 @@
   100%      { transform: translateX(0); }
 }
 .preset-name .scroll-run { display: inline-block; white-space: nowrap; will-change: transform; }
+/* Faded at the edges while it moves, the same as the readout and for the
+   same reason -- a key sitting under a readout that fades, cutting its
+   own name against a hard line, is the join showing.
+
+   Only while it is moving, which here means only on hover or while that
+   station is playing. A key that is merely too narrow keeps its ellipsis,
+   and an ellipsis says "there is more" far better than a fade does; fading
+   over the top of one would just make it hard to read. That is why this
+   rides on the same selectors as the clip rather than on .can-scroll. */
 .preset:hover .preset-name.can-scroll,
-.preset.is-active .preset-name.can-scroll { text-overflow: clip; }
+.preset.is-active .preset-name.can-scroll {
+  text-overflow: clip;
+  --feather-l: 0px;
+  --feather-r: var(--feather);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--feather-l), #000 calc(100% - var(--feather-r)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--feather-l), #000 calc(100% - var(--feather-r)), transparent 100%);
+  animation: preset-feather var(--marquee-ms, 6s) linear infinite;
+}
 .preset:hover .preset-name.can-scroll .scroll-run,
 .preset.is-active .preset-name.can-scroll .scroll-run {
   animation: preset-marquee var(--marquee-ms, 6s) ease-in-out infinite;
 }
-/* Hover waits; the playing station does not, and wins when both apply. */
-.preset:hover .preset-name.can-scroll .scroll-run { animation-delay: .55s; }
-.preset.is-active .preset-name.can-scroll .scroll-run { animation-delay: .9s; }
+/* Hover waits; the playing station does not, and wins when both apply.
+   The fade is held to the same delay as the travel it is hiding the edges
+   of, so the two start together. */
+.preset:hover .preset-name.can-scroll .scroll-run,
+.preset:hover .preset-name.can-scroll { animation-delay: .55s; }
+.preset.is-active .preset-name.can-scroll .scroll-run,
+.preset.is-active .preset-name.can-scroll { animation-delay: .9s; }
+
+/* The same turn-taking as the readout, against preset-marquee's own
+   percentages: it starts moving at 14%, arrives at 74% and sets off home
+   at 86%. The tail lifts quickly once the name has run out, because the
+   pause is there so the end can be read; it comes back at leisure,
+   because by then there is name running past that edge again. */
+@keyframes preset-feather {
+  0%, 14%    { --feather-l: 0px;                 --feather-r: var(--feather); }
+  19%        { --feather-l: var(--feather-head); --feather-r: var(--feather); }
+  74%        { --feather-l: var(--feather-head); --feather-r: var(--feather); }
+  75.8%, 86% { --feather-l: var(--feather-head); --feather-r: 0px; }
+  90.5%      { --feather-l: var(--feather-head); --feather-r: var(--feather); }
+  100%       { --feather-l: 0px;                 --feather-r: var(--feather); }
+}
+/* And the same three faces left out, for the same reason: a cell is lit
+   or it is not. An animation outranks a normal declaration, so the
+   keyframes have to go as well as the mask.
+
+   Written the long way round, through both of the states that set a key
+   moving, because it has to out-rank them. The readout's exemption can
+   be short -- it only has to beat `.display-name.can-scroll`, two
+   classes -- but the mask here hangs off `.preset.is-active
+   .preset-name.can-scroll`, which is four, and a three-class exemption
+   simply loses. It did: the console's keys were masked after all, and
+   the test that was meant to catch it had only checked the selector was
+   written, not that it won. */
+[data-theme="console"] .preset:hover .preset-name.can-scroll,
+[data-theme="console"] .preset.is-active .preset-name.can-scroll,
+[data-theme="departures"] .preset:hover .preset-name.can-scroll,
+[data-theme="departures"] .preset.is-active .preset-name.can-scroll,
+[data-theme="retro"] .preset:hover .preset-name.can-scroll,
+[data-theme="retro"] .preset.is-active .preset-name.can-scroll {
+  -webkit-mask-image: none;
+  mask-image: none;
+  animation: none;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .preset:hover .preset-name.can-scroll .scroll-run,
   .preset.is-active .preset-name.can-scroll .scroll-run { animation: none; }
   .preset:hover .preset-name.can-scroll,
-  .preset.is-active .preset-name.can-scroll { text-overflow: ellipsis; }
+  .preset.is-active .preset-name.can-scroll {
+    text-overflow: ellipsis;
+    -webkit-mask-image: none;
+    mask-image: none;
+    animation: none;
+  }
   /* Unless it has been asked for. Scrolling a name that does not fit is
      the one animation here that carries information -- switch it back on
      and nothing else comes with it. */
@@ -405,7 +482,25 @@
     animation-delay: .9s;
   }
   :root.scroll-anyway .preset:hover .preset-name.can-scroll,
-  :root.scroll-anyway .preset.is-active .preset-name.can-scroll { text-overflow: clip; }
+  :root.scroll-anyway .preset.is-active .preset-name.can-scroll {
+    text-overflow: clip;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--feather-l), #000 calc(100% - var(--feather-r)), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 var(--feather-l), #000 calc(100% - var(--feather-r)), transparent 100%);
+    animation: preset-feather var(--marquee-ms, 6s) linear infinite;
+  }
+  :root.scroll-anyway .preset:hover .preset-name.can-scroll { animation-delay: .55s; }
+  :root.scroll-anyway .preset.is-active .preset-name.can-scroll { animation-delay: .9s; }
+  /* The same reach as above, for the same reason. */
+  :root.scroll-anyway[data-theme="console"] .preset:hover .preset-name.can-scroll,
+  :root.scroll-anyway[data-theme="console"] .preset.is-active .preset-name.can-scroll,
+  :root.scroll-anyway[data-theme="departures"] .preset:hover .preset-name.can-scroll,
+  :root.scroll-anyway[data-theme="departures"] .preset.is-active .preset-name.can-scroll,
+  :root.scroll-anyway[data-theme="retro"] .preset:hover .preset-name.can-scroll,
+  :root.scroll-anyway[data-theme="retro"] .preset.is-active .preset-name.can-scroll {
+    -webkit-mask-image: none;
+    mask-image: none;
+    animation: none;
+  }
 }
 
 .fader         { display: flex; align-items: center; gap: 9px; }
@@ -734,15 +829,6 @@
      is in em so it tracks the type: the console sits at 82px and the
      departures board far smaller, and a fixed pixel fade would be a
      different thing on each. */
-  --feather: .36em;
-  /* The head is much the narrower of the two, because it is doing a
-     smaller job. The tail is the edge of a window with more name behind
-     it, and wants enough of a gradient to read as depth. The head is a
-     letter leaving, and it is only there so the last of it is not sheared
-     off against a vertical edge -- a hair of softening does that, and
-     anything more starts rubbing out a character that is still being
-     read. */
-  --feather-head: .12em;
 
   /* The two edges are not the same problem.
 
