@@ -113,6 +113,17 @@ function cut(version) {
   console.log('\nwhat the build wrote\n');
   const built = readAll(BUILT);
   table(built, version);
+  /* Line endings, which nobody sees until a batch file mis-steps: every
+     .cmd the build wrote is CRLF throughout, every .sh LF throughout. */
+  let endingsOk = true;
+  fs.readdirSync(path.join(ROOT, 'dist')).forEach(function (f) {
+    const isCmd = /\.cmd$/i.test(f), isSh = /\.sh$/i.test(f);
+    if (!isCmd && !isSh) return;
+    const t = fs.readFileSync(path.join(ROOT, 'dist', f), 'latin1');
+    const bad = isCmd ? /(^|[^\r])\n/.test(t) : /\r/.test(t);
+    if (bad) { endingsOk = false; console.log(' !!  dist/' + f + '   -- not ' + (isCmd ? 'CRLF' : 'LF') + ' throughout'); }
+  });
+  if (endingsOk) console.log('  .  every .cmd CRLF, every .sh LF');
   const zip = 'deskside-radio-' + version + '.zip';
   const hasZip = exists(zip);
   console.log((hasZip ? '  .  ' : ' !!  ') + zip + (hasZip ? '' : '   -- not there'));
@@ -129,7 +140,7 @@ function cut(version) {
   console.log(tail.join('\n'));
   const testsOk = t.status === 0;
 
-  const ok = agree(built, version) && hasZip && testsOk;
+  const ok = agree(built, version) && hasZip && testsOk && endingsOk;
   console.log('\n' + (ok
     ? 'everything is aligned on ' + version + '. commit, push, then: node tools/cut.js --verify'
     : 'SOMETHING IS OUT OF LINE -- do not release') + '\n');
