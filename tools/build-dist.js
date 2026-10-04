@@ -46,6 +46,7 @@ function inlineSafe(js) { return js.replace(/<\/script/gi, '<\\/script'); }
    that way: the page's styles stopped short, and the rest of the sheet was
    laid out on the page as text and giant drawings. In a CSS string "\/" is
    just "/", so the drawing is unchanged. */
+function endings(text, eol) { return text.replace(/\r\n?|\n/g, '\n').split('\n').join(eol); }
 function styleSafe(css) { return css.replace(/<\/style/gi, '<\\/style'); }
 
 function dataUri(file, type) {
@@ -170,7 +171,17 @@ fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
     clicked, which is what happens on macOS and Linux anyway. */
  'strip-fit.ps1',
  'Linux - Create Desktop Shortcut.sh'].forEach(function (f) {
-  fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
+  /* Line endings set here, not taken from the working copy. cmd.exe wants
+     CRLF and can mis-step on labels and blocks without it; a shell script
+     wants LF, or Linux looks for an interpreter called "bash\r". The repo
+     stores both as LF and .gitattributes converts on checkout -- but only
+     on checkout, and a working copy written by an editor or a script kept
+     whatever it was given. Every launcher up to 1.6.3 shipped with LF. */
+  // As bytes (latin1 both ways), so nothing but the line endings can change.
+  var bytes = function () { return fs.readFileSync(path.join(ROOT, f), 'latin1'); };
+  if (/\.cmd$/i.test(f)) fs.writeFileSync(path.join(OUT, f), endings(bytes(), '\r\n'), 'latin1');
+  else if (/\.sh$/i.test(f)) fs.writeFileSync(path.join(OUT, f), endings(bytes(), '\n'), 'latin1');
+  else fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));
 });
 
 /* The icons keep the path they have in the source tree, so the launchers

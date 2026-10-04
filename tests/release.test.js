@@ -1073,6 +1073,21 @@ test('the launcher opens without a console window', () => {
     VBS + ' is not in the build, so a download would have shortcuts aimed at a missing file');
 });
 
+/* The build sets the line endings of what it ships rather than copying the
+   working copy's: every launcher up to 1.6.3 went out LF, which cmd.exe can
+   mis-step on. tools/cut.js checks the result in dist/ at every cut. */
+test('the build ships batch files CRLF and shell scripts LF', () => {
+  const build = read('tools/build-dist.js');
+  assert.ok(/endings\(bytes\(\), '\\r\\n'\)/.test(build), 'build-dist.js copies .cmd files as they are, line endings and all');
+  assert.ok(/endings\(bytes\(\), '\\n'\)/.test(build), 'build-dist.js copies .sh files as they are, line endings and all');
+  const fn = build.match(/function endings\(text, eol\) \{ ([^\n]*) \}/);
+  assert.ok(fn, 'the line-ending helper is gone from build-dist.js');
+  const endings = new Function('text', 'eol', fn[1]);
+  assert.equal(endings('a\nb\r\nc\rd', '\r\n'), 'a\r\nb\r\nc\r\nd');
+  assert.equal(endings('a\r\nb\n', '\n'), 'a\nb\n');
+  assert.ok(/endingsOk/.test(read('tools/cut.js')), 'tools/cut.js no longer checks the line endings of what the build wrote');
+});
+
 /* One line of flags, in four scripts, that has to be the same line in all
    four: the shortcut bakes it into a .lnk, the opener passes it when it
    starts the browser, and a profile started with one set and reopened with
