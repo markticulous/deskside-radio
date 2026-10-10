@@ -16,7 +16,10 @@ test('geocodeUrl escapes the city and asks for a short list', () => {
 test('searchUrl sends a plain name query when no city is chosen', () => {
   const u = new URL(D.searchUrl({ name: 'kiss 92.5' }));
   assert.equal(u.searchParams.get('name'), 'kiss 92.5');
-  assert.equal(u.searchParams.get('hidebroken'), 'true');
+  /* Broken ones are asked for and marked, not hidden: the directory's
+     checker is overseas, and a station that streams only to its own
+     country fails it every time. */
+  assert.equal(u.searchParams.get('hidebroken'), null);
   assert.equal(u.searchParams.get('geo_lat'), null);
 });
 
@@ -399,4 +402,34 @@ test('dedupe still treats a trailing slash as the same station', () => {
     { url: 'https://b.example/live' }
   ]);
   assert.equal(out.length, 2);
+});
+
+/* The words typed, not the phrase: the directory matches a name as one
+   piece of text, and "99.9 Virgin Radio CKFM-FM" found nothing against
+   "99.9 Virgin Radio Toronto". */
+test('a search is asked for by its most telling word and checked word by word', () => {
+  const w = D.searchWords('99.9 Virgin Radio CKFM-FM');
+  assert.deepEqual(w.words, ['99.9', 'virgin', 'ckfm']);
+  assert.equal(w.key, 'virgin');
+  assert.equal(D.searchWords('CFRB 1010').key, 'cfrb');
+  assert.equal(D.searchWords('99.9').key, '99.9');
+  const virgin = { name: '99.9 Virgin Radio Toronto', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CKFMFMAAC.aac' };
+  assert.ok(D.hasWords(virgin, w.words), 'the call sign is in the stream address, and that counts');
+  assert.ok(!D.hasWords({ name: 'Virgin 95.9' }, w.words));
+});
+
+test('a station the directory could not check is kept, marked, and only demoted among equals', () => {
+  const s = D.normalizeStation({ name: '99.9 Virgin Radio Toronto', url: 'https://x/a.aac', lastcheckok: 0 }, 0, 'Toronto');
+  assert.equal(s.unchecked, true);
+  const near = { name: 'Near but unchecked', unchecked: true, tier: 0 };
+  const far = { name: 'Far and fine', tier: 1 };
+  const ok = { name: 'Near and fine', tier: 0 };
+  assert.deepEqual(D.orderFound([near, far, ok]).map((x) => x.name), ['Near and fine', 'Near but unchecked', 'Far and fine']);
+});
+
+test('a station with no position counts as nearby when its name says the city', () => {
+  const list = [{ name: 'CJUK 99.9 Thunder Bay', region: 'Ontario', lat: 48.4, lon: -89.2 },
+    { name: '99.9 Virgin Radio Toronto', region: 'Ontario' }];
+  const r = D.rankByPlace(list, { lat: 43.7, lon: -79.4, region: 'Ontario', radiusKm: 60, city: 'Toronto' });
+  assert.equal(r[0].name, '99.9 Virgin Radio Toronto');
 });

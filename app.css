@@ -352,6 +352,40 @@
               0 0 0 1px rgba(0,0,0,.18);
 }
 
+/* A song on the tagline's line is one line, whatever the face does with a
+   tagline, so a long title cannot add a line to the readout and set the
+   window refitting. The line keeps a line's height with nothing on it. */
+.display-tag.is-song { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 100%; }
+.display-tag.has-np:empty::before { content: "\200b"; }
+/* A new song pulses four times as it arrives, to say the line has
+   changed: a quick fade out and back in, each. By filter rather than
+   opacity, so it dims on top of whatever opacity the face gives the line
+   instead of replacing it. Under one and a half a second, well below
+   the rate at which flashing becomes a hazard. */
+/* Each fade is quick -- a tenth of a second out, a tenth back -- with the
+   line held on and held dimmed between, so it reads as a blink. */
+@keyframes song-flash {
+  0%, 20%, 80%, 100% { filter: opacity(1); }
+  37%, 63%           { filter: opacity(.08); }
+}
+.display-tag.is-song.is-new-song { animation: song-flash .6s ease-in-out 4; }
+/* The one-time note that song titles are new, on the line they appear
+   on: the same pulses, nine of them, in heavy type, and then out and held out, so the
+   song that follows arrives on an empty line. */
+@keyframes song-note-out { to { filter: opacity(0); } }
+.display-tag.is-feature-note {
+  /* As heavy as the face's type goes, and then a hairline of its own
+     colour round each letter on top -- most of these faces stop at bold,
+     and the stroke is what takes it past that in every one of them. */
+  font-weight: 900; -webkit-text-stroke: .45px currentColor;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 100%;
+  animation: song-flash .6s ease-in-out 9, song-note-out .25s ease-in 5.4s forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .display-tag.is-song.is-new-song,
+  .display-tag.is-feature-note { animation: none; }
+}
+
 .preset        { display: grid; text-align: left; min-width: 0; }
 .preset-add    { opacity: .55; }
 /* "Add station" too long for one line of its key: on two, filling both

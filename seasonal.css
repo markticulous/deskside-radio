@@ -306,6 +306,7 @@
    the same line by eye. Only the word moves: the lamp is where it
    belongs, and nudging the row would take the lamp with it. */
 [data-theme="halloween"] .display-status .status-text { position: relative; top: 3px; }
+[data-theme="harvest"] .display-status .status-text { position: relative; top: 1.5px; }
 
 /* ---- dial ---------------------------------------------------------- */
 
@@ -724,6 +725,11 @@
   white-space: nowrap; overflow: hidden;
   color: var(--barn);
   text-shadow: 0 2px 0 rgba(255,244,220,.8);
+  /* Rye's descenders run past a 1.08 line -- the tail of a g by 2px, and
+     its highlight 2px more -- and overflow: hidden cut them off. Room
+     below for the ink, taken back by the margin, so the readout is not a
+     pixel taller and nothing under it moves. */
+  padding-bottom: 6px; margin-bottom: -6px;
 }
 [data-theme="harvest"] .display-tag { grid-area: tag; margin: 6px 0 0; font: italic 400 19px/1.3 "Fraunces", Georgia, serif; opacity: .85; }
 [data-theme="harvest"] .display-status { grid-area: status; margin-top: 10px; font-size: 14px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: #6a3a14; }
@@ -977,8 +983,9 @@
    within a third of a pixel and left alone. Autumn Gobble measured 2px high
    too, but its text-shadow skewed the reading, and at 2px it looked low to
    Mark: 1px. */
-[data-theme="christmas"] :is(.sched-label, .sched-next),
-[data-theme="harvest"] :is(.sched-label, .sched-next) { position: relative; top: 1px; }
+[data-theme="christmas"] :is(.sched-label, .sched-next) { position: relative; top: 1px; }
+/* Then half a pixel up from that, at Mark's eye. */
+[data-theme="harvest"] :is(.sched-label, .sched-next) { position: relative; top: .5px; }
 [data-theme="halloween"] :is(.sched-label, .sched-next) { position: relative; top: 2px; }
 [data-theme="christmas"] .sched-led { width: 9px; height: 9px; border-radius: 50%; background: var(--lamp-off, #6b7075); box-shadow: 0 0 0 1px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.22); }
 [data-theme="christmas"] .sched-chip[aria-pressed="true"] .sched-led { background: radial-gradient(circle at 35% 35%, #d8ffcc, #3fcf62 60%, #157a2d); box-shadow: 0 0 8px #47e06b; }

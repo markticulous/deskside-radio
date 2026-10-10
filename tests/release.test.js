@@ -2351,7 +2351,7 @@ test('the readout says the version once, after an update', () => {
   /* Which version last ran here. Absent is a first install, which has
      nothing to announce -- the number is stamped quietly instead. */
   assert.ok(/ranVersion: null,/.test(js), 'nothing records which version last ran');
-  const boot = js.slice(js.indexOf('var ranBefore = state.ranVersion;'), js.indexOf('var ranBefore = state.ranVersion;') + 320);
+  const boot = js.slice(js.indexOf('var ranBefore = state.ranVersion;'), js.indexOf('var ranBefore = state.ranVersion;') + 700);
   /* An install that has been running for weeks has no version recorded if
      it last ran a build older than 1.4.12, because nothing before that
      wrote the field. Treating that as a first install is what swallowed
@@ -2359,7 +2359,7 @@ test('the readout says the version once, after an update', () => {
      what a first install actually looks like. */
   assert.ok(/var wasHere = ranBefore \|\| stored !== null;/.test(boot),
     'a profile with settings but no recorded version is taken for a first install');
-  assert.ok(/if \(wasHere\) announceVersion\(\);/.test(boot),
+  assert.ok(/if \(wasHere\) announceVersion\(/.test(boot),
     'the announcement no longer follows that test');
   assert.ok(boot.indexOf('state.ranVersion = APP_VERSION;') < boot.indexOf('announceVersion'),
     'the version is announced before it is recorded, so a crash would repeat it for ever');
@@ -3382,7 +3382,7 @@ test('every stored setting either travels in an export or is kept to this machin
      without deciding which is a failing test rather than a quiet loss. */
   const EXPORTED = ['stations', 'schedule', 'scheduleEnds', 'scheduleV', 'schedulerEnabled',
     'theme', 'volume', 'volumeCurve', 'autoplay', 'autoplayStationId', 'bass', 'treble',
-    'miniViz', 'miniLight', 'versionCheck', 'scrollAnyway', 'lastCity'];
+    'miniViz', 'miniLight', 'versionCheck', 'songTitles', 'songHelper', 'scrollAnyway', 'lastCity'];
   /* This machine, this browser or this moment -- meaningless anywhere else. */
   const LOCAL = ['windowBox', 'intendedPlaying', 'currentStationId', 'lastGood', 'seedStamp',
     'seedFrom', 'ranVersion', 'startupUsed', 'versionLastCheck', 'versionLatest', 'versionPillOff',
