@@ -4653,7 +4653,7 @@
      this face on has not seen it, and a scene they never get to is the
      same as no scene. After that it is rarer, so that coming across one
      stays an event rather than a feature of the furniture. */
-  function nextBig(first) { return (first ? rand(8, 30) : rand(15, 35)) * 60000; }
+  function nextBig(first) { return (first ? rand(8, 30) : rand(20, 40)) * 60000; }
 
   /* A change of face clears the stage: whatever was on it belonged to the
      old one. Asked before anything is played, as well as every tick, so a

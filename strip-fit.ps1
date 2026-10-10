@@ -119,6 +119,151 @@ function Note([string]$m) {
     } catch { }
 }
 
+# ---------------------------------------------------------------------------
+# Now playing, for the stations the page cannot ask itself.
+#
+# Most streams carry the song's title -- a line of text spliced into the
+# audio every few seconds -- but a page cannot get at it: asking needs a
+# request header the stream servers will not clear for a page, so the
+# browser refuses before anything is sent. Out here there is no such rule.
+#
+# So this answers the radio, on this machine only, about one station at a
+# time and only when asked. Asked, it takes a sip: connects to the station
+# asking for the titles, reads to the first one -- about 16 KB, a second of
+# audio, measured on two stations -- and hangs up. A second stream held open
+# would cost the station's whole data rate again for as long as it played;
+# a sip a minute is about a fiftieth of that. Nothing is fetched when the
+# radio is not asking, which is whenever it is stopped, closed or playing a
+# station it can look up for itself.
+#
+# It runs on a thread of its own inside this script, which is already
+# running for as long as the radio is, so it costs no process of its own
+# and cannot hold up the strip sizing below while a station is slow.
+#
+# Only the radio can use it. Each start picks a fresh random key and writes
+# it, with the port, to assets/now-playing.js beside the page, where the
+# page reads it the way it reads the launcher's other notes. A request
+# without that key gets nothing, so a web page in the same browser cannot
+# have this fetch addresses for it. It listens on the loopback address
+# only, never the network.
+#
+# One for the machine, not one per browser family: the first watcher to
+# start provides it, and a second radio in another browser shares it.
+$npSlot = New-Object System.Threading.Mutex($false, 'Local\DesksideRadioNowPlaying')
+$npMine = $false
+try { $npMine = $npSlot.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $npMine = $true }
+if ($npMine) {
+    $npRun = [runspacefactory]::CreateRunspace()
+    $npRun.Open()
+    $npPs = [PowerShell]::Create()
+    $npPs.Runspace = $npRun
+    [void]$npPs.AddScript({
+        param([string]$KeyFile)
+        $key = -join ((1..24) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
+        $listener = $null
+        foreach ($port in 47811..47830) {
+            try {
+                $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $port)
+                $listener.Start()
+                break
+            } catch { $listener = $null }
+        }
+        if (-not $listener) { return }
+        try {
+            Set-Content -LiteralPath $KeyFile -Encoding ASCII -Value ("window.DESKSIDE_NOW_PLAYING = { port: $port, key: '$key' };")
+        } catch { $listener.Stop(); return }
+
+        # A sip: to the first real title, past any ad marker, then hang up.
+        # At most four title blocks -- a station sending only ads and blanks
+        # costs 64 KB and gets nothing -- and eight seconds.
+        function Sip([string]$url) {
+            $res = $null
+            try {
+                $req = [System.Net.HttpWebRequest]::Create($url)
+                $req.Headers.Add('Icy-MetaData', '1')
+                $req.UserAgent = 'DesksideRadio'
+                $req.Timeout = 8000; $req.ReadWriteTimeout = 8000
+                $res = $req.GetResponse()
+                $mi = [int]$res.Headers['icy-metaint']
+                if ($mi -le 0) { return '' }
+                $st = $res.GetResponseStream()
+                $buf = New-Object byte[] 16384
+                for ($b = 0; $b -lt 4; $b++) {
+                    $left = $mi
+                    while ($left -gt 0) {
+                        $r = $st.Read($buf, 0, [Math]::Min($buf.Length, $left))
+                        if ($r -le 0) { return '' }
+                        $left -= $r
+                    }
+                    $len = $st.ReadByte() * 16
+                    if ($len -le 0) { continue }
+                    $m = New-Object byte[] $len
+                    $got = 0
+                    while ($got -lt $len) {
+                        $r = $st.Read($m, $got, $len - $got)
+                        if ($r -le 0) { break }
+                        $got += $r
+                    }
+                    $txt = [System.Text.Encoding]::UTF8.GetString($m, 0, $got).TrimEnd([char]0)
+                    if ($txt -match "adw_ad='true'") { continue }
+                    if ($txt -match "StreamTitle='(.*?)';") {
+                        $t = $Matches[1].Trim()
+                        if ($t) { return $t }
+                    }
+                }
+                return ''
+            } catch { return '' } finally { if ($res) { $res.Close() } }
+        }
+
+        $cache = @{}
+        while ($true) {
+            $client = $null
+            try {
+                $client = $listener.AcceptTcpClient()
+                $client.ReceiveTimeout = 3000
+                $io = $client.GetStream()
+                $reader = New-Object System.IO.StreamReader($io)
+                $line = $reader.ReadLine()
+                while ($reader.ReadLine()) { }
+                $title = $null
+                if ($line -match '^GET /np\?([^ ]*) HTTP') {
+                    $q = @{}
+                    foreach ($pair in $Matches[1].Split('&')) {
+                        $kv = $pair.Split('=', 2)
+                        if ($kv.Count -eq 2) { $q[$kv[0]] = [System.Uri]::UnescapeDataString($kv[1].Replace('+', ' ')) }
+                    }
+                    if ($q['k'] -eq $key -and $q['u'] -match '^https?://') {
+                        # Asked again within twenty seconds -- a second radio,
+                        # or a page reloaded -- it gets the same answer rather
+                        # than another connection.
+                        $hit = $cache[$q['u']]
+                        if ($hit -and ((Get-Date) - $hit.At).TotalSeconds -lt 20) { $title = $hit.Title }
+                        else {
+                            $title = Sip $q['u']
+                            $cache[$q['u']] = @{ Title = $title; At = Get-Date }
+                            if ($cache.Count -gt 20) { $cache.Clear() }
+                        }
+                    }
+                }
+                if ($null -eq $title) { $code = '403 Forbidden'; $body = '{}' }
+                else {
+                    $code = '200 OK'
+                    $esc = $title.Replace('\', '\\').Replace('"', '\"')
+                    $esc = [regex]::Replace($esc, '[\x00-\x1f]', ' ')
+                    $body = '{"title":"' + $esc + '"}'
+                }
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
+                $head = "HTTP/1.1 $code`r`nContent-Type: application/json; charset=utf-8`r`nAccess-Control-Allow-Origin: *`r`nCache-Control: no-store`r`nConnection: close`r`nContent-Length: " + $bytes.Length + "`r`n`r`n"
+                $hb = [System.Text.Encoding]::ASCII.GetBytes($head)
+                $io.Write($hb, 0, $hb.Length)
+                $io.Write($bytes, 0, $bytes.Length)
+                $io.Flush()
+            } catch { } finally { if ($client) { $client.Close() } }
+        }
+    }).AddArgument((Join-Path $PSScriptRoot 'assets\now-playing.js'))
+    [void]$npPs.BeginInvoke()
+}
+
 Note "started; looking for a topmost window whose title ends '$RADIO_TAIL'"
 
 Add-Type -Namespace DsFit -Name Win -MemberDefinition @'
@@ -385,3 +530,11 @@ while ($true) {
 
     Start-Sleep -Milliseconds 200
 }
+
+# Out, all the way. The now-playing helper's thread is still waiting on its
+# socket, and a PowerShell whose script has finished stays running for as
+# long as one of its runspaces is busy -- measured. So without this the
+# watcher outlived the radio, kept its slot, and the next radio's watcher
+# gave up waiting for it: no strip sizing and no song titles for that
+# session. Exit takes the helper and its socket down with it.
+[Environment]::Exit(0)

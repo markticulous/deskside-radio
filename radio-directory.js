@@ -21,14 +21,22 @@
     return GEOCODE + '?count=6&language=en&format=json&name=' + encodeURIComponent(String(city || '').trim());
   }
 
-  // Either a name, a place, or both. Nothing at all is not a search.
+  /* Either a name, a place, or both. Nothing at all is not a search.
+
+     Broken stations are asked for too. "Broken" is the directory's own
+     checker failing to play the stream, and that checker is overseas: a
+     station that only streams to its own country -- most of Canada's
+     commercial FM, much of the US and the UK -- fails it every time and
+     plays perfectly well at home. 99.9 Virgin Radio Toronto was listed and
+     hidden for exactly that. So they come back, marked, and go after the
+     ones that passed; see normalizeStation and orderFound. */
   function searchUrl(opts) {
     opts = opts || {};
     var name = String(opts.name == null ? '' : opts.name).trim();
     var hasPlace = typeof opts.lat === 'number' && typeof opts.lon === 'number';
     if (!name && !hasPlace) return null;
 
-    var q = ['hidebroken=true', 'order=votes', 'reverse=true', 'limit=' + (opts.limit || 25)];
+    var q = ['order=votes', 'reverse=true', 'limit=' + (opts.limit || 25)];
     if (name) q.push('name=' + encodeURIComponent(name));
     if (opts.countryCode) q.push('countrycode=' + encodeURIComponent(opts.countryCode));
     if (hasPlace) {
@@ -51,6 +59,45 @@
     if (/\.m3u8$/.test(path)) return 'hls';
     if (/\.(pls|m3u|asx|xspf)$/.test(path)) return 'playlist';
     return 'direct';
+  }
+
+  /* The words of a search, rather than the phrase. The directory matches
+     a name as one piece of text, so "99.9 Virgin Radio CKFM-FM" found
+     nothing: the listing is "99.9 Virgin Radio Toronto". So the directory
+     is asked for the one most telling word, and the rest are checked
+     here, each on its own, against the name, the tags, the place and the
+     stream's own address -- which is where a call sign usually is when
+     the name leaves it out (CKFMFMAAC.aac).
+
+     Words that say nothing about which station -- radio, FM, the -- are
+     left out, and a call sign's -FM or -AM is dropped. The telling word
+     is the longest word of letters that is not a call sign, then a call
+     sign, then a number: a frequency alone matches half the stations on
+     the dial. */
+  var NOISE_WORDS = /^(radio|fm|am|the|station|online|live|stream|music|hd|and|of)$/;
+  function searchWords(text) {
+    var words = [];
+    String(text == null ? '' : text).toLowerCase().split(/[\s,/|&+]+/).forEach(function (w) {
+      w = w.replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, '');
+      if (/^[ckwx][a-z]{2,3}-(?:fm|am|tv)$/.test(w)) w = w.replace(/-(?:fm|am|tv)$/, '');
+      if (w && !NOISE_WORDS.test(w)) words.push(w);
+    });
+    var pick = function (test) {
+      return words.filter(test).sort(function (a, b) { return b.length - a.length; })[0] || '';
+    };
+    var isSign = function (w) { return /^[ckwx][a-z]{2,3}$/.test(w); };
+    var key = pick(function (w) { return /^[a-z][a-z'-]{2,}$/.test(w) && !isSign(w); }) ||
+      pick(isSign) || pick(function (w) { return /\d/.test(w); }) || words[0] || '';
+    return { words: words, key: key };
+  }
+  function hasWords(result, words) {
+    if (!result) return false;
+    var hay = [result.name, result.tags, result.state, result.country, result.url, result.url_resolved, result.homepage]
+      .map(function (v) { return String(v == null ? '' : v); }).join(' ').toLowerCase();
+    var bare = hay.replace(/[-_]/g, '');
+    return (words || []).every(function (w) {
+      return hay.indexOf(w) !== -1 || bare.indexOf(w.replace(/[-_]/g, '')) !== -1;
+    });
   }
 
   function cleanName(raw) {
@@ -228,6 +275,8 @@
       lat: typeof result.geo_lat === 'number' ? result.geo_lat : null,
       lon: typeof result.geo_long === 'number' ? result.geo_long : null,
       region: result.state || '',
+      // The directory's checker could not play it -- from overseas. See searchUrl.
+      unchecked: result.lastcheckok === 0,
       favicon: result.favicon || '',
       homepage: result.homepage || ''
     };
@@ -353,19 +402,28 @@
     if (!place) return items;
     var radius = place.radiusKm || 60;
     var region = String(place.region || '').toLowerCase();
+    /* A station the directory has no position for, but whose name says
+       which city it is -- "99.9 Virgin Radio Toronto" -- is as near as the
+       ones it has positions for. Without this it ranked with everything
+       else in the province, behind stations a thousand kilometres off. */
+    var city = String(place.city || '').toLowerCase();
 
     items.forEach(function (s, i) {
       s._i = i;
       if (typeof s.lat === 'number' && typeof s.lon === 'number' && (s.lat || s.lon)) {
         s.distanceKm = Math.round(haversineKm(place.lat, place.lon, s.lat, s.lon));
       }
-      var nearby = typeof s.distanceKm === 'number' && s.distanceKm <= radius;
+      var nearby = typeof s.distanceKm === 'number' ? s.distanceKm <= radius
+        : !!city && String(s.name || '').toLowerCase().indexOf(city) !== -1;
       s.tier = nearby ? 0 : (region && String(s.region || '').toLowerCase() === region ? 1 : 2);
     });
 
     items.sort(function (a, b) {
       if (a.tier !== b.tier) return a.tier - b.tier;
-      if (a.tier === 0) return a.distanceKm - b.distanceKm;
+      if (a.tier === 0) {
+        var da = typeof a.distanceKm === 'number' ? a.distanceKm : radius, db = typeof b.distanceKm === 'number' ? b.distanceKm : radius;
+        if (da !== db) return da - db;
+      }
       return a._i - b._i;
     });
     items.forEach(function (s) { delete s._i; });
@@ -401,9 +459,13 @@
     opts = opts || {};
     var named = !!String(opts.name || '').trim();
     var place = (typeof opts.lat === 'number' && typeof opts.lon === 'number')
-      ? { lat: opts.lat, lon: opts.lon, region: opts.region, radiusKm: opts.radiusKm || 60 } : null;
+      ? { lat: opts.lat, lon: opts.lon, region: opts.region, radiusKm: opts.radiusKm || 60, city: opts.cityName } : null;
 
-    var query = { name: opts.name, limit: opts.limit };
+    var want = opts.limit || 25;
+    var sought = searchWords(opts.name);
+    /* More asked for than shown, because some of what comes back is
+       weeded out here: by the other words of the search, and as repeats. */
+    var query = { name: named ? sought.key || opts.name : '', limit: Math.max(want * 4, 100) };
     if (named) { if (opts.countryCode) query.countryCode = opts.countryCode; }
     else if (place) { query.lat = place.lat; query.lon = place.lon; query.radiusKm = place.radiusKm; }
 
@@ -411,9 +473,26 @@
     if (!url) return Promise.resolve([]);
     return getJson(url, signal).then(function (rows) {
       var city = String(opts.cityName || '').trim();
+      if (named) rows = (rows || []).filter(function (r) { return hasWords(r, sought.words); });
       var list = dedupe((rows || []).map(function (r, i) { return normalizeStation(r, i, city); }));
-      return rankByPlace(list, place);
+      return orderFound(rankByPlace(list, place)).slice(0, want);
     });
+  }
+
+  /* The ones the directory could play before the ones it could not, but
+     only among stations equally near: nearness comes first. Searching 99.9
+     from Toronto put the one Toronto 99.9 below Thunder Bay's and
+     Sarnia's, for having failed a check made from overseas. Otherwise the
+     order it came in is kept. */
+  function orderFound(list) {
+    var items = (list || []).map(function (s, i) { return { s: s, i: i }; });
+    items.sort(function (a, b) {
+      var ta = typeof a.s.tier === 'number' ? a.s.tier : 0, tb = typeof b.s.tier === 'number' ? b.s.tier : 0;
+      if (ta !== tb) return ta - tb;
+      if (!!a.s.unchecked !== !!b.s.unchecked) return a.s.unchecked ? 1 : -1;
+      return a.i - b.i;
+    });
+    return items.map(function (x) { return x.s; });
   }
 
   return {
@@ -423,6 +502,7 @@
     pickHlsVariant: pickHlsVariant, listHlsVariants: listHlsVariants,
     bandFromName: bandFromName, callSignFrom: callSignFrom, bandFrom: bandFrom, normalizeStation: normalizeStation,
     taglineFor: taglineFor, dedupe: dedupe,
+    searchWords: searchWords, hasWords: hasWords, orderFound: orderFound,
     haversineKm: haversineKm, rankByPlace: rankByPlace,
     placeStation: placeStation, dominantColour: dominantColour, logoColour: logoColour,
     hopelessReason: hopelessReason,

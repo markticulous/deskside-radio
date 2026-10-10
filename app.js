@@ -10,7 +10,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.6.7';
+  var APP_VERSION = '1.7.0';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -106,6 +106,12 @@
     miniLight: false,
     startupUsed: false,
     versionCheck: true,
+    /* Song titles on the line under the name, and whether the Windows
+       helper may read them out of the stream for stations that publish
+       them nowhere else. The second is off until somebody turns it on:
+       it is the one part that connects to a station on its own. */
+    songTitles: true,
+    songHelper: false,
     versionLastCheck: 0,
     versionLatest: null,
     /* Set by the x on the pill, cleared by the next completed check. The
@@ -759,6 +765,9 @@
     el.led.classList.toggle('live', s === 'live');
     el.tuner.classList.toggle('is-gone', s === 'gone');
     el.tuner.classList.toggle('is-playing', s === 'live');
+    // The lookup runs only while there is something playing to look up.
+    if (s === 'live' && was !== 'live') npPoll();
+    else if (s !== 'live' && was === 'live') { clearTimeout(npTimer); npGen++; npSong = ''; npUntil = 0; showTag(); }
     el.tuner.classList.toggle('is-reconnecting', s === 'reconnecting');
     el.tuner.classList.toggle('is-connecting', s === 'connecting');
     /* Two ways to end up without a meter: a stream that blocks the
@@ -1802,10 +1811,16 @@
   var ANNOUNCE_MS = (ANNOUNCE_FLASHES - 1) * ANNOUNCE_STEP_MS + ANNOUNCE_ON_MS;
   var announcing = false;
 
-  function announceVersion() {
+  function announceVersion(thenNote) {
     if (!el.name) return;
+    /* The note comes before any song: the line keeps its tagline from
+       now until the note has been and gone. */
+    if (thenNote) noteUp = true;
     var back = function () {
       announcing = false;
+      // After the name has faded back in: the note, or the line as it was.
+      if (thenNote) setTimeout(songNote, 400);
+      else showTag();
       var st = currentStation();
       TunerUI.setName(el.name, st ? st.name : '');
       /* Both class changes and the new name land before the next style
@@ -1822,6 +1837,7 @@
     };
 
     announcing = true;
+    showTag();
     TunerUI.setName(el.name, 'UPDATED TO V' + APP_VERSION);
     var still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     if (still) { setTimeout(back, ANNOUNCE_MS); return; }
@@ -1980,6 +1996,446 @@
     save(); tick();
   });
 
+  /* ---------- now playing ----------
+     Artist and title, on the tagline's line, while a song is on.
+
+     Most streams do carry them -- a line of text spliced into the audio
+     every few seconds -- but a page cannot ask for it: the request needs
+     a header the servers will not clear for a page, so the browser
+     refuses before it is sent. Stations on StreamTheWorld, which is most
+     of Canada's commercial FM, also publish what is playing through a
+     lookup the browser is allowed to read, so for those it is shown.
+     Everything else keeps its tagline, exactly as before.
+
+     The station is named by its mount, the last part of its address --
+     CKFMFM.mp3, CKFMFMAAC.aac and CKFMFM_SC all mean CKFMFM's feed. Asked
+     every twenty seconds while it is playing and not otherwise, for the
+     track on now; a talk station answers with nothing, and keeps its
+     tagline. A song is shown until the lookup says it has ended, and a
+     little past that, then the tagline comes back -- across the ads and
+     the talk between songs, rather than leaving a finished song up.
+
+     Any other station is asked about through the helper, on Windows, where
+     the launcher runs one: strip-fit.ps1 reads the title out of the stream
+     itself, which a page is not allowed to, by connecting for about a
+     second and hanging up. Once a minute rather than every twenty seconds
+     -- each ask is a connection to the station, which it counts as a
+     listener -- so a new song can take up to a minute to appear. Its port
+     and its key for this session are in assets/now-playing.js, written by
+     the helper when it starts; with no helper, as on a Mac, there is no
+     file, nothing is asked, and the tagline stays. HLS playlists carry no
+     such titles and are not asked about. */
+  var NP_MS = 20000, NP_GRACE_MS = 30000, HELPER_MS = 60000, ROGERS_MS = 30000;
+  var npSong = '', npUntil = 0, npTimer = 0, npUrl = '', npHelper = null;
+  /* Which round of asking this is. A new station, or the music stopping,
+     starts a new one, and an answer from an earlier round is thrown away.
+     Changing station passes through connecting on its way to live, and
+     each step started its own lookup: the first answer put the song up
+     and started its blink, the next step cleared it, and the second
+     answer put the same song up again -- a blink that stuttered and
+     started over. */
+  var npGen = 0;
+
+  /* Rogers stations -- KISS 92.5, CHFI and the rest -- come as HLS, whose
+     only label is the station's own name. Rogers' own sites read what is
+     on from one feed for all of their stations, about 11 KB compressed,
+     which says itself it is good for thirty seconds; so that is how often
+     it is asked, and only while one of theirs is playing. The feed names
+     stations by call letters and the streams by a code of their own
+     (tor925), so this is the one to the other, taken from Rogers'
+     station list on 2026-10-10 -- that list is half a megabyte, too much
+     to fetch for a lookup. A Rogers station added since is simply not
+     looked up, and keeps its tagline. */
+  var ROGERS = {
+    abb1071: 'CKQC', cal959: 'CHFM', cal969: 'CJAQ', can1065: 'CHMN', chi983: 'CKSR',
+    edm1029: 'CHDI', edm917: 'CHBN', for933: 'CJOK', for979: 'CKYX', gra977: 'CFGP',
+    hal929: 'CFLT', kin1057: 'CIKR', kin935: 'CKXC', kit1067: 'CIKZ', kit967: 'CHYM',
+    let1067: 'CJRX', let1077: 'CFRV', lon1023: 'CHST', med1021: 'CJCY', med1053: 'CKMH',
+    nor1005: 'CHUR', nor1019: 'CKFX', nor600: 'CKAT', ott1011: 'CKBY', ott1053: 'CISS',
+    ott1061: 'CHEZ', sau1005: 'CHAS', sau1043: 'CJQM', squ1071: 'CISQ', sud1053: 'CJMX',
+    sud927: 'CJRQ', tim921: 'CJQQ', tim993: 'CKGB', tor590: 'CJCL', tor680: 'CFTR',
+    tor925: 'CKIS', tor981: 'CHFI', van1049: 'CKKS', van969: 'CJAX', vic1031: 'CHTT',
+    vic985: 'CIOC', win1023: 'CKY', win921: 'CITI'
+  };
+  function rogersCall(url) {
+    var m = /rogers-hls\.leanstream\.co\/rogers\/([a-z0-9]+)\.stream/i.exec(url || '');
+    return m ? ROGERS[m[1].toLowerCase()] || null : null;
+  }
+  function helperCan(url) { return /^https?:\/\//i.test(url || '') && !/\.m3u8(?:[?#]|$)/i.test(url); }
+  function loadHelper(done) {
+    var s = document.createElement('script');
+    s.src = 'assets/now-playing.js?' + Date.now();
+    s.onload = function () {
+      s.remove();
+      var h = window.DESKSIDE_NOW_PLAYING;
+      npHelper = h && h.port && h.key ? h : null;
+      done();
+    };
+    s.onerror = function () { s.remove(); npHelper = null; done(); };
+    document.head.appendChild(s);
+  }
+  function tritonMount(url) {
+    var m = /streamtheworld\.com\/(?:api\/livestream-redirect\/)?([A-Za-z0-9]+?)(?:_SC)?(?:\.(?:mp3|aac|m3u8))?(?:[?#/]|$)/i.exec(url || '');
+    return m ? m[1].toUpperCase() : null;
+  }
+  /* Plenty of stations send their titles in capitals -- CYNDI LAUPER - TIME
+     AFTER TIME -- and a readout set in a face's own type shouting is not
+     what anybody wants. A title with no small letters at all is put into
+     title case; one that has any is the station's own spelling and is left
+     exactly as it came.
+
+     Title case as a style guide has it: every word capitalised but the
+     short ones -- a, of, the, on -- unless one starts the title or starts
+     again after a dash or a bracket. Some things it cannot know and so
+     leaves as they are: anything with a digit in it (U2, UB40), initials
+     with dots or a slash (R.E.M., AC/DC), Roman numerals (II, IV), and a
+     short list of the usual band and term abbreviations. Mc and O' names
+     get their second capital: McCartney, O'Connor. After any other
+     apostrophe it is lower case: Don't, Rock'n'roll. */
+  var SMALL_WORDS = /^(a|an|and|as|at|but|by|feat|ft|for|from|in|into|nor|of|on|or|per|the|to|vs|via|with)$/;
+  var KEEP_CAPS = /^(ABBA|INXS|UB40|REM|ELO|ZZ|DJ|MC|USA|UK|NYC|LA|TV|OK|BTS|TLC|NWA|UFO|KC|LMFAO|MGMT|XTC|OMD|ACDC|BB|EP|AM|FM|II|III|IV|VI|VII|VIII|IX|XI|XII)$/;
+  function tidyCase(text) {
+    text = String(text || '');
+    if (!/[A-Z]/.test(text) || /[a-z]/.test(text)) return text;
+    var fresh = true;
+    return text.split(/(\s+)/).map(function (word) {
+      if (/^\s+$/.test(word)) return word;
+      var lead = /^[(\[{"'‘“-]*/.exec(word)[0], core = word.slice(lead.length);
+      var start = fresh || /[(\[{]/.test(lead);
+      fresh = /^[-–—:|]+$/.test(word) || /[:]$/.test(word);
+      var bare = core.replace(/[^A-Za-z0-9]/g, '');
+      if (!bare) return word;
+      if (/\d/.test(core) || /[A-Z]\.[A-Z]/.test(core) || /[A-Z]\/[A-Z]/.test(core) || KEEP_CAPS.test(bare)) return word;
+      var lower = core.toLowerCase();
+      var small = SMALL_WORDS.test(lower.replace(/[^a-z]/g, ''));
+      var done = lower.replace(/(^|[-])([a-z])/g, function (m, sep, c) { return sep + c.toUpperCase(); });
+      if (small && !start) done = lower;
+      done = done.replace(/^(Mc)([a-z])/, function (m, mc, c) { return mc + c.toUpperCase(); })
+        .replace(/^(O')([a-z])/, function (m, o, c) { return o + c.toUpperCase(); });
+      return lead + done;
+    }).join('');
+  }
+  var shownSong = '';
+
+  /* The one-time note that song titles have arrived, shown to anybody
+     updating from a version without them, on the line where they will
+     appear: nine pulses, like a new song's but more of them, then out, a pause with the
+     line empty, and then the song itself comes in as any new song does.
+     Nothing else writes the line while it is up. */
+  var SONG_NOTE_FROM = '1.7.0';
+  var SONG_NOTE_TEXT = 'NEW FEATURE \u2013 song title & artist name now show here!';
+  var SONG_NOTE_PAUSE_MS = 1200;
+  var noteUp = false;
+  /* True when a is an earlier version than b. An install too old to have
+     recorded its version is earlier than anything. */
+  function versionBefore(a, b) {
+    if (!a) return true;
+    var x = String(a).split('.'), y = String(b).split('.');
+    for (var i = 0; i < 3; i++) {
+      var d = (parseInt(x[i], 10) || 0) - (parseInt(y[i], 10) || 0);
+      if (d) return d < 0;
+    }
+    return false;
+  }
+  var noteShown = false;
+  function songNote() {
+    if (!el.tag || noteShown) return;
+    noteShown = true;
+    noteUp = true;
+    el.tag.classList.remove('is-song', 'is-new-song');
+    el.tag.textContent = SONG_NOTE_TEXT;
+    el.tag.classList.add('is-feature-note');
+    var finished = false;
+    var after = function () {
+      if (finished) return;
+      finished = true;
+      el.tag.removeEventListener('animationend', onEnd);
+      setTimeout(function () {
+        el.tag.classList.remove('is-feature-note');
+        noteUp = false;
+        shownSong = '';   // so a song already known arrives with its own blink
+        showTag();
+      }, SONG_NOTE_PAUSE_MS);
+    };
+    var onEnd = function (e) { if (e.target === el.tag && e.animationName === 'song-note-out') after(); };
+    el.tag.addEventListener('animationend', onEnd);
+    // Reduced motion: no pulses, just the note for a while. Also the backstop.
+    var still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    setTimeout(after, still ? 4000 : 9500);
+  }
+  if (el.tag) el.tag.addEventListener('animationend', function (e) {
+    if (e.animationName === 'song-flash') el.tag.classList.remove('is-new-song');
+  });
+  function showTag() {
+    // The note itself is not written over.
+    if (el.tag.classList.contains('is-feature-note')) return;
+    /* Nothing on the line while the version is being announced on the
+       name above it, or while the note is still to come: one thing at a
+       time. */
+    if (announcing || noteUp) {
+      el.tag.textContent = '';
+      el.tag.classList.remove('is-song', 'is-new-song');
+      shownSong = '';
+      return;
+    }
+    var st = currentStation();
+    var song = npSong && Date.now() < npUntil ? tidyCase(npSong) : '';
+    el.tag.textContent = song || (st && st.tag) || '';
+    el.tag.classList.toggle('is-song', !!song);
+    /* Blinks when a song arrives or changes -- not on every lookup that
+       finds the same one still playing. Back from the tagline, the same
+       song counts as arriving again. */
+    if (song && song !== shownSong) {
+      el.tag.classList.remove('is-new-song');
+      void el.tag.offsetWidth;   // so the blink starts over rather than carrying on
+      el.tag.classList.add('is-new-song');
+    }
+    shownSong = song;
+    paintStrip();
+    /* The line keeps its height whether a song is on it or not, so a
+       station with no tagline does not grow a line each time a song comes
+       up and lose it again in the ad break. */
+    el.tag.classList.toggle('has-np', npChain.some(function (l) { return l.src !== HELPER; }) ||
+      (!!npHelper && helperCan(npUrl)));
+  }
+
+  /* ---- where the song comes from ----
+     Tried in this order, each source saying whether a stream's address is
+     one it knows how to ask about. A source answers with the song, or with
+     nothing on just now; or it turns out not to cover this station after
+     all -- refused, missing, blocked -- and the station moves on to the
+     next source for as long as it stays tuned. The broadcasters' own
+     feeds come first, then the two kinds of streaming server that publish
+     what they are playing, and last the helper, which reads the stream
+     itself. */
+  var CORUS_MS = 30000, OPEN_MS = 30000;
+  function songOf(artist, title) {
+    artist = String(artist == null ? '' : artist).replace(/\s+/g, ' ').trim();
+    title = String(title == null ? '' : title).replace(/\s+/g, ' ').trim();
+    return title ? (artist ? artist + ' \u2014 ' + title : title) : '';
+  }
+  function getJson(url) {
+    return fetch(url, { cache: 'no-store', credentials: 'omit' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+  }
+
+  var ROGERS_SRC = { every: ROGERS_MS, match: rogersCall, ask: function (call) {
+    return getJson('https://radio.rogersdigitalmedia.com/service/now_playing').then(function (list) {
+      var me = (Array.isArray(list) ? list : []).filter(function (x) { return x && x.call_letters === call; })[0];
+      if (!me) return null;
+      var np = me.now_playing || {};
+      return { song: songOf(np.artist, np.title) };
+    }, function () { return undefined; });
+  } };
+
+  var TRITON_SRC = { every: NP_MS, match: tritonMount, ask: function (mount) {
+    return fetch('https://np.tritondigital.com/public/nowplaying?mountName=' + encodeURIComponent(mount) +
+      '&numberToFetch=1&eventType=track', { cache: 'no-store', credentials: 'omit' })
+      .then(function (r) { return r.ok ? r.text() : ''; })
+      .then(function (xml) {
+        var doc = new DOMParser().parseFromString(xml || '<x/>', 'text/xml');
+        var prop = function (n) {
+          var p = doc.querySelector('property[name="' + n + '"]');
+          return p ? p.textContent.replace(/\s+/g, ' ').trim() : '';
+        };
+        var start = +prop('cue_time_start') || 0, dur = +prop('cue_time_duration') || 0;
+        var until = start && dur ? start + dur + NP_GRACE_MS : Date.now() + NP_MS * 3;
+        var song = until > Date.now() ? songOf(prop('track_artist_name'), prop('cue_title')) : '';
+        return { song: song, until: until };
+      }, function () { return undefined; });
+  } };
+
+  /* Corus -- Q107, 102.1 The Edge, CFOX and the rest -- stream from
+     leanstream under the same name their now-playing file has: CILQFM,
+     CFNYFM. The file is about half a kilobyte. It is not data a page may
+     read, though, but a script for the page to run (JSONP), and running
+     somebody else's script in the radio would hand it the radio. So it is
+     run in a sealed frame -- sandboxed, no access to the page, its storage
+     or this machine -- which can do nothing but post back what it was
+     given, and only the artist and the title are taken from that. A
+     leanstream station that is not Corus has no file, and moves on. */
+  function corusMount(url) {
+    if (/rogers-hls\./i.test(url || '')) return null;
+    var m = /^https?:\/\/[a-z0-9.-]*leanstream\.co\/([A-Za-z0-9]+?)(?:-(?:MP3|AAC))?(?:[\/?#]|$)/i.exec(url || '');
+    return m ? m[1].toUpperCase() : null;
+  }
+  function sealedJsonp(src, callbackName) {
+    return new Promise(function (done) {
+      var frame = document.createElement('iframe');
+      var token = Math.random().toString(36).slice(2);
+      var finish = function (v) {
+        clearTimeout(timer);
+        window.removeEventListener('message', heard);
+        frame.remove();
+        done(v);
+      };
+      var heard = function (e) {
+        if (e.source !== frame.contentWindow || !e.data || e.data.t !== token) return;
+        finish(e.data.e ? null : e.data.d);
+      };
+      var timer = setTimeout(function () { finish(null); }, 8000);
+      window.addEventListener('message', heard);
+      frame.setAttribute('sandbox', 'allow-scripts');
+      frame.hidden = true;
+      frame.srcdoc = '<script>function ' + callbackName + '(d){parent.postMessage({t:"' + token + '",d:d},"*")}<\/script>' +
+        '<script src="' + src.replace(/"/g, '%22') + '" onerror="parent.postMessage({t:\'' + token + '\',e:1},\'*\')"><\/script>';
+      document.body.appendChild(frame);
+    });
+  }
+  var CORUS_SRC = { every: CORUS_MS, match: corusMount, ask: function (mount) {
+    return sealedJsonp('https://globalnewselection.s3.amazonaws.com/fm-playlist/results/' + mount + '_np.js?' + Date.now(), 'jsonpcallback')
+      .then(function (d) {
+        if (!d || typeof d !== 'object') return null;
+        return { song: songOf(d.artist_name, d.song_name) };
+      });
+  } };
+
+  /* AzuraCast, the free system a great many internet stations run on,
+     serves its streams at /listen/<station>/ and says what is playing at
+     /api/nowplaying/<station>, open to any page. */
+  function azuraApi(url) {
+    var m = /^(https?:\/\/[^\/?#]+)\/listen\/([^\/?#]+)\//i.exec(url || '');
+    return m ? m[1] + '/api/nowplaying/' + m[2] : null;
+  }
+  var AZURA_SRC = { every: OPEN_MS, match: azuraApi, ask: function (api) {
+    return getJson(api).then(function (j) {
+      var song = j && j.now_playing && j.now_playing.song;
+      if (!song) return null;
+      return { song: songOf(song.artist, song.title) || String(song.text || '').trim() };
+    }, function () { return null; });
+  } };
+
+  /* Icecast, the other common streaming server, publishes a status page
+     listing every stream it carries and what each is playing, and leaves
+     it open to pages unless the station has closed it. Asked of the
+     stream's own server; the entry whose address is this stream's is
+     used, or the only one there is. */
+  function icecastStatus(url) {
+    if (!helperCan(url)) return null;
+    try { return new URL(url).origin + '/status-json.xsl'; } catch (e) { return null; }
+  }
+  var ICECAST_SRC = { every: OPEN_MS, match: icecastStatus, ask: function (status, url) {
+    return getJson(status).then(function (j) {
+      var list = j && j.icestats && j.icestats.source;
+      list = Array.isArray(list) ? list : (list ? [list] : []);
+      var path = '';
+      try { path = new URL(url).pathname; } catch (e) { /* none */ }
+      var mine = list.filter(function (s) {
+        try { return s && s.listenurl && new URL(s.listenurl).pathname === path; } catch (e) { return false; }
+      })[0] || (list.length === 1 ? list[0] : null);
+      if (!mine) return null;
+      var title = String(mine.title || '').trim();
+      return { song: mine.artist ? songOf(mine.artist, title) : title.replace(' - ', ' \u2014 ') };
+    }, function () { return null; });
+  } };
+
+  var HELPER = { every: HELPER_MS, match: function (url) { return helperCan(url) ? url : null; }, ask: function (url) {
+    var ready = npHelper ? Promise.resolve() : new Promise(function (done) { loadHelper(done); });
+    return ready.then(function () {
+      if (!npHelper) return null;
+      return fetch('http://127.0.0.1:' + npHelper.port + '/np?k=' + encodeURIComponent(npHelper.key) + '&u=' + encodeURIComponent(url),
+        { cache: 'no-store', credentials: 'omit' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          // Refused: a key from a helper that has since been replaced. Read the new one next time.
+          if (!j) { npHelper = null; return undefined; }
+          // "Artist - Title", as stations send it, in the same form as the others.
+          return { song: String(j.title || '').replace(/\s+/g, ' ').trim().replace(' - ', ' \u2014 ') };
+        }, function () { npHelper = null; return undefined; });
+    });
+  } };
+
+  var NP_SOURCES = [ROGERS_SRC, TRITON_SRC, CORUS_SRC, AZURA_SRC, ICECAST_SRC, HELPER];
+
+  /* How far behind live the audio is, in ms, on a stream that comes in
+     chunks (HLS) -- 0 on anything else. Such a stream plays some way back
+     from the newest chunk it has been offered, typically three of them,
+     and the newest chunk is itself about one chunk behind the studio,
+     since a chunk is only listed once it is complete. KISS 92.5, in ten
+     second chunks, had its title changing forty seconds and more before
+     the song did. The first part is measured off the player; the second
+     is the one chunk, taken as ten seconds, the length these stations
+     use. On KISS that came to eighteen to twenty-four seconds all told.
+     A continuous stream is a few seconds behind at most, and its titles
+     are left as they come. */
+  var HLS_EDGE_MS = 10000;
+  var npHeld = null, npHeldTimer = 0;
+  function streamLag() {
+    var a = audio;
+    if (!a || !/\.m3u8(?:[?#]|$)/i.test(npUrl)) return 0;
+    try {
+      /* Where the newest chunk is. Chrome gives no seekable range for a
+         live stream played off the element -- measured, it comes back
+         empty -- but it downloads up to the newest chunk as soon as it is
+         listed, so the end of what it has buffered is that point. */
+      var s = a.seekable, b = a.buffered, edge = 0;
+      if (s && s.length) edge = s.end(s.length - 1);
+      else if (b && b.length) edge = b.end(b.length - 1);
+      if (!edge) return 0;
+      var behind = (edge - a.currentTime) * 1000;
+      return behind > 1000 && behind < 300000 ? Math.round(behind + HLS_EDGE_MS) : 0;
+    } catch (e) { return 0; }
+  }
+  var npChain = [], npAt = 0;
+
+  function npFor(st) {
+    clearTimeout(npTimer);
+    npUrl = st ? st.url : '';
+    npChain = [];
+    NP_SOURCES.forEach(function (src) {
+      if (state.songTitles === false || (src === HELPER && !state.songHelper)) return;
+      var key = st ? src.match(st.url) : null;
+      if (key) npChain.push({ src: src, key: key });
+    });
+    npAt = 0;
+    npSong = ''; npUntil = 0;
+    clearTimeout(npHeldTimer); npHeld = null;
+    npGen++;
+    showTag();
+    if (status === 'live') npPoll();
+  }
+  /* One ask, then the next one timed by that source. The answer is thrown
+     away if the station or the playing has changed since it was asked
+     (npGen). An answer of null moves on to the next source at once;
+     undefined -- the network, most likely -- is asked again next time. */
+  function npPoll() {
+    clearTimeout(npTimer);
+    var gen = npGen, link = npChain[npAt];
+    if (!link || status !== 'live') return;
+    link.src.ask(link.key, npUrl).then(function (r) {
+      if (gen !== npGen || status !== 'live') return;
+      if (r === null) { npAt++; npPoll(); return; }
+      if (r) {
+        var next = r.song || '';
+        var until = next ? (r.until || Date.now() + link.src.every * 3) : 0;
+        /* A change, on a stream playing well behind live, waits until the
+           audio has caught up with it. The first song on tuning in does
+           not: it has usually been on a while already. A change already
+           waiting for the same song keeps its place in the queue rather
+           than starting the wait again on every ask. */
+        var lag = npSong && next !== npSong ? streamLag() : 0;
+        if (lag > 0) {
+          if (!npHeld || npHeld.song !== next) {
+            clearTimeout(npHeldTimer);
+            npHeld = { song: next, until: until ? until + lag : 0 };
+            npHeldTimer = setTimeout(function () {
+              if (gen !== npGen || !npHeld) return;
+              npSong = npHeld.song; npUntil = npHeld.until; npHeld = null;
+              showTag();
+            }, lag);
+          }
+        } else {
+          clearTimeout(npHeldTimer); npHeld = null;
+          npSong = next; npUntil = until;
+          showTag();
+        }
+      }
+      npTimer = setTimeout(npPoll, link.src.every);
+    }, function () {
+      if (gen === npGen && status === 'live') npTimer = setTimeout(npPoll, link.src.every);
+    });
+  }
+
   // ---------- rendering ----------
   function renderStation(st) {
     /* The readout is spoken for while the version is being announced.
@@ -2000,7 +2456,7 @@
     loadTone(st);
     el.band.textContent = st.band || 'Internet stream';
     showName(st.name);
-    el.tag.textContent = st.tag || '';
+    npFor(st);
     el.tuner.style.setProperty('--station', st.color || '#10307a');
     TunerUI.setNeedle(el.tuner, st.band);
     var btns = el.presets.querySelectorAll('.preset[data-id]');
@@ -2069,7 +2525,11 @@
        land on rather than the thing you are pressing -- and it was the
        line that wrapped once there were five keys on the row. */
     add.appendChild(span('preset-band', ' '));
-    add.addEventListener('click', function () { openSettings(); $('addStation').click(); });
+    /* To the Stations tab and no further. It used to open a blank station
+       as well, which made the choice for the listener: the station they
+       were after may well be one the finder on that tab can look up, and a
+       blank form above it was in the way of that. */
+    add.addEventListener('click', function () { openSettings(); showPane('stations', false); });
     el.presets.appendChild(add);
     measurePresetNames();
   }
@@ -2774,13 +3234,38 @@
     ".dr-now {",
     "  margin-top: 1px; font-size: 9.5px; opacity: .6;",
     "  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;",
+    "  /* A line's height with nothing on it, so the row does not move when a",
+    "     song comes and goes. */",
+    "  min-height: 1.25em;",
     "}",
+    "/* In the corner, level with the buttons opposite and as quiet as them. */",
+    ".dr-status {",
+    "  position: absolute; top: 7px; left: 10px; z-index: 1;",
+    "  display: flex; align-items: center; gap: 5px;",
+    "  font-size: 8.5px; letter-spacing: .1em; text-transform: uppercase;",
+    "  white-space: nowrap; pointer-events: none;",
+    "}",
+    "/* The word as quiet as the buttons opposite; the lamp in front of it at",
+    "   full strength, since the lamp is the point. Lit as the main radio's",
+    "   is, colour for colour: green on air, a quick orange blink while it",
+    "   connects, a steady amber when the stream has gone, grey otherwise. */",
+    ".dr-status-text { opacity: .5; }",
+    ".dr-lamp {",
+    "  flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%;",
+    "  background: #6b7075; color: #f0842a;",
+    "}",
+    ".dr-strip.is-live .dr-lamp { background: #2ee56a; box-shadow: 0 0 5px rgba(46, 229, 106, .7); }",
+    ".dr-strip.is-connecting .dr-lamp { background: currentColor; animation: dr-tally .5s steps(1) infinite; }",
+    ".dr-strip.is-gone .dr-lamp { background: #b06a1f; }",
+    "@keyframes dr-tally { 0%, 45% { opacity: 1; } 55%, 100% { opacity: .15; } }",
+    "@media (prefers-reduced-motion: reduce) { .dr-strip.is-connecting .dr-lamp { animation: none; } }",
     "/* The countdown, which comes and goes on its own while the transport",
     "   text beside it stays put. Emptied only after the fade has run, so it",
     "   goes out rather than vanishing. */",
     ".dr-note { opacity: 0; transition: opacity .22s ease; }",
     ".dr-strip.is-noting .dr-note { opacity: 1; }",
-    ".dr-note:not(:empty)::before { content: \"\\00a0\\00b7\\00a0\"; }",
+    "/* A separator only when there is a song to separate it from. */",
+    ".dr-song:not(:empty) + .dr-note:not(:empty)::before { content: \"\\00a0\\00b7\\00a0\"; }",
     "/* One number per frame, whichever of the four is showing: --dr-vu is the",
     "   level, written on the button that holds them all, and every child reads",
     "   it by inheritance. The same bargain .tuner strikes with its own --vu, and",
@@ -3106,6 +3591,10 @@
   ].join('\n');
 
   var STRIP_HTML =
+    /* The transport state, in the top-left corner, opposite the two
+       buttons in the top-right: the line under the station name is the
+       song's now. */
+    '<span class="dr-status"><i class="dr-lamp" aria-hidden="true"></i><span class="dr-status-text"></span></span>' +
     '<div class="dr-top">' +
       '<button type="button" class="dr-play" aria-pressed="false" aria-label="Play">' +
         '<svg class="dr-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>' +
@@ -3113,7 +3602,7 @@
       '</button>' +
       '<div class="dr-who">' +
         '<div class="dr-station"></div>' +
-        '<div class="dr-now"><span class="dr-status"></span><span class="dr-note"></span></div>' +
+        '<div class="dr-now"><span class="dr-song"></span><span class="dr-note"></span></div>' +
       '</div>' +
       '<button type="button" class="dr-viz" data-viz="bars"' +
         ' aria-label="Change the visualisation" data-tip="Change the visualisation">' +
@@ -3249,7 +3738,8 @@
       doc: doc, root: root, meter: meter,
       viz: root.querySelector('.dr-viz'),
       station: root.querySelector('.dr-station'),
-      now: root.querySelector('.dr-status'),
+      now: root.querySelector('.dr-status-text'),
+      song: root.querySelector('.dr-song'),
       note: root.querySelector('.dr-note'),
       play: root.querySelector('.dr-play'),
       vol: root.querySelector('.dr-vol')
@@ -3386,9 +3876,14 @@
     var playing = !!state.intendedPlaying;
     if (strip.station.textContent !== nm) strip.station.textContent = nm;
     if (strip.now.textContent !== statusText) strip.now.textContent = statusText;
+    // The song on the line under the name, while there is one playing.
+    var song = status === 'live' ? shownSong : '';
+    if (strip.song && strip.song.textContent !== song) strip.song.textContent = song;
     strip.play.setAttribute('aria-pressed', playing ? 'true' : 'false');
     strip.play.setAttribute('aria-label', playing ? 'Pause' : 'Play');
     strip.root.classList.toggle('is-live', status === 'live');
+    strip.root.classList.toggle('is-connecting', status === 'connecting' || status === 'reconnecting');
+    strip.root.classList.toggle('is-gone', status === 'gone');
     paintStripFade();
     paintStripNote();
     // Kept in step with the radio's, since the station can change under it.
@@ -4551,8 +5046,8 @@
      One ink bar slides between the tabs rather than each drawing its own
      border, so the strip keeps a single baseline and every tab is the same
      height whether or not it carries a count. */
-  var PANES = ['stations', 'schedule', 'look', 'service'];
-  var pane = 'stations';
+  var PANES = ['general', 'stations', 'schedule', 'look', 'service'];
+  var pane = 'general';
 
   function moveInk(animate) {
     var strip = $('drawerTabs');
@@ -4699,6 +5194,9 @@
     clearFix();
     // Updates sit outside the draft: the switch takes effect as it is used.
     $('versionCheckOn').checked = !!state.versionCheck;
+    $('songTitlesOn').checked = state.songTitles !== false;
+    $('songHelperOn').checked = !!state.songHelper;
+    $('songHelperOn').disabled = state.songTitles === false;
     // So does this one, and whether it is worth showing at all depends on
     // a system setting that can have changed since the drawer last opened.
     paintMotion();
@@ -4720,7 +5218,7 @@
     }
     if (!el.settings.open) el.settings.showModal();
     // Offsets only exist once the dialog is laid out.
-    showPane('stations', false);
+    showPane('general', false);
     sizeDrawer();
     findReadme();
   }
@@ -5476,6 +5974,28 @@
     return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   }
 
+  /* A card opened near the foot of the list unfolded out of sight below
+     the drawer, and looked as though nothing had happened. So once it has
+     finished opening it is scrolled up just far enough to show all of it
+     -- or its top, if it is taller than the drawer -- and a card already
+     in view is left where it is. Smoothly, unless motion is turned down. */
+  function bringIntoView(card) {
+    var fold = card.querySelector('.card-fold');
+    var done = false;
+    var go = function () {
+      if (done || !card.classList.contains('is-open')) return;
+      done = true;
+      if (card.scrollIntoView) card.scrollIntoView({ block: 'nearest', behavior: stillMotion() ? 'auto' : 'smooth' });
+    };
+    if (fold) fold.addEventListener('transitionend', function once(e) {
+      if (e.target !== fold) return;
+      fold.removeEventListener('transitionend', once);
+      go();
+    });
+    // The transition is .2s; this covers it not running at all.
+    setTimeout(go, 280);
+  }
+
   /* Opening a card used to re-render the list, which threw away the very
      elements the transition needs. Only the class changes now. */
   function syncOpenCards() {
@@ -5724,7 +6244,12 @@
         if (act === 'del') { askDeleteStation(i); return; }
         else if (act === 'up' && i > 0) { moveStation(i, -1); return; }
         else if (act === 'down' && i < draft.stations.length - 1) { moveStation(i, 1); return; }
-        else { openStation = st.id === openStation ? null : st.id; syncOpenCards(); return; }
+        else {
+          openStation = st.id === openStation ? null : st.id;
+          syncOpenCards();
+          if (openStation === st.id) bringIntoView(card);
+          return;
+        }
         renderStationRows(); renderSlotRows(); renderCounts(); renderAutoplay();
       });
 
@@ -6407,6 +6932,9 @@
       meta.push(s.band || 'Internet stream');
       if (s.tag) meta.push(s.tag);
       if (!s.playable) meta.push('playlist file, may not play');
+      /* Not hidden, because the check that failed was made from overseas
+         and a station streaming only to its own country always fails it. */
+      if (s.unchecked) meta.push('not verified, may only play in its home country');
       li.appendChild(span('result-name', s.name || 'Unnamed station'));
       li.appendChild(span('result-meta', meta.join(' \u00b7 ')));
       var btn = document.createElement('button');
@@ -6967,7 +7495,7 @@
     syncGearDot();
     /* And the tab, so the mark on the gear leads somewhere rather than
        leaving the drawer to be searched. Same fact, one level down. */
-    var tab = $('tabService');
+    var tab = $('tabGeneral');
     if (tab) tab.classList.toggle('has-update', on);
     syncFetchDot();
     if (!on) return;
@@ -7149,6 +7677,21 @@
     }, PILL_OUT_MS);
   });
 
+  /* Like the update switch, these take effect as they are used rather
+     than waiting for the drawer to close: the line on the radio, just
+     behind the drawer, answers at once. */
+  $('songTitlesOn').addEventListener('change', function () {
+    state.songTitles = this.checked;
+    $('songHelperOn').disabled = !this.checked;
+    save();
+    npFor(currentStation());
+  });
+  $('songHelperOn').addEventListener('change', function () {
+    state.songHelper = this.checked;
+    save();
+    npFor(currentStation());
+  });
+
   $('versionCheckOn').addEventListener('change', function () {
     state.versionCheck = this.checked;
     save();
@@ -7291,7 +7834,7 @@
        it is and what wrote it, readable without knowing the format. app
        is also the only honest way to refuse somebody else's JSON: an
        array called stations is not a rare thing to find in a file. */
-    var body = 'window.DESKSIDE_SEED = ' + JSON.stringify({ app: SEED_APP, appVersion: APP_VERSION, seedV: SEED_V, exportedAt: stampNow(), stations: state.stations, schedule: state.schedule, scheduleEnds: state.scheduleEnds, scheduleV: state.scheduleV || 2, schedulerEnabled: !!state.schedulerEnabled, theme: state.theme, volume: state.volume, volumeCurve: 3, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId, miniViz: state.miniViz, miniLight: !!state.miniLight, versionCheck: !!state.versionCheck, scrollAnyway: !!state.scrollAnyway, lastCity: state.lastCity || null }, null, 2) + ';\n';
+    var body = 'window.DESKSIDE_SEED = ' + JSON.stringify({ app: SEED_APP, appVersion: APP_VERSION, seedV: SEED_V, exportedAt: stampNow(), stations: state.stations, schedule: state.schedule, scheduleEnds: state.scheduleEnds, scheduleV: state.scheduleV || 2, schedulerEnabled: !!state.schedulerEnabled, theme: state.theme, volume: state.volume, volumeCurve: 3, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId, miniViz: state.miniViz, miniLight: !!state.miniLight, versionCheck: !!state.versionCheck, songTitles: state.songTitles !== false, songHelper: !!state.songHelper, scrollAnyway: !!state.scrollAnyway, lastCity: state.lastCity || null }, null, 2) + ';\n';
     var blob = new Blob([body], { type: 'text/javascript' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -7408,6 +7951,8 @@
     if (VIZ.indexOf(data.miniViz) !== -1 || isSeasonViz(data.miniViz)) target.miniViz = data.miniViz;
     if (typeof data.miniLight === 'boolean') target.miniLight = data.miniLight;
     if (typeof data.versionCheck === 'boolean') target.versionCheck = data.versionCheck;
+    if (typeof data.songTitles === 'boolean') target.songTitles = data.songTitles;
+    if (typeof data.songHelper === 'boolean') target.songHelper = data.songHelper;
     if (typeof data.scrollAnyway === 'boolean') target.scrollAnyway = data.scrollAnyway;
     var city = cleanCity(data.lastCity);
     if (city) target.lastCity = city;
@@ -7604,7 +8149,9 @@
       var wasHere = ranBefore || stored !== null;
       state.ranVersion = APP_VERSION;
       save();
-      if (wasHere) announceVersion();
+      /* Updating from before song titles came in: say so, once, on the
+         line they appear on, when the announcement has finished. */
+      if (wasHere) announceVersion(versionBefore(ranBefore, SONG_NOTE_FROM) && !versionBefore(APP_VERSION, SONG_NOTE_FROM));
     }
     $('appVersion').textContent = 'v' + APP_VERSION;
     if (updateAvailable()) $('appVersion').classList.add('is-stale');

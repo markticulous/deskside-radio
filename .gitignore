@@ -9,6 +9,8 @@ dist/
 assets/shortcut.js
 assets/startup.js
 assets/trimmed.stamp
+# The now-playing helper's port and key for this session (strip-fit.ps1).
+assets/now-playing.js
 
 # OS clutter
 Thumbs.db

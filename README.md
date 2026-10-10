@@ -129,7 +129,8 @@ The fit itself used to resize the window three times while the user watched. Two
 - **Watchdog.** A frozen media clock plus a starved buffer means the stream died; it reconnects with exponential backoff rather than sitting silent.
 - **Silence watch.** The harder case: the connection is fine, the clock is advancing, and there is no sound. Nothing in the transport can see that, so the meter is asked instead — below −60 dBFS for five unbroken seconds while the transport says Live, and the lamp starts alternating amber and green and the line reads *Stream detected · no audio*. It then re-tunes after 10 seconds of silence, and again after 30, 90 and 120 seconds if it is still quiet, before giving up and leaving the lamp saying so. Four attempts, because a station that is simply off the air overnight should not be hammered all night. Only works where the meter does: a stream that refuses CORS has no analyser on it, so silence cannot be told from sound and nothing is claimed.
 - **Memory.** Theme, station, volume and per-station tone come back exactly as you left them — unless a schedule slot covering that moment says otherwise, in which case the schedule wins.
-- **Play on launch.** Starts a station the moment the app opens, with no click at all when it is opened through the shortcut above.
+- **Song titles.** While a station plays, the line under its name shows the artist and title of the song that is on, for stations that say what they are playing — see [Song titles](#song-titles) below.
+- **Play on launch.** Starts a station the moment the app opens, with no click at all when it is opened through the shortcut above. In **Settings → General**, with **Start when you sign in**, the update check and the song-title switches.
 
 ### What a handover looks like
 
@@ -145,7 +146,25 @@ Save can still refuse a **station**, and when it does it says which field and wh
 
 One more thing about that tab: saving from it keeps the drawer open with the slots folded shut, because a schedule is usually built several slots at a time. Saving from any other tab closes the drawer as it always did.
 
-Everything is kept in `localStorage` on the machine it runs on. Nothing is uploaded.
+Everything is kept in `localStorage` on the machine it runs on. Nothing is uploaded. The only requests besides the stream itself are the update check, the hosted fonts, and — while song titles are on — asking the station's publisher what is playing.
+
+
+## Song titles
+
+The line under the station name shows the song on now — *Artist — Title* — and pulses briefly when it changes. Where it comes from is worked out from the station's stream address, in this order, and a station none of them covers keeps its tagline:
+
+| Source | Stations | Notes |
+|---|---|---|
+| Rogers' feed | KiSS, CHFI and Rogers' other stations | One feed for all of them, about 11 KB every 30 seconds while one plays. Their stream codes are mapped to call letters in `app.js`; a station added since is simply not looked up. |
+| StreamTheWorld | Virgin Radio and thousands of others | Looked up by the mount in the stream address. |
+| Corus | Q107, 102.1 The Edge, CFOX … | A half-kilobyte file per station. It is JSONP — a script, not data — so it is run in a sandboxed frame that can only post back the artist and title. |
+| AzuraCast | many internet-only stations | `/api/nowplaying/<station>` on the stream's own server. |
+| Icecast | many internet-only stations | The server's `status-json.xsl`, where the station has left it open. |
+| The stream itself (Windows) | most of the rest | Off unless **Settings → General → Read titles from the stream itself** is on. A page may not ask a stream for its titles — the request needs a header the servers will not clear for a page — so `strip-fit.ps1` runs a small helper on a thread of its own: it listens on the loopback address only, answers only requests carrying a key it writes to `assets/now-playing.js` for the page each session, and for each request connects to the station, reads to the first title (about 16 KB, a second of audio) and hangs up. Asked once a minute. |
+
+Titles in all capitals are put into title case; anything with a lower-case letter is left as the station spells it. On a chunked (HLS) stream a change waits until the player has caught up with it, since such a stream plays some way behind live. Some stations change the title when the song before ends, while the presenter is still talking; that is what they report, and the radio shows it.
+
+Anybody updating from before 1.7.0 is told once, on that line, after the version announcement.
 
 ## Recording
 
@@ -344,7 +363,7 @@ The way home is quick: nobody reads a name backwards, so the only thing the retu
 
 Windows' **Accessibility → Visual effects → Animation effects**, off by default on a lot of managed machines, makes Chrome report `prefers-reduced-motion: reduce`. The app honours it: every animation stops, scrolling included.
 
-Scrolling a name that does not fit is the one animation here that carries information rather than decorating — without it the end of the name is not slow, it is missing. So **Settings → Theme** grows a **Scroll long names anyway** switch, shown only when the system is actually asking for reduced motion. It re-enables the readout and preset marquees and nothing else; the split-flap reveal, the VFD flicker and the rest stay off.
+Scrolling a name that does not fit is the one animation here that carries information rather than decorating — without it the end of the name is not slow, it is missing. So **Settings → General** grows a **Scroll long names anyway** switch, shown only when the system is actually asking for reduced motion. It re-enables the readout and preset marquees and nothing else; the split-flap reveal, the VFD flicker and the rest stay off.
 
 It has to be `!important` to work, which is unusual enough to explain: the reduced-motion block carries `.tuner *, .tuner *::before, .tuner *::after { animation: none !important }`, and nothing beats an `!important` on a universal selector by being more specific.
 
