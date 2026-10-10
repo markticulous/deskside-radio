@@ -1940,8 +1940,16 @@ test("the add key's label is sized to fit, not scrolled", () => {
      does -- which is why the others scroll. */
   assert.ok(fit.indexOf('.preset-name\'') === fit.lastIndexOf('.preset-name\''),
     'the add key is no longer the only label being shrunk');
-  assert.ok(/parseFloat\(cs\.letterSpacing\) \|\| 0/.test(fit),
-    'the trailing letter-spacing is no longer taken off, so a label ending at the edge shrinks for ever');
+  /* Any overflow at all counts: Chrome draws its ellipsis over the
+     trailing letter-spacing too, and forgiving that pixel shipped a key
+     reading ADD STATI... in 1.6.7. */
+  assert.ok(/var over = function \(\) \{ return name\.scrollWidth > name\.clientWidth; \};/.test(fit),
+    'the fit forgives some overflow again, and the key shows an ellipsis while believing it fits');
+  /* Wrapped, the key is held to its neighbour's height, or a pixel or two
+     taller makes the window refit, the refit flips the wrap, and the window
+     flickers between two sizes -- 1.6.7 again. */
+  assert.ok(/if \(tall\) key\.style\.height = tall \+ 'px';/.test(fit) && /key\.style\.height = '';/.test(fit),
+    'a wrapped add key is no longer held to its neighbour\'s height, so it can make the radio taller and set the window resizing');
   assert.ok(/var floor = Math\.max\(8, base \* ADD_WRAP_FLOOR\);/.test(fit),
     'the floor is gone, so a narrow column can shrink the label away to nothing');
   /* Shrinking is only allowed a little; past that it wraps. A label

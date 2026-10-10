@@ -1,6 +1,6 @@
 {
   "version": "1.6.7",
   "released": "2026-10-10",
-  "notes": "## New features & enhancements\n\n- The \"Add station\" key fits its label better. If the words are only a little too wide for the key they are made slightly smaller; if they are much too wide they go onto two lines, \"Add\" over \"station\", so the key stays the same height as the ones beside it.\n- A station's name on a preset key starts scrolling a little sooner when you hover over it.\n- Enhancements to seasonal themes.\n\n## Bug fixes\n\n- Fixes in seasonal themes.",
+  "notes": "## New features & enhancements\n\n- The \"Add station\" key fits its label better. If the words are only a little too wide for the key they are made slightly smaller; if they are much too wide they go onto two lines, \"Add\" over \"station\", so the key stays the same height as the ones beside it.\n- A station's name on a preset key starts scrolling a little sooner when you hover over it.\n- Enhancements to seasonal themes.\n\n## Bug fixes\n\n- Choosing a theme no longer leaves the window resizing back and forth for several seconds before it settles.\n- The \"Add station\" key no longer cuts its label short with an ellipsis.\n- Fixes in seasonal themes.",
   "url": "https://github.com/Markticulous/deskside-radio/releases/latest"
 }
