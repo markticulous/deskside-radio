@@ -1109,6 +1109,11 @@
     clearFit(nameEl);
     var cs = getComputedStyle(nameEl);
     var cap = parseFloat(cs.getPropertyValue('--fit-max'));
+    /* A line that must be read whole, in one go, is shrunk to fit on
+       every face rather than scrolled on the ones that scroll a long name:
+       the version announcement, which blinks, and a blinking line that is
+       also sliding past is one nobody can read. */
+    if (!(cap > 0) && nameEl.hasAttribute('data-fit-whole')) cap = parseFloat(cs.fontSize);
     if (!(cap > 0)) { fitLine(nameEl); return; }
     if (!nameEl.clientWidth) return;
     var hi = cap, lo = 11;
