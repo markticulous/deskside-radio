@@ -310,6 +310,14 @@ A station can answer perfectly and have nothing behind it. BBC World Service ser
 
 Each rung of an HLS ladder is now asked whether it is there before any of it is played. If none of them are, the radio says **Stream is gone · check the station**, lights the lamp a steady amber — not the blinking amber of connecting, because it has finished and found nothing — and stops retrying. Only `400`, `403`, `404` and `410` count. A network error with no status at all stays temporary, so being offline is never mistaken for a station closing down. Pressing play clears what it learned and looks again.
 
+## The clock reads either way
+
+The clock in the top bar is 24-hour to begin with, which is what the clock on a piece of audio equipment reads. Click it and it switches to 12-hour; click it again and it switches back. The choice is stored with every other setting, so it survives a restart and travels with an export.
+
+There is no Settings row for it. The control is the clock itself, and a preference you set by pressing the thing you are looking at does not need a second place to live. It takes the keyboard as well, being a `<time>` wearing `role="button"` with a `tabindex` — which also means it needed adding to the app's own `:focus-visible` rule, since that one names `button` and `input` and this is neither.
+
+Two pixels of layout care, both of which would otherwise show: the suffix is its own element so each face can set it smaller than the digits rather than having it ride at full size, and the clock reserves its width. "12:05 AM" is three characters wider than "00:05", and the clock sits against `margin-left: auto` with the schedule chip beside it — without the reservation that chip steps sideways on every switch, and again at noon and midnight.
+
 ## A name that does not fit
 
 A station's name is as long as it is, and the readout is the width it is, so a name that overruns scrolls. What it must not do is end on a hard vertical line: on a face with any colour behind it that edge reads as a seam in the cabinet rather than as a word going past a window.
@@ -317,6 +325,10 @@ A station's name is as long as it is, and the readout is the width it is, so a n
 So each edge of the readout is feathered — but only while there is name on the other side of it, which is the whole of the trick. At rest the name stands at its start with nothing past its head, so the head is crisp and only the tail is soft. At the far end of the travel the name has run out and its last characters sit against the right-hand edge, so the tail lifts and the head stays soft. An edge faded when there is nothing beyond it is not depth, it is the first or last word of the station's name printed faint for the whole of a pause that exists so it can be read.
 
 The widths are quoted in `em`, so they track the type from one face to the next rather than being one thing on a 40px readout and another on an 82px one. The head's is about a third of the tail's: the tail is a window with more name behind it and wants enough gradient to read as depth, while the head is only a letter leaving and needs just enough not to be sheared off.
+
+The add key is the one preset whose label is ours rather than a station's, and it says only **Add station**. It used to carry a second line reading "Name and stream URL", which described the form you land on rather than the thing you are pressing — and on a crowded row that line wrapped, making the key taller than every key beside it. The row under the label is kept but left blank: every face lays a key out as `"n name" / "n band"`, so dropping it takes the second row with it and the key comes up short.
+
+Its label is also sized to fit, in half-pixel steps down to a floor set as a proportion of whatever the theme asked for. A station's name is as long as it is and scrolls; this one is two words we chose, and a control that scrolls its own label to tell you what it does reads as broken.
 
 The preset keys scroll a station's name too — on hover, and continuously for the one that is playing — and they take the same treatment off the same two values, declared once between them so they cannot drift apart. They did drift, for as long as the keys had no feathering at all and sat under a readout that did. A key whose name merely overflows is left alone: it keeps its ellipsis, which says "there is more" better than a fade does, and fading over the top of one only makes it hard to read. So the mask rides on the same hover-or-playing states as the scroll, not on overflow.
 

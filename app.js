@@ -10,7 +10,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.6.5';
+  var APP_VERSION = '1.6.6';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -60,6 +60,9 @@
        normalise drops the old kind once and stamps this. */
     scheduleV: 2,
     schedulerEnabled: false,
+    /* 24-hour unless somebody says otherwise, which is what the clock on
+       a piece of audio equipment reads. */
+    clock24: true,
     // Where the window was left. Filled in once there is one to remember.
     windowBox: null,
     theme: 'dial',
@@ -1549,15 +1552,45 @@
     }
   }
 
+  /* The time as the clock should currently read it. The suffix is its
+     own element so a face can set it smaller than the digits without
+     having to parse the string -- which is what makes "11:38 pm" read as
+     a clock rather than as a line of text. */
+  function clockText(now) {
+    var h = now.getHours(), m = pad(now.getMinutes());
+    if (state.clock24) return pad(h) + ':' + m;
+    var half = h % 12 || 12;
+    return half + ':' + m + '<span class="ampm">' + (h < 12 ? 'am' : 'pm') + '</span>';
+  }
+
+  /* Clicking it changes which way it reads, and that is remembered.
+     There is no Settings row for this: the control is the thing itself,
+     and a preference you set by pressing the thing you are looking at
+     does not need a second place to live. */
+  function toggleClock() {
+    state.clock24 = !state.clock24;
+    save();
+    el.clock.innerHTML = clockText(new Date());
+  }
+  el.clock.addEventListener('click', toggleClock);
+  /* It is a <time> wearing role="button", so the keyboard behaviour a
+     real button would have comes from here. Space scrolls the page if it
+     is not stopped. */
+  el.clock.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+    e.preventDefault();
+    toggleClock();
+  });
+
   function tick() {
     var now = new Date();
     /* Only when it has changed. Assigning the same text still replaces
        the text node, which invalidates style, lays out, paints and asks
        the compositor for a frame -- once a second, all day, to show the
        same two digits it was already showing. */
-    var hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
-    if (el.clock.textContent !== hhmm) {
-      el.clock.textContent = hhmm;
+    var shown = clockText(now);
+    if (el.clock.innerHTML !== shown) {
+      el.clock.innerHTML = shown;
       checkSeason();
     }
     var slot = state.schedulerEnabled ? Scheduler.activeSlot(state.schedule, now) : null;
@@ -1988,7 +2021,18 @@
     add.className = 'preset preset-add';
     add.appendChild(span('preset-n', '+'));
     add.appendChild(span('preset-name', 'Add station'));
-    add.appendChild(span('preset-band', 'Name and stream URL'));
+    /* The band line is left empty rather than left out. Every face lays a
+       key out as "n name" / "n band", so dropping the element takes the
+       second row with it and this key comes up shorter than the ones
+       beside it. Kept with a blank in it, the row still has a line box,
+       so the key is exactly the height it always was and the label sits
+       on the same line as every other key's label -- which matters more
+       than centring it would, because the row reads as a row.
+
+       It used to read "Name and stream URL", which described the form you
+       land on rather than the thing you are pressing -- and it was the
+       line that wrapped once there were five keys on the row. */
+    add.appendChild(span('preset-band', ' '));
     add.addEventListener('click', function () { openSettings(); $('addStation').click(); });
     el.presets.appendChild(add);
     measurePresetNames();
@@ -5180,7 +5224,7 @@
     { key: 'marconi', label: 'Marconi deco', note: 'Art deco radio cabinets of the 1930s' },
     { key: 'tivoli', label: 'Model One', note: 'The Tivoli Model One, the one-knob tabletop radio of 2000' },
     // Only offered in their own month; see SEASONS in scheduler.js.
-    { key: 'halloween', label: 'Halloween Fun', note: 'A 1930s wireless left in the attic far too long' },
+    { key: 'halloween', label: 'Halloween Fun', note: 'Pumpkin-lit, cobwebbed, and not entirely uninhabited' },
     { key: 'harvest', label: 'Autumn Gobble', note: 'A farmhouse set in late autumn, turkeys about' },
     { key: 'christmas', label: 'Noel', note: 'A starry winter night – ’tis a magical season' },
     { key: 'spring', label: 'April Showers', note: 'April rain, and what it brings up' }

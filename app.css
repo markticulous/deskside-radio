@@ -68,6 +68,10 @@
    worse problem, so what has gone is the shouting. */
 :root { --focus-ring: color-mix(in srgb, currentColor 34%, transparent); }
 .tuner button:focus-visible,
+/* The clock is a <time> wearing role="button", so it is not caught by the
+   selector above and was taking the browser's own ring -- a white box on
+   whatever the face happens to be. */
+.tuner .clock:focus-visible,
 .tuner input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -3px; }
 /* Faders are drawn as a track with a handle on it and have no inside to
    put a groove in, so theirs sits just outside instead, at the same
@@ -110,7 +114,17 @@
    two pieces of set text. Left to the default they would be squeezed
    out of shape before the one thing that can afford it. */
 .brand        { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: none; }
-.clock        { margin-left: auto; font-variant-numeric: tabular-nums; flex: none; }
+/* Clicking it swaps 12-hour for 24-hour, so it is a control and says so
+   on approach. No border or fill: every face draws this clock its own
+   way, and a button's furniture here would have to be re-styled twelve
+   times to not look stuck on. The cursor and the focus ring carry it. */
+.clock        { margin-left: auto; font-variant-numeric: tabular-nums; flex: none; cursor: pointer; }
+/* Reserved so the row does not shift when the suffix appears: "12:05 AM"
+   is three characters wider than "00:05", and the clock sits against
+   margin-left:auto with the schedule chip beside it, so without this the
+   chip steps sideways on the switch and again at noon and midnight. */
+.clock        { min-width: 8ch; text-align: right; }
+.clock .ampm  { font-size: .72em; margin-left: .25em; letter-spacing: .04em; }
 /* And the one that does. min-width: 0 is the whole of it: a flex item's
    floor is its min-content unless it is told otherwise, and the chip's
    min-content includes the station name in full. */
