@@ -275,7 +275,16 @@
   86%  { opacity: .36; }
 }
 
-[data-theme="halloween"] .display-band { grid-area: band; font-size: 17px; letter-spacing: .22em; opacity: .75; }
+/* A glow behind it, because this line has the worst of the ground to sit
+   on: it is dark ink at the top of the glass where the orange is deepest,
+   it carries no weight of its own, and the web is drawn across the same
+   corner. Warm and close rather than wide -- enough to lift the letters
+   off what is behind them without turning them into a lamp, which is the
+   readout's job two lines down. */
+[data-theme="halloween"] .display-band {
+  grid-area: band; font-size: 17px; letter-spacing: .22em; opacity: .75;
+  text-shadow: 0 0 6px rgba(255,214,150,.55), 0 0 14px rgba(255,160,60,.35);
+}
 [data-theme="halloween"] .display-name {
   grid-area: name; margin: 0; position: relative;
   font-family: "Creepster", "Special Elite", cursive; font-weight: 400;
@@ -290,6 +299,13 @@
 [data-theme="halloween"] .display-status {
   grid-area: status; margin-top: 10px; font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: #4a1604;
 }
+/* The lamp and its word are centred against each other by the flex row,
+   which centres their boxes -- and this face sets the word in a display
+   type whose caps sit high in their line box, so the ink ends up above
+   the lamp even though the boxes agree. Four pixels puts the two back on
+   the same line by eye. Only the word moves: the lamp is where it
+   belongs, and nudging the row would take the lamp with it. */
+[data-theme="halloween"] .display-status .status-text { position: relative; top: 3px; }
 
 /* ---- dial ---------------------------------------------------------- */
 

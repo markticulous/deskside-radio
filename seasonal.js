@@ -3023,13 +3023,35 @@
 
       /* Up in an arc and not in a straight line: a hat swung onto a head
          goes through the air above both of them. The little dip at the
-         start is it taking hold before it lifts. */
+         start is it taking hold before it lifts.
+
+         And it turns over on the way. The hat is drawn leaning right --
+         the cone runs from (15,2) out to (21,1) -- so worn as drawn, its
+         point trails the raccoon, which is walking right. Mirrored, the
+         point leads.
+
+         The turn is in the x scale rather than a separate rotation,
+         which is what makes it read as a hat being turned round in the
+         air rather than a picture being swapped: x runs from 1 down
+         through nothing at all, where the hat is edge-on and invisible
+         for an instant, and out the other side to -sc. y never changes
+         sign, so only the width moves. The flip is its own keyframe
+         because interpolating straight from 1 to -sc would cross zero
+         wherever the arithmetic happened to put it, which was on the way
+         back down. */
       var LIFT = 660;
+      var midX = (hat.lx + endX) / 2, midY = Math.min(hat.ly, endY) - 20;
+      var mid = (1 + sc) / 2;
+      /* Edge-on partway up, and the y scale wherever the arc has got to
+         by then -- offset .42 of a span that starts at .16. */
+      var edgeY = 1 + (sc - 1) * ((0.42 - 0.16) / (1 - 0.16));
       var lift = move(hat, [
-        { transform: tr(hat.lx, hat.ly, ' rotate(0deg) scale(1)') },
-        { transform: tr(hat.lx - 4, hat.ly - 2, ' rotate(-6deg) scale(1)'), offset: 0.16 },
-        { transform: tr((hat.lx + endX) / 2, Math.min(hat.ly, endY) - 20, ' rotate(-14deg) scale(' + ((1 + sc) / 2).toFixed(3) + ')'), offset: 0.58 },
-        { transform: tr(endX, endY, ' rotate(8deg) scale(' + sc.toFixed(3) + ')') }
+        { transform: tr(hat.lx, hat.ly, ' rotate(0deg) scale(1, 1)') },
+        { transform: tr(hat.lx - 4, hat.ly - 2, ' rotate(-6deg) scale(1, 1)'), offset: 0.16 },
+        { transform: tr(hat.lx + (midX - hat.lx) * 0.55, hat.ly + (midY - hat.ly) * 0.72,
+          ' rotate(-11deg) scale(0.02, ' + edgeY.toFixed(3) + ')'), offset: 0.42 },
+        { transform: tr(midX, midY, ' rotate(-14deg) scale(' + (-mid).toFixed(3) + ', ' + mid.toFixed(3) + ')'), offset: 0.58 },
+        { transform: tr(endX, endY, ' rotate(8deg) scale(' + (-sc).toFixed(3) + ', ' + sc.toFixed(3) + ')') }
       ], { duration: LIFT, easing: 'ease-in-out' });
 
       // The raccoon under it: a dip as it takes hold, and up again.
@@ -3048,10 +3070,14 @@
       return Promise.all([lift, dip, watch]);
     }).then(ok).then(function () {
       /* The swap, and away. The worn hat goes on at the transform the
-         lift just ended on, so nothing moves in this frame. */
+         lift just ended on, so nothing moves in this frame -- the mirror
+         included, or the point would face left all the way up and then
+         snap back to the right as it landed. scaleX comes last in the
+         list and so applies first, the same order the lift ends on, which
+         is what keeps the 8 degrees leaning the same way. */
       var k = 1.1, onHead = document.createElement('div');
       onHead.style.cssText = 'position:absolute;left:0;top:0;width:' + (30 * k * 0.9) + 'px;height:' + (26 * k * 0.9) + 'px;transform:translate(' +
-        (51 * 1.1 - 15 * k * 0.9) + 'px,' + (17 * 1.1 - 22 * k * 0.9) + 'px) rotate(8deg)';
+        (51 * 1.1 - 15 * k * 0.9) + 'px,' + (17 * 1.1 - 22 * k * 0.9) + 'px) rotate(8deg) scaleX(-1)';
       onHead.innerHTML = hatSvg();
       coon.appendChild(onHead);
       hat.remove();
@@ -3625,7 +3651,11 @@
      rarely in listening, not in hours since the machine was switched on. */
   var TICK = 1000;
   function nextSmall(cast) { return rand(cast.gap[0], cast.gap[1]) * 1000; }
-  function nextBig(first) { return (first ? rand(8, 30) : rand(12, 35)) * 60000; }
+  /* The first one comes sooner than the rest: somebody who has just put
+     this face on has not seen it, and a scene they never get to is the
+     same as no scene. After that it is rarer, so that coming across one
+     stays an event rather than a feature of the furniture. */
+  function nextBig(first) { return (first ? rand(8, 30) : rand(15, 35)) * 60000; }
 
   /* A change of face clears the stage: whatever was on it belonged to the
      old one. Asked before anything is played, as well as every tick, so a
@@ -3748,8 +3778,79 @@
     // In order round from the top, which is the order the rings join them in.
     ends.sort(function (p, q) { return Math.atan2(p.y - C.y, p.x - C.x) - Math.atan2(q.y - C.y, q.x - C.x); });
     var key = ends.map(function (e) { return Math.round(e.x) + ':' + Math.round(e.y); }).join(',');
-    // How far the spider must let itself down to hang clear below the name.
-    web.below = n.bottom - d.top;
+    /* Where the spider is allowed to come to rest.
+
+       Anywhere clear of the writing: in a gap between two lines of it, or
+       below the last line. Which of those it takes is picked afresh every
+       time it goes down, so it is not always found in the same place.
+       What it may not do is stop in front of any of them -- it used to
+       measure the name alone, so it cleared that and parked squarely over
+       the line beneath, which is the very thing the rule existed to stop.
+
+       Measured by the ink and not by the boxes. A display name is set in
+       a line box far taller than its letters: by the rectangle there is
+       no gap under it worth having, and by the ink there is room for a
+       spider. An element with nothing in it is skipped rather than
+       measured -- a status between messages, or a tag a station never
+       filled in, is not a thing to hang below.
+
+       And measured against the spider's body rather than its full
+       height. Its legs trail below it -- the drawing is 17 tall and the
+       body and head account for about 13 of that, starting a pixel down
+       -- and a leg tip grazing the top of a letter is not what anybody
+       means by blocking the text. Going by the whole box instead, the
+       gap above the tag line is three pixels short and the spider would
+       never be seen there at all, which is the half of this that was
+       asked for. */
+    var inkOf = function (sel) {
+      var e = rig.tuner.querySelector(sel);
+      if (!e) return null;
+      var rr = document.createRange();
+      rr.selectNodeContents(e);
+      var list = rr.getClientRects(), lo = Infinity, hi = -Infinity;
+      for (var k = 0; k < list.length; k++) {
+        if (!list[k].height) continue;
+        lo = Math.min(lo, list[k].top);
+        hi = Math.max(hi, list[k].bottom);
+      }
+      return lo === Infinity ? null : { top: lo - d.top, bottom: hi - d.top };
+    };
+    var rows = ['.display-name', '.display-tag', '.display-status'].map(inkOf)
+      .filter(Boolean).sort(function (p, q) { return p.top - q.top; });
+    /* No padding between one line and the next: the gap above the tag is
+       fourteen pixels of clear glass and the body is thirteen, so a pixel
+       of politeness either side is what decides whether the spider is
+       ever seen up there at all. It still may not overlap any ink. */
+    var BODY = 13, PAD = 0;
+    var gaps = [];
+    for (var gi = 0; gi < rows.length - 1; gi++) gaps.push([rows[gi].bottom + PAD, rows[gi + 1].top - PAD]);
+    if (rows.length) gaps.push([rows[rows.length - 1].bottom + PAD, disp.clientHeight - 24]);
+    web.gaps = gaps.filter(function (g) { return g[1] - g[0] >= BODY; });
+    // The old single answer, kept for a face that somehow offers no gap at all.
+    web.below = (rows.length ? rows[rows.length - 1].bottom : n.bottom - d.top);
+
+    /* Where the spider is right now, and the thread length that put it
+       there. Those two together are all that is needed to work out the
+       length for anywhere else: it is a delta, so nothing else has to
+       be right.
+
+       It was worked out from web.top plus a measured offset, and that
+       was wrong often enough to matter -- web.top is only refreshed on
+       the passes where the web's own shape changes, because fitWeb
+       returns early otherwise, so it can be a few pixels stale. A few
+       pixels is the difference between hanging below a line of text and
+       sitting on it, and one rest in three landed on the status line.
+
+       Taken only while it is at rest: mid-drop the transform is an
+       animation in flight and does not agree with web.len. */
+    if (!web.busy) {
+      var sr = web.spider.getBoundingClientRect();
+      if (sr.height) {
+        web.restTop = sr.top - d.top;
+        web.restLen = web.len;
+        web.boxH = sr.height;
+      }
+    }
     if (key === web.key) return;
     /* A web that was already up dissolves into the new one -- a new
        station's name, or the window changed size -- rather than jumping:
@@ -3818,13 +3919,41 @@
       return web.silk.animate(frames, { duration: dur, easing: 'ease-in-out' }).finished;
     };
     web.busy = true;
-    /* Down in two goes, a pause between: part way, then on until it hangs
-       clear below the name -- never stopping in front of the letters --
-       and short of the bottom of the glass. */
+    /* Down in two goes, with a pause between: part way, then on to
+       wherever it has decided to stop, and never past the bottom of the
+       glass.
+
+       Where it stops is one of the gaps fitWeb worked out, taken at
+       random -- above the tag line or below it, or below the status
+       under that -- and then a random spot within whichever gap it drew,
+       so two visits to the same gap do not look like the same visit. */
     var disp = rig.tuner.querySelector('.display');
     var floor = (disp ? disp.clientHeight : 300) - (web.top || 0) - 24;
-    var clear_ = Math.min(floor, Math.max(SILK_REST + 40, (web.below || 0) - (web.top || 0) + 4));
-    var deep = Math.min(floor, clear_ + rand(0, 22));
+    var deep;
+    if (web.gaps && web.gaps.length && web.restTop != null) {
+      var gap = web.gaps[Math.floor(Math.random() * web.gaps.length)];
+      /* The body is what has to sit in the gap, and it starts a pixel
+         below the top of the drawing -- so the drawing itself is placed
+         a pixel higher than the body wants to be, and the legs take the
+         overhang. */
+      var BODY_TOP = 1, BODY_H = 13, boxH = web.boxH || 17;
+      var slack = Math.max(0, (gap[1] - gap[0]) - BODY_H);
+      var boxTop = gap[0] + rand(0, slack) - BODY_TOP;
+      /* Held inside the gap and inside the glass, in the coordinates
+         the gap is written in. The cap used to be applied to the
+         thread length against a floor worked out from web.top -- and
+         web.top goes stale, so a rest picked for the open space under
+         the status was quietly pulled back up onto it. Clamping the
+         landing instead keeps the whole decision in one coordinate
+         system, where it cannot come out on top of a line of text. */
+      var lowest = disp.clientHeight - 24 - boxH;
+      boxTop = Math.max(gap[0] - BODY_TOP, Math.min(boxTop, gap[1] - BODY_H - BODY_TOP, lowest));
+      /* A delta from where it is hanging now, which is the one thing
+         about its position that is known to be true. */
+      deep = Math.max(SILK_REST + 10, web.restLen + (boxTop - web.restTop));
+    } else {
+      deep = Math.min(floor, Math.max(SILK_REST + 40, (web.below || 0) - (web.top || 0) + 4));
+    }
     return Promise.resolve().then(function () { return let_(SILK_REST + (deep - SILK_REST) * rand(0.4, 0.65), rand(7, 11)); }).then(live)
       .then(function () { return wait(rand(1200, 3500)); }).then(live)
       .then(function () { return let_(deep, rand(7, 11)); }).then(live)
