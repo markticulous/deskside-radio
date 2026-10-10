@@ -1102,6 +1102,10 @@
    which works everywhere. */
 .os-win, .os-other { display: none; }
 [data-os="windows"] .os-win { display: block; }
+/* The song helper's text and switch are wrapped together so both can be
+   Windows-only, and the wrapper takes the spacing its section gives
+   everything else in it. */
+[data-os="windows"] #songHelperBlock.os-win { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 [data-os]:not([data-os="windows"]) .os-other { display: block; }
 [data-theme="dial"] .meter,
 [data-theme="marconi"] .meter,

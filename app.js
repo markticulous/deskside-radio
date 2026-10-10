@@ -1818,6 +1818,7 @@
     if (thenNote) noteUp = true;
     var back = function () {
       announcing = false;
+      el.name.removeAttribute('data-fit-whole');
       // After the name has faded back in: the note, or the line as it was.
       if (thenNote) setTimeout(songNote, 400);
       else showTag();
@@ -1838,6 +1839,8 @@
 
     announcing = true;
     showTag();
+    // Shrunk to fit on every face, never scrolled: see fitName.
+    el.name.setAttribute('data-fit-whole', '');
     TunerUI.setName(el.name, 'UPDATED TO V' + APP_VERSION);
     var still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     if (still) { setTimeout(back, ANNOUNCE_MS); return; }
