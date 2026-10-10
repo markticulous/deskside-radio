@@ -3706,7 +3706,7 @@
     root.setAttribute('aria-hidden', 'true');
     root.innerHTML = '<svg class="hw-threads" width="100%" height="100%" fill="none" stroke="#1c0802" stroke-width=".9">' +
       '<path class="hw-spokes" stroke-opacity=".55"/><path class="hw-rings" stroke-opacity=".55"/><path class="hw-rim" stroke-opacity=".38"/></svg>' +
-      '<div class="hw-silk"><svg class="hw-thread" width="1" height="1" overflow="visible"><path d="M0 0V1" stroke="rgba(28,8,2,.62)" stroke-width=".8" vector-effect="non-scaling-stroke"/></svg><div class="hw-spider">' + SPIDER_SVG + '</div></div>';
+      '<div class="hw-silk"><svg class="hw-thread" width="1" height="1" overflow="visible"><path d="M0 0V1" fill="none" stroke="rgba(28,8,2,.62)" stroke-width=".8" vector-effect="non-scaling-stroke"/></svg><div class="hw-spider">' + SPIDER_SVG + '</div></div>';
     disp.appendChild(root);
     var web = rig.web = { root: root, spokes: root.querySelector('.hw-spokes'), rings: root.querySelector('.hw-rings'), rim: root.querySelector('.hw-rim'),
       silk: root.querySelector('.hw-silk'), thread: root.querySelector('.hw-thread'), spider: root.querySelector('.hw-spider'),
@@ -3815,19 +3815,34 @@
       }
       return lo === Infinity ? null : { top: lo - d.top, bottom: hi - d.top };
     };
-    var rows = ['.display-name', '.display-tag', '.display-status'].map(inkOf)
-      .filter(Boolean).sort(function (p, q) { return p.top - q.top; });
-    /* No padding between one line and the next: the gap above the tag is
-       fourteen pixels of clear glass and the body is thirteen, so a pixel
-       of politeness either side is what decides whether the spider is
-       ever seen up there at all. It still may not overlap any ink. */
-    var BODY = 13, PAD = 0;
-    var gaps = [];
-    for (var gi = 0; gi < rows.length - 1; gi++) gaps.push([rows[gi].bottom + PAD, rows[gi + 1].top - PAD]);
-    if (rows.length) gaps.push([rows[rows.length - 1].bottom + PAD, disp.clientHeight - 24]);
-    web.gaps = gaps.filter(function (g) { return g[1] - g[0] >= BODY; });
-    // The old single answer, kept for a face that somehow offers no gap at all.
-    web.below = (rows.length ? rows[rows.length - 1].bottom : n.bottom - d.top);
+    /* Two places to stop, both against the tag line -- the codec, the
+       bitrate and the city -- and picked between at random each time:
+       just above it, and just below it.
+
+       There used to be a third, the open glass under the status, and it
+       was the wrong one. It is the biggest space on the display, so a
+       random spot in it was usually a long way down, and the spider ran
+       past everything and hung in front of the tuning scale.
+
+       Placed by the body, a pixel clear of the tag's ink either side,
+       and only kept if the body is also clear of the name and the
+       status. The gap above the tag is fourteen pixels on this face and
+       the body is thirteen, which is why it is measured in ink and
+       not in boxes. */
+    var BODY = 13, BODY_TOP = 1;
+    var nameInk = inkOf('.display-name'), tagInk = inkOf('.display-tag'), statusInk = inkOf('.display-status');
+    var clearOf = function (bt) {
+      var bb = bt + BODY;
+      return [nameInk, statusInk].every(function (r) { return !r || bb <= r.top || bt >= r.bottom; });
+    };
+    web.rests = [];
+    if (tagInk) {
+      var above = tagInk.top - 1 - BODY, below = tagInk.bottom + 1;
+      if (clearOf(above)) web.rests.push(above - BODY_TOP);
+      if (clearOf(below)) web.rests.push(below - BODY_TOP);
+    }
+    // A face with no tag line: hang clear below the name, as it always did.
+    web.below = nameInk ? nameInk.bottom : n.bottom - d.top;
 
     /* Where the spider is right now, and the thread length that put it
        there. Those two together are all that is needed to work out the
@@ -3902,21 +3917,93 @@
       var b = web.spider.animate([{ transform: 'translate(-10px,' + from + 'px)' }, { transform: 'translate(-10px,' + to + 'px)' }], o);
       return a.finished.then(function () { setSilk(web, to); a.cancel(); b.cancel(); });
     };
-    /* A draught, not a pendulum: a gust that builds, flutters and dies,
-       a few degrees either way at most, at uneven moments, while the
-       spider turns slowly on its thread. */
+    /* A draught, not a pendulum: a gust that builds, flutters and dies, at
+       uneven moments.
+
+       It used to rotate the whole silk, thread and spider together, as one
+       rigid piece -- which kept the strand dead straight however hard the
+       gust, and a straight line swinging from a pin reads as a pendulum,
+       not as silk in moving air. What the breeze actually catches is the
+       spider: it swings out, tilts with its abdomen kicked downwind, and
+       pulls the strand into a bow behind it. See TILT and REACH inside.
+
+       None of that can be done with a transform -- no rotation bends a
+       line -- so for the length of a gust the thread is a path redrawn
+       each frame and the spider is placed at its end. That is a few
+       seconds of main-thread work every minute or two, against the
+       compositor transform it replaces: a fair price for the one thing on
+       the face meant to look as if it is moving through air. Straight and
+       scaled again the moment the gust and the swing home are over.
+
+       The path is drawn with fill="none", and has to be. SVG fills a path
+       unless told otherwise, closing an open one back to its start to do
+       it; straight, the thread enclosed nothing and it never mattered,
+       but bent, the whole sliver between the bow and the chord was
+       painted solid and the strand looked as if it were swelling. */
     var drift = function () {
-      var dur = rand(7000, 11000), dirn = Math.random() < 0.5 ? -1 : 1, A = rand(2.5, 4.5), n = 12, frames = [], spin = [];
-      for (var i = 0; i <= n; i++) {
-        var t = i / n, env = t < 0.3 ? t / 0.3 : Math.pow(1 - (t - 0.3) / 0.7, 1.4);
-        var v = i === 0 || i === n ? 0 : env * A * (0.65 * dirn + rand(-0.45, 0.45));
-        frames.push({ transform: 'rotate(' + v.toFixed(2) + 'deg)', offset: i === 0 || i === n ? t : Math.min(1, Math.max(0, t + rand(-0.03, 0.03))) });
-      }
-      frames.sort(function (p, q) { return p.offset - q.offset; });
-      var turn = rand(15, 35) * (Math.random() < 0.5 ? -1 : 1);
-      spin = [{ transform: 'rotate(0deg)' }, { transform: 'rotate(' + turn + 'deg)', offset: 0.45 }, { transform: 'rotate(' + (turn * 0.4) + 'deg)', offset: 0.75 }, { transform: 'rotate(0deg)' }];
-      web.spider.querySelector('svg').animate(spin, { duration: dur, easing: 'ease-in-out' });
-      return web.silk.animate(frames, { duration: dur, easing: 'ease-in-out' }).finished;
+      /* One gust: it builds over the first third, then dies away. The
+         whole thing is a handful of smooth functions of time, because it
+         used to be twelve keyframes with a random angle and a jittered
+         moment each, and however gently they were blended the swing
+         changed its mind every second or so. Wind has flutter in it, but
+         flutter is a ripple on a swing, not a new swing.
+
+         Twelve to eighteen degrees at the height of it. */
+      var dur = rand(7000, 11000), dirn = Math.random() < 0.5 ? -1 : 1, A = rand(12, 18);
+      var f1 = rand(1.4, 2.2), f2 = rand(4, 6), p1 = rand(0, 6.283), p2 = rand(0, 6.283);
+      var swing = function (u) {
+        var env = u < 0.3 ? (function (x) { return x * x * (3 - 2 * x); })(u / 0.3) : Math.pow(1 - (u - 0.3) / 0.7, 1.4);
+        var flutter = 0.8 + 0.14 * Math.sin(6.283 * f1 * u + p1) + 0.06 * Math.sin(6.283 * f2 * u + p2);
+        return dirn * A * env * flutter;
+      };
+
+      var path = web.thread.querySelector('path'), body = web.spider.querySelector('svg');
+      var L = web.len, t0 = performance.now();
+
+      /* What the breeze catches is the spider, and mostly the back of it:
+         the abdomen hangs below the head, where the thread holds on, so a
+         gust swings the body out and kicks the abdomen out further,
+         tilting the spider about the point it hangs from. Blown right, its
+         back end goes right. It tilts a beat behind the swing because the
+         abdomen has weight: TILT is degrees of lean per degree of swing,
+         FOLLOW how fast it catches up, per frame. */
+      var TILT = 2.2, FOLLOW = 0.07, lean = 0;
+
+      /* And the strand bows out downwind behind it, from the web down.
+         The control point of the curve is carried out past the spider by
+         BOW times the spider's own swing, and sits a little above half
+         way, so the curve leaves the anchor at a lean, bellies out, and
+         comes back in to the spider's head. The bow is proportional to
+         the swing, so it is nothing at rest and most at the height of the
+         gust. Earlier cuts had it at a fraction of the swing, which on an
+         0.8px line over 140px is a bow nobody can see. */
+      var BOW = 1.2, WAIST = 0.45;
+
+      var straighten = function () {
+        path.setAttribute('d', 'M0 0V1');
+        body.style.transform = '';
+        setSilk(web, L);
+      };
+      return new Promise(function (done) {
+        (function frame(now) {
+          // Stopped mid-gust -- a new station, the face changed -- put it back straight and go.
+          if (rig.web !== web || web.gen !== gen) { straighten(); done(); return; }
+          var u = Math.min(1, (now - t0) / dur);
+          var deg = swing(u), th = deg * Math.PI / 180;
+          var ex = L * Math.sin(th), ey = L * Math.cos(th);
+          var cx = ex * 0.5 + ex * BOW, cy = ey * WAIST;
+          web.thread.style.transform = 'none';
+          path.setAttribute('d', 'M0 0Q' + cx.toFixed(2) + ' ' + cy.toFixed(2) + ' ' + ex.toFixed(2) + ' ' + ey.toFixed(2));
+          web.spider.style.transform = 'translate(' + (ex - 10).toFixed(2) + 'px,' + ey.toFixed(2) + 'px)';
+          /* Swung right is a positive angle; the abdomen out to the right
+             is an anticlockwise turn about the top of the drawing. */
+          lean += (-deg * TILT - lean) * FOLLOW;
+          body.style.transform = 'rotate(' + lean.toFixed(2) + 'deg)';
+          // Not done until the abdomen has swung home as well.
+          if (u < 1 || Math.abs(lean) > 0.25) requestAnimationFrame(frame);
+          else { straighten(); done(); }
+        })(t0);
+      });
     };
     web.busy = true;
     /* Down in two goes, with a pause between: part way, then on to
@@ -3929,42 +4016,56 @@
        so two visits to the same gap do not look like the same visit. */
     var disp = rig.tuner.querySelector('.display');
     var floor = (disp ? disp.clientHeight : 300) - (web.top || 0) - 24;
-    var deep;
-    if (web.gaps && web.gaps.length && web.restTop != null) {
-      var gap = web.gaps[Math.floor(Math.random() * web.gaps.length)];
-      /* The body is what has to sit in the gap, and it starts a pixel
-         below the top of the drawing -- so the drawing itself is placed
-         a pixel higher than the body wants to be, and the legs take the
-         overhang. */
-      var BODY_TOP = 1, BODY_H = 13, boxH = web.boxH || 17;
-      var slack = Math.max(0, (gap[1] - gap[0]) - BODY_H);
-      var boxTop = gap[0] + rand(0, slack) - BODY_TOP;
-      /* Held inside the gap and inside the glass, in the coordinates
-         the gap is written in. The cap used to be applied to the
-         thread length against a floor worked out from web.top -- and
-         web.top goes stale, so a rest picked for the open space under
-         the status was quietly pulled back up onto it. Clamping the
-         landing instead keeps the whole decision in one coordinate
-         system, where it cannot come out on top of a line of text. */
-      var lowest = disp.clientHeight - 24 - boxH;
-      boxTop = Math.max(gap[0] - BODY_TOP, Math.min(boxTop, gap[1] - BODY_H - BODY_TOP, lowest));
+    var deep, halfway = null;
+    if (web.rests && web.rests.length && web.restTop != null) {
+      /* One of the two, and exactly there: it was asked to come to rest
+         just above the tag or just below it, not somewhere in a range. */
+      var pick = Math.floor(Math.random() * web.rests.length);
+      var toLen = function (bt) { return Math.min(floor, Math.max(SILK_REST + 10, web.restLen + (bt - web.restTop))); };
       /* A delta from where it is hanging now, which is the one thing
          about its position that is known to be true. */
-      deep = Math.max(SILK_REST + 10, web.restLen + (boxTop - web.restTop));
+      deep = toLen(web.rests[pick]);
+      /* On its way to the lower of the two it stops at the upper one
+         first -- the only place on the way down that is clear of the
+         writing. On its way to the upper one it does not stop at all. */
+      if (web.rests.length > 1 && pick === web.rests.length - 1) halfway = toLen(web.rests[0]);
     } else {
       deep = Math.min(floor, Math.max(SILK_REST + 40, (web.below || 0) - (web.top || 0) + 4));
     }
-    return Promise.resolve().then(function () { return let_(SILK_REST + (deep - SILK_REST) * rand(0.4, 0.65), rand(7, 11)); }).then(live)
-      .then(function () { return wait(rand(1200, 3500)); }).then(live)
-      .then(function () { return let_(deep, rand(7, 11)); }).then(live)
+    /* Down in one go, or in two with a pause above the tag line. It
+       used to pause wherever forty to sixty-five percent of the way
+       happened to fall, which on this face is in front of the station's
+       name -- a stop of up to three and a half seconds over the very
+       thing it is meant to stay off. A face with no tag line keeps the
+       old fraction, since there is no clear spot to name instead. */
+    var first = halfway !== null ? halfway
+      : (web.rests && web.rests.length ? deep : SILK_REST + (deep - SILK_REST) * rand(0.4, 0.65));
+    return Promise.resolve().then(function () { return let_(first, rand(7, 11)); }).then(live)
+      .then(function () { return first === deep ? null : wait(rand(1200, 3500)); }).then(live)
+      .then(function () { return first === deep ? null : let_(deep, rand(7, 11)); }).then(live)
       .then(drift).then(live)
       .then(function () { return wait(rand(800, 2500)); }).then(live)
+      /* And home again, by the same rule as the way down. It used to stop
+         part way up -- thirty-five to sixty percent of the climb -- which
+         was in front of the station's name; now, coming up from below the
+         tag, it stops at the clear spot above it, and coming up from
+         there it climbs straight home. A face with no tag line keeps
+         the old fraction. */
       .then(function () {
         web.spider.classList.add('is-climbing');
-        return let_(SILK_REST + (web.len - SILK_REST) * rand(0.35, 0.6), rand(12, 16), 'linear');
+        var stop = halfway !== null ? halfway
+          : (web.rests && web.rests.length ? SILK_REST : SILK_REST + (web.len - SILK_REST) * rand(0.35, 0.6));
+        return let_(stop, rand(12, 16), stop === SILK_REST ? 'ease-out' : 'linear');
       }).then(live)
-      .then(function () { web.spider.classList.remove('is-climbing'); return wait(rand(600, 1500)); }).then(live)
-      .then(function () { web.spider.classList.add('is-climbing'); return let_(SILK_REST, rand(12, 16), 'ease-out'); })
+      .then(function () {
+        web.spider.classList.remove('is-climbing');
+        return web.len === SILK_REST ? null : wait(rand(600, 1500));
+      }).then(live)
+      .then(function () {
+        if (web.len === SILK_REST) return null;
+        web.spider.classList.add('is-climbing');
+        return let_(SILK_REST, rand(12, 16), 'ease-out');
+      })
       .then(function () {
         web.spider.classList.remove('is-climbing');
         web.busy = false;
