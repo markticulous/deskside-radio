@@ -1932,7 +1932,7 @@ test("the add key's label is sized to fit, not scrolled", () => {
   assert.ok(js.indexOf('function fitAddLabel() {') !== -1,
     'nothing sizes the add key\'s label to its button');
   const fit = js.slice(js.indexOf('function fitAddLabel() {'),
-    js.indexOf('function fitAddLabel() {') + 800);
+    js.indexOf('function fitAddLabel() {') + 1800);
   assert.ok(fit.indexOf(".querySelector('.preset-add .preset-name')") !== -1,
     'the add key\'s label is no longer the thing being sized');
   /* Only this one. A station's name is as long as it is, and shrinking
@@ -1942,8 +1942,20 @@ test("the add key's label is sized to fit, not scrolled", () => {
     'the add key is no longer the only label being shrunk');
   assert.ok(/parseFloat\(cs\.letterSpacing\) \|\| 0/.test(fit),
     'the trailing letter-spacing is no longer taken off, so a label ending at the edge shrinks for ever');
-  assert.ok(/var floor = Math\.max\(8, px \* 0?\.\d+\);/.test(fit),
+  assert.ok(/var floor = Math\.max\(8, base \* ADD_WRAP_FLOOR\);/.test(fit),
     'the floor is gone, so a narrow column can shrink the label away to nothing');
+  /* Shrinking is only allowed a little; past that it wraps. A label
+     shrunk all the way down to fit one line stops looking like the keys
+     beside it. */
+  const shrink = /var ADD_SHRINK = (0?\.\d+), ADD_WRAP_FLOOR = (0?\.\d+);/.exec(js);
+  assert.ok(shrink, 'the two limits on the add key are gone');
+  assert.ok(Number(shrink[1]) >= 0.8, 'the one-line shrink is allowed to go to ' + shrink[1] + ' of the size, which is not "a bit"');
+  assert.ok(fit.indexOf("key.classList.add('is-wrapped')") !== -1, 'nothing puts the add key onto two lines when it is far too wide');
+  const css = read('app.css');
+  assert.ok(/\.preset-add\.is-wrapped \.preset-name \{[^}]*white-space: normal;[^}]*grid-row: 1 \/ -1;/.test(css),
+    'a wrapped add key no longer lets its name break, or no longer gives it both rows');
+  assert.ok(/\.preset-add\.is-wrapped \.preset-band \{ display: none; \}/.test(css),
+    'a wrapped add key keeps its empty band row, which makes it taller than its neighbours');
 
   /* It has to be sized before the others are measured, or fitLine
      measures the label at its old size and sets it scrolling anyway. */
@@ -2073,7 +2085,7 @@ test("the preset keys fade their names the way the readout does", () => {
 
   /* The fade has to start when the travel does, and the travel has two
      delays depending on why it is moving. */
-  [['hover', '.55s'], ['is-active', '.9s']].forEach((pair) => {
+  [['hover', '.4s'], ['is-active', '.9s']].forEach((pair) => {
     const re = new RegExp('\\.preset[.:]' + pair[0]
       + ' \\.preset-name\\.can-scroll \\{ animation-delay: ' + pair[1].replace('.', '\\.') + '; \\}');
     assert.ok(re.test(css),

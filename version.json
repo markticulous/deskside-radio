@@ -1,6 +1,6 @@
 {
-  "version": "1.6.6",
+  "version": "1.6.7",
   "released": "2026-10-10",
-  "notes": "## New features & enhancements\n\n- The clock in the top bar now reads either way round. It starts as 24-hour; click it to switch to 12-hour, and click it again to switch back. Whichever you pick is remembered and comes back next time.\n- The empty preset key now says only \"Add station\". It used to carry a second line describing the form it opens, which on a crowded row wrapped and made that key taller than the ones beside it.\n- That key also sizes its own label to fit its button, so it is no longer cut short on the faces set in a wide display type.\n- Enhancements to seasonal themes.\n\n## Bug fixes\n\n- The schedule chip beside the clock no longer steps sideways when the clock changes format, or at noon and midnight.\n- The clock takes the keyboard like any other control, and now draws the app's own focus ring rather than the browser's default box.\n- Fixes in seasonal themes.",
+  "notes": "## New features & enhancements\n\n- The \"Add station\" key fits its label better. If the words are only a little too wide for the key they are made slightly smaller; if they are much too wide they go onto two lines, \"Add\" over \"station\", so the key stays the same height as the ones beside it.\n- A station's name on a preset key starts scrolling a little sooner when you hover over it.\n- Enhancements to seasonal themes.\n\n## Bug fixes\n\n- Fixes in seasonal themes.",
   "url": "https://github.com/Markticulous/deskside-radio/releases/latest"
 }
