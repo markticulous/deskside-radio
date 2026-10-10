@@ -2136,23 +2136,30 @@
 
      Half-pixel steps throughout, which is finer than the eye and cheap.
 
-     scrollWidth carries the trailing letter-spacing of the last
-     character, which draws nothing -- the same phantom overflow fitLine
-     documents -- so it comes off before the comparison or a label that
-     ends exactly at the edge shrinks for ever. */
+     Any overflow at all counts. The trailing letter-spacing of the last
+     character draws nothing, and was once forgiven for that reason -- but
+     Chrome puts its ellipsis on it all the same, and a label a pixel over
+     came out as ADD STATI... with the fit believing it fitted.
+
+     Two lines must never make the key taller than its neighbours, not by
+     a pixel. It did, by one to four, and that made the radio taller; the
+     window was refitted to it, the refit nudged the keys' width, the
+     label went back onto one line, the radio got shorter, and round again
+     -- the window flickering between two sizes for seconds on end. So a
+     wrapped key is held to its neighbour's exact height, and the label is
+     stepped down until it fits inside that, so what it does can no longer
+     reach the height of anything. */
   var ADD_SHRINK = 0.85, ADD_WRAP_FLOOR = 0.6;
   function fitAddLabel() {
     var name = el.presets.querySelector('.preset-add .preset-name');
     if (!name) return;
     var key = name.parentNode;
     key.classList.remove('is-wrapped');
+    key.style.height = '';
     name.style.fontSize = '';
     if (!name.clientWidth) return;
     var base = parseFloat(getComputedStyle(name).fontSize) || 14, px = base;
-    var over = function () {
-      var cs = getComputedStyle(name);
-      return name.scrollWidth - name.clientWidth - (parseFloat(cs.letterSpacing) || 0) > 1;
-    };
+    var over = function () { return name.scrollWidth > name.clientWidth; };
     var size = function (v) { px = v; name.style.fontSize = v.toFixed(2) + 'px'; };
 
     // A little too wide: a little smaller.
@@ -2163,9 +2170,11 @@
     key.classList.add('is-wrapped');
     size(base);
     var other = el.presets.querySelector('.preset:not(.preset-add)');
-    var tall = other ? other.offsetHeight : 0;
+    var tall = other ? other.getBoundingClientRect().height : 0;
+    if (tall) key.style.height = tall + 'px';
     var floor = Math.max(8, base * ADD_WRAP_FLOOR);
-    while (px - 0.5 >= floor && (over() || (tall && key.offsetHeight > tall + 0.5))) size(px - 0.5);
+    var spills = function () { return over() || name.scrollHeight > name.clientHeight || key.scrollHeight > key.clientHeight; };
+    while (px - 0.5 >= floor && spills()) size(px - 0.5);
   }
 
   /* With no name wrapping, every row is the same height, so the scrolling
