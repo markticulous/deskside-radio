@@ -382,7 +382,49 @@
   var SEASONS = { halloween: 10, harvest: 11, christmas: 12, spring: 4 };
 
   function isSeasonal(key) { return Object.prototype.hasOwnProperty.call(SEASONS, key); }
-  function inSeason(key, now) { return !isSeasonal(key) || SEASONS[key] === now.getMonth() + 1; }
+
+  /* Where the listener is, as far as the app can tell -- set once at
+     start-up by app.js, before the saved settings are read. Only 'CA'
+     unlocks anything; null, the default, unlocks nothing, so a test or a
+     page that never asks gets exactly the old behaviour. */
+  var region = null;
+  function setRegion(r) { region = r || null; }
+
+  /* Canadian Thanksgiving: the second Monday in October, worked out for
+     whichever year is asked about rather than kept in a table that runs
+     out. The first Monday is the 1st plus however many days it takes to
+     reach one; the second is a week after. */
+  function thanksgiving(year) {
+    var first = 1 + (8 - new Date(year, 9, 1).getDay()) % 7;
+    return new Date(year, 9, first + 7);
+  }
+
+  /* Early weekends: a theme offered ahead of its own month, for a short
+     window, to listeners in one country. One so far -- the autumn face for
+     the Canadian Thanksgiving long weekend, from six on the Friday evening
+     to the last second of the holiday Monday. Local time throughout, the
+     same clock the months are read from. */
+  var EARLY = {
+    harvest: { region: 'CA', window: function (year) {
+      var mon = thanksgiving(year).getDate();
+      return { start: new Date(year, 9, mon - 3, 18, 0, 0, 0), end: new Date(year, 9, mon, 23, 59, 59, 999) };
+    } }
+  };
+  function earlyWindow(key, now) {
+    var e = Object.prototype.hasOwnProperty.call(EARLY, key) ? EARLY[key] : null;
+    if (!e || e.region !== region) return null;
+    var w = e.window(now.getFullYear());
+    return now >= w.start && now <= w.end ? w : null;
+  }
+  /* In season only because of an early weekend -- not in its own month.
+     The picker says so in place of the usual "until" date. */
+  function earlyOnly(key, now) {
+    return isSeasonal(key) && SEASONS[key] !== now.getMonth() + 1 && !!earlyWindow(key, now);
+  }
+
+  function inSeason(key, now) {
+    return !isSeasonal(key) || SEASONS[key] === now.getMonth() + 1 || !!earlyWindow(key, now);
+  }
 
   // The seasonal theme whose month this is, or null.
   function seasonOf(now) {
@@ -391,18 +433,31 @@
     return null;
   }
 
-  // The last day it is offered: day 0 of the month after is the last of its own.
-  function seasonEnd(key, now) { return new Date(now.getFullYear(), SEASONS[key], 0); }
+  /* The last day it is offered: day 0 of the month after is the last of
+     its own -- or, on an early weekend, the end of that weekend. */
+  function seasonEnd(key, now) {
+    var w = earlyOnly(key, now) ? earlyWindow(key, now) : null;
+    return w ? w.end : new Date(now.getFullYear(), SEASONS[key], 0);
+  }
 
-  /* One mark per season per year, so next October is news again. */
-  function seasonTag(key, now) { return key + '-' + now.getFullYear(); }
+  /* One mark per season per year, so next October is news again. An early
+     weekend is its own mark: seeing it in October must not use up the
+     news that the theme's own month brings in November. */
+  function seasonTag(key, now) {
+    return key + (earlyOnly(key, now) ? '-early-' : '-') + now.getFullYear();
+  }
 
   /* A season nobody has been shown yet this year: the gear, the tab and the
-     card say so until the Theme tab has been opened. */
+     card say so until the Theme tab has been opened. The month's own
+     season first, then any early weekend running alongside it. */
   function unseenSeason(seen, now) {
-    var k = seasonOf(now);
-    if (!k) return null;
-    return Array.isArray(seen) && seen.indexOf(seasonTag(k, now)) !== -1 ? null : k;
+    var ks = [seasonOf(now)];
+    for (var k in EARLY) if (earlyOnly(k, now)) ks.push(k);
+    for (var i = 0; i < ks.length; i++) {
+      if (!ks[i]) continue;
+      if (!(Array.isArray(seen) && seen.indexOf(seasonTag(ks[i], now)) !== -1)) return ks[i];
+    }
+    return null;
   }
 
   /* The month as a mark: a seasonal theme picked outside its own month --
@@ -417,6 +472,12 @@
   function themeFor(state, now) {
     if (inSeason(state.theme, now)) return state.theme;
     if (state.seasonHold === monthTag(now)) return state.theme;
+    /* An early weekend has ended under it: back to whatever was showing
+       when it was picked -- which may itself have been a seasonal theme
+       still in its own month, so this is checked before the everyday one
+       is reached for. */
+    var was = state.themeBeforeEarly;
+    if (THEMES.indexOf(was) !== -1 && was !== state.theme && inSeason(was, now)) return was;
     var back = state.themeBeforeSeason;
     return THEMES.indexOf(back) !== -1 && !isSeasonal(back) ? back : 'dial';
   }
@@ -505,6 +566,7 @@
     settle: settle, occupancy: occupancy, suggestSlot: suggestSlot, shapeOf: shapeOf, hhmm: hhmm,
     validateSlots: validateSlots,
     THEMES: THEMES, isSeasonal: isSeasonal, inSeason: inSeason, seasonOf: seasonOf,
-    seasonEnd: seasonEnd, seasonTag: seasonTag, unseenSeason: unseenSeason, themeFor: themeFor, monthTag: monthTag
+    seasonEnd: seasonEnd, seasonTag: seasonTag, unseenSeason: unseenSeason, themeFor: themeFor, monthTag: monthTag,
+    setRegion: setRegion, thanksgiving: thanksgiving, earlyOnly: earlyOnly
   };
 });

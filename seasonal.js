@@ -70,7 +70,7 @@
      letters that send for the big one. */
   var CAST = {
     halloween: { small: ['skeleton'], gap: [150, 360], big: 'broom', combo: 'hal' },
-    harvest:   { small: ['turkey'], gap: [25, 70], big: 'wkrp', combo: 'aut' },
+    harvest:   { small: ['turkey', 'scarecrow', 'crow'], gap: [25, 70], big: 'wkrp', combo: 'aut' },
     christmas: { small: ['snowman', 'elf', 'cardinal'], gap: [90, 240], big: 'sleigh', combo: 'noe' },
     spring:    { small: ['duck', 'umbrella', 'butterfly', 'rainbow'], gap: [70, 200], big: 'ark', combo: 'apr' }
   };
@@ -494,15 +494,273 @@
     stage.appendChild(t.el);
     return t;
   }
-  function pose(t, name) { t.face.innerHTML = turkeySvg(name); }
-  function face(t, dir) { t.facing = dir; t.face.style.transform = dir < 0 ? 'scaleX(-1)' : ''; }
+  /* A change of pose is a blend, not a swap. The new drawing comes in over
+     the old one and the old one goes once it is covered -- a seventh of a
+     second, long enough that legs and neck do not jump from one place to
+     another, short enough that it never reads as two turkeys. A pose
+     asked for while one is still coming in takes over from it. */
+  var POSE_MS = 140;
+  function pose(t, name) {
+    var face = t.face;
+    if (!face.firstChild) { face.innerHTML = turkeySvg(name); return; }
+    Array.prototype.forEach.call(face.querySelectorAll('[data-going]'), function (n) { n.remove(); });
+    Array.prototype.forEach.call(face.children, function (n) { n.setAttribute('data-going', ''); });
+    var box = document.createElement('div');
+    box.innerHTML = turkeySvg(name);
+    var next = box.firstChild;
+    next.style.position = 'absolute'; next.style.left = '0'; next.style.top = '0';
+    next.style.width = '100%'; next.style.height = '100%';
+    face.style.position = 'relative';
+    face.appendChild(next);
+    var a = next.animate([{ opacity: 0 }, { opacity: 1 }], { duration: POSE_MS, easing: 'ease-out' });
+    a.finished.then(function () {
+      Array.prototype.forEach.call(face.querySelectorAll('[data-going]'), function (n) { n.remove(); });
+      next.style.position = ''; next.style.width = ''; next.style.height = '';
+    }, function () {});
+  }
+
+  /* The turkey in the round, for turning.
+
+     Flat drawings flipped, squeezed or swapped all read as a cut-out
+     being turned over. This is the turkey built from parts placed in
+     three dimensions -- body, both wings, the tail fan, legs, neck, head,
+     beak, snood, wattle, each eye -- and drawn from any angle: each
+     part's position is turned about the vertical through the body's
+     centre, projected, and the parts painted back to front. So as it
+     comes round, the near wing slides across the body and the far one
+     goes behind it, the fan opens out behind as it faces you, the beak
+     swings through pointing at you, one eye comes into view as the other
+     goes, and the feet step round.
+
+     Positions are in the side drawing's own units: f forward of the
+     body's centre (42, in the box's -16..90), s out to the side, toward
+     us when it faces right, y down the box. yaw 0 faces right, PI/2
+     faces us, PI faces left. headYaw is the head's own heading, which
+     can differ from the body's: it looks about without moving its feet. */
+  var TK_CX = 42;
+  function turkeyRound(yaw, feet, dip, nod, headYaw) {
+    var c = Math.cos(yaw), sn = Math.sin(yaw);
+    /* The flat drawing is mirrored about the middle of its box (37), not
+       about the body (42), so facing left it sits ten units further left;
+       the model slides with it as it comes round, to be where the flat
+       drawing is at either end. */
+    var shift = -5 * (1 - c);
+    var X = function (f, sd) { return TK_CX + shift + f * c - sd * sn; };
+    var D = function (f, sd) { return f * sn + sd * c; };
+    var n = function (v) { return v.toFixed(2); };
+    var items = [];
+    var add = function (depth, svg) { items.push([depth, svg]); };
+    dip = dip || 0; nod = nod || 0;
+
+    /* Legs: the hips go round with the body; each foot has its own
+       heading, and stays planted until it is its turn to step -- lifted,
+       swung round about the turkey's centre to the new heading, set down. */
+    [-4, 4].forEach(function (sd, i) {
+      var ft = feet ? feet[i] : { yaw: yaw, lift: 0 };
+      var fc = Math.cos(ft.yaw), fs = Math.sin(ft.yaw);
+      var FX = function (f, d) { return TK_CX + shift + f * fc - d * fs; };
+      // A little apart fore and aft, as the flat drawing's two legs are.
+      var lf = sd * 0.5, hx = X(lf, sd), fx = FX(lf, sd), fy = 72 - ft.lift;
+      var toe = function (df, ds, dy) { return 'M' + n(fx) + ' ' + n(fy) + 'L' + n(FX(lf + df, sd + ds)) + ' ' + n(fy + dy - ft.lift * 0.15); };
+      add(D(lf, sd) - 20, '<path d="M' + n(hx) + ' ' + (54 + dip) + 'Q' + n((hx + fx) / 2 + (fx - hx) * 0.2) + ' ' + n(63 + dip / 2 - ft.lift * 0.6) + ' ' + n(fx) + ' ' + n(fy) + toe(6, 0, 1.5) + toe(4, 2.5, 2) + toe(4, -2.5, 2) + toe(-4, 0, 0.5) +
+        '" stroke="#e0a030" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>');
+    });
+
+    // The tail fan: seven feathers from a root behind the body, spread
+    // across its back and swept a little backward.
+    var FAN = ['#8a4a1e', '#c9772a', '#e8b24a', '#c9772a', '#e8b24a', '#c9772a', '#8a4a1e'];
+    [-75, -50, -25, 0, 25, 50, 75].forEach(function (deg, i) {
+      /* Side on, the fan is exactly the flat drawing's -- a half wheel
+         from well back to a little forward of upright, about the same
+         root, the same length -- so the hand-over between the two, at a
+         stop and at the start of a run, shows no change in it. Facing us
+         it is the full wheel across its back; in between, a blend of the
+         two, weighted by how side-on it is. */
+      var wS = c * c, r = deg * Math.PI / 180, Lh = 22 + 14 * wS, back = (26 - 0.5867 * deg) * Math.PI / 180;
+      var df = wS * -Math.sin(back) + (1 - wS) * (-0.45 * Math.cos(r) - 0.25);
+      var ds = (1 - wS) * 1.1 * Math.sin(r);
+      var dy = wS * -Math.cos(back) + (1 - wS) * -Math.cos(r) * 0.95;
+      var f0 = -11 - 5 * wS, y0 = 38 + dip;
+      var mx = X(f0 + df * Lh / 2, ds * Lh / 2), my = y0 + dy * Lh / 2;
+      var ex = X(f0 + df * Lh, ds * Lh) - X(f0, 0), ey = dy * Lh;
+      var len = Math.hypot(ex, ey), ang = Math.atan2(ex, -ey) * 180 / Math.PI;
+      // Side on, the forward feathers lie over the back ones, as drawn flat.
+      add(D(f0 + df * Lh * 0.5, ds * Lh * 0.5) - 14 + (wS * deg * Math.sign(c || 1) + (1 - wS) * Math.abs(deg)) * 0.001,
+        '<ellipse cx="' + n(mx) + '" cy="' + n(my) + '" rx="' + n(5.2 - 0.2 * wS) + '" ry="' + n(Math.max(5.2, len / 2 + 2 - 5 * wS)) + '" transform="rotate(' + n(ang) + ' ' + n(mx) + ' ' + n(my) + ')" fill="' + FAN[i] + '" stroke="#4a240e" stroke-width="1"/>');
+    });
+
+    // Body: longer than it is wide, so it narrows as it comes round.
+    add(0, '<ellipse cx="' + n(X(0, 0)) + '" cy="' + (42 + dip) + '" rx="' + n(Math.hypot(17 * c, 13 * sn)) + '" ry="14" fill="#6b3a1c" stroke="#3a1c0a" stroke-width="1.2"/>');
+    // The breast, lighter, on the front of it.
+    add(D(9, 0) * 0.3 + 0.5, '<ellipse cx="' + n(X(9, 0)) + '" cy="' + (47 + dip) + '" rx="' + n(Math.hypot(5 * c, 8 * sn)) + '" ry="9" fill="#8a4f28" opacity="' + n(0.25 + 0.5 * Math.max(0, sn)) + '"/>');
+
+    // Wings, one each side, flat against the body.
+    [12, -12].forEach(function (sd) {
+      var wx = X(-9, sd), rx = Math.hypot(10 * c, 3 * sn), tilt = -12 * c;
+      add(D(-3, sd) * 1.2, '<ellipse cx="' + n(wx) + '" cy="' + (40 + dip) + '" rx="' + n(rx) + '" ry="7.5" transform="rotate(' + n(tilt) + ' ' + n(wx) + ' ' + (40 + dip) + ')" fill="#4a240e" stroke="#301606" stroke-width="1"/>');
+    });
+
+    // Neck, then the head on it.
+    var hf = 17, hy = 17 + dip + nod, hD = D(hf, 0) + 10;
+    add(D(12, 0) + 6, '<path d="M' + n(X(9, 0)) + ' ' + (38 + dip) + 'Q' + n(X(16, 0)) + ' ' + (28 + dip) + ' ' + n(X(hf, 0)) + ' ' + n(hy) + '" fill="none" stroke="#c96a5a" stroke-width="6" stroke-linecap="round"/>');
+    add(hD, '<circle cx="' + n(X(hf, 0)) + '" cy="' + n(hy) + '" r="7" fill="#d07a66"/>');
+    // The head's own parts go round on its own heading, about its centre.
+    if (headYaw === undefined) headYaw = yaw;
+    var hc = Math.cos(headYaw), hs = Math.sin(headYaw);
+    var HX = function (f, d) { return X(hf, 0) + (f - hf) * hc - d * hs; };
+    var HDr = function (f, d) { return (f - hf) * hs + d * hc; };
+    var HD = function (f, d) { return D(hf, 0) + HDr(f, d); };
+    // Wattle, hanging under the beak.
+    add(hD + HDr(hf + 3, 0) * 0.1 + 0.2, '<path d="M' + n(HX(hf, 0)) + ' ' + n(hy + 6) + 'Q' + n(HX(hf + 1, 0)) + ' ' + n(hy + 15) + ' ' + n(HX(hf - 3, 0)) + ' ' + n(hy + 16) + 'Q' + n(HX(hf - 2.5, 0)) + ' ' + n(hy + 10) + ' ' + n(HX(hf - 2, 0)) + ' ' + n(hy + 5) + 'Z" fill="#d1122e"/>');
+    // Eyes: each drawn as much as it faces us.
+    [[3.6, -1], [-3.6, 1]].forEach(function (E) {
+      var es = E[0] * 1.45, ef = 1.8, see = 0.6 * hs + (E[0] > 0 ? 1 : -1) * hc;
+      if (see < 0.08) return;
+      var ex2 = HX(hf + ef, es), ey2 = hy - 3.4, rx = 3.8 * Math.min(1, see * 1.15);
+      var px = HX(hf + ef + 1.6, es * 1.08);
+      add(hD + 0.5, '<ellipse cx="' + n(ex2) + '" cy="' + n(ey2) + '" rx="' + n(rx) + '" ry="3.8" fill="#fff" stroke="#301606" stroke-width=".8"/>' +
+        '<circle cx="' + n(px) + '" cy="' + n(ey2 + 0.3) + '" r="' + n(1.7 * Math.min(1, see * 1.4)) + '" fill="#000"/>');
+    });
+    // Beak, pointing the way it faces, at us as it comes round.
+    var bt = [[hf + 5, 1.8, hy - 1.5], [hf + 5, -1.8, hy - 1.5], [hf + 5, 0, hy + 2.5]];
+    var tip = [hf + 13, 0, hy + 1.2];
+    var bD = HD(hf + 9, 0) + 10.6;
+    var tri = function (a1, b1) {
+      return '<path d="M' + n(HX(a1[0], a1[1])) + ' ' + n(a1[2]) + 'L' + n(HX(b1[0], b1[1])) + ' ' + n(b1[2]) + 'L' + n(HX(tip[0], tip[1])) + ' ' + n(tip[2]) + 'Z" fill="#f2b233" stroke="#c98a14" stroke-width=".5" stroke-linejoin="round"/>';
+    };
+    add(bD, tri(bt[0], bt[1]) + tri(bt[1], bt[2]) + tri(bt[2], bt[0]));
+    // Snood, draped over the beak.
+    add(bD + 0.1, '<path d="M' + n(HX(hf + 4, 0)) + ' ' + n(hy - 3) + 'Q' + n(HX(hf + 10, 0)) + ' ' + n(hy + 3) + ' ' + n(HX(hf + 7, 0)) + ' ' + n(hy + 11) + '" fill="none" stroke="#d1122e" stroke-width="2.4" stroke-linecap="round"/>');
+
+    items.sort(function (p1, p2) { return p1[0] - p2[0]; });
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 0 106 80" width="100%" height="100%" overflow="visible">' +
+      items.map(function (it) { return it[1]; }).join('') + '</svg>';
+  }
+
+  /* Turning round. The flat drawing hands over to the model, the model
+     turns, and -- unless the turkey is stopped and looking about, when the
+     model stays on until it runs again, so nothing is swapped between one
+     turn and the next -- hands back to the flat drawing at the end.
+
+     The turn always goes by way of facing us, eased in and out, the body
+     dipping a little as the weight goes over. The feet step round under
+     it in four steps, left, right, left, right, each lifted and set down
+     on the new heading, the body leading them slightly the way a body
+     does. Three quarters of a second.
+
+     The hand-overs are a straight swap, in one frame. They were fades,
+     and a fade between two drawings that do not line up exactly is two
+     turkeys, one through the other, for as long as it lasts. */
+  var TURN_MS = 760;
+  var STEPS = [[[0, 0.34], [0.48, 0.8]], [[0.2, 0.54], [0.66, 1]]];
+  function roundOn(t) {
+    if (t.roundOn) return;
+    t.roundOn = true;
+    if (!t.round) {
+      t.round = document.createElement('div');
+      t.round.className = 'st-face';
+      t.round.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;opacity:0';
+      t.el.appendChild(t.round);
+    }
+    t.yaw = t.headYaw = t.facing < 0 ? Math.PI : 0;
+    t.feet = [{ yaw: t.yaw, lift: 0 }, { yaw: t.yaw, lift: 0 }];
+    t.dip = 0;
+    var round = t.round, born = performance.now();
+    var draw = function (now) {
+      // A slow nod while it stands and looks.
+      round.innerHTML = turkeyRound(t.yaw, t.feet, t.dip, Math.sin((now - born) / 1000 * 2.6) * 0.9, t.headYaw);
+    };
+    draw(born);
+    round.style.opacity = '1';
+    t.face.style.opacity = '0';
+    (function frame(now) {
+      if (!t.roundOn || !round.isConnected) return;
+      draw(now);
+      requestAnimationFrame(frame);
+    })(born);
+  }
+  function roundOff(t) {
+    if (!t.roundOn) return;
+    t.roundOn = false;
+    t.face.style.transform = t.facing < 0 ? 'scaleX(-1)' : '';
+    t.round.style.opacity = '0';
+    t.face.style.opacity = '';
+  }
+  /* Looking back over its shoulder, or ahead again: the head alone turns,
+     by way of looking at us, most of the way round. The body and feet
+     stay as they are. back: true to look behind, false to look ahead. */
+  var LOOK_MS = 230;
+  function look(t, back) {
+    roundOn(t);
+    var y0 = t.headYaw, ahead = t.facing < 0 ? Math.PI : 0;
+    var y1 = back ? (t.facing < 0 ? Math.PI * 0.1 : Math.PI * 0.9) : ahead, start = null;
+    return new Promise(function (done) {
+      (function frame(now) {
+        if (!t.round.isConnected) { done(); return; }
+        if (start === null) start = now;
+        var k = Math.min(1, (now - start) / LOOK_MS);
+        t.headYaw = y0 + (y1 - y0) * k * k * (3 - 2 * k);
+        if (k < 1) { requestAnimationFrame(frame); return; }
+        done();
+      })(performance.now());
+    });
+  }
+  function face(t, dir) {
+    var to = dir < 0 ? -1 : 1;
+    if (t.facing === to && t.faced) return Promise.resolve();
+    var from = t.facing < 0 ? -1 : 1;
+    /* Its first facing is set, not turned into: a turkey that has only
+       just been drawn -- out of the helicopter door, or off the edge of
+       the set -- was never facing the other way to begin with. */
+    var first = !t.faced;
+    t.faced = true;
+    if (first || from === to) { t.facing = to; t.face.style.transform = to < 0 ? 'scaleX(-1)' : ''; return Promise.resolve(); }
+    roundOn(t);
+    t.facing = to;
+    var y0 = t.yaw, y1 = to > 0 ? 0 : Math.PI, start = null;
+    var smooth = function (v) { v = Math.max(0, Math.min(1, v)); return v * v * (3 - 2 * v); };
+    return new Promise(function (done) {
+      (function frame(now) {
+        if (!t.round.isConnected) { done(); return; }
+        if (start === null) start = now;
+        var k = Math.min(1, (now - start) / TURN_MS);
+        t.yaw = y0 + (y1 - y0) * smooth(k);
+        t.headYaw = y0 + (y1 - y0) * smooth(k * 1.2);
+        t.dip = Math.sin(Math.PI * k) * 1.4;
+        STEPS.forEach(function (w, i) {
+          var prog = 0, lift = 0;
+          w.forEach(function (win) {
+            var u = (k - win[0]) / (win[1] - win[0]);
+            prog += smooth(u) / 2;
+            if (u > 0 && u < 1) lift = Math.sin(Math.PI * u) * 5;
+          });
+          t.feet[i] = { yaw: y0 + (y1 - y0) * prog, lift: lift };
+        });
+        if (k < 1) { requestAnimationFrame(frame); return; }
+        if (!t.hold) roundOff(t);
+        done();
+      })(performance.now());
+    });
+  }
   function place(t, x, y) { t.x = x; t.y = y; t.el.style.transform = tr(x, y); }
-  function runTo(t, x) {
+  /* slow: true to slow to a stop over the last stretch, at steady
+     braking, rather than halting dead -- for a turkey that stops. The
+     braking stretch takes twice as long as it would at a run, starting at
+     running speed, so there is no change of speed where it begins. */
+  var BRAKE_PX = 70;
+  function runTo(t, x, slow) {
     pose(t, 'run');
     face(t, x > t.x ? 1 : -1);
-    var from = tr(t.x, t.y), dur = Math.abs(x - t.x) / RUN_PX_S * 1000;
+    var from = tr(t.x, t.y), dist = Math.abs(x - t.x), dur = dist / RUN_PX_S * 1000;
+    var x0 = t.x;
     t.x = x;
-    return move(t.el, [{ transform: from }, { transform: tr(x, t.y) }], { duration: dur, easing: 'linear' });
+    if (!slow || dist < BRAKE_PX * 2) return move(t.el, [{ transform: from }, { transform: tr(x, t.y) }], { duration: dur, easing: 'linear' });
+    var xb = x - (x > x0 ? 1 : -1) * BRAKE_PX, run = (dist - BRAKE_PX) / RUN_PX_S * 1000, brake = BRAKE_PX / RUN_PX_S * 2000;
+    return move(t.el, [
+      { transform: from, easing: 'linear' },
+      { transform: tr(xb, t.y), offset: run / (run + brake), easing: 'cubic-bezier(.33,.66,.66,1)' },
+      { transform: tr(x, t.y) }
+    ], { duration: run + brake });
   }
 
   /* Checks, between steps, that the scene is still wanted. */
@@ -522,17 +780,25 @@
     if (Math.random() < 0.42) {
       // Stops somewhere in the middle, looks about, and goes back.
       var stopX = rand(W * 0.25, W * 0.7);
-      p = runTo(t, stopX).then(ok).then(function () {
+      p = runTo(t, stopX, true).then(ok).then(function () {
         pose(t, 'stand');
+        t.hold = true;             // in the round from here until it runs again
+        roundOn(t);
         return wait(rand(700, 1100));
       }).then(ok).then(function () {
-        face(t, -t.facing);        // looks back the way it came
+        return look(t, true);      // looks back the way it came
+      }).then(ok).then(function () {
         return wait(rand(800, 1200));
       }).then(ok).then(function () {
-        face(t, -t.facing);        // and forward again
+        return look(t, false);     // and forward again
+      }).then(ok).then(function () {
         return wait(rand(900, 1500));
       }).then(ok).then(function () {
-        return runTo(t, startX);   // thinks better of it
+        return face(t, -t.facing); // thinks better of it, turns round
+      }).then(ok).then(function () {
+        t.hold = false;
+        roundOff(t);
+        return runTo(t, startX);   // and goes back
       });
     } else {
       p = runTo(t, endX);
@@ -3636,7 +3902,739 @@
     }).then(function () { yard.remove(); }, function (e) { yard.remove(); throw e; });
   }
 
-  var SCENES = { skeleton: skeletonWalk, turkey: turkeyRun, wkrp: wkrp, snowman: snowman, elf: elfFix, cardinal: cardinal, sleigh: sleigh,
+  /* ------------------------------------------------------------------ */
+  /* Autumn Gobble: the scarecrow on his pole.                          */
+  /* ------------------------------------------------------------------ */
+
+  /* Standing on his one wooden leg, arms out along the crossbar, in a
+     patched check shirt with straw at the neck, the cuffs and the hem, a
+     burlap head with button eyes and a stitched smile, and a floppy hat.
+     viewBox 60 x 100; the foot of the pole is the bottom edge, which is
+     what stands on the key. His head and hat bob a little on their own,
+     at about the pace of a hop, so he does not move as one stiff piece. */
+  /* A small Canadian flag on a stick, for the Thanksgiving weekend: red,
+     a white square with the maple leaf, red, at two to one. Held upright
+     in his right hand -- the one on our left, since he faces us -- and
+     flying outward from the top of the stick, rippling on its own. */
+  var MAPLE = 'M0-5L1-3L2.2-3.6L1.8-1.2L3.6-2.6L4.4-1.6L5-2L4.4 0L5 .6L2.2 2.2L2.6 3L.4 2.8L.4 5H-.4L-.4 2.8L-2.6 3L-2.2 2.2L-5 .6L-4.4 0L-5-2L-4.4-1.6L-3.6-2.6L-1.8-1.2L-2.2-3.6L-1-3Z';
+  function canadaFlag() {
+    // Scaled about his fist, so it grows upward and outward from his hand.
+    return '<g transform="translate(5.4 43) scale(1.35) translate(-5.4 -43)">' +
+      // The stick, through his fist at the cuff.
+      '<path d="M5.4 43V19.6" stroke="#6b4320" stroke-width="1" stroke-linecap="round"/>' +
+      '<circle cx="5.4" cy="19.4" r=".8" fill="#d9a441"/>' +
+      // The flag, hinged at the stick, rippling.
+      '<g transform="translate(5.4 20.2)"><g>' +
+        '<animateTransform attributeName="transform" type="skewY" values="0;-7;0;5;0" dur="1.3s" repeatCount="indefinite"/>' +
+        '<rect x="-12.6" y="0" width="12.6" height="6.3" fill="#fff" stroke="#b9b2a6" stroke-width=".25"/>' +
+        '<rect x="-12.6" y="0" width="3.15" height="6.3" fill="#d52b1e"/>' +
+        '<rect x="-3.15" y="0" width="3.15" height="6.3" fill="#d52b1e"/>' +
+        '<path d="' + MAPLE + '" transform="translate(-6.3 3.15) scale(.48)" fill="#d52b1e"/>' +
+      '</g></g>' +
+    '</g>';
+  }
+
+  function scarecrowSvg(flag) {
+    var straw = function (x, y, dir) {
+      var d = '';
+      for (var i = -2; i <= 2; i++) d += 'M' + x + ' ' + y + 'l' + (dir * 4.5) + ' ' + (i * 1.6);
+      return '<path d="' + d + '" stroke="#e9c15a" stroke-width="1.1" stroke-linecap="round"/>';
+    };
+    var tufts = function (y) {
+      var d = '';
+      for (var i = 0; i < 7; i++) d += 'M' + (17 + i * 4.3) + ' ' + y + 'l' + ((i % 2 ? 1 : -1) * 0.8) + ' 4.2';
+      return '<path d="' + d + '" stroke="#e9c15a" stroke-width="1.1" stroke-linecap="round"/>';
+    };
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 100" width="100%" height="100%" overflow="visible">' +
+      // The pole, and the crossbar his arms are tied along.
+      '<rect x="28.4" y="50" width="3.2" height="50" rx="1" fill="#8a5a2b" stroke="#5a3418" stroke-width=".6"/>' +
+      '<rect x="5" y="36.6" width="50" height="2.6" rx="1" fill="#7a4c22"/>' +
+      // Arms: check sleeves, straw at the cuffs.
+      '<rect x="7" y="34.6" width="14" height="7" rx="2" fill="#c8452c"/>' +
+      '<rect x="39" y="34.6" width="14" height="7" rx="2" fill="#c8452c"/>' +
+      '<path d="M11 34.6v7M16 34.6v7M44 34.6v7M49 34.6v7" stroke="#8f2a1a" stroke-width="1" opacity=".55"/>' +
+      '<path d="M7 38h14M39 38h14" stroke="#f2b45a" stroke-width=".9" opacity=".55"/>' +
+      straw(7, 38, -1) + straw(53, 38, 1) +
+      (flag ? canadaFlag() : '') +
+      // The shirt: checks, a patch, straw out of the hem.
+      '<clipPath id="sc-shirt"><path d="M19 33h22l3 27H16Z"/></clipPath>' +
+      '<path d="M19 33h22l3 27H16Z" fill="#c8452c" stroke="#8f2a1a" stroke-width=".7"/>' +
+      '<g clip-path="url(#sc-shirt)">' +
+        '<path d="M23 33v28M29 33v28M35 33v28M41 33v28" stroke="#8f2a1a" stroke-width="1.4" opacity=".5"/>' +
+        '<path d="M15 40h30M15 47h30M15 54h30" stroke="#f2b45a" stroke-width="1" opacity=".55"/>' +
+      '</g>' +
+      '<rect x="32" y="46" width="6" height="6" fill="#e3a13c" stroke="#7a4c22" stroke-width=".5" stroke-dasharray="1 .8"/>' +
+      tufts(59.4) +
+      '<path d="M24 31l-1.4 3M27 31l-.4 3.4M33 31l.4 3.4M36 31l1.4 3" stroke="#e9c15a" stroke-width="1.1" stroke-linecap="round"/>' +
+      // Head and hat, bobbing on their own.
+      '<g><animateTransform attributeName="transform" type="translate" values="0 0;0 1.3;0 0" dur=".56s" repeatCount="indefinite"/>' +
+        '<circle cx="30" cy="23" r="10.4" fill="#e7c48a" stroke="#b48a50" stroke-width=".7"/>' +
+        '<path d="M22.5 18.5l1.2 1M37.5 18.5l-1.2 1" stroke="#b48a50" stroke-width=".6"/>' +
+        '<circle cx="26.3" cy="22" r="2" fill="#3a2a1a"/><circle cx="33.7" cy="22" r="2" fill="#3a2a1a"/>' +
+        '<circle cx="25.7" cy="21.4" r=".6" fill="#fff"/><circle cx="33.1" cy="21.4" r=".6" fill="#fff"/>' +
+        '<circle cx="23.6" cy="26" r="2.1" fill="#f08a7a" opacity=".6"/><circle cx="36.4" cy="26" r="2.1" fill="#f08a7a" opacity=".6"/>' +
+        '<path d="M30 23.6l2.6 1.4-2.6 1Z" fill="#e8752a"/>' +
+        '<path d="M25 27.4Q30 31.4 35 27.4" fill="none" stroke="#6a3a1a" stroke-width=".9" stroke-dasharray="1.3 1" stroke-linecap="round"/>' +
+        straw(19.8, 17.6, -0.6) + straw(40.2, 17.6, 0.6) +
+        '<ellipse cx="30" cy="14.4" rx="16.5" ry="3.3" fill="#8a5a2b" stroke="#5a3418" stroke-width=".6"/>' +
+        '<path d="M20.8 14.4Q21.6 3.2 30 3Q38.6 3.2 39.2 14.4Z" fill="#a46a34" stroke="#5a3418" stroke-width=".6"/>' +
+        '<rect x="21" y="10.6" width="18" height="2.6" fill="#5a3a1c"/>' +
+        '<rect x="33" y="5.6" width="4" height="3.6" fill="#d9a441" stroke="#7a4c22" stroke-width=".4" stroke-dasharray=".8 .6"/>' +
+      '</g>' +
+    '</svg>';
+  }
+
+  /* The key he hides behind, as a hole in a full-stage mask -- and on down
+     to the foot of the stage, so he can wait out of sight under it before
+     he comes up, and fall away behind it at the end. The same trick the
+     skeleton uses with its headstone, with a key's square corners. */
+  function keyMask(W, H, s) {
+    var r = Math.max(0, s.r), x = s.left - 1, y = s.top - 1, w = s.w + 2;
+    var d = 'M' + x + ' ' + (y + r) + 'Q' + x + ' ' + y + ' ' + (x + r) + ' ' + y + 'H' + (x + w - r) +
+      'Q' + (x + w) + ' ' + y + ' ' + (x + w) + ' ' + (y + r) + 'V' + (H + s.h) + 'H' + x + 'Z';
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '"><defs><mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="' + W + '" height="' + H + '">' +
+      '<rect width="' + W + '" height="' + H + '" fill="white"/><path fill="black" d="' + d + '"/></mask></defs>' +
+      '<rect width="' + W + '" height="' + H + '" mask="url(#m)"/></svg>';
+    return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+  }
+
+  /* Up from behind the playing station's key, a few hops about on top of
+     it like a pogo stick, and in the last one he goes up and comes down
+     straight on through, behind the key and gone. */
+  function scarecrow(rig) {
+    var stage = stageOf(rig), gen = rig.gen, ok = guard(rig, gen);
+    var W = stage.clientWidth, H = stage.clientHeight;
+    var row = boxIn(rig, '.presets'), t = rig.tuner.getBoundingClientRect();
+    var key = rig.tuner.querySelector('.preset.is-active');
+    if (!row || !key) return Promise.resolve();
+    var kr = key.getBoundingClientRect();
+    var S = { w: kr.width, h: kr.height, left: kr.left - t.left, top: kr.top - t.top,
+      r: parseFloat(getComputedStyle(key).borderTopLeftRadius) || 0 };
+    // The key has to be wholly in view in the row, or he would rise out of nowhere.
+    if (!(S.w > 0 && S.top >= row.y - 4 && S.top + S.h <= row.y + row.h + 4)) return Promise.resolve();
+
+    var field = document.createElement('div');
+    field.className = 'st-field';
+    field.style.width = W + 'px'; field.style.height = H + 'px';
+    field.style.webkitMaskImage = field.style.maskImage = keyMask(W, H, S);
+    stage.appendChild(field);
+
+    // About one and a half keys tall, the pole's foot on the key's top edge.
+    var h = Math.round(Math.max(72, Math.min(118, S.h * 1.6))), w = Math.round(h * 0.6);
+    /* The flag only on the Canadian Thanksgiving weekend -- the early
+       showing of this face, which the scheduler knows about. In its own
+       month, November, he goes without. */
+    var S_ = window.Scheduler, flag = !!(S_ && S_.earlyOnly && S_.earlyOnly('harvest', new Date()));
+    var sc = drawn(field, 'st-scarecrow', w, h, scarecrowSvg(flag));
+    sc.style.transformOrigin = '50% 100%';
+    // lift is height of the pole's foot above the key's top edge, up positive.
+    var place = function (x, lift, sx, sy, rot) {
+      sc.style.transform = tr(S.left + x - w / 2, S.top - h - lift,
+        ' rotate(' + rot.toFixed(2) + 'deg) scale(' + sx.toFixed(3) + ',' + sy.toFixed(3) + ')');
+    };
+    var HIDDEN = -(h + 6);
+
+    /* Simulated, not keyframed. Keyframes with easing only look like a
+       throw; this is one. One gravity for every part of it, so a higher hop
+       hangs longer exactly as it would, and a parabola in the air with the
+       sideways speed constant -- nothing pushes him sideways once he has
+       left the key. On landing the spring takes him, squashing in
+       proportion to how fast he came down, and gives it back as the next
+       push-off. He leans the way he is travelling, a beat late, and comes
+       upright on the spring.
+
+       G is in pixels a second squared, chosen so a hop of a quarter of his
+       height is in the air about half a second -- the pace of a pogo stick
+       at this size. CONTACT is how long the spring holds him. */
+    var G = 900, CONTACT = 0.13;
+    var hopsLeft = 9 + Math.floor(Math.random() * 5);
+    var x = S.w * rand(0.32, 0.68), y = HIDDEN, vx = 0, vy = 0, lean = 0;
+    var phase = 'air', last = false, tGround = 0, squash = 0;
+
+    /* Off the spring and into the air, aiming for a spot on the key and a
+       height: the speed up is what reaches that height under G, and the
+       speed across is what covers the distance in the time that takes. */
+    var launch = function (toX, height) {
+      vy = Math.sqrt(2 * G * height);
+      vx = (toX - x) / (2 * vy / G);
+      phase = 'air';
+    };
+    // Up from out of sight below the key, with a little to spare at the top.
+    vy = Math.sqrt(2 * G * (-HIDDEN + h * 0.12));
+
+    return new Promise(function (done, fail) {
+      var prev = null;
+      (function frame(now) {
+        if (rig.gen !== gen) { fail(ABORT); return; }
+        // Real elapsed time, held to a sensible step so a hidden tab does not teleport him.
+        var dt = prev === null ? 0 : Math.min(0.05, (now - prev) / 1000);
+        prev = now;
+        var follow = 1 - Math.pow(1 - 0.14, dt * 60);
+
+        if (phase === 'air') {
+          x += vx * dt;
+          vy -= G * dt;
+          y += vy * dt;
+          lean += (Math.max(-10, Math.min(10, vx * 0.08)) - lean) * follow;
+          if (last && y < HIDDEN) { done(); return; }
+          if (!last && vy < 0 && y <= 0) {
+            // Down onto the spring: how hard is how much it squashes.
+            squash = Math.min(0.16, -vy * 0.00042);
+            y = 0; vx = 0; vy = 0; phase = 'ground'; tGround = 0;
+          }
+          // A slight stretch along the way he is moving, more the faster.
+          var st = Math.min(0.05, Math.abs(vy) * 0.00009);
+          place(x, y, 1 - st * 0.5, 1 + st, lean);
+        } else {
+          tGround += dt;
+          lean += (0 - lean) * follow;
+          var k = Math.min(1, tGround / CONTACT), q = squash * Math.sin(Math.PI * k);
+          place(x, 0, 1 + q * 0.55, 1 - q, lean);
+          if (k >= 1) {
+            if (hopsLeft > 0) {
+              hopsLeft--;
+              var nx = Math.max(S.w * 0.2, Math.min(S.w * 0.8, x + S.w * rand(-0.2, 0.2)));
+              launch(nx, h * rand(0.2, 0.34));
+            } else {
+              // The last one: higher, straight up, and he never lands -- on down behind the key.
+              last = true;
+              launch(x + S.w * rand(-0.04, 0.04), h * 0.46);
+            }
+          }
+        }
+        requestAnimationFrame(frame);
+      })(performance.now());
+    }).then(function () { field.remove(); }, function (e) { field.remove(); throw e; });
+  }
+
+
+  /* ------------------------------------------------------------------ */
+  /* Autumn Gobble: the crow.                                           */
+  /* ------------------------------------------------------------------ */
+
+  /* Two drawings of the one bird, side on and facing left, sharing a
+     64 x 44 box with the feet at (34, 44) so either can stand in for the
+     other at the moment he lands or leaves.
+
+     Not black. A crow is charcoal with a blue-violet sheen on the back and
+     wings that catches the light, and it is that sheen that makes it read
+     as feathers rather than a hole in the picture. His bill, legs and feet
+     are slate grey; his eyes a light grey with a dark pupil. */
+  var CROW_INK = '#26242d', CROW_DEEP = '#1a1920', CROW_SHEEN = '#4b5272', CROW_GREY = '#5c5b63', CROW_GREY_HI = '#7d7c85', CROW_EYE = '#c8ccd2';
+  function crowEye(cx, cy, r) {
+    return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + CROW_EYE + '"/>' +
+      '<circle cx="' + (cx - r * 0.18) + '" cy="' + cy + '" r="' + (r * 0.5) + '" fill="#141318"/>' +
+      '<circle cx="' + (cx - r * 0.42) + '" cy="' + (cy - r * 0.38) + '" r="' + (r * 0.22) + '" fill="#fff"/>';
+  }
+  // Heavy, a little curved along the top, with the bristles over its base.
+  function crowBill(x, y, k) {
+    var f = function (v) { return (+v).toFixed(2); };
+    return '<path d="M' + f(x) + ' ' + f(y - 2.6 * k) + 'Q' + f(x - 5 * k) + ' ' + f(y - 2.4 * k) + ' ' + f(x - 9.6 * k) + ' ' + f(y + 0.6 * k) +
+        'Q' + f(x - 5 * k) + ' ' + f(y + 0.9 * k) + ' ' + f(x + 0.4 * k) + ' ' + f(y + 0.9 * k) + 'Z" fill="' + CROW_GREY + '"/>' +
+      '<path d="M' + f(x + 0.4 * k) + ' ' + f(y + 0.9 * k) + 'Q' + f(x - 4.6 * k) + ' ' + f(y + 1.1 * k) + ' ' + f(x - 8.8 * k) + ' ' + f(y + 1 * k) +
+        'Q' + f(x - 4.4 * k) + ' ' + f(y + 2.6 * k) + ' ' + f(x + 0.2 * k) + ' ' + f(y + 2.8 * k) + 'Z" fill="#4a4950"/>' +
+      '<path d="M' + f(x) + ' ' + f(y - 2.2 * k) + 'Q' + f(x - 4.6 * k) + ' ' + f(y - 2.1 * k) + ' ' + f(x - 8.8 * k) + ' ' + f(y + 0.4 * k) + '" fill="none" stroke="' + CROW_GREY_HI + '" stroke-width="' + f(0.5 * k) + '" opacity=".7"/>' +
+      '<path d="M' + f(x + 0.6 * k) + ' ' + f(y - 2.4 * k) + 'l' + f(-2.6 * k) + ' ' + f(0.4 * k) + 'M' + f(x + 0.8 * k) + ' ' + f(y - 1.6 * k) + 'l' + f(-2.4 * k) + ' ' + f(0.8 * k) + '" stroke="' + CROW_DEEP + '" stroke-width="' + f(0.6 * k) + '" stroke-linecap="round"/>';
+  }
+
+  function crowSitSvg() {
+    var toes = function (x) {
+      return '<path d="M' + x + ' 43.4l-4.2 .5M' + x + ' 43.4l-2.4 1M' + x + ' 43.4l3 .3" stroke="' + CROW_GREY + '" stroke-width="1.1" stroke-linecap="round"/>';
+    };
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 44" width="100%" height="100%" overflow="visible">' +
+      '<defs><linearGradient id="cwb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34333f"/><stop offset=".55" stop-color="' + CROW_INK + '"/><stop offset="1" stop-color="' + CROW_DEEP + '"/></linearGradient></defs>' +
+      // The tail, long and squared off, angled down behind him.
+      '<path d="M44 29L61 38.6Q61 41 58.4 41.2L42.4 33.2Z" fill="' + CROW_DEEP + '"/>' +
+      '<path d="M46 31.4L59 38.4" stroke="' + CROW_SHEEN + '" stroke-width=".7" opacity=".6"/>' +
+      // Legs: slate, scaled, thick for a bird of his size.
+      '<path d="M31.4 33.4L30.6 43.4M36.6 33.4L37.4 43.4" stroke="' + CROW_GREY + '" stroke-width="1.8" stroke-linecap="round"/>' +
+      '<path d="M31.2 36l.6 .2M31 38.4l.6 .2M36.8 36l.6 .2M37 38.4l.6 .2" stroke="' + CROW_GREY_HI + '" stroke-width=".5"/>' +
+      toes(30.6) + toes(37.4) +
+      // Body: deep in the chest, tapering to the tail.
+      '<path d="M16.6 22Q17.6 12.2 28.6 12.6Q43.6 13.6 50 27Q51.4 32.6 45.6 34Q33.6 36.4 25.4 33.4Q16.2 30.2 16.6 22Z" fill="url(#cwb)"/>' +
+      // The folded wing, lying along him to the tail, primaries crossing at the tip.
+      '<path d="M23 18.8Q35.6 14 47.6 24.4L58.2 36.6Q50 33.8 44.2 32.4Q32.6 31.2 25.4 27.4Z" fill="' + CROW_INK + '"/>' +
+      '<path d="M26 20.6Q36 17.2 46 24.6M28 24Q38 22 48 28.6M40 27.6L56.6 36" stroke="' + CROW_SHEEN + '" stroke-width=".8" fill="none" opacity=".75"/>' +
+      '<path d="M30 25.6Q36 24.4 42 26.6" stroke="#3b3f55" stroke-width=".6" fill="none" opacity=".8"/>' +
+      // Head, turned about the neck, with the lid that blinks.
+      '<g class="cw-head">' +
+        '<path d="M12 13.6Q12.6 5.6 20 5.4Q26.6 5.6 27.6 12.8Q27.6 18.6 22 20.6Q14.6 20.6 12 13.6Z" fill="url(#cwb)"/>' +
+        '<path d="M15 8.6Q20 6.2 25.4 9.4" stroke="' + CROW_SHEEN + '" stroke-width=".7" fill="none" opacity=".7"/>' +
+        crowBill(13.2, 12.4, 1) + crowEye(17.4, 10.8, 1.9) +
+        '<ellipse class="cw-lid" cx="17.4" cy="10.8" rx="2.3" ry="2.3" fill="#33313b" opacity="0"/>' +
+      '</g>' +
+    '</svg>';
+  }
+
+  /* The sitting crow in the round, for turning on the perch and looking
+     about. As with the turkey, a flat drawing flipped or squeezed only
+     ever looks like a cut-out; this is built from parts placed in three
+     dimensions and drawn from any angle, back to front -- tail, legs,
+     body, both folded wings, neck, head, a bill of four faces, an eye each
+     side -- so the bill swings round through pointing at us, one eye
+     comes into view as the other goes, and the near wing crosses over.
+
+     The head turns on its own heading on top of the body's. Units are
+     the sitting drawing's (0..64 by 0..44): f forward of the feet's line
+     (x 34) toward the bill, s out to the side, toward us at yaw 0, y down.
+     yaw 0 faces left, as drawn; PI/2 faces us; PI faces right. tilt is
+     the head cocked, in degrees; blink closes the eyes.
+
+     open, 0 to 1, is how far from sitting to the flying shape he is, for
+     the in-between frames of landing and taking off: the body levels and
+     slims, the head comes forward and down, the tail lifts, the legs
+     swing back, the folded wings give way to the flying ones opening out
+     from the shoulder at the given beat and flare. At 1 he is drawn as
+     the flying drawing has him, so the one hands on to the other. Only
+     ever opened side on, facing left (yaw 0) or right (PI). lift, 0 to
+     1, raises the tail from its root. */
+  function crowRound(yaw, headYaw, tilt, blink, open, beat, flare, lift) {
+    var CX = 34, o = open || 0;
+    var L = function (a, b) { return a + (b - a) * o; };
+    var n = function (v) { return v.toFixed(2); };
+    var view = function (yw) {
+      var c = Math.cos(yw), sn = Math.sin(yw);
+      return { c: c, sn: sn, X: function (f, d) { return CX - f * c + d * sn; }, D: function (f, d) { return f * sn + d * c; } };
+    };
+    var B = view(yaw), H = view(headYaw);
+    var items = [], add = function (depth, svg) { items.push([depth, svg]); };
+    var poly = function (pts, fill) {
+      return '<path d="M' + pts.map(function (q) { return n(q[0]) + ' ' + n(q[1]); }).join('L') + 'Z" fill="' + fill + '" stroke="' + fill + '" stroke-width=".3" stroke-linejoin="round"/>';
+    };
+
+    // Tail: long and squared off, angled down behind him.
+    // A slab with some depth to it, so it reads side on as well as from above.
+    var TP = function (f, d, y) { return [B.X(f, d), y]; };
+    var up = (lift || 0) * 11;
+    var rT = L(29, 19.6), rB = L(33, 24), tT = L(38.4, 17.4) - up, tB = L(41.2, 26.6) - up, tF = L(-27, -26) + up * 0.25;
+    var tail = poly([TP(-9, -2.6, rT), TP(tF, -4, tT), TP(tF, 4, tT), TP(-9, 2.6, rT)], CROW_DEEP);
+    [-3, 3].forEach(function (d) {
+      tail += poly([TP(-9, d * 0.87, rT), TP(tF, d * 1.33, tT), TP(tF, d * 1.33, tB), TP(-9, d * 0.87, rB)], '#201f27');
+    });
+    add(B.D(-18, 0) - 8, tail);
+
+    // Legs and toes.
+    [-2.6, 2.6].forEach(function (sd) {
+      var ff = L(1.4, 7), hx = B.X(L(1, 3), sd), fx = B.X(ff, sd), fy = L(43.4, 36.8);
+      var toe = function (df, ds, dy) { return 'M' + n(fx) + ' ' + n(fy) + 'L' + n(B.X(ff + df, sd + ds)) + ' ' + n(fy + dy); };
+      add(B.D(1, sd) - 6, '<path d="M' + n(hx) + ' ' + n(L(33.4, 25.4)) + 'L' + n(fx) + ' ' + n(fy) + toe(4.2, -0.8, 0.5) + toe(3.6, 0.8, 0.6) + toe(-3, 0, 0.3) +
+        '" stroke="' + CROW_GREY + '" stroke-width="1.8" stroke-linecap="round" fill="none"/>');
+    });
+
+    // Body: deep in the chest, sloping down to the tail.
+    var bx = B.X(L(1, 4.5), 0), by = L(24.4, 21.4);
+    add(0, '<ellipse cx="' + n(bx) + '" cy="' + n(by) + '" rx="' + n(Math.hypot(L(16.4, 19.4) * B.c, L(7.8, 9.5) * B.sn)) + '" ry="' + n(L(8.8, 7.7)) + '" transform="rotate(' + n(L(22, 9) * B.c) + ' ' + n(bx) + ' ' + n(by) + ')" fill="url(#cwr)"/>');
+
+    // Folded wings, one each side, lying back along him to the tail.
+    [7.2, -7.2].forEach(function (sd) {
+      if (o > 0.97) return;
+      var wx = B.X(-6, sd), ang = 24 * B.c;
+      add(B.D(-6, sd) * 1.1, '<g transform="rotate(' + n(ang) + ' ' + n(wx) + ' 25.4) translate(' + n(wx) + ' 25.4) scale(' + n(1 - o) + ') translate(' + n(-wx) + ' -25.4)">' +
+        '<ellipse cx="' + n(wx) + '" cy="25.4" rx="' + n(Math.hypot(14.5 * B.c, 2.6 * B.sn)) + '" ry="5.4" fill="' + CROW_INK + '"/>' +
+        '<path d="M' + n(wx - 12 * Math.abs(B.c)) + ' 24Q' + n(wx) + ' 21.4 ' + n(wx + 12 * Math.abs(B.c)) + ' 25" stroke="' + CROW_SHEEN + '" stroke-width=".8" fill="none" opacity=".7"/></g>');
+    });
+
+    // Neck, filling between the shoulders and the head.
+    add(B.D(9, 0) + 2, '<ellipse cx="' + n(B.X(L(9, 15), 0)) + '" cy="' + n(L(17.6, 20)) + '" rx="' + n(Math.hypot(L(4.8, 5) * B.c, L(5, 6) * B.sn)) + '" ry="' + n(L(5.8, 5.2)) + '" fill="url(#cwr)"/>');
+
+    // The head, on its own heading, its parts painted back to front.
+    var hx = B.X(L(14, 24.1), 0), hy = L(13, 19), hk = L(1, 0.88);
+    var head = [], hadd = function (depth, svg) { head.push([depth, svg]); };
+    hadd(0, '<ellipse cx="' + n(hx) + '" cy="' + hy + '" rx="7.8" ry="7.6" fill="url(#cwr)"/>');
+    var HX = function (f, d) { return hx + (H.X(f, d) - CX); };
+    var bp = { top: [6.2, 0, -1.6], l: [6.2, -2.1, 0.8], r: [6.2, 2.1, 0.8], bot: [6.2, 0, 2.8], tip: [15.8, 0, 0.6] };
+    var pt = function (q) { return [HX(q[0], q[1]), hy + q[2]]; };
+    var face = function (a1, b1, fill) {
+      var mid = [(a1[0] + b1[0] + bp.tip[0]) / 3, (a1[1] + b1[1]) / 3];
+      hadd(H.D(mid[0], mid[1]) + 7.9, poly([pt(a1), pt(b1), pt(bp.tip)], fill));
+    };
+    face(bp.top, bp.l, CROW_GREY); face(bp.top, bp.r, CROW_GREY_HI);
+    face(bp.l, bp.bot, '#4a4950'); face(bp.r, bp.bot, '#4a4950');
+    [-4.6, 4.6].forEach(function (sd) {
+      var see = H.D(0.55, sd > 0 ? 1 : -1);
+      if (see < 0.06) return;
+      var ex = HX(2.6, sd), ey = hy - 2.2, k = Math.min(1, see * 1.2);
+      var px = HX(3.4, sd * 1.05);
+      hadd(7.8, blink
+        ? '<ellipse cx="' + n(ex) + '" cy="' + n(ey) + '" rx="' + n(2.2 * k) + '" ry="2.2" fill="#33313b"/>'
+        : '<ellipse cx="' + n(ex) + '" cy="' + n(ey) + '" rx="' + n(1.9 * k) + '" ry="1.9" fill="' + CROW_EYE + '"/>' +
+          '<ellipse cx="' + n(px) + '" cy="' + n(ey) + '" rx="' + n(0.95 * k) + '" ry=".95" fill="#141318"/>' +
+          '<circle cx="' + n(px - 0.4) + '" cy="' + n(ey - 0.7) + '" r=".4" fill="#fff"/>');
+    });
+    head.sort(function (p1, p2) { return p1[0] - p2[0]; });
+    // Cocked: the head's tilt is about its own centre, which way depending on which way it faces.
+    add(B.D(14, 0) + 9, '<g transform="rotate(' + n(tilt * (H.c >= 0 ? 1 : -1)) + ' ' + n(hx) + ' ' + n(hy) + ') translate(' + n(hx) + ' ' + n(hy) + ') scale(' + n(hk) + ') translate(' + n(-hx) + ' ' + n(-hy) + ')">' +
+      head.map(function (it) { return it[1]; }).join('') + '</g>');
+
+    if (o > 0) {
+      var wg = crowWings(beat, flare), k = Math.pow(o, 0.7);
+      var g = '<g transform="' + (B.c < 0 ? 'translate(' + 2 * CX + ' 0) scale(-1 1) ' : '') + 'translate(25 19) scale(' + n(k) + ') translate(-25 -19)">';
+      add(-100, g + '<path d="' + wg.far.d + '" fill="#15141a"/></g>');
+      add(100, g + '<path d="' + wg.near.d + '" fill="#2c2a35"/><path d="' + wg.near.sheen + '" fill="none" stroke="' + CROW_SHEEN + '" stroke-width=".7" opacity=".7"/></g>');
+    }
+
+    items.sort(function (p1, p2) { return p1[0] - p2[0]; });
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 44" width="100%" height="100%" overflow="visible">' +
+      '<defs><linearGradient id="cwr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34333f"/><stop offset=".55" stop-color="' + CROW_INK + '"/><stop offset="1" stop-color="' + CROW_DEEP + '"/></linearGradient></defs>' +
+      items.map(function (it) { return it[1]; }).join('') + '</svg>';
+  }
+
+  /* In flight: long and level, head out in front, tail fanned. The wings
+     are left empty here and drawn by crowWing every frame. Legs only for
+     the last of the landing, reaching forward for the letter. */
+  function crowFlySvg() {
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 44" width="100%" height="100%" overflow="visible">' +
+      '<defs><linearGradient id="cwf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34333f"/><stop offset=".6" stop-color="' + CROW_INK + '"/><stop offset="1" stop-color="' + CROW_DEEP + '"/></linearGradient></defs>' +
+      '<path class="cwf-far" fill="#15141a"/>' +
+      // Tail spread into a rounded fan.
+      '<path d="M43 19.6L58.6 16.6Q62.4 21.6 58.6 26.8L43 24Z" fill="' + CROW_DEEP + '"/>' +
+      '<path d="M45 21.4L59.6 19.6M45 22.4L60.4 22M45 23.2L59.6 24.6" stroke="' + CROW_SHEEN + '" stroke-width=".55" opacity=".5"/>' +
+      '<g class="cwf-legs"><path d="M29 25.4L25 36.6M33 25.4L30 37" stroke="' + CROW_GREY + '" stroke-width="1.6" stroke-linecap="round"/>' +
+        '<path d="M25 36.6l-3.6-.8M25 36.6l-2.6 1.6M25 36.6l2 1.2M30 37l-3.6-.8M30 37l-2.6 1.6M30 37l2 1.2" stroke="' + CROW_GREY + '" stroke-width="1" stroke-linecap="round"/></g>' +
+      // Body and head a tenth larger than first drawn, to match him sitting.
+      '<g transform="translate(29 21.5) scale(1.1) translate(-29 -21.5)">' +
+      // Body: deep through the chest, tapering to the tail.
+      '<path d="M12 21Q14 14.4 22.6 14.6Q35 15 44 18.6Q47 21.6 44 24.6Q35 28.6 22.6 28.4Q14 27.6 12 21Z" fill="url(#cwf)"/>' +
+      '<path d="M16 17Q28 15.4 42 18.8" stroke="' + CROW_SHEEN + '" stroke-width=".7" fill="none" opacity=".7"/>' +
+      // The head, held out in front on a thick neck.
+      '<path d="M5.4 19.6Q6 13.6 11.6 13.4Q17 13.6 18 18.6Q18 23.6 12.6 25Q6.4 24.6 5.4 19.6Z" fill="url(#cwf)"/>' +
+      '<path d="M8 15.8Q12 14 15.4 16.2" stroke="' + CROW_SHEEN + '" stroke-width=".6" fill="none" opacity=".7"/>' +
+      crowBill(6.4, 19.2, 0.86) + crowEye(9.6, 17.8, 1.45) + '</g>' +
+      '<path class="cwf-near" fill="#2c2a35"/>' +
+      '<path class="cwf-sheen" fill="none" stroke="' + CROW_SHEEN + '" stroke-width=".7" opacity=".7"/>' +
+    '</svg>';
+  }
+
+  /* One wing, side on, at a point in its beat.
+
+     Seen from the side a crow's wing goes up above its back and down
+     below its belly, sweeping a little behind the shoulder at the tip.
+     On the downstroke it is fully spread -- that is the stroke that does
+     the work. On the way back up the hand folds in at the wrist and the
+     tip is drawn back and in, so the wing comes up shorter and swept,
+     which is what keeps a flying bird from looking like it is waving a
+     paddle. The trailing edge ends in the fingered primaries, the long
+     separated feathers at the tip a crow is known by.
+
+     up is -1..1 (1 is the top of the stroke), rising is whether it is on
+     the way up, spread adds reach for the flare. */
+  /* flex, 0 to 1, is how far the hand is folded in -- most at the middle
+     of the upstroke, none on the downstroke, and everything between. It
+     used to be a yes or no on which way the wing was going, and the wing
+     changed shape in a single frame twice a beat. */
+  function crowWing(sx, sy, up, flex, span, spread) {
+    var fold = 1 - 0.4 * flex;
+    var L = span * fold * (1 + spread * 0.15);
+    var tipX = sx + 9 + (1 - fold) * 16, tipY = sy - L * up;
+    var rootX = sx + 17, rootY = sy + 2.4;
+    var f = function (v) { return v.toFixed(2); };
+    var d = 'M' + f(sx) + ' ' + f(sy) +
+      'Q' + f(sx - 3) + ' ' + f(sy - L * up * 0.6) + ' ' + f(tipX) + ' ' + f(tipY);
+    // The fingers: five primaries, stepping in from the tip along the trailing edge.
+    var mx = tipX + (rootX - tipX) * 0.42, my = tipY + (rootY - tipY) * 0.42;
+    var nx = -(my - tipY), ny = (mx - tipX), nl = Math.max(0.001, Math.hypot(nx, ny));
+    nx /= nl; ny /= nl;
+    for (var i = 1; i <= 5; i++) {
+      var u = i / 6, bx = tipX + (mx - tipX) * u, by = tipY + (my - tipY) * u;
+      var deep = (i % 2 ? 3.2 : 0.5) * (0.6 + 0.4 * fold);
+      d += 'L' + f(bx + nx * deep) + ' ' + f(by + ny * deep);
+    }
+    d += 'L' + f(mx) + ' ' + f(my) + 'Q' + f(rootX + 2) + ' ' + f(sy - L * up * 0.25 + 2) + ' ' + f(rootX) + ' ' + f(rootY) + 'Z';
+    var sheen = 'M' + f(sx + 1) + ' ' + f(sy) + 'Q' + f(sx - 1) + ' ' + f(sy - L * up * 0.5) + ' ' + f(tipX - (tipX - sx) * 0.2) + ' ' + f(tipY + (sy - tipY) * 0.25);
+    return { d: d, sheen: sheen };
+  }
+
+  /* Both wings at one moment of the beat.
+
+     Seen exactly side on, a flapping wing is edge-on at the middle of every
+     stroke and vanishes, and the bird is a torpedo for that instant twice
+     a beat. So he is seen from a little above -- VIEW degrees -- the angle
+     a wildlife painter draws a bird in flight from: the near wing then
+     sweeps mostly below his body and the far wing mostly above it, and
+     neither is ever lost. The flap itself is FLAP degrees either side of
+     level. In the flare both are held high and spread for the landing.
+
+     A wing that reaches out toward us drops on the screen by sin(VIEW) of
+     its length, and one reaching up rises by cos(VIEW) of it, so the near
+     wing's tip sits sin(VIEW - a) of its span below the shoulder, and the
+     far one's sin(a + VIEW) above. */
+  var CROW_VIEW = 25, CROW_FLAP = 52;
+  function crowWings(beat, flare) {
+    var a = (CROW_FLAP * Math.sin(beat)) * (1 - flare * 0.6) + flare * 38;
+    var rad = Math.PI / 180;
+    // Folded through the upstroke, peaking half-way up, eased in and out of it.
+    var r = (1 + Math.cos(beat)) / 2, flex = r * r * (1 - flare);
+    return {
+      near: crowWing(24, 20.4, -Math.sin((CROW_VIEW - a) * rad), flex, 40, flare),
+      far: crowWing(26.4, 17.2, Math.sin((a + CROW_VIEW) * rad), flex, 35, flare)
+    };
+  }
+
+  /* In off the right, down onto one of the first two letters of the name,
+     a look about, and off to the right again. */
+  function crowVisit(rig) {
+    // About one visit in three he leaves a dropping before he goes.
+    var poop = Math.random() < 0.33;
+    var stage = stageOf(rig), gen = rig.gen;
+    var W = stage.clientWidth, t = rig.tuner.getBoundingClientRect();
+    var badges = rig.tuner.querySelectorAll('.scale-badge');
+    if (!badges.length || !badges[0].offsetWidth) return Promise.resolve();
+
+    /* He lands on the AM or the FM badge at the start of the dial, either
+       one, feet on the middle of its top edge. The station's name was the
+       first perch, and the window's arch the second; the name changes under
+       him with every station, and the arch made him look too big. The
+       badges are fixed and small, and a crow on one reads as a crow on a
+       post. */
+    var m = badges[Math.floor(Math.random() * badges.length)].getBoundingClientRect();
+    var P = { x: m.left - t.left + m.width / 2, y: m.top - t.top };
+
+    // A crow about twice the badge's height across.
+    var size = Math.round(Math.max(44, Math.min(62, m.height * 2.3)));
+    var w = size, h = Math.round(size * 44 / 64), FX = 34 / 64;
+    var bird = drawn(stage, 'st-crow', w, h, '<div class="cw-sit">' + crowSitSvg() + '</div><div class="cw-fly">' + crowFlySvg() + '</div>');
+    bird.style.transformOrigin = (FX * 100) + '% 100%';
+    var q = function (sel) { return bird.querySelector(sel); };
+    var sit = q('.cw-sit'), fly = q('.cw-fly');
+    var near = q('.cwf-near'), far = q('.cwf-far'), sheen = q('.cwf-sheen'), legs = q('.cwf-legs');
+    [sit, fly].forEach(function (e) { e.style.position = 'absolute'; e.style.inset = '0'; });
+
+    /* Where his feet are, which way he faces (-1 left, as drawn; 1 right),
+       his pitch, a squash; flying or sitting; the beat (a phase in radians)
+       and how far into the flare he is. */
+    /* Only the flying drawing is ever mirrored (the sitting one is a
+       model that faces either way itself), about the feet, so the two
+       line up. */
+    fly.style.transformOrigin = (FX * 100) + '% 100%';
+    var pose = function (x, y, face, pitch, sy, flying, beat, flare, legsOut) {
+      bird.style.transform = 'translate(' + (x - w * FX).toFixed(1) + 'px,' + (y - h).toFixed(1) + 'px) scale(1,' + sy.toFixed(3) + ') rotate(' + (-face * pitch).toFixed(1) + 'deg)';
+      fly.style.transform = 'scaleX(' + (-face) + ')';
+      sit.style.display = flying ? 'none' : '';
+      fly.style.display = flying ? '' : 'none';
+      if (!flying) return;
+      var wg = crowWings(beat, flare);
+      near.setAttribute('d', wg.near.d); sheen.setAttribute('d', wg.near.sheen); far.setAttribute('d', wg.far.d);
+      legs.style.display = legsOut ? '' : 'none';
+    };
+
+    /* How he flies.
+
+       A crow flaps steadily -- four or five beats a second at cruise, deep
+       and regular, not a fluttering songbird -- and his body lifts a
+       little on each downstroke. He comes in on a shallow descent below
+       the perch and rises into it, which is how a bird kills its speed:
+       the last stretch is a flare, nose up, wings spread wide and beating
+       slower, legs reaching forward. His speed is constant until the last
+       stretch, then falls under steady braking -- speed in proportion to
+       the square root of the distance left, which is what constant
+       deceleration is. Off again, he crouches, springs, and climbs away
+       beating hard, faster every moment.
+
+       The path is a cubic Bezier, walked by arc length so the speed is
+       the speed, not the curve's parameter. */
+    var bez = function (p0, p1, p2, p3, u) {
+      var a = 1 - u;
+      return { x: a * a * a * p0.x + 3 * a * a * u * p1.x + 3 * a * u * u * p2.x + u * u * u * p3.x,
+               y: a * a * a * p0.y + 3 * a * a * u * p1.y + 3 * a * u * u * p2.y + u * u * u * p3.y };
+    };
+    var start = { x: W + w + 20, y: P.y - size * 2.2 }, end = { x: P.x, y: P.y };
+    var c1 = { x: W * 0.55 + P.x * 0.45, y: P.y - size * 1.1 }, c2 = { x: P.x + size * 1.9, y: P.y + size * 0.55 };
+    var N = 160, pts = [], len = [0];
+    for (var k = 0; k <= N; k++) pts.push(bez(start, c1, c2, end, k / N));
+    for (var k2 = 1; k2 <= N; k2++) len.push(len[k2 - 1] + Math.hypot(pts[k2].x - pts[k2 - 1].x, pts[k2].y - pts[k2 - 1].y));
+    var TOTAL = len[N];
+    var at = function (sDist) {
+      var j = 1; while (j < N && len[j] < sDist) j++;
+      var f = (sDist - len[j - 1]) / Math.max(0.001, len[j] - len[j - 1]);
+      return { x: pts[j - 1].x + (pts[j].x - pts[j - 1].x) * f, y: pts[j - 1].y + (pts[j].y - pts[j - 1].y) * f,
+               ang: Math.atan2(pts[j].y - pts[j - 1].y, pts[j].x - pts[j - 1].x) };
+    };
+    var CRUISE = 320, BRAKE = size * 2.6;
+
+    /* While he sits: a head that moves briskly but smoothly from one
+       look to the next, with holds between -- a turn to look behind him, a
+       tilt to put one eye on something, a blink now and then. Each step
+       is [facing, tilt, hold seconds, blink]; the last is a look ahead,
+       the way he is about to go. */
+    var watch = [];
+    var facing = -1, nLooks = 6 + Math.floor(Math.random() * 4);
+    for (var lk = 0; lk < nLooks; lk++) {
+      var turn = Math.random() < 0.45 ? -facing : facing;
+      facing = turn;
+      watch.push([turn, Math.random() < 0.55 ? rand(-22, 22) : rand(-5, 5), rand(0.6, 1.6), Math.random() < 0.4]);
+    }
+    watch.push([-1, 0, 0.45, false]);
+
+    return new Promise(function (done, fail) {
+      var phase = 'in', s = 0, v = CRUISE, beat = rand(0, 6.283), last = null;
+      var x = start.x, y = start.y, vx = 0, vy = 0, look = 0, hold = 0, headFace = -1, tilt = 0, tiltNow = 0, headNow = 0, pitchNow = 0, beat0 = 0, beatEnd = 0, landPitch = 0;
+      var dropEl = null, dropDown = false, dropX = 0, dropY = 0, dropV = 0, dropR = 2;
+      var blinkUntil = 0, landT = 0, offT = 0, clock = 0;
+      (function frame(now) {
+        if (rig.gen !== gen) { bird.remove(); if (dropEl) dropEl.remove(); fail(ABORT); return; }
+        var dt = last === null ? 0 : Math.min(0.05, (now - last) / 1000);
+        last = now; clock += dt;
+
+        if (phase === 'in') {
+          var left = TOTAL - s;
+          // Constant braking over the last stretch; cruise before it.
+          v = left < BRAKE ? Math.max(18, CRUISE * Math.sqrt(left / BRAKE)) : CRUISE;
+          s = Math.min(TOTAL, s + v * dt);
+          var p = at(s), flare = Math.max(0, 1 - left / BRAKE);
+          // Slower beats in the flare.
+          beat += dt * (4.4 - flare * 1.8) * 6.283;
+          var lift = -Math.sin(beat) * (1.4 + flare);     // up on the downstroke
+          /* Pitch from how steeply he is climbing or sinking, not from the
+             path's angle: flying left, that angle is near 180 degrees, and
+             a share of it stood him up on his tail. A positive turn is nose
+             up for him either way round. In the flare the nose comes up. */
+          var sink = Math.atan2(Math.sin(p.ang), Math.abs(Math.cos(p.ang))) * 180 / Math.PI;
+          var pitch = -sink * 0.35 + flare * 20;
+          pose(p.x, p.y + lift, -1, pitch, 1, true, beat, flare, flare > 0.5);
+          if (s >= TOTAL - 0.5) {
+            phase = 'land'; landT = 0; beat0 = beat;
+            // The beat runs on to the next wings-up and stops there, not jumps to it.
+            beatEnd = beat + ((Math.PI / 2 - beat) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+            if (beatEnd - beat < 1) beatEnd += 2 * Math.PI;
+            landPitch = pitch;
+          }
+        } else if (phase === 'land') {
+          /* Feet down, a give in the legs, the nose settling from the
+             flare to level, the wings slowing to a stop raised and then
+             folding in to his sides, the body settling from the flying
+             shape to the sitting one through the frames between. */
+          landT += dt;
+          var lk2 = Math.min(1, landT / 0.46);
+          var le = lk2 * lk2 * (3 - 2 * lk2), lw = 1 - Math.pow(1 - Math.min(1, lk2 / 0.55), 3);
+          var dip = Math.sin(Math.PI * Math.min(1, lk2 * 1.3)) * 0.1;
+          var lm = Math.min(1, Math.max(0, (lk2 - 0.25) / 0.75));
+          sit.innerHTML = crowRound(0, 0, 0, false, 1 - lm * lm * (3 - 2 * lm), beat0 + (beatEnd - beat0) * lw, 1);
+          pose(end.x, end.y, -1, landPitch * (1 - le), 1 - dip, false);
+          if (lk2 >= 1) { phase = 'turn'; offT = 0; }
+        } else if (phase === 'turn') {
+          /* Round to face the right, the way he will leave, by way of
+             facing us: a shuffle on the spot, eased in and out, the head a
+             little ahead of the body, with a small lift half-way. */
+          offT += dt;
+          var tk = Math.min(1, offT / 0.6);
+          var te = tk * tk * (3 - 2 * tk), th = Math.min(1, tk * 1.25);
+          sit.innerHTML = crowRound(Math.PI * te, Math.PI * th * th * (3 - 2 * th), 0, false);
+          pose(end.x, end.y - Math.sin(Math.PI * te) * size * 0.04, -1, 0, 1, false);
+          if (tk >= 1) { phase = 'sit'; look = 0; hold = rand(0.4, 0.8); headFace = -1; tilt = 0; }
+        } else if (phase === 'sit') {
+          hold -= dt;
+          if (hold <= 0) {
+            if (look >= watch.length) { phase = poop ? 'poop' : 'crouch'; offT = 0; }
+            else {
+              var st = watch[look++];
+              headFace = st[0]; tilt = st[1]; hold = st[2];
+              if (st[3]) blinkUntil = clock + 0.13;
+            }
+          }
+          // Quick, a crow's head: most of the way there in a few frames, eased at the end.
+          var ease = 1 - Math.pow(1 - 0.7, dt * 60);
+          tiltNow += (tilt - tiltNow) * ease;
+          /* Looking behind him is the head turned round on the neck, by
+             way of looking at us -- most of the way, as far as a crow's
+             neck goes. headNow is how far round, in radians. */
+          headNow += ((headFace === 1 ? Math.PI * 0.9 : 0) - headNow) * ease;
+          sit.innerHTML = crowRound(Math.PI, Math.PI - headNow, tiltNow, clock < blinkUntil);
+          var breathe = 1 + Math.sin(clock * 2.2) * 0.012;
+          pose(end.x, end.y, 1, 0, breathe, false);
+        } else if (phase === 'poop') {
+          /* Tail up, a dropping, tail down, and a shake of the feathers
+             before he goes. It falls from under the root of his tail to
+             the badge beside his feet and lands as a splat over its top
+             edge, a drip from it running slowly down the badge's face. It
+             stays a while after he has gone, and fades slowly. */
+          offT += dt;
+          var pu = Math.min(1, offT / 0.22), pd = Math.min(1, Math.max(0, (offT - 0.8) / 0.25));
+          var tl = pu * pu * (3 - 2 * pu) * (1 - pd * pd * (3 - 2 * pd));
+          sit.innerHTML = crowRound(Math.PI, Math.PI, 0, false, 0, 0, 0, tl);
+          if (offT >= 0.3 && !dropEl) {
+            var vk = w / 64;
+            dropX = end.x + (21 - 34) * vk; dropY = end.y - h + 31.5 * h / 44; dropV = 0;
+            dropR = Math.max(1.6, 2.2 * vk);
+            dropEl = document.createElement('div');
+            dropEl.className = 'st-dropping';
+            dropEl.style.cssText = 'position:absolute;left:0;top:0;width:' + (dropR * 2).toFixed(1) + 'px;height:' + (dropR * 2.6).toFixed(1) +
+              'px;border-radius:50% 50% 50% 50% / 40% 40% 60% 60%;background:radial-gradient(circle at 40% 35%,#fff 0 35%,#d9d9d4 60%,#9a9a94 100%);pointer-events:none';
+            stage.insertBefore(dropEl, bird);   // behind him, so it comes out from under the tail
+          }
+          if (dropEl && !dropDown) {
+            dropV += 1400 * dt; dropY += dropV * dt;
+            if (dropY >= end.y) {
+              dropY = end.y; dropDown = true;
+              // The splat: flattened and spread, a grey rim and a white middle.
+              dropEl.style.width = (dropR * 4.4).toFixed(1) + 'px'; dropEl.style.height = (dropR * 1.5).toFixed(1) + 'px';
+              dropEl.style.borderRadius = '48% 52% 45% 55% / 60% 55% 45% 40%';
+              dropEl.style.background = 'radial-gradient(ellipse at 45% 45%,#fff 0 30%,#e4e4df 55%,#a3a39c 85%,transparent 100%)';
+              dropEl.style.transform = 'translate(' + (dropX - dropR * 2.2).toFixed(1) + 'px,' + (dropY - dropR * 0.75).toFixed(1) + 'px)';
+              // The drip: a thin run with a bead at its foot, creeping down and slowing.
+              var drip = document.createElement('div');
+              drip.style.cssText = 'position:absolute;left:' + (dropR * 1.5).toFixed(1) + 'px;top:' + (dropR * 0.7).toFixed(1) + 'px;width:' + (dropR * 1.5).toFixed(1) +
+                'px;height:' + (dropR * 1.2).toFixed(1) + 'px;border-radius:30% 30% ' + dropR + 'px ' + dropR + 'px;background:linear-gradient(90deg,#b4b4ad,#f4f4f0 45%,#c9c9c3)';
+              var bead = document.createElement('div');
+              bead.style.cssText = 'position:absolute;left:' + (-dropR * 0.3).toFixed(1) + 'px;bottom:' + (-dropR * 0.9).toFixed(1) + 'px;width:' + (dropR * 2.1).toFixed(1) + 'px;height:' + (dropR * 2.3).toFixed(1) +
+                'px;border-radius:50% 50% 50% 50% / 45% 45% 55% 55%;background:radial-gradient(circle at 40% 40%,#fff 0 30%,#dcdcd6 65%,#a3a39c)';
+              drip.appendChild(bead);
+              dropEl.appendChild(drip);
+              drip.animate([{ height: (dropR * 1.2).toFixed(1) + 'px' }, { height: (Math.max(dropR * 4, m.height * 0.42)).toFixed(1) + 'px' }],
+                { duration: 2600, easing: 'cubic-bezier(.2,.6,.3,1)', fill: 'forwards' });
+            } else {
+              dropEl.style.transform = 'translate(' + (dropX - dropR).toFixed(1) + 'px,' + (dropY - dropR * 2.6).toFixed(1) + 'px)';
+            }
+          }
+          var shake = offT > 1.05 ? Math.sin((offT - 1.05) * 50) * 0.025 * Math.max(0, 1 - (offT - 1.05) / 0.25) : 0;
+          pose(end.x, end.y, 1, 0, 1 + shake, false);
+          if (offT >= 1.35) { phase = 'crouch'; offT = 0; }
+        } else if (phase === 'crouch') {
+          offT += dt;
+          /* Down on his legs, leaning forward, and the wings opening out
+             and up as the body comes level -- through the frames between
+             sitting and flying, ready for the first downstroke. */
+          var ck = Math.min(1, offT / 0.3), ce = ck * ck * (3 - 2 * ck);
+          var cw = Math.max(0, (ck - 0.2) / 0.8);
+          sit.innerHTML = crowRound(Math.PI, Math.PI, 0, false, cw * cw * (3 - 2 * cw), Math.PI / 2, 0.8);
+          pose(end.x, end.y, 1, -8 * ce, 1 - 0.12 * ce, false);
+          if (ck >= 1) {
+            // The spring: up and forward, then the wings take over.
+            phase = 'off'; offT = 0; x = end.x; y = end.y; vx = size * 1.4; vy = -size * 2.6; beat = Math.PI / 2; pitchNow = -8;
+          }
+        } else if (phase === 'off') {
+          // Climbing away, beating hard, faster every moment.
+          vx = Math.min(500, vx + 640 * dt);
+          vy += (size * 1.6) * dt;
+          vy = Math.min(vy, -size * 0.6);
+          x += vx * dt; y += vy * dt;
+          /* Everything carried over from the crouch eases into flight
+             instead of jumping to it: the beat speeds up from slow, the
+             wings close from their spread, the legs stretch out of the
+             squash, and the nose comes up from the forward lean. */
+          offT += dt;
+          var oe = Math.min(1, offT / 0.3);
+          beat += dt * (3.2 + 2.4 * oe) * 6.283;
+          var lf = -Math.sin(beat) * 1.8 * oe;
+          var pt = -Math.atan2(vy, vx) * 180 / Math.PI * 0.45;
+          pitchNow += (pt - pitchNow) * (1 - Math.pow(1 - 0.12, dt * 60));
+          var sq = 0.88 + 0.12 * Math.min(1, offT / 0.14);
+          pose(x, y + lf, 1, pitchNow, sq, true, beat, 0.8 * (1 - oe), offT < 0.12);
+          if (x > W + w + 30 || y < -h - 30) {
+            bird.remove();
+            if (dropEl) {
+              var de = dropEl;
+              de.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 3500, delay: 3000, fill: 'forwards' })
+                .finished.then(function () { de.remove(); }, function () { de.remove(); });
+            }
+            done(); return;
+          }
+        }
+        requestAnimationFrame(frame);
+      })(performance.now());
+    });
+  }
+
+  var SCENES = { skeleton: skeletonWalk, turkey: turkeyRun, scarecrow: scarecrow, crow: crowVisit, wkrp: wkrp, snowman: snowman, elf: elfFix, cardinal: cardinal, sleigh: sleigh,
     duck: duck, umbrella: umbrella, butterfly: butterfly, rainbow: rainbow, ark: ark, broom: broomRepair };
 
   function play(rig, name) {
@@ -4308,7 +5306,7 @@
         held = {}; typed = '';
         if (rigs[i].busy) clear(rigs[i]);
         play(rigs[i], cast.big);
-        break;
+        return;
       }
     }
   });

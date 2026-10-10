@@ -10,7 +10,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.6.6';
+  var APP_VERSION = '1.6.7';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -187,10 +187,46 @@
   /* The date the seasons are judged by. ?today=2026-10-15 stands in for it,
      so a season can be checked without waiting for it. A function rather
      than a var for the reason given above: load() runs on the next line. */
+  /* Whether the listener is in Canada, from the clock the machine keeps.
+
+     The time zone a computer is set to is the one thing about where it is
+     that the page can read for itself, at once, without asking anyone:
+     every Canadian zone has its own name in the tz database -- a machine in
+     Toronto says America/Toronto, never America/New_York -- so the list
+     below is the whole of Canada and nothing else. Nothing leaves the
+     machine to work it out, and it is known before the settings are read,
+     which matters: on an early weekend, which theme should be showing
+     depends on it, and an answer that arrived a second later would have
+     already handed the theme back.
+
+     ?region=CA (or any other code) overrides it, for testing. */
+  var CA_ZONES = ['St_Johns', 'Halifax', 'Glace_Bay', 'Moncton', 'Goose_Bay', 'Blanc-Sablon',
+    'Toronto', 'Montreal', 'Nipigon', 'Thunder_Bay', 'Iqaluit', 'Pangnirtung', 'Atikokan', 'Coral_Harbour',
+    'Winnipeg', 'Rainy_River', 'Rankin_Inlet', 'Resolute', 'Regina', 'Swift_Current',
+    'Edmonton', 'Cambridge_Bay', 'Yellowknife', 'Inuvik', 'Creston', 'Dawson_Creek', 'Fort_Nelson',
+    'Vancouver', 'Whitehorse', 'Dawson'];
+  function regionOf() {
+    var m = /[?&]region=([A-Za-z]{2})\b/.exec(location.search);
+    if (m) return m[1].toUpperCase();
+    try {
+      var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+      if (/^Canada\//.test(tz)) return 'CA';
+      if (/^America\//.test(tz) && CA_ZONES.indexOf(tz.slice(8)) !== -1) return 'CA';
+    } catch (e) { /* no Intl: say nothing rather than guess */ }
+    return null;
+  }
+
   function seasonNow() {
+    var t = /[?&]now=(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(location.search);
+    if (t) return new Date(+t[1], +t[2] - 1, +t[3], +t[4], +t[5]);
     var m = /[?&]today=(\d{4})-(\d{2})-(\d{2})/.exec(location.search);
     return m ? new Date(+m[1], +m[2] - 1, +m[3], 12) : new Date();
   }
+
+  /* Canada or not, decided before the settings are read -- load() asks
+     which theme should be showing, and on an early weekend the answer
+     depends on it. See regionOf. */
+  Scheduler.setRegion(regionOf());
 
   // ---------- state ----------
   var state = load();
@@ -2083,31 +2119,53 @@
      own label to tell you what it does reads as broken. It was being cut
      mid-word -- ADD STATIO -- on the faces set in a wide display type.
 
-     So this one is set smaller until it fits. In half-pixel steps, which
-     is finer than the eye and cheap: the loop can only run a dozen times
-     before it reaches the floor. The floor is a proportion of whatever
-     the theme asked for rather than a fixed size, because the themes do
-     not set their keys at the same size to begin with, and it is there so
-     an impossibly narrow column gets a small label rather than an
-     unreadable one.
+     So it is fitted, in two stages.
+
+     A little too wide, and it is set a little smaller -- no more than
+     SHRINK of the size the theme asked for, which is as far as it can go
+     before it stops matching the names on the keys beside it.
+
+     Wider than that, and shrinking is the wrong answer: it would have to
+     be small enough to look like a different control. So it goes onto two
+     lines instead, "Add" over "station", taking both rows of the key --
+     the blank band row underneath goes, since the second line of the name
+     is what fills it now. Then it is stepped down only as far as it must
+     be to keep the key no taller than its neighbours, so the row of keys
+     stays a row. The floor there is lower, since two lines carry the label
+     at a size one line could not.
+
+     Half-pixel steps throughout, which is finer than the eye and cheap.
 
      scrollWidth carries the trailing letter-spacing of the last
      character, which draws nothing -- the same phantom overflow fitLine
      documents -- so it comes off before the comparison or a label that
      ends exactly at the edge shrinks for ever. */
+  var ADD_SHRINK = 0.85, ADD_WRAP_FLOOR = 0.6;
   function fitAddLabel() {
     var name = el.presets.querySelector('.preset-add .preset-name');
     if (!name) return;
+    var key = name.parentNode;
+    key.classList.remove('is-wrapped');
     name.style.fontSize = '';
     if (!name.clientWidth) return;
-    var px = parseFloat(getComputedStyle(name).fontSize) || 14;
-    var floor = Math.max(8, px * 0.62);
-    while (px > floor) {
+    var base = parseFloat(getComputedStyle(name).fontSize) || 14, px = base;
+    var over = function () {
       var cs = getComputedStyle(name);
-      if (name.scrollWidth - name.clientWidth - (parseFloat(cs.letterSpacing) || 0) <= 1) return;
-      px -= 0.5;
-      name.style.fontSize = px.toFixed(2) + 'px';
-    }
+      return name.scrollWidth - name.clientWidth - (parseFloat(cs.letterSpacing) || 0) > 1;
+    };
+    var size = function (v) { px = v; name.style.fontSize = v.toFixed(2) + 'px'; };
+
+    // A little too wide: a little smaller.
+    while (over() && px - 0.5 >= base * ADD_SHRINK) size(px - 0.5);
+    if (!over()) return;
+
+    // A lot too wide: two lines, at the theme's own size to begin with.
+    key.classList.add('is-wrapped');
+    size(base);
+    var other = el.presets.querySelector('.preset:not(.preset-add)');
+    var tall = other ? other.offsetHeight : 0;
+    var floor = Math.max(8, base * ADD_WRAP_FLOOR);
+    while (px - 0.5 >= floor && (over() || (tall && key.offsetHeight > tall + 0.5))) size(px - 0.5);
   }
 
   /* With no name wrapping, every row is the same height, so the scrolling
@@ -2560,6 +2618,10 @@
     var now = seasonNow();
     if (SEASON_VIZ[next] && next !== state.theme) state.miniViz = SEASON_VIZ[next];
     if (Scheduler.isSeasonal(next) && !Scheduler.isSeasonal(state.theme)) state.themeBeforeSeason = state.theme;
+    /* Picked on an early weekend: remember exactly what it replaced, so
+       the minute the weekend ends that comes back -- even a seasonal theme
+       still in its own month, which themeBeforeSeason cannot hold. */
+    if (next !== state.theme) state.themeBeforeEarly = Scheduler.earlyOnly(next, now) ? state.theme : null;
     if (next !== state.theme) {
       state.seasonHold = Scheduler.isSeasonal(next) && !Scheduler.inSeason(next, now) ? Scheduler.monthTag(now) : null;
     }
@@ -3441,6 +3503,9 @@
      Measured live. */
   var stripShown = 0, flameAvg = 0, flameAt = 0;
   var bassEnv = 0, BASS_GAIN = 14, BASS_OVER = 1.04, BASS_FALL_MS = 320;
+  /* The same reading with a much quicker fall, for a light that has to be
+     off again between beats -- the farmhouse window. */
+  var bassSnap = 0, SNAP_FALL_MS = 90;
 
   function paintStripThump(ts) {
     var shown = strip && strip.viz && strip.viz.getAttribute('data-viz');
@@ -3492,6 +3557,7 @@
     thumpEnv = kick > thumpEnv ? kick : thumpEnv * Math.exp(-dt / 130);
     var wide = Math.max(0, Math.min(1, (e - thumpAvg * BASS_OVER) * BASS_GAIN));
     bassEnv = wide > bassEnv ? wide : bassEnv * Math.exp(-dt / BASS_FALL_MS);
+    bassSnap = wide > bassSnap ? wide : bassSnap * Math.exp(-dt / SNAP_FALL_MS);
     return thumpEnv;
   }
 
@@ -3506,8 +3572,8 @@
   function paintPumpkin(ts, target) {
     // The pumpkin, and the string of lights, which wants the same quickness.
     var face = document.documentElement.getAttribute('data-theme');
-    // April's puddle takes the kick as well.
-    if (face !== 'halloween' && face !== 'christmas' && face !== 'spring') { glowLast = 0; return; }
+    // April's puddle takes the kick as well, and so does the farmhouse window.
+    if (face !== 'halloween' && face !== 'christmas' && face !== 'spring' && face !== 'harvest') { glowLast = 0; return; }
     if (!pumpkinMeter) pumpkinMeter = el.tuner.querySelector('.meter');
     if (!pumpkinMeter) return;
     var dt = glowLast ? Math.min(100, ts - glowLast) : 16;
@@ -3515,7 +3581,8 @@
     glowAt += (target - glowAt) * (1 - Math.exp(-dt / (target > glowAt ? GLOW_RISE_MS : GLOW_FALL_MS)));
     pumpkinMeter.style.setProperty('--glow', glowAt.toFixed(3));
     pumpkinMeter.style.setProperty('--thump', (analyser && ctx && freqData ? readThump(ts) : 0).toFixed(3));
-    if (face === 'spring' || face === 'halloween') pumpkinMeter.style.setProperty('--bass', (analyser && ctx && freqData ? bassEnv : 0).toFixed(3));
+    if (face === 'spring' || face === 'halloween' || face === 'harvest') pumpkinMeter.style.setProperty('--bass', (analyser && ctx && freqData ? bassEnv : 0).toFixed(3));
+    if (face === 'harvest') pumpkinMeter.style.setProperty('--bass-snap', (analyser && ctx && freqData ? bassSnap : 0).toFixed(3));
   }
 
   var SCOPE_PTS = 30;
@@ -5261,7 +5328,8 @@
         if (!inIt) card.classList.add('is-offseason');
         season = '<span class="theme-season">' +
           (t.key === news ? '<i class="season-dot" aria-hidden="true"></i>' : '') +
-          (inIt ? 'Seasonal · until ' + MONTHS[end.getMonth()] + ' ' + end.getDate()
+          (Scheduler.earlyOnly(t.key, now) ? 'Thanksgiving weekend'
+            : inIt ? 'Seasonal · until ' + MONTHS[end.getMonth()] + ' ' + end.getDate()
                 : 'Seasonal · ' + MONTHS[end.getMonth()]) +
           '</span>';
       }

@@ -354,6 +354,13 @@
 
 .preset        { display: grid; text-align: left; min-width: 0; }
 .preset-add    { opacity: .55; }
+/* "Add station" too long for one line of its key: on two, filling both
+   rows, with the empty band row out of the way. See fitAddLabel. */
+.preset-add.is-wrapped .preset-name {
+  white-space: normal; text-overflow: clip;
+  grid-row: 1 / -1; align-self: center; line-height: 1.05;
+}
+.preset-add.is-wrapped .preset-band { display: none; }
 
 /* One line, always. Rows of presets are only a predictable height if no
    name is allowed to wrap, and a predictable height is what stops the
@@ -430,11 +437,14 @@
 .preset.is-active .preset-name.can-scroll .scroll-run {
   animation: preset-marquee var(--marquee-ms, 6s) ease-in-out infinite;
 }
-/* Hover waits; the playing station does not, and wins when both apply.
+/* Hover waits a moment -- .4s, down from .55s, which read as the key
+   being slow to notice the pointer -- so a pass across the row does not
+   set every name moving. The playing station has its own delay, and
+   wins when both apply.
    The fade is held to the same delay as the travel it is hiding the edges
    of, so the two start together. */
 .preset:hover .preset-name.can-scroll .scroll-run,
-.preset:hover .preset-name.can-scroll { animation-delay: .55s; }
+.preset:hover .preset-name.can-scroll { animation-delay: .4s; }
 .preset.is-active .preset-name.can-scroll .scroll-run,
 .preset.is-active .preset-name.can-scroll { animation-delay: .9s; }
 
@@ -489,7 +499,7 @@
      and nothing else comes with it. */
   :root.scroll-anyway .preset:hover .preset-name.can-scroll .scroll-run {
     animation: preset-marquee var(--marquee-ms, 6s) ease-in-out infinite;
-    animation-delay: .55s;
+    animation-delay: .4s;
   }
   :root.scroll-anyway .preset.is-active .preset-name.can-scroll .scroll-run {
     animation: preset-marquee var(--marquee-ms, 6s) ease-in-out infinite;
@@ -502,7 +512,7 @@
     mask-image: linear-gradient(to right, transparent 0, #000 var(--feather-l), #000 calc(100% - var(--feather-r)), transparent 100%);
     animation: preset-feather var(--marquee-ms, 6s) linear infinite;
   }
-  :root.scroll-anyway .preset:hover .preset-name.can-scroll { animation-delay: .55s; }
+  :root.scroll-anyway .preset:hover .preset-name.can-scroll { animation-delay: .4s; }
   :root.scroll-anyway .preset.is-active .preset-name.can-scroll { animation-delay: .9s; }
   /* The same reach as above, for the same reason. */
   :root.scroll-anyway[data-theme="console"] .preset:hover .preset-name.can-scroll,
@@ -1122,7 +1132,7 @@
   }
   :root.scroll-anyway .preset:hover .preset-name.can-scroll .scroll-run {
     animation: preset-marquee var(--marquee-ms, 6s) ease-in-out infinite !important;
-    animation-delay: .55s !important;
+    animation-delay: .4s !important;
   }
   :root.scroll-anyway .preset.is-active .preset-name.can-scroll .scroll-run {
     animation: preset-marquee var(--marquee-ms, 6s) ease-in-out infinite !important;
