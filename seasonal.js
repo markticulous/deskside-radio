@@ -3995,9 +3995,12 @@
           web.thread.style.transform = 'none';
           path.setAttribute('d', 'M0 0Q' + cx.toFixed(2) + ' ' + cy.toFixed(2) + ' ' + ex.toFixed(2) + ' ' + ey.toFixed(2));
           web.spider.style.transform = 'translate(' + (ex - 10).toFixed(2) + 'px,' + ey.toFixed(2) + 'px)';
-          /* Swung right is a positive angle; the abdomen out to the right
-             is an anticlockwise turn about the top of the drawing. */
-          lean += (-deg * TILT - lean) * FOLLOW;
+          /* Swung right is a positive angle, and the abdomen hangs below
+             the point the body turns about -- so turning it out to the
+             right is a clockwise turn, the same sign as the swing. The
+             first cut had this the other way and the spider leaned into
+             the wind. */
+          lean += (deg * TILT - lean) * FOLLOW;
           body.style.transform = 'rotate(' + lean.toFixed(2) + 'deg)';
           // Not done until the abdomen has swung home as well.
           if (u < 1 || Math.abs(lean) > 0.25) requestAnimationFrame(frame);
