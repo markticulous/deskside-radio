@@ -123,7 +123,7 @@ test('a title sent in capitals is put into title case', () => {
 /* On a chunked (HLS) stream the title can run well ahead of the audio,
    so a change is held back by how far behind live the player is. */
 test('a song change on a chunked stream waits for the audio to catch up', () => {
-  assert.ok(/var lag = npSong && next !== npSong \? streamLag\(\) : 0;/.test(js),
+  assert.ok(/var lag = npSong && next !== npSong \? streamLag\(\) \+ \(link\.src\.hold \|\| 0\) : 0;/.test(js),
     'song changes are no longer held back on streams that play behind live');
   assert.ok(/if \(!npHeld \|\| npHeld\.song !== next\)/.test(js),
     'every ask restarts the wait, so on a stream further behind than the asking interval the song never changes');
