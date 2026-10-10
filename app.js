@@ -2222,7 +2222,14 @@
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
   }
 
-  var ROGERS_SRC = { every: ROGERS_MS, match: rogersCall, ask: function (call) {
+  /* hold: how much further behind the broadcast this source's streams
+     run, past what the player can measure of itself. Rogers puts its own
+     ads into the online stream, and when its breaks run longer than the
+     ones on air the stream falls behind the feed: Carly Rae Jepsen was on
+     the line through the last part of the Bruno Mars song before it. A
+     fixed figure, because nothing in the stream or the feed says how far
+     -- right on average, and late now and then rather than early. */
+  var ROGERS_SRC = { every: ROGERS_MS, hold: 45000, match: rogersCall, ask: function (call) {
     return getJson('https://radio.rogersdigitalmedia.com/service/now_playing').then(function (list) {
       var me = (Array.isArray(list) ? list : []).filter(function (x) { return x && x.call_letters === call; })[0];
       if (!me) return null;
@@ -2416,7 +2423,7 @@
            not: it has usually been on a while already. A change already
            waiting for the same song keeps its place in the queue rather
            than starting the wait again on every ask. */
-        var lag = npSong && next !== npSong ? streamLag() : 0;
+        var lag = npSong && next !== npSong ? streamLag() + (link.src.hold || 0) : 0;
         if (lag > 0) {
           if (!npHeld || npHeld.song !== next) {
             clearTimeout(npHeldTimer);
