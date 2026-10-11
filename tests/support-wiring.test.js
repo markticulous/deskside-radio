@@ -101,8 +101,11 @@ test('the support card carries the app brand: mark and wordmark', () => {
 test('card brand sits at the top with a 2px gap; Support text is 1px higher; quiet buttons are centred', () => {
   const css = read('app.css');
   const brand = /\.support-card-brand \{([^}]*)\}/.exec(css)[1];
-  assert.match(brand, /align-self:\s*start/);
+  assert.match(brand, /align-content:\s*start/); // content at the top of a full-height panel
+  assert.match(brand, /align-self:\s*stretch/);
   assert.match(brand, /gap:\s*2px/);
+  assert.match(brand, /background:\s*#f3f3f3/i, 'panel fill matches the message boxes' button section');
+  assert.match(brand, /border-right:\s*1px solid #e5e5e5/i);
   const go = /\.support-card-go \{([^}]*)\}/.exec(css)[1];
   assert.match(go, /padding:\s*4px 14px 6px/, 'Support label 1px up, same total height');
   assert.match(/\.support-card-row \{([^}]*)\}/.exec(css)[1], /align-items:\s*center/);
