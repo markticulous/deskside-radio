@@ -4163,7 +4163,7 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .confirm-box h2 { margin: 0; font-size: 17px; font-weight: 600; }
 .confirm-box p { margin: 0; color: var(--ui-mute); line-height: 1.5; }
 /* Last-chance dialog only: a circled heart beside the heading. */
-.confirm-head { display: flex; align-items: center; gap: 14px; }
+.confirm-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; } /* 6px on top of the box's own gap: the message sits a little clear of the heart and its heading */
 .confirm-heart { flex: none; width: 38px; height: 38px; color: var(--ui-accent, currentColor); }
 .confirm-head h2 { min-width: 0; }
 /* The last-chance dialog's main answer is blue, as Clipee's is, rather than the app's black primary; it is a link to
