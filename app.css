@@ -4162,6 +4162,10 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .confirm-box * { box-sizing: border-box; }
 .confirm-box h2 { margin: 0; font-size: 17px; font-weight: 600; }
 .confirm-box p { margin: 0; color: var(--ui-mute); line-height: 1.5; }
+/* Last-chance dialog only: a circled heart beside the heading. */
+.confirm-head { display: flex; align-items: flex-start; gap: 14px; }
+.confirm-heart { flex: none; width: 34px; height: 34px; color: var(--ui-accent, currentColor); }
+.confirm-head h2 { min-width: 0; }
 .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
 
 /* The shortcut panel: two numbered ways out, and a path long enough that it
@@ -4635,21 +4639,21 @@ body.app.is-stowed .tuner { display: none; }
 /* Branding column: the logo centred over the wordmark, so the card reads
    as the radio speaking. Own class, not .brand-name, which every theme
    restyles (the dial face turns it into a brass plate). */
-.support-card-brand { display: grid; justify-items: center; gap: 6px; text-align: center; }
+.support-card-brand { display: grid; justify-items: center; align-self: start; gap: 2px; text-align: center; }
 .support-card-mark { width: 40px; height: 40px; display: block; }
 .support-card-brand-name { font-size: 11px; font-weight: 600; line-height: 1.2; letter-spacing: .02em; }
 .support-card-body { display: grid; gap: 8px; justify-items: start; min-width: 0; }
 .support-card-text { margin: 0; }
 .support-card-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .support-card-go {
-  padding: 5px 14px; border-radius: 999px; font-weight: 600; text-decoration: none;
+  padding: 4px 14px 6px; border-radius: 999px; font-weight: 600; text-decoration: none;
   background: var(--ui-accent, #c9a24a); color: var(--ui-bg, #1d1d1b);
 }
 /* Later, Don't ask again, I've already supported: smaller and quieter
    than Support, so the one thing the card is for is the thing it shows. */
 .support-card-quiet {
   font: inherit; font-size: 11px; color: var(--ui-mute, #9a978f);
-  background: none; border: 0; padding: 2px 0; cursor: pointer;
+  background: none; border: 0; padding: 2px 0; line-height: 1.2; align-self: center; cursor: pointer;
 }
 .support-card-quiet:hover { color: var(--ui-fg, #ecebe6); text-decoration: underline; }
 .support-card-go:focus-visible,

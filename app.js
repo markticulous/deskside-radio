@@ -7706,6 +7706,28 @@
     maybeShowSupportCard();
   }, 60000);
 
+  /* @dev-support-test begin */
+  /* TEMPORARY developer switch, parity with Clipee's --support-test: open the
+     page with #support-test and the support state is forced to "card due",
+     checked every 5 seconds, and put back after each card closes (except
+     "I've already supported"). The build removes this block from dist. */
+  if (location.hash === '#support-test') {
+    var supportTestDue = function () {
+      support = Object.assign({}, support, {
+        supporter: false, dismissedForever: false, askCount: 0, lastAskUtc: null, milestoneHit: true,
+        firstRunUtc: new Date(Date.now() - 30 * 86400000).toISOString(),
+        listenedSec: Math.max(support.listenedSec || 0, 36000)
+      });
+      saveSupport();
+    };
+    supportTestDue();
+    setInterval(maybeShowSupportCard, 5000);
+    $('supportCardGo').addEventListener('click', supportTestDue);
+    $('supportCardLater').addEventListener('click', supportTestDue);
+    $('confirmSupportLast').addEventListener('close', supportTestDue);
+  }
+  /* @dev-support-test end */
+
   paintSupport();
 
   /* ---------- version check ----------

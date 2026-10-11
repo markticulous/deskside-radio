@@ -97,3 +97,53 @@ test('the support card carries the app brand: mark and wordmark', () => {
   assert.ok(/class="support-card-brand-name">Deskside Radio</.test(card), 'card has no Deskside Radio wordmark');
   assert.ok(card.indexOf('support-card-brand') < card.indexOf('id="supportCardText"'), 'brand must come before the text');
 });
+
+test('card brand sits at the top with a 2px gap; Support text is 1px higher; quiet buttons are centred', () => {
+  const css = read('app.css');
+  const brand = /\.support-card-brand \{([^}]*)\}/.exec(css)[1];
+  assert.match(brand, /align-self:\s*start/);
+  assert.match(brand, /gap:\s*2px/);
+  const go = /\.support-card-go \{([^}]*)\}/.exec(css)[1];
+  assert.match(go, /padding:\s*4px 14px 6px/, 'Support label 1px up, same total height');
+  assert.match(/\.support-card-row \{([^}]*)\}/.exec(css)[1], /align-items:\s*center/);
+  assert.match(/\.support-card-quiet \{([^}]*)\}/.exec(css)[1], /align-self:\s*center/);
+  assert.ok(!/\d\s*vw\b/.test(/\.confirm-head[^{]*\{[^}]*\}/.exec(css)[0]), 'no vw');
+});
+
+test('the last-chance dialog shows a circled heart beside the heading, and only that dialog', () => {
+  const html = read('index.html');
+  const start = html.indexOf('id="confirmSupportLast"');
+  const dlg = html.slice(start, html.indexOf('</dialog>', start));
+  assert.ok(dlg.includes('class="confirm-head"'));
+  const svg = /<svg class="confirm-heart"[\s\S]*?<\/svg>/.exec(dlg);
+  assert.ok(svg, 'heart svg missing');
+  assert.match(svg[0], /viewBox="0 0 24 24" width="34" height="34"/);
+  assert.match(svg[0], /stroke-width="1\.1"/);
+  assert.ok(svg[0].includes('M12 17.6s-5.2-3.1-5.2-7.1a2.9 2.9 0 0 1 5.2-1.8 2.9 2.9 0 0 1 5.2 1.8c0 4-5.2 7.1-5.2 7.1z'));
+  assert.ok(dlg.indexOf('confirm-heart') < dlg.indexOf('<h2>'), 'icon before heading');
+  assert.equal((html.match(/confirm-heart/g) || []).length, 1, 'only one dialog has the icon');
+  const css = read('app.css');
+  assert.match(/\.confirm-head \{([^}]*)\}/.exec(css)[1], /display:\s*flex;\s*align-items:\s*flex-start;\s*gap:\s*14px/);
+  assert.match(css, /\.confirm-heart \{[^}]*var\(--ui-accent/);
+  assert.match(css, /:root[^{]*\{[^}]*--ui-accent:/);
+});
+
+test('the #support-test switch is fenced by markers in source and absent from dist', () => {
+  const app = read('app.js');
+  assert.ok(app.includes('/* @dev-support-test begin */') && app.includes('/* @dev-support-test end */'));
+  assert.ok(app.includes("'#support-test'"));
+  const dist = path.join(ROOT, 'dist', 'index.html');
+  if (fs.existsSync(dist)) assert.ok(!read('dist/index.html').includes('support-test'), 'dist carries the test switch');
+});
+
+test('build-dist cuts marked blocks, keeps the rest valid, and throws on an unmatched begin', () => {
+  const src = read('tools/build-dist.js');
+  const fn = /function stripDevBlocks\(js\) \{[\s\S]*?\n\}\n/.exec(src);
+  assert.ok(fn, 'stripDevBlocks not found');
+  const cut = new Function(fn[0] + '; return stripDevBlocks;')();
+  const out = cut('var a=1;\n/* @dev-support-test begin */\nvar x=2;\n/* @dev-support-test end */\nvar b=3;');
+  assert.ok(!out.includes('support-test') && !out.includes('x=2') && out.includes('a=1') && out.includes('b=3'));
+  assert.throws(() => cut('a;\n/* @dev-support-test begin */\nb;'), /no matching end/);
+  // The real app.js, stripped, still parses.
+  new Function(require('../tools/strip.js').stripJs(cut(read('app.js'))));
+});

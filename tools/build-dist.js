@@ -49,6 +49,26 @@ function inlineSafe(js) { return js.replace(/<\/script/gi, '<\\/script'); }
 function endings(text, eol) { return text.replace(/\r\n?|\n/g, '\n').split('\n').join(eol); }
 function styleSafe(css) { return css.replace(/<\/style/gi, '<\\/style'); }
 
+/* Developer-only blocks in app.js sit between @dev-support-test markers and
+   never ship: everything from a begin marker to its end marker, inclusive,
+   is cut before the comment stripper runs. A begin with no end is an error,
+   never a silent half-cut. */
+function stripDevBlocks(js) {
+  const BEGIN = '/* @dev-support-test begin */', END = '/* @dev-support-test end */';
+  let out = '';
+  let i = 0;
+  for (;;) {
+    const s = js.indexOf(BEGIN, i);
+    if (s === -1) { out += js.slice(i); break; }
+    const e = js.indexOf(END, s + BEGIN.length);
+    if (e === -1) throw new Error('app.js has a @dev-support-test begin marker with no matching end');
+    out += js.slice(i, s);
+    i = e + END.length;
+  }
+  if (out.indexOf('@dev-support-test') !== -1) throw new Error('app.js has a stray @dev-support-test marker');
+  return out;
+}
+
 function dataUri(file, type) {
   return 'data:' + type + ';base64,' + fs.readFileSync(path.join(ROOT, file)).toString('base64');
 }
@@ -89,7 +109,7 @@ const SCRIPTS = ['signal.js', 'radio-directory.js', 'scheduler.js', 'tuner-ui.js
 SCRIPTS.forEach(function (src) {
   const tag = '<script src="' + src + '"></script>';
   if (html.indexOf(tag) === -1) throw new Error('index.html no longer loads ' + src);
-  const code = read(src);
+  const code = src === 'app.js' ? stripDevBlocks(read(src)) : read(src);
   const lean = strip.stripJs(code);
   saved += bytes(code) - bytes(lean);
   html = html.replace(tag, '<script>\n' + inlineSafe(lean) + '\n</script>');
