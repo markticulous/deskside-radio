@@ -4658,7 +4658,7 @@ body.app.is-stowed .tuner { display: none; }
 .support-card-text { margin: 0; }
 .support-card-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .support-card-go {
-  padding: 4px 14px 6px; border-radius: 999px; font-weight: 600; text-decoration: none;
+  padding: 6px 14px 4px; border-radius: 999px; font-weight: 600; text-decoration: none;
   background: var(--ui-accent, #c9a24a); color: var(--ui-bg, #1d1d1b);
 }
 /* Later, Don't ask again, I've already supported: smaller and quieter
