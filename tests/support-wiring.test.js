@@ -88,3 +88,12 @@ test('the supporter adornment is wired, and the plate is never touched', () => {
   // The adornment sits beside the plate; nothing may re-skin the plate itself.
   assert.doesNotMatch(app, /data-byline['"]?\s*,|dataset\.byline\s*=/);
 });
+
+test('the support card carries the app brand: mark and wordmark', () => {
+  const html = read('index.html');
+  const card = html.slice(html.indexOf('id="supportCard"'), html.indexOf('</aside>', html.indexOf('id="supportCard"')));
+  assert.ok(card.includes('class="support-card-brand"'), 'card has no brand column');
+  assert.ok(card.includes('class="support-card-mark"'), 'card has no logo mark');
+  assert.ok(/class="support-card-brand-name">Deskside Radio</.test(card), 'card has no Deskside Radio wordmark');
+  assert.ok(card.indexOf('support-card-brand') < card.indexOf('id="supportCardText"'), 'brand must come before the text');
+});
