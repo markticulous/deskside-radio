@@ -98,7 +98,7 @@ test('the support card carries the app brand: mark and wordmark', () => {
   assert.ok(card.indexOf('support-card-brand') < card.indexOf('id="supportCardText"'), 'brand must come before the text');
 });
 
-test('card brand sits at the top with a 2px gap; Support text is 1px higher; quiet buttons are centred', () => {
+test('card brand sits at the top with a 2px gap; Support text sits centred in its button; quiet buttons are centred', () => {
   const css = read('app.css');
   const brand = /\.support-card-brand \{([^}]*)\}/.exec(css)[1];
   assert.match(brand, /align-content:\s*start/); // content at the top of a full-height panel
@@ -107,7 +107,7 @@ test('card brand sits at the top with a 2px gap; Support text is 1px higher; qui
   assert.match(brand, /background:\s*#f3f3f3/i, "panel fill matches the message boxes' button section");
   assert.match(brand, /border-right:\s*1px solid #e5e5e5/i);
   const go = /\.support-card-go \{([^}]*)\}/.exec(css)[1];
-  assert.match(go, /padding:\s*4px 14px 6px/, 'Support label 1px up, same total height');
+  assert.match(go, /padding:\s*6px 14px 4px/, 'Support label sits low enough to look centred, same total height');
   assert.match(/\.support-card-row \{([^}]*)\}/.exec(css)[1], /align-items:\s*center/);
   assert.match(/\.support-card-quiet \{([^}]*)\}/.exec(css)[1], /align-self:\s*center/);
   assert.ok(!/\d\s*vw\b/.test(/\.confirm-head[^{]*\{[^}]*\}/.exec(css)[0]), 'no vw');
