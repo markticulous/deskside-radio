@@ -4626,8 +4626,8 @@ body.app.is-stowed .tuner { display: none; }
    Fixed to the corner, so it never moves the radio around it. */
 .support-card {
   position: fixed; right: 16px; bottom: 16px; z-index: 40;
-  max-width: 420px; box-sizing: border-box; padding: 12px 14px;
-  display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: center;
+  max-width: 420px; box-sizing: border-box; padding: 0; overflow: hidden;
+  display: grid; grid-template-columns: auto 1fr; gap: 0; align-items: stretch;
   background: var(--ui-bg, #1d1d1b); color: var(--ui-fg, #ecebe6);
   border: 1px solid var(--ui-line, rgba(128,128,128,.35));
   border-radius: 1px 8px 1px 8px;
@@ -4639,10 +4639,17 @@ body.app.is-stowed .tuner { display: none; }
 /* Branding column: the logo centred over the wordmark, so the card reads
    as the radio speaking. Own class, not .brand-name, which every theme
    restyles (the dial face turns it into a brass plate). */
-.support-card-brand { display: grid; justify-items: center; align-self: start; gap: 2px; text-align: center; }
+/* The brand side is a panel flush to the card's left edge, cut from the same
+   cloth as the Clipee card and the message boxes' button section: a light
+   grey fill and one darker hairline on the edge it shares with the message. */
+.support-card-brand {
+  display: grid; justify-items: center; align-content: start; align-self: stretch; gap: 2px; text-align: center;
+  padding: 12px 14px; min-width: 76px; box-sizing: border-box;
+  background: #f3f3f3; border-right: 1px solid #e5e5e5;
+}
 .support-card-mark { width: 40px; height: 40px; display: block; }
 .support-card-brand-name { font-size: 11px; font-weight: 600; line-height: 1.2; letter-spacing: .02em; }
-.support-card-body { display: grid; gap: 8px; justify-items: start; min-width: 0; }
+.support-card-body { display: grid; gap: 8px; justify-items: start; align-content: start; min-width: 0; padding: 12px 14px; }
 .support-card-text { margin: 0; }
 .support-card-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .support-card-go {
@@ -4660,7 +4667,7 @@ body.app.is-stowed .tuner { display: none; }
 .support-card-quiet:focus-visible { outline: 1px solid var(--ui-line, currentColor); outline-offset: 2px; }
 @media (max-width: 480px) {
   .support-card { grid-template-columns: 1fr; gap: 8px; }
-  .support-card-brand { grid-auto-flow: column; justify-content: start; justify-items: start; align-items: center; text-align: left; gap: 8px; }
+  .support-card-brand { grid-auto-flow: column; justify-content: start; justify-items: start; align-items: center; text-align: left; gap: 8px; padding: 8px 14px; border-right: 0; border-bottom: 1px solid #e5e5e5; }
   .support-card-mark { width: 32px; height: 32px; }
 }
 @media (prefers-reduced-motion: reduce) { .support-card { animation: none; } }
