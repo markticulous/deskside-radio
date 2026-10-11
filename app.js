@@ -7553,6 +7553,114 @@
   }
   var resetAnim;
 
+  // ---------- support ----------
+  /* The donate side, kept to the Support Kit's rules (Support Markticulous
+     Apps/kit/policy.md): links that are always there and never move, and
+     one card, at most three times ever, after ten hours of listening. Its
+     state lives under its own key, apart from radio.v1, so Reset puts the
+     radio back without taking back a thank-you, and an export never
+     carries it to another browser. */
+  var SUPPORT = window.MarkticulousSupport;
+  var KOFI_URL = 'https://ko-fi.com/markticulous';
+  var HUB_URL = 'https://markticulous.github.io/support/?app=deskside-radio';
+  var SUPPORT_MILESTONE_SEC = 10 * 3600;
+  var PLATES = ['plate', 'seal', 'rule', 'callsign', 'tag'];
+
+  /* Reading localStorage itself can throw (blocked site data), not only
+     its methods; support.js already copes with a null store. */
+  function supportStore() { try { return window.localStorage; } catch (e) { return null; /* storage unavailable */ } }
+  function saveSupport() { SUPPORT.save(supportStore(), support); }
+
+  var support = SUPPORT.ensureFirstRun(SUPPORT.load(supportStore()), new Date());
+  saveSupport();
+
+  /* Never over the top of something the listener is in the middle of:
+     Settings or any confirm box, the press that autoplay is waiting for,
+     the version being read out, or the mini radio. */
+  function supportBusy() {
+    return !!document.querySelector('dialog[open]') || awaitingTap || announcing || !!strip;
+  }
+
+  function paintSupport() {
+    var on = !!support.supporter;
+    $('supporterMark').hidden = !on;
+    $('supportThanks').hidden = !on;
+    $('supportDoneBtn').hidden = on;
+    $('plateBlock').hidden = !on;
+    var plate = on && PLATES.indexOf(support.plate) !== -1 ? support.plate : 'plate';
+    document.querySelector('.byline').setAttribute('data-byline', plate);
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="byline"]'), function (r) {
+      r.checked = r.value === plate;
+    });
+  }
+
+  function hideSupportCard() { $('supportCard').hidden = true; }
+
+  function maybeShowSupportCard() {
+    if (!$('supportCard').hidden) return;
+    if (!SUPPORT.shouldShowCard(support, new Date(), supportBusy())) return;
+    var hours = Math.floor((support.listenedSec || 0) / 3600);
+    $('supportCardText').textContent = 'You’ve spent ' + hours + ' hours with Deskside Radio. 🎶 ' +
+      'It’s free, with no ads and no tracking. If it keeps you company, a coffee keeps it going.';
+    support = SUPPORT.recordShown(support, new Date());
+    saveSupport();
+    $('supportCard').hidden = false;
+  }
+
+  function markSupporter() {
+    support = SUPPORT.recordSupporter(support);
+    saveSupport();
+    hideSupportCard();
+    paintSupport();
+  }
+
+  $('supportLink').href = KOFI_URL;
+  $('supportHubLink').href = HUB_URL;
+  $('supportCardGo').href = KOFI_URL;
+  // Later needs no record: showing the card already started the wait.
+  $('supportCardGo').addEventListener('click', hideSupportCard);
+  $('supportCardLater').addEventListener('click', hideSupportCard);
+  $('supportCardNever').addEventListener('click', function () {
+    support = SUPPORT.recordNeverAsk(support);
+    saveSupport();
+    hideSupportCard();
+  });
+  $('supportCardDone').addEventListener('click', markSupporter);
+  $('supportDoneBtn').addEventListener('click', markSupporter);
+
+  /* The plate is cosmetic, so it applies the moment it is picked rather
+     than waiting for the drawer's Close like the settings it sits among. */
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="byline"]'), function (r) {
+    r.addEventListener('change', function () {
+      if (!r.checked) return;
+      support.plate = r.value;
+      saveSupport();
+      paintSupport();
+    });
+  });
+
+  /* The maker plate opens Settings at Service, where the support links
+     are. The radio has no About box; that tab is the nearest thing. */
+  function openSupportPane() { openSettings(); showPane('service', false); }
+  var bylineEl = document.querySelector('.byline');
+  bylineEl.addEventListener('click', openSupportPane);
+  bylineEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSupportPane(); }
+  });
+
+  /* A minute at a time, and only while a station is actually playing --
+     connecting and reconnecting are not listening. One small write a
+     minute, which is the same order as the box the window remembers. */
+  setInterval(function () {
+    if (status !== 'live') return;
+    support.listenedSec = (support.listenedSec || 0) + 60;
+    if (support.listenedSec >= SUPPORT_MILESTONE_SEC && !support.milestoneHit) support = SUPPORT.markMilestone(support);
+    saveSupport();
+    maybeShowSupportCard();
+  }, 60000);
+
+  paintSupport();
+
   /* ---------- version check ----------
      One request a day to a static file on the repo, which is the whole of
      it: no identifiers go out, nothing is downloaded or installed, and the
