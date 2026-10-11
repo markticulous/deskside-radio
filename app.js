@@ -2853,6 +2853,12 @@
      inside it. */
   var BOX_SLACK = 8;
 
+  var lastFit = null, scrollHold = 0;
+  function holdScrollbar() {
+    document.documentElement.classList.add('is-fitting');
+    clearTimeout(scrollHold);
+    scrollHold = setTimeout(function () { document.documentElement.classList.remove('is-fitting'); }, 1500);
+  }
   function fitWindow(pass) {
     if (!mayFit || keepBox || !windowIsOurs() || !el.tuner) return;
     // Stowed: this window is a placard at the moment, not the radio.
@@ -2864,7 +2870,28 @@
     pass = pass || 0;
 
     var want = wantedBox();
-    if (Math.abs(want.w - window.outerWidth) > 1 || Math.abs(want.h - window.outerHeight) > 1) {
+    /* Two ways a fit used to fight itself for seconds on end, seen on a
+       laptop: the window resizing and the scrollbar coming and going in
+       turn, each one setting off the other.
+
+       A size on a scaled display -- 125%, 150% -- lands in whole device
+       pixels, so the window can come back a pixel or two from what was
+       asked. Within a pixel of that, a check against one pixel asked
+       again, and again. So the slack follows the scale, and a size just
+       asked for is not asked for again inside a couple of seconds: if it
+       did not land, asking again will not make it.
+
+       And while the window is moving, the page keeps no scrollbar: one
+       that comes and goes with the window takes its width with it, the
+       radio is a different height at the narrower width, and that is a
+       new size to fit -- round and round. It is held off until the window
+       has settled, and comes back if the radio genuinely does not fit. */
+    var slack = Math.max(2, Math.ceil(window.devicePixelRatio || 1) + 1);
+    var now = Date.now();
+    var asked = lastFit && lastFit.w === want.w && lastFit.h === want.h && now - lastFit.at < 2500;
+    if (!asked && (Math.abs(want.w - window.outerWidth) > slack || Math.abs(want.h - window.outerHeight) > slack)) {
+      holdScrollbar();
+      lastFit = { w: want.w, h: want.h, at: now };
       try { window.resizeTo(want.w, want.h); } catch (e) { return; }
     }
 

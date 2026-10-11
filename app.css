@@ -386,6 +386,10 @@
   .display-tag.is-feature-note { animation: none; }
 }
 
+/* While the window is being fitted to the radio: no scrollbar to come and
+   go with it and change the layout's width under the fit. See fitWindow. */
+html.is-fitting, html.is-fitting body { overflow: hidden !important; }
+
 .preset        { display: grid; text-align: left; min-width: 0; }
 .preset-add    { opacity: .55; }
 /* "Add station" too long for one line of its key: on two, filling both
