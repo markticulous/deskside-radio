@@ -719,9 +719,9 @@ html.is-fitting, html.is-fitting body { overflow: hidden !important; }
    ground, the dark set for a dark one. Settings is always light chrome, so
    #adornChips keeps the light set; the tuner's byline follows the theme
    (rams and editorial are the two pale themes, the other six are dark). */
-.adorn { display: inline-flex; align-items: center; width: 16px; height: 16px; flex: none; margin-left: -4px; }
+.adorn { display: inline-flex; align-items: center; width: 18px; height: 18px; flex: none; margin-left: -4px; }
 .adorn[hidden] { display: none; }
-.adorn svg { width: 16px; height: 16px; display: block; }
+.adorn svg { width: 18px; height: 18px; display: block; }
 .adorn, #adornChips {
   --c-heart: #e0526a; --c-cup: #8a5a3c; --c-steam: #e0526a; --c-star: #e0a92a; --c-spark: #c9a24a;
   --c-petal: #f3f0e8; --c-petal-line: #b9b4a6; --c-daisy: #e0a92a; --c-paw: #8a7a68; --c-bean: #7a4e32; --c-face: #f6e7d4;
