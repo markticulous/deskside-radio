@@ -4622,8 +4622,8 @@ body.app.is-stowed .tuner { display: none; }
    Fixed to the corner, so it never moves the radio around it. */
 .support-card {
   position: fixed; right: 16px; bottom: 16px; z-index: 40;
-  max-width: 320px; padding: 12px 14px;
-  display: grid; gap: 8px; justify-items: start;
+  max-width: 420px; box-sizing: border-box; padding: 12px 14px;
+  display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: center;
   background: var(--ui-bg, #1d1d1b); color: var(--ui-fg, #ecebe6);
   border: 1px solid var(--ui-line, rgba(128,128,128,.35));
   border-radius: 1px 8px 1px 8px;
@@ -4632,6 +4632,13 @@ body.app.is-stowed .tuner { display: none; }
   animation: update-pill-in .22s ease-out;
 }
 .support-card[hidden] { display: none; }
+/* Branding column: the logo centred over the wordmark, so the card reads
+   as the radio speaking. Own class, not .brand-name, which every theme
+   restyles (the dial face turns it into a brass plate). */
+.support-card-brand { display: grid; justify-items: center; gap: 6px; text-align: center; }
+.support-card-mark { width: 40px; height: 40px; display: block; }
+.support-card-brand-name { font-size: 11px; font-weight: 600; line-height: 1.2; letter-spacing: .02em; }
+.support-card-body { display: grid; gap: 8px; justify-items: start; min-width: 0; }
 .support-card-text { margin: 0; }
 .support-card-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .support-card-go {
@@ -4647,6 +4654,11 @@ body.app.is-stowed .tuner { display: none; }
 .support-card-quiet:hover { color: var(--ui-fg, #ecebe6); text-decoration: underline; }
 .support-card-go:focus-visible,
 .support-card-quiet:focus-visible { outline: 1px solid var(--ui-line, currentColor); outline-offset: 2px; }
+@media (max-width: 480px) {
+  .support-card { grid-template-columns: 1fr; gap: 8px; }
+  .support-card-brand { grid-auto-flow: column; justify-content: start; justify-items: start; align-items: center; text-align: left; gap: 8px; }
+  .support-card-mark { width: 32px; height: 32px; }
+}
 @media (prefers-reduced-motion: reduce) { .support-card { animation: none; } }
 
 .supporter-mark { font-size: 11px; font-weight: 500; color: var(--ui-accent, currentColor); margin-left: 6px; }
