@@ -123,8 +123,14 @@ test('a title sent in capitals is put into title case', () => {
 /* On a chunked (HLS) stream the title can run well ahead of the audio,
    so a change is held back by how far behind live the player is. */
 test('a song change on a chunked stream waits for the audio to catch up', () => {
-  assert.ok(/var lag = npSong && next !== npSong \? streamLag\(\) \+ \(link\.src\.hold \|\| 0\) : 0;/.test(js),
+  assert.ok(/var behind = npSong && next !== npSong \? streamLag\(\) \+ \(link\.src\.hold \|\| 0\) : 0;/.test(js),
     'song changes are no longer held back on streams that play behind live');
+  /* The wait is counted from the studio change, and a source says how long
+     it takes to tell us. Without this the noticing delay was stacked on top. */
+  assert.ok(/var lag = behind > 0 \? Math\.max\(0, behind - \(link\.src\.notice \|\| 0\)\) : 0;/.test(js),
+    'the wait no longer allows for the time the feed took to tell us');
+  assert.ok(/ROGERS_MS = 10000/.test(js) && /hold: 45000, notice: 30000/.test(js),
+    'the Rogers timings are not the ones measured: ask every 10 s, 45 s ad-break hold, 30 s noticing delay');
   assert.ok(/if \(!npHeld \|\| npHeld\.song !== next\)/.test(js),
     'every ask restarts the wait, so on a stream further behind than the asking interval the song never changes');
   assert.ok(/if \(!a \|\| !\/\\.m3u8/.test(js), 'the hold applies to continuous streams as well');

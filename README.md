@@ -155,14 +155,14 @@ The line under the station name shows the song on now — *Artist — Title* —
 
 | Source | Stations | Notes |
 |---|---|---|
-| Rogers' feed | KiSS, CHFI and Rogers' other stations | One feed for all of them, about 11 KB every 30 seconds while one plays. Their stream codes are mapped to call letters in `app.js`; a station added since is simply not looked up. |
+| Rogers' feed | KiSS, CHFI and Rogers' other stations | One feed for all of them, about 11 KB every 10 seconds while one plays. Their stream codes are mapped to call letters in `app.js`; a station added since is simply not looked up. |
 | StreamTheWorld | Virgin Radio and thousands of others | Looked up by the mount in the stream address. |
 | Corus | Q107, 102.1 The Edge, CFOX … | A half-kilobyte file per station. It is JSONP — a script, not data — so it is run in a sandboxed frame that can only post back the artist and title. |
 | AzuraCast | many internet-only stations | `/api/nowplaying/<station>` on the stream's own server. |
 | Icecast | many internet-only stations | The server's `status-json.xsl`, where the station has left it open. |
 | The stream itself (Windows) | most of the rest | Off unless **Settings → General → Read titles from the stream itself** is on. A page may not ask a stream for its titles — the request needs a header the servers will not clear for a page — so `strip-fit.ps1` runs a small helper on a thread of its own: it listens on the loopback address only, answers only requests carrying a key it writes to `assets/now-playing.js` for the page each session, and for each request connects to the station, reads to the first title (about 16 KB, a second of audio) and hangs up. Asked once a minute. |
 
-Titles in all capitals are put into title case; anything with a lower-case letter is left as the station spells it. On a chunked (HLS) stream a change waits until the player has caught up with it, since such a stream plays some way behind live. Some stations change the title when the song before ends, while the presenter is still talking; that is what they report, and the radio shows it.
+Titles in all capitals are put into title case; anything with a lower-case letter is left as the station spells it. On a chunked (HLS) stream a change waits until the player has caught up with it, since such a stream plays some way behind live. Rogers rebuilds its feed only every 30 seconds (`Cache-Control: max-age=30`), so the radio may not see a change for a while after it happens, and the wait is counted from when the song most likely changed rather than from when the radio noticed. Counted the other way, the two delays stacked and a title came up well into its song. A title can still be a few seconds late; it should not arrive before its song. Some stations change the title when the song before ends, while the presenter is still talking; that is what they report, and the radio shows it.
 
 Anybody updating from before 1.7.0 is told once, on that line, after the version announcement.
 
@@ -353,6 +353,8 @@ The preset keys scroll a station's name too — on hover, after a pause of four 
 
 One trap, recorded because it cost a round: the readout's exemption for the cell faces only has to outweigh `.display-name.can-scroll`, two classes, but a key's mask hangs off `.preset.is-active .preset-name.can-scroll`, which is four. Written at the same length the exemption silently lost, and the console's keys were feathered after all while a test that looked only for the selector passed. The test now weighs the two selectors against each other.
 
+When there are more keys than fit, the list scrolls, and the bar is a slide pot: a groove with a slider in it, in each theme's own finish. It is drawn with `::-webkit-scrollbar`, which Chrome ignores entirely once the standard `scrollbar-width` or `scrollbar-color` is set on the same element; that is why the plain Windows bar, arrows and all, was showing before. The standard properties are now given only where `::-webkit-scrollbar` is not supported, which is Firefox, where the bar is thin and recoloured instead.
+
 Three faces are left out of it entirely — the segment display, the split-flap board and the 8-bit matrix. Those are made of cells, and a cell is lit or it is not; there is no half-lit state to fade through, and the edge of the window is simply a row of cells nobody is driving. Feathering them read as a photograph of a screen rather than as the screen.
 
 The switching costs almost nothing. Each edge is a registered custom property holding its current width, so the mask is one static gradient and the only thing that moves is a number in it — with a short ramp at each change and a long flat either side, rather than a gradient re-resolved on every frame. The marquee itself was deliberately moved to a compositor transform to keep it off the main thread, and a mask animated the whole way round would have put it straight back.
@@ -379,11 +381,26 @@ There is no way to do this from the page. No web API makes a window non-resizabl
 
 A window dragged hard into the top-left corner is the one position that cannot be reproduced. Windows gives a window an invisible resize border outside its visible frame, so the corner is a negative coordinate, and a page is not allowed to place a window partly off-screen. It comes back inset by that border, which is a few pixels.
 
+### Three sizes
+
+Large, Medium and Small: the radio as built, 85% and 70%. The button beside the pushpin steps through them and **Settings → Theme → Window size** offers the same choice; either applies at once and the window refits. A page cannot turn the browser's own zoom, so this is CSS `zoom` on the page, and a few things had to be taught about it, all measured in Edge:
+
+- `getBoundingClientRect` answers in zoomed pixels while offset sizes, padding and authored lengths stay in the page's own. Everything that lays something out from a rect goes through `TunerUI.rect()` (and a copy in `seasonal.js`), which hands the rect back in the page's pixels. The window fit multiplies by the zoom instead, since a window is sized in real pixels.
+- `vw` and `vh` are not scaled with the rest, so every use is divided by `--z`, which the page sets alongside the zoom.
+- Media queries see the real window. At Small it is about 790px wide, which would set off Model One's narrow-window layout, so that one rule is scoped out of `data-size="small"`.
+- The remembered window box carries the size it was measured at, the same way it carries the theme, and the boot script in `index.html` applies the zoom before the first paint.
+
+Until a size has been chosen, the radio picks one: the largest whose window fits the screen's usable area. A 1366x768 laptop, or a 1080p one at 150% scaling, has about 700px of height, and the taller themes want more than that at Large. It picks again when the theme changes, and after launch once the fonts have landed, so a laptop given Small on its own screen goes back to Large on a big monitor. Choosing a size with the button or in Settings ends that for good (`state.sizeChosen`), and so does importing a settings file that carries one. An export only carries the size when it was chosen, so a size picked to fit one screen does not follow the file to another.
+
+The floating mini radio is not scaled, and neither is the placard left in the main window while it floats.
+
 ## The mini radio
 
 The pushpin in the top bar opens a small strip that floats above every other window — station, what it is doing, play, volume and a meter — and tucks the radio's own window out of sight behind it. Its volume slider also answers the mouse wheel, one step (0.4 dB) a notch. The expand button on the strip puts the radio back, and so does **Escape**. The strip's close button closes the radio altogether, which is why there is only one of them: Chrome's own back-to-tab button is turned off, so one browser control means one thing.
 
 During a slot change the strip says what is about to happen and counts the last thirty seconds down — *Schedule change in 30s*, or *Schedule play ends in 30s*, or *Schedule play ends, then freeplay in 30s* — and its fader rides the handover fade exactly as the radio's own does. Double-clicking the fader slides it back to 50.
+
+A song title too long for its line scrolls along it, slowly and without stopping, with a gap before it comes round again; the countdown keeps its own place at the end of the line. Left still, and cut off, when the system asks for reduced motion, unless **Scroll long names anyway** is on.
 
 It is a picture-in-picture window, which is the only kind a browser will float above the others. So: **Chrome, Edge, and Firefox 151 or newer.** Safari has no such window and neither does any mobile browser, and there the pushpin is not shown at all rather than offered and broken.
 

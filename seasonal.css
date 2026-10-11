@@ -288,7 +288,7 @@
 [data-theme="halloween"] .display-name {
   grid-area: name; margin: 0; position: relative;
   font-family: "Creepster", "Special Elite", cursive; font-weight: 400;
-  font-size: clamp(52px, 7.4vw, 96px); line-height: 1.02; letter-spacing: .03em;
+  font-size: clamp(52px, calc(7.4vw / var(--z, 1)), 96px); line-height: 1.02; letter-spacing: .03em;
   white-space: nowrap; overflow: hidden;
   color: var(--glass-ink);
   text-shadow: 0 0 18px rgba(255,236,170,.45);
@@ -721,7 +721,7 @@
 [data-theme="harvest"] .display-name {
   grid-area: name; margin: 0;
   font-family: "Rye", serif; font-weight: 400;
-  font-size: clamp(42px, 6.2vw, 80px); line-height: 1.08; letter-spacing: .01em;
+  font-size: clamp(42px, calc(6.2vw / var(--z, 1)), 80px); line-height: 1.08; letter-spacing: .01em;
   white-space: nowrap; overflow: hidden;
   color: var(--barn);
   text-shadow: 0 2px 0 rgba(255,244,220,.8);
@@ -1060,7 +1060,7 @@
 [data-theme="christmas"] .display-name {
   grid-area: name; margin: 0;
   font-family: "Mountains of Christmas", serif; font-weight: 700;
-  font-size: clamp(50px, 7.2vw, 92px); line-height: 1.04; letter-spacing: .01em;
+  font-size: clamp(50px, calc(7.2vw / var(--z, 1)), 92px); line-height: 1.04; letter-spacing: .01em;
   white-space: nowrap; overflow: hidden;
   color: var(--snow);
   text-shadow: 0 0 22px rgba(255,220,140,.35), 0 3px 0 rgba(0,0,0,.35);
@@ -1357,7 +1357,7 @@
 [data-theme="spring"] .display-name {
   margin: 2px 0 0;
   font-family: "Fraunces", Georgia, serif; font-style: italic; font-weight: 600;
-  font-size: clamp(38px, 5.2vw, 64px); letter-spacing: -.015em; line-height: 1.08;
+  font-size: clamp(38px, calc(5.2vw / var(--z, 1)), 64px); letter-spacing: -.015em; line-height: 1.08;
   white-space: nowrap; overflow: hidden;
 }
 [data-theme="spring"] .display-tag { margin: 4px 0 0; font: italic 400 18px/1.35 "Fraunces", Georgia, serif; color: #3d4c44; }

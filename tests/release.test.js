@@ -3361,7 +3361,7 @@ test('a settings file keeps the loudness it was written at', () => {
      from a September export. */
   const src = read('app.js');
   const imp = src.slice(src.indexOf('function importSettingsInto'),
-                        src.indexOf('function importSettingsInto') + 6000);
+                        src.indexOf('function importSettingsInto') + 6500);
   assert.ok(/newerThan\('1\.5\.7', fromV\)/.test(imp),
     'import no longer tells a file from the old fader by its version');
   assert.ok(/Signal\.migrateVolume60\(sl\.volume\)/.test(imp) && /Signal\.migrateVolume60\(target\.volume\)/.test(imp),
@@ -3381,13 +3381,16 @@ test('every stored setting either travels in an export or is kept to this machin
      has to be named below, one way or the other, and adding a new setting
      without deciding which is a failing test rather than a quiet loss. */
   const EXPORTED = ['stations', 'schedule', 'scheduleEnds', 'scheduleV', 'schedulerEnabled',
-    'theme', 'volume', 'volumeCurve', 'autoplay', 'autoplayStationId', 'bass', 'treble',
+    'theme', 'size', 'volume', 'volumeCurve', 'autoplay', 'autoplayStationId', 'bass', 'treble',
     'miniViz', 'miniLight', 'versionCheck', 'songTitles', 'songHelper', 'scrollAnyway', 'lastCity'];
   /* This machine, this browser or this moment -- meaningless anywhere else. */
   const LOCAL = ['windowBox', 'intendedPlaying', 'currentStationId', 'lastGood', 'seedStamp',
     'seedFrom', 'ranVersion', 'startupUsed', 'versionLastCheck', 'versionLatest', 'versionPillOff',
     // Season bookkeeping: what this machine showed, and when.
-    'themeBeforeSeason', 'seasonHold', 'seasonsSeen'];
+    'themeBeforeSeason', 'seasonHold', 'seasonsSeen',
+    // Whether the window-size row has been looked at on this machine, and
+    // whether a size was chosen here rather than picked to fit this screen.
+    'sizeSeen', 'sizeChosen'];
 
   const src = read('app.js');
   const a = src.indexOf('var DEFAULTS = {'), b = src.indexOf('\n  };', a);
@@ -3602,4 +3605,81 @@ test('Brave opens without its first-run notice across the top', () => {
     assert.equal(/notice_acknowledged/.test(read(f)), false,
       f + ' seeds a Brave-only preference');
   });
+});
+
+test('the three window sizes: one table, in step with the boot script, applied and fitted', () => {
+  const app = read('app.js'), html = read('index.html');
+  const sizes = app.match(/var SIZES = \{ large: 1, medium: ([0-9.]+), small: ([0-9.]+) \};/);
+  assert.ok(sizes, 'SIZES no longer has exactly large, medium and small');
+  /* The page is drawn at its size from the first frame by a script in the
+     head, which cannot share app.js. The two tables must agree. */
+  assert.ok(html.indexOf('{ large: 1, medium: ' + sizes[1] + ', small: ' + sizes[2] + ' }') !== -1,
+    'the boot script in index.html has different zoom numbers from SIZES');
+  assert.ok(/size: 'large',/.test(app.slice(app.indexOf('var DEFAULTS = {'), app.indexOf('\n  };', app.indexOf('var DEFAULTS = {')))),
+    'a fresh install does not start at Large');
+  assert.ok(/SIZES\.hasOwnProperty\(merged\.size\)\) merged\.size = DEFAULTS\.size/.test(app),
+    'an unknown stored size is no longer put back to the default');
+
+  const paint = app.slice(app.indexOf('function paintZoom'), app.indexOf('function paintZoom') + 500);
+  assert.ok(/style\.zoom/.test(paint) && /--z/.test(paint) && /data-size/.test(paint),
+    'paintZoom no longer sets the zoom, --z and data-size together');
+  assert.ok(/is-stowed/.test(paint), 'the stowed placard is zoomed down with the radio');
+  assert.ok(/function applyLook\(\) \{[^}]*paintZoom\(\);/.test(app), 'a look change no longer paints the zoom');
+
+  /* The window is sized in real pixels and the page measured in its own. */
+  const want = app.slice(app.indexOf('function boxAt'), app.indexOf('function boxAt') + 1500);
+  assert.ok(/\(cap \+ padX\) \* z/.test(want) && /\(el\.tuner\.offsetHeight \+ padY\) \* z/.test(want),
+    'boxAt does not scale the radio by the zoom, so a smaller radio keeps a large window');
+  assert.ok(/t: state\.theme, z: state\.size/.test(app), 'the remembered box does not carry the size it was measured at');
+  assert.ok(/\(box\.z \|\| 'large'\) === state\.size/.test(app), 'a box measured at another size is restored as if it fitted');
+  assert.ok(/growForDrawer\(Math\.ceil\(want \* z \/ 0\.92\)\)/.test(app), 'the drawer asks the window for room in the wrong pixels');
+});
+
+test('under a zoomed page every rect is read through rect() and every viewport unit is divided by --z', () => {
+  /* Measured in Edge: getBoundingClientRect answers in the zoomed pixels
+     while offset sizes and authored lengths stay in the page's own, and vh
+     and vw are not scaled at all. Each of the reads below is laid out in
+     authored pixels, so each goes through rect(). */
+  const raw = (src) => (src.match(/\.getBoundingClientRect\(\)/g) || []).length;
+  assert.equal(raw(read('app.js')), 0, 'app.js reads a raw rect; use TunerUI.rect');
+  /* tuner-ui.js: the helper itself, and the VU grid, which wants real pixels. */
+  assert.equal(raw(read('tuner-ui.js')), 2, 'tuner-ui.js has a raw rect beyond rect() and the VU snap');
+  assert.equal(raw(read('seasonal.js')), 1, 'seasonal.js has a raw rect beyond its own rect()');
+
+  ['app.css', 'seasonal.css'].forEach(function (f) {
+    const css = read(f).replace(/\/\*[\s\S]*?\*\//g, '');
+    const bad = (css.match(/[0-9.]+v[wh]\b/g) || []).filter(function (u) { return true; });
+    const ok = (css.match(/calc\(\(?[0-9.]+v[wh] \/ var\(--z, 1\)/g) || []).length;
+    assert.equal(bad.length, ok, f + ' has a vw or vh that is not divided by --z, so it is the wrong size when zoomed');
+  });
+  /* A media query cannot be told the page is zoomed; the one that would
+     mistake Small for a narrow window is excluded from it. */
+  assert.ok(/html:not\(\[data-size="small"\]\) \[data-theme="tivoli"\] \.tuner \{ --grille: 176px/.test(read('app.css')),
+    'the 940px Tivoli rule fires at Small');
+});
+
+test('the size controls: a header button that steps through the sizes, a row in Settings, a dot to lead to it', () => {
+  const app = read('app.js'), html = read('index.html');
+  assert.ok(/id="sizeBtn"/.test(html) && /name="winsize" value="large"/.test(html)
+    && /name="winsize" value="medium"/.test(html) && /name="winsize" value="small"/.test(html),
+    'the button or one of the three radios is gone');
+  assert.ok(/function setSize\(next\)[\s\S]{0,400}applyLook\(\);/.test(app), 'changing the size does not go through the pass a theme change makes');
+  assert.ok(/SIZE_ORDER\[\(SIZE_ORDER\.indexOf\(state\.size\) \+ 1\) % SIZE_ORDER\.length\]/.test(app), 'the button no longer steps through the sizes in order');
+  // The trail: gear, then the Theme tab, then the row.
+  const dot = app.slice(app.indexOf('function syncGearDot'), app.indexOf('function syncGearDot') + 600);
+  assert.ok(/!state\.sizeSeen/.test(dot) && /tabLook/.test(dot), 'the new size row does not light the gear and the Theme tab');
+  assert.ok(/if \(!wasHere\) state\.sizeSeen = true;/.test(app), 'a fresh install is told about a feature it has never been without');
+  // A second loan while the drawer is open must not replace the window to give back.
+  assert.ok(/borrowedBox = alreadyOnLoan \|\| \{/.test(app), 'changing the size with Settings open loses the window to give back');
+});
+
+test('until a size is chosen, the radio picks the largest that fits the screen, and never overrides a choice', () => {
+  const app = read('app.js');
+  const auto = app.slice(app.indexOf('function autoSize'), app.indexOf('function autoSize') + 600);
+  assert.ok(/if \(state\.sizeChosen\) return false;/.test(auto), 'a size the listener chose can be changed for them');
+  assert.ok(/b\.w <= screen\.availWidth && b\.h <= screen\.availHeight/.test(auto), 'the pick no longer tests the window against the screen');
+  assert.ok(/if \(autoSize\(\)\) \{ applyLook\(\); return; \}/.test(app), 'the window fit no longer consults the automatic size');
+  assert.ok(/state\.size = next;\s*state\.sizeSeen = true;\s*state\.sizeChosen = true;/.test(app), 'the button and the Settings row do not count as a choice');
+  assert.ok(/target\.size = data\.size; target\.sizeChosen = true;/.test(app), 'an imported size is not kept as a choice');
+  assert.ok(/size: state\.sizeChosen \? state\.size : undefined/.test(app), 'an export carries a size picked for this screen, which would fix it on another');
 });
