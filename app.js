@@ -7585,7 +7585,62 @@
     $('supporterMark').hidden = !on;
     $('supportThanks').hidden = !on;
     $('supportDoneBtn').hidden = on;
+    $('adornPick').hidden = !on;
+    paintAdornment();
   }
+
+  /* The supporter's adornment, beside the plate. Chosen in Settings, kept on
+     the support state (support.js load() merges unknown stored fields). It
+     is drawn by the .adorn rules in app.css, which hide it where the byline
+     is hidden; nothing here touches the plate. */
+  var ADORNMENTS = [
+    ['none', 'None'], ['coffee', 'Coffee cup'], ['heart', 'Heart'], ['sparkle', 'Sparkle'],
+    ['star', 'Gold star'], ['daisy', 'Daisy'], ['paw', 'Paw print'], ['dog', 'Little dog face'],
+    ['cat', 'Little cat face'], ['robot', 'Cool robot'], ['bean', 'Happy bean'], ['rocket', 'Little rocket']
+  ];
+  var SVGNS = 'http://www.w3.org/2000/svg';
+
+  function paintAdornment() {
+    var id = support.adornment;
+    var on = !!support.supporter && !!id && id !== 'none';
+    $('adorn').hidden = !on;
+    if (on) {
+      $('adorn').querySelector('use').setAttribute('href', '#i-' + id);
+      tipOn($('adorn'), support.supportedUtc
+        ? 'I supported Deskside Radio on ' + new Date(support.supportedUtc).toLocaleDateString() + '.'
+        : 'I supported Deskside Radio.');
+    }
+    var chips = $('adornChips').children;
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].setAttribute('aria-checked', String(chips[i].getAttribute('data-id') === (id || 'none')));
+    }
+  }
+
+  ADORNMENTS.forEach(function (o) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.setAttribute('role', 'radio');
+    b.setAttribute('data-id', o[0]);
+    b.setAttribute('aria-label', o[1]);
+    b.setAttribute('data-tip', o[1]);
+    if (o[0] === 'none') {
+      b.textContent = 'None';
+    } else {
+      var svg = document.createElementNS(SVGNS, 'svg');
+      svg.setAttribute('aria-hidden', 'true');
+      var use = document.createElementNS(SVGNS, 'use');
+      use.setAttribute('href', '#i-' + o[0]);
+      svg.appendChild(use);
+      b.appendChild(svg);
+    }
+    b.addEventListener('click', function () {
+      support.adornment = o[0];
+      saveSupport();
+      paintAdornment();
+    });
+    $('adornChips').appendChild(b);
+  });
 
   function hideSupportCard() { $('supportCard').hidden = true; }
 
@@ -7601,7 +7656,8 @@
   }
 
   function markSupporter() {
-    support = SUPPORT.recordSupporter(support);
+    support = SUPPORT.recordSupporter(support, new Date());
+    if (!support.adornment) support.adornment = 'coffee';
     saveSupport();
     hideSupportCard();
     paintSupport();

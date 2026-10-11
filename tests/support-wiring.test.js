@@ -74,3 +74,17 @@ test("Don't ask again is honored at once, then offers one last chance", () => {
   // The last chance never changes the saved state: no way to un-ask by accident.
   assert.doesNotMatch(app, /confirmSupportLast[\s\S]{0,400}recordShown/);
 });
+
+test('the supporter adornment is wired, and the plate is never touched', () => {
+  const html = read('index.html');
+  ['adorn', 'adornPick', 'adornChips'].forEach((id) => {
+    assert.ok(html.includes('id="' + id + '"'), 'index.html is missing #' + id);
+  });
+  ['coffee', 'heart', 'sparkle', 'star', 'daisy', 'paw', 'dog', 'cat', 'robot', 'bean', 'rocket'].forEach((n) => {
+    assert.ok(html.includes('id="i-' + n + '"'), 'index.html is missing symbol i-' + n);
+  });
+  const app = read('app.js');
+  assert.match(app, /recordSupporter\(support, new Date\(\)\)/);
+  // The adornment sits beside the plate; nothing may re-skin the plate itself.
+  assert.doesNotMatch(app, /data-byline['"]?\s*,|dataset\.byline\s*=/);
+});

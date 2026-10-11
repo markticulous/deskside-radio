@@ -1,6 +1,6 @@
 {
   "version": "1.8.0",
   "released": "2026-10-11",
-  "notes": "## New features & enhancements\n\n- A Support block in Settings → Service, with a link to Ko-fi. Deskside Radio stays free; this is only for anyone who wants to chip in.\n- After ten hours of listening, a small card in the corner says so, once. It never covers anything you are doing, and Don’t ask again means it.\n- The Markticulous plate in the top bar now opens Settings at Service.\n\n## Bug fixes\n\n- None in this release.",
+  "notes": "## New features & enhancements\n\n- A Support block in Settings → Service, with a link to Ko-fi. Deskside Radio stays free; this is only for anyone who wants to chip in.\n- After ten hours of listening, a small card in the corner says so, once. It never covers anything you are doing, and Don’t ask again means it.\n- The Markticulous plate in the top bar now opens Settings at Service.\n- Supporters can choose a small adornment to sit beside the Markticulous plate in the top bar.\n\n## Bug fixes\n\n- None in this release.",
   "url": "https://github.com/Markticulous/deskside-radio/releases/latest"
 }

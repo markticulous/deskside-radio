@@ -712,6 +712,42 @@ html.is-fitting, html.is-fitting body { overflow: hidden !important; }
 .byline[role="button"] { cursor: pointer; }
 .byline[role="button"]:focus-visible { outline: 1px solid var(--by-line, currentColor); outline-offset: 2px; }
 
+/* Supporter adornment: a small icon beside the plate, never on it. The
+   .brand row has a 10px gap, so -4px leaves the 6px the plate is given.
+   Hidden on the same breakpoint as the byline (max-width 560px, below).
+   The icons are coloured by --c-* variables: the light set for a pale
+   ground, the dark set for a dark one. Settings is always light chrome, so
+   #adornChips keeps the light set; the tuner's byline follows the theme
+   (rams and editorial are the two pale themes, the other six are dark). */
+.adorn { display: inline-flex; align-items: center; width: 16px; height: 16px; flex: none; margin-left: -4px; }
+.adorn[hidden] { display: none; }
+.adorn svg { width: 16px; height: 16px; display: block; }
+.adorn, #adornChips {
+  --c-heart: #e0526a; --c-cup: #8a5a3c; --c-steam: #e0526a; --c-star: #e0a92a; --c-spark: #c9a24a;
+  --c-petal: #f3f0e8; --c-petal-line: #b9b4a6; --c-daisy: #e0a92a; --c-paw: #8a7a68; --c-bean: #7a4e32; --c-face: #f6e7d4;
+  --c-dog: #b8865a; --c-dog-ear: #8a5a3c; --c-cat: #9a9388; --c-eye: #2b2824;
+  --c-bot: #8797ab; --c-bot-dark: #334050; --c-glow: #14c4b2;
+}
+[data-theme="dial"] .adorn, [data-theme="console"] .adorn, [data-theme="retro"] .adorn,
+[data-theme="departures"] .adorn, [data-theme="marconi"] .adorn, [data-theme="tivoli"] .adorn {
+  --c-heart: #ee6f84; --c-cup: #c68a63; --c-steam: #ee6f84; --c-star: #f0bd4a; --c-spark: #e0bf6e;
+  --c-petal: #f3f0e8; --c-petal-line: #8c877b; --c-paw: #b9a58f; --c-bean: #a9734f; --c-face: #f6e7d4;
+  --c-dog: #c9996b; --c-dog-ear: #9c6b48; --c-cat: #b3aca0; --c-eye: #1c1a17;
+  --c-bot: #a6b6ca; --c-bot-dark: #1f2733; --c-glow: #4fe3d3;
+}
+#adornPick { margin-top: 14px; }
+#adornPick[hidden] { display: none; }
+#adornPick h4 { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
+#adornChips { display: grid; grid-template-columns: repeat(6, 34px); gap: 8px; margin-top: 10px; }
+#adornChips .chip {
+  width: 34px; height: 34px; padding: 0; display: grid; place-items: center;
+  font: inherit; font-size: 10px; line-height: 1; color: var(--ui-mute);
+  border: 1px dashed var(--ui-line); background: none; border-radius: var(--ui-radius); cursor: pointer;
+}
+#adornChips .chip:hover { border-style: solid; background: color-mix(in srgb, var(--ui-fg) 7%, transparent); }
+#adornChips .chip svg { width: 20px; height: 20px; }
+#adornChips .chip[aria-checked="true"] { border: 2px solid var(--ui-accent); }
+
 /* The update notice. It sits beside the maker plate and is cut from the
    same cloth -- --by-fg and --by-line are the two tokens every one of the
    eight themes already tunes, so one rule dresses it everywhere without
@@ -4517,7 +4553,7 @@ body.app.is-stowed .tuner { display: none; }
 
   /* The byline is a maker's mark rather than information, so it is the
      first thing to give up its place when the row has to choose. */
-  .byline { display: none; }
+  .byline, .adorn { display: none; }
   .tuner-bar { gap: 10px 12px; }
   .clock { margin-left: 0; }
 
