@@ -7620,10 +7620,19 @@
   // Later needs no record: showing the card already started the wait.
   $('supportCardGo').addEventListener('click', hideSupportCard);
   $('supportCardLater').addEventListener('click', hideSupportCard);
+  /* The answer is recorded first and the dialog is only a courtesy after
+     it: whatever is pressed in there, or however it is dismissed, the
+     radio has already agreed not to ask again. Support opens Ko-fi
+     through a real link, so no popup blocker has a say; both buttons
+     just close the box. */
+  $('supportLateGo').href = KOFI_URL;
+  $('supportLateGo').addEventListener('click', function () { $('confirmSupportLast').close(); });
   $('supportCardNever').addEventListener('click', function () {
     support = SUPPORT.recordNeverAsk(support);
     saveSupport();
     hideSupportCard();
+    var last = $('confirmSupportLast');
+    if (last && !last.open) last.showModal();
   });
   $('supportCardDone').addEventListener('click', markSupporter);
   $('supportDoneBtn').addEventListener('click', markSupporter);

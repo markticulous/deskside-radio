@@ -608,6 +608,23 @@
   </form>
 </dialog>
 
+<!-- Said once, straight after Don't ask again has already been recorded: the
+     request is honored whatever is pressed here, so this can only ever be
+     one last, polite chance and never a way round the answer. Escape is
+     the same as Not at this time. -->
+<dialog class="confirm" id="confirmSupportLast">
+  <form method="dialog" class="confirm-box">
+    <h2>Thank you for using Deskside Radio</h2>
+    <p>I'll honor your request and won't ask again.</p>
+    <p>Before I go, one last, polite chance: if Deskside Radio has earned a place on your desk, a coffee would mean a lot to me.</p>
+    <p class="hint">&mdash; Markticulous</p>
+    <div class="confirm-actions">
+      <button type="submit" value="no" class="ghost" id="supportLateNo">Not at this time</button>
+      <a class="primary" id="supportLateGo" target="_blank" rel="noopener">Sure, I'll support</a>
+    </div>
+  </form>
+</dialog>
+
 <dialog class="confirm" id="confirmReset">
   <form method="dialog" class="confirm-box">
     <h2>Reset to defaults?</h2>
