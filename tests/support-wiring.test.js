@@ -43,3 +43,17 @@ test('the page carries every element the support code looks up', () => {
     assert.ok(html.includes('name="byline" value="' + v + '"'), 'plate picker is missing ' + v);
   });
 });
+
+test('app.js wires the support rules the way the kit says to', () => {
+  const app = read('app.js');
+  assert.match(app, /var KOFI_URL = 'https:\/\/ko-fi\.com\/markticulous';/);
+  assert.match(app, /var HUB_URL = 'https:\/\/markticulous\.github\.io\/support\/\?app=deskside-radio';/);
+  // The card is only ever shown through the rules, and never while busy.
+  assert.match(app, /SUPPORT\.shouldShowCard\(support, new Date\(\), supportBusy\(\)\)/);
+  // Showing it is what starts the 90-day wait, so it is recorded at once.
+  assert.match(app, /support = SUPPORT\.recordShown\(support, new Date\(\)\)/);
+  // Listening only counts while a station is actually playing.
+  assert.match(app, /if \(status !== 'live'\) return;\s*support\.listenedSec/);
+  // Kept apart from radio.v1, so Reset and Export never touch it.
+  assert.doesNotMatch(app, /state\.supporter|state\.listenedSec/);
+});
