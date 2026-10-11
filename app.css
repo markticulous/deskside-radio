@@ -4164,7 +4164,7 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 .confirm-box p { margin: 0; color: var(--ui-mute); line-height: 1.5; }
 /* Last-chance dialog only: a circled heart beside the heading. */
 .confirm-head { display: flex; align-items: flex-start; gap: 14px; }
-.confirm-heart { flex: none; width: 34px; height: 34px; color: var(--ui-accent, currentColor); }
+.confirm-heart { flex: none; width: 38px; height: 38px; color: var(--ui-accent, currentColor); }
 .confirm-head h2 { min-width: 0; }
 .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
 

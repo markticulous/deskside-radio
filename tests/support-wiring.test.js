@@ -117,7 +117,7 @@ test('the last-chance dialog shows a circled heart beside the heading, and only 
   assert.ok(dlg.includes('class="confirm-head"'));
   const svg = /<svg class="confirm-heart"[\s\S]*?<\/svg>/.exec(dlg);
   assert.ok(svg, 'heart svg missing');
-  assert.match(svg[0], /viewBox="0 0 24 24" width="34" height="34"/);
+  assert.match(svg[0], /viewBox="0 0 24 24" width="38" height="38"/);
   assert.match(svg[0], /stroke-width="1\.1"/);
   assert.ok(svg[0].includes('M12 17.6s-5.2-3.1-5.2-7.1a2.9 2.9 0 0 1 5.2-1.8 2.9 2.9 0 0 1 5.2 1.8c0 4-5.2 7.1-5.2 7.1z'));
   assert.ok(dlg.indexOf('confirm-heart') < dlg.indexOf('<h2>'), 'icon before heading');
