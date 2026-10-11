@@ -704,9 +704,35 @@ html.is-fitting, html.is-fitting body { overflow: hidden !important; }
   background: var(--by-plate, rgba(0,0,0,.16));
   box-shadow: inset 0 0 0 1px var(--by-line, rgba(128,128,128,.35)), inset 0 1px 0 var(--by-emboss, rgba(255,255,255,.1));
 }
-/* The other four treatments -- seal, rule, callsign, tag -- are drawn by
-   previews/byline-preview.html and live in that page's own stylesheet. The
-   app has only ever worn the plate. */
+/* The other four treatments, drawn first in previews/byline-preview.html
+   and offered to supporters as a thank-you. Every theme already tunes
+   --by-accent, --by-on-accent and --by-mono, so none of them needs a
+   colour of its own. */
+.byline[data-byline="seal"] { gap: 7px; }
+.byline[data-byline="seal"] .byline-mark {
+  display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%;
+  font-size: 9px; font-weight: 800; letter-spacing: 0;
+  color: var(--by-on-accent, #fff); background: var(--by-accent, currentColor);
+}
+.byline[data-byline="seal"] .byline-by { display: none; }
+.byline[data-byline="rule"] { padding-left: 10px; position: relative; letter-spacing: .1em; }
+.byline[data-byline="rule"]::before {
+  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 1px; height: 12px; background: var(--by-line, currentColor); opacity: .75;
+}
+.byline[data-byline="callsign"] { font-family: var(--by-mono, ui-monospace, monospace); letter-spacing: .06em; gap: 3px; }
+.byline[data-byline="callsign"]::before { content: "["; opacity: .5; }
+.byline[data-byline="callsign"]::after  { content: "]"; opacity: .5; }
+.byline[data-byline="tag"] {
+  padding: 4px 9px; border-radius: 999px; letter-spacing: .1em;
+  background: var(--by-accent, currentColor); color: var(--by-on-accent, #fff);
+}
+.byline[data-byline="tag"] .byline-by,
+.byline[data-byline="tag"] .byline-suffix { opacity: .72; }
+
+/* The plate opens Settings at the Service tab, so it says it can be pressed. */
+.byline[role="button"] { cursor: pointer; }
+.byline[role="button"]:focus-visible { outline: 1px solid var(--by-line, currentColor); outline-offset: 2px; }
 
 /* The update notice. It sits beside the maker plate and is cut from the
    same cloth -- --by-fg and --by-line are the two tokens every one of the
@@ -4574,3 +4600,39 @@ body.app.is-stowed .tuner { display: none; }
   [data-theme="tivoli"] .fader.volume label { --track: .18em; }
   [data-theme="tivoli"] .rec-btn { margin-top: 0; align-self: center; }
 }
+
+/* ---- support card ----
+   Cut from the settings chrome's cloth -- --ui-bg, --ui-fg, --ui-line,
+   --ui-mute are set once on :root, so they resolve outside the drawer too --
+   and stamped with the byline's corners so it reads as the maker speaking.
+   Fixed to the corner, so it never moves the radio around it. */
+.support-card {
+  position: fixed; right: 16px; bottom: 16px; z-index: 40;
+  max-width: 320px; padding: 12px 14px;
+  display: grid; gap: 8px; justify-items: start;
+  background: var(--ui-bg, #1d1d1b); color: var(--ui-fg, #ecebe6);
+  border: 1px solid var(--ui-line, rgba(128,128,128,.35));
+  border-radius: 1px 8px 1px 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.28);
+  font-family: var(--ui-font, inherit); font-size: 13px; line-height: 1.45;
+  animation: update-pill-in .22s ease-out;
+}
+.support-card[hidden] { display: none; }
+.support-card-text { margin: 0; }
+.support-card-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.support-card-go {
+  padding: 5px 14px; border-radius: 999px; font-weight: 600; text-decoration: none;
+  background: var(--ui-accent, #c9a24a); color: var(--ui-bg, #1d1d1b);
+}
+/* Later, Don't ask again, I've already supported: smaller and quieter
+   than Support, so the one thing the card is for is the thing it shows. */
+.support-card-quiet {
+  font: inherit; font-size: 11px; color: var(--ui-mute, #9a978f);
+  background: none; border: 0; padding: 2px 0; cursor: pointer;
+}
+.support-card-quiet:hover { color: var(--ui-fg, #ecebe6); text-decoration: underline; }
+.support-card-go:focus-visible,
+.support-card-quiet:focus-visible { outline: 1px solid var(--ui-line, currentColor); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .support-card { animation: none; } }
+
+.supporter-mark { font-size: 11px; font-weight: 500; color: var(--ui-accent, currentColor); margin-left: 6px; }
