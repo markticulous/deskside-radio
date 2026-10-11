@@ -107,7 +107,7 @@ test('card brand sits at the top with a 2px gap; Support text sits centred in it
   assert.match(brand, /background:\s*#f3f3f3/i, "panel fill matches the message boxes' button section");
   assert.match(brand, /border-right:\s*1px solid #e5e5e5/i);
   const go = /\.support-card-go \{([^}]*)\}/.exec(css)[1];
-  assert.match(go, /padding:\s*6px 14px 4px/, 'Support label sits low enough to look centred, same total height');
+  assert.match(go, /padding:\s*5px 14px 5px/, 'Support label centred in its button, same total height');
   assert.match(/\.support-card-row \{([^}]*)\}/.exec(css)[1], /align-items:\s*center/);
   assert.match(/\.support-card-quiet \{([^}]*)\}/.exec(css)[1], /align-self:\s*center/);
   assert.ok(!/\d\s*vw\b/.test(/\.confirm-head[^{]*\{[^}]*\}/.exec(css)[0]), 'no vw');
