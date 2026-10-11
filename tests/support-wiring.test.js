@@ -132,22 +132,7 @@ test('the last-chance dialog shows a circled heart beside the heading, and only 
   assert.match(css, /:root[^{]*\{[^}]*--ui-accent:/);
 });
 
-test('the #support-test switch is fenced by markers in source and absent from dist', () => {
-  const app = read('app.js');
-  assert.ok(app.includes('/* @dev-support-test begin */') && app.includes('/* @dev-support-test end */'));
-  assert.ok(app.includes("'#support-test'"));
-  const dist = path.join(ROOT, 'dist', 'index.html');
-  if (fs.existsSync(dist)) assert.ok(!read('dist/index.html').includes('support-test'), 'dist carries the test switch');
-});
-
-test('build-dist cuts marked blocks, keeps the rest valid, and throws on an unmatched begin', () => {
-  const src = read('tools/build-dist.js');
-  const fn = /function stripDevBlocks\(js\) \{[\s\S]*?\n\}\n/.exec(src);
-  assert.ok(fn, 'stripDevBlocks not found');
-  const cut = new Function(fn[0] + '; return stripDevBlocks;')();
-  const out = cut('var a=1;\n/* @dev-support-test begin */\nvar x=2;\n/* @dev-support-test end */\nvar b=3;');
-  assert.ok(!out.includes('support-test') && !out.includes('x=2') && out.includes('a=1') && out.includes('b=3'));
-  assert.throws(() => cut('a;\n/* @dev-support-test begin */\nb;'), /no matching end/);
-  // The real app.js, stripped, still parses.
-  new Function(require('../tools/strip.js').stripJs(cut(read('app.js'))));
+test('the temporary #support-test switch has been removed', () => {
+  assert.ok(!read('app.js').includes('support-test'), 'app.js still carries the test switch');
+  assert.ok(!read('tools/build-dist.js').includes('dev-support-test'), 'build-dist still has the dev-block stripper');
 });
