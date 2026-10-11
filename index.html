@@ -94,7 +94,8 @@
     <div class="brand">
       <span class="brand-mark"></span>
       <span class="brand-name">Deskside Radio</span>
-      <span class="byline" data-byline="plate">
+      <span class="byline" data-byline="plate" role="button" tabindex="0"
+            data-tip="About and support" aria-label="Markticulous build: about and support">
         <span class="byline-mark">M</span>
         <span class="byline-by">A</span>
         <span class="byline-name">Markticulous</span>
@@ -233,6 +234,20 @@
     <span class="start-sub" id="startSub">Browsers need one click before audio can play.</span>
   </button>
 </main>
+
+<!-- The one time the radio asks for anything. Not a dialog: it takes no
+     focus, blocks nothing and sits in a corner until it is answered or
+     ignored. Shown at most three times, ever, by the rules in support.js.
+     Support is the button; the other three are said quietly on purpose. -->
+<aside class="support-card" id="supportCard" role="status" aria-live="polite" hidden>
+  <p class="support-card-text" id="supportCardText"></p>
+  <div class="support-card-row">
+    <a class="support-card-go" id="supportCardGo" target="_blank" rel="noopener">Support</a>
+    <button type="button" class="support-card-quiet" id="supportCardLater">Later</button>
+    <button type="button" class="support-card-quiet" id="supportCardNever">Don't ask again</button>
+  </div>
+  <button type="button" class="support-card-quiet" id="supportCardDone">I've already supported</button>
+</aside>
 
 <dialog class="drawer" id="settings">
   <form method="dialog" class="drawer-form" id="settingsForm">
@@ -452,6 +467,20 @@
 
       <section class="pane" id="paneLook" role="tabpanel" aria-labelledby="tabLook" hidden>
         <div class="themes" id="themeCards"></div>
+        <!-- Only for supporters, and only ever cosmetic: the five ways the
+             maker's mark was drawn in previews/byline-preview.html. The
+             radio wore the plate alone until this. -->
+        <div class="pane-block" id="plateBlock" hidden>
+          <h3>Maker plate</h3>
+          <p class="hint">A thank-you for supporting: five ways to wear the Markticulous mark in the top bar.</p>
+          <div class="size-seg" role="radiogroup" aria-label="Maker plate">
+            <label><input type="radio" name="byline" value="plate"><span>Plate</span></label>
+            <label><input type="radio" name="byline" value="seal"><span>Seal</span></label>
+            <label><input type="radio" name="byline" value="rule"><span>Rule</span></label>
+            <label><input type="radio" name="byline" value="callsign"><span>Callsign</span></label>
+            <label><input type="radio" name="byline" value="tag"><span>Tag</span></label>
+          </div>
+        </div>
         <div class="pane-block" id="sizeBlock">
           <h3>Window size <i class="new-dot" id="sizeDot" aria-hidden="true" hidden></i></h3>
           <p class="hint">Large is the radio as it was built. Medium and Small draw all of it smaller and bring the window down to match, for a corner of the screen. The button beside the pin steps through the three.</p>
@@ -492,6 +521,16 @@
           <div class="btn-row">
             <button type="button" class="ghost" id="makeShortcutPane">Put a shortcut on the Desktop</button>
           </div>
+        </div>
+        <div class="pane-block" id="supportBlock">
+          <h3>Support <span class="supporter-mark" id="supporterMark" hidden>&hearts; Supporter</span></h3>
+          <p class="hint">Deskside Radio is made by one person who cares about the details. It will always be free.</p>
+          <div class="btn-row">
+            <a class="ghost" id="supportLink" target="_blank" rel="noopener">&hearts; Support Markticulous</a>
+            <a class="ghost" id="supportHubLink" target="_blank" rel="noopener">Why I build these</a>
+            <button type="button" class="ghost" id="supportDoneBtn">I've already supported</button>
+          </div>
+          <p class="hint" id="supportThanks" hidden>Thank you. You're the reason this stays free. &hearts;</p>
         </div>
         <div class="pane-block">
           <h3>Reset</h3>
