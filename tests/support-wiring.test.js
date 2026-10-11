@@ -57,3 +57,23 @@ test('app.js wires the support rules the way the kit says to', () => {
   // Kept apart from radio.v1, so Reset and Export never touch it.
   assert.doesNotMatch(app, /state\.supporter|state\.listenedSec/);
 });
+
+test("Don't ask again is honored at once, then offers one last chance", () => {
+  const html = read('index.html');
+  assert.ok(html.includes('<dialog class="confirm" id="confirmSupportLast">'), 'last-chance dialog is missing');
+  ['supportLateGo', 'supportLateNo'].forEach((id) => {
+    assert.ok(html.includes('id="' + id + '"'), 'index.html is missing #' + id);
+  });
+  assert.ok(html.includes("Sure, I'll support"), 'primary button text');
+  assert.ok(html.includes('Not at this time'), 'secondary button text');
+
+  const app = read('app.js');
+  // The request is recorded before the dialog is offered, so it holds even if the dialog is dismissed any way at all.
+  const h = /\$\('supportCardNever'\)\.addEventListener\('click', function \(\) \{([\s\S]*?)\n  \}\);/.exec(app);
+  assert.ok(h, "Don't ask again handler not found");
+  const body = h[1];
+  assert.ok(body.indexOf('recordNeverAsk') !== -1 && body.indexOf('recordNeverAsk') < body.indexOf('showModal'),
+    'recordNeverAsk must come before the last-chance dialog opens');
+  // The last chance never changes the saved state: no way to un-ask by accident.
+  assert.doesNotMatch(app, /confirmSupportLast[\s\S]{0,400}recordShown/);
+});
