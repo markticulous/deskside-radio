@@ -6,6 +6,8 @@ Deskside Radio is a webpage-based application. There is nothing to install, no a
 
 The eight themes are laid out side by side in [previews/preview.html](previews/preview.html) — open it in a browser.
 
+Deskside Radio is free and always will be. If it keeps you company, you can [buy me a coffee on Ko-fi](https://ko-fi.com/markticulous) ([why I build these](https://markticulous.github.io/support/?app=deskside-radio)). Supporters are thanked in [SUPPORTERS.md](SUPPORTERS.md).
+
 ## Running it
 
 Download **Win-Install-or-Update-Deskside-Radio.cmd** from the [latest release](https://github.com/markticulous/deskside-radio/releases/latest) and double-click it.

@@ -11,3 +11,5 @@ That's all — it fetches this release, unpacks it beside the browser profile th
 ### 🍎 macOS and 🐧 Linux
 
 The above installer is a Windows script, so it is no use to you — but **the radio itself runs perfectly well on both.** Take **`deskside-radio.zip`** instead, unzip it wherever you like, and open `index.html`. On Linux there is a `Linux - Create Desktop Shortcut.sh` inside for a proper launcher; on a Mac the radio makes its own shortcut from the button in its top bar.
+
+Deskside Radio is free, with no ads and no tracking. If it keeps you company, [a coffee on Ko-fi](https://ko-fi.com/markticulous) keeps it going.
