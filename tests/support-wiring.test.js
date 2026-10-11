@@ -36,11 +36,8 @@ test('the page carries every element the support code looks up', () => {
   const html = read('index.html');
   ['supportCard', 'supportCardText', 'supportCardGo', 'supportCardLater', 'supportCardNever',
    'supportCardDone', 'supportBlock', 'supporterMark', 'supportLink', 'supportHubLink',
-   'supportDoneBtn', 'supportThanks', 'plateBlock'].forEach((id) => {
+   'supportDoneBtn', 'supportThanks'].forEach((id) => {
     assert.ok(html.includes('id="' + id + '"'), 'index.html is missing #' + id);
-  });
-  ['plate', 'seal', 'rule', 'callsign', 'tag'].forEach((v) => {
-    assert.ok(html.includes('name="byline" value="' + v + '"'), 'plate picker is missing ' + v);
   });
 });
 

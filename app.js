@@ -7564,7 +7564,6 @@
   var KOFI_URL = 'https://ko-fi.com/markticulous';
   var HUB_URL = 'https://markticulous.github.io/support/?app=deskside-radio';
   var SUPPORT_MILESTONE_SEC = 10 * 3600;
-  var PLATES = ['plate', 'seal', 'rule', 'callsign', 'tag'];
 
   /* Reading localStorage itself can throw (blocked site data), not only
      its methods; support.js already copes with a null store. */
@@ -7586,12 +7585,6 @@
     $('supporterMark').hidden = !on;
     $('supportThanks').hidden = !on;
     $('supportDoneBtn').hidden = on;
-    $('plateBlock').hidden = !on;
-    var plate = on && PLATES.indexOf(support.plate) !== -1 ? support.plate : 'plate';
-    document.querySelector('.byline').setAttribute('data-byline', plate);
-    Array.prototype.forEach.call(document.querySelectorAll('input[name="byline"]'), function (r) {
-      r.checked = r.value === plate;
-    });
   }
 
   function hideSupportCard() { $('supportCard').hidden = true; }
@@ -7636,17 +7629,6 @@
   });
   $('supportCardDone').addEventListener('click', markSupporter);
   $('supportDoneBtn').addEventListener('click', markSupporter);
-
-  /* The plate is cosmetic, so it applies the moment it is picked rather
-     than waiting for the drawer's Close like the settings it sits among. */
-  Array.prototype.forEach.call(document.querySelectorAll('input[name="byline"]'), function (r) {
-    r.addEventListener('change', function () {
-      if (!r.checked) return;
-      support.plate = r.value;
-      saveSupport();
-      paintSupport();
-    });
-  });
 
   /* The maker plate opens Settings at Service, where the support links
      are. The radio has no About box; that tab is the nearest thing. */
