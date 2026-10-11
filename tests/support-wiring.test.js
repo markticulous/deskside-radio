@@ -111,6 +111,7 @@ test('card brand sits at the top with a 2px gap; Support text is 1px higher; qui
   assert.match(/\.support-card-row \{([^}]*)\}/.exec(css)[1], /align-items:\s*center/);
   assert.match(/\.support-card-quiet \{([^}]*)\}/.exec(css)[1], /align-self:\s*center/);
   assert.ok(!/\d\s*vw\b/.test(/\.confirm-head[^{]*\{[^}]*\}/.exec(css)[0]), 'no vw');
+  assert.match(css, /#confirmSupportLast \.primary \{[^}]*background:\s*#0067c0[^}]*text-decoration:\s*none/, 'blue main answer, not underlined');
 });
 
 test('the last-chance dialog shows a circled heart beside the heading, and only that dialog', () => {
@@ -126,7 +127,7 @@ test('the last-chance dialog shows a circled heart beside the heading, and only 
   assert.ok(dlg.indexOf('confirm-heart') < dlg.indexOf('<h2>'), 'icon before heading');
   assert.equal((html.match(/confirm-heart/g) || []).length, 1, 'only one dialog has the icon');
   const css = read('app.css');
-  assert.match(/\.confirm-head \{([^}]*)\}/.exec(css)[1], /display:\s*flex;\s*align-items:\s*flex-start;\s*gap:\s*14px/);
+  assert.match(/\.confirm-head \{([^}]*)\}/.exec(css)[1], /display:\s*flex;\s*align-items:\s*center;\s*gap:\s*14px/);
   assert.match(css, /\.confirm-heart \{[^}]*var\(--ui-accent/);
   assert.match(css, /:root[^{]*\{[^}]*--ui-accent:/);
 });
