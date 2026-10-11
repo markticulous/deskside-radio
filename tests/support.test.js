@@ -63,9 +63,20 @@ test('markMilestone, recordShown, recordNeverAsk, recordSupporter', () => {
   assert.equal(shown.askCount, 1);
   assert.equal(S.shouldShowCard(shown, at(21), false), false);
   assert.equal(S.shouldShowCard(S.recordNeverAsk(eligible()), at(10000), false), false);
-  const sup = S.recordSupporter(eligible());
+  const sup = S.recordSupporter(eligible(), at(20));
   assert.equal(sup.supporter, true);
   assert.equal(S.shouldShowCard(sup, at(20), false), false);
+});
+
+test('recordSupporter stamps supportedUtc and keeps the first date', () => {
+  assert.equal(S.emptyState().supportedUtc, null);
+  const first = S.recordSupporter(eligible(), at(20));
+  assert.equal(first.supportedUtc, iso(20));
+  assert.equal(S.recordSupporter(first, at(50)).supportedUtc, iso(20));
+});
+
+test('load of an old stored object without supportedUtc gives null', () => {
+  assert.equal(S.load(fakeStorage('{"supporter":true}')).supportedUtc, null);
 });
 
 test('functions do not mutate their input', () => {

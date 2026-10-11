@@ -21,6 +21,7 @@
       askCount: 0,
       dismissedForever: false,
       supporter: false,
+      supportedUtc: null,
       milestoneHit: false,
     };
   }
@@ -60,8 +61,9 @@
   }
 
   // "I've supported": honor system; also unlocks cosmetics in the app.
-  function recordSupporter(s) {
-    return { ...s, supporter: true };
+  // The first date is kept if called again (for the "I supported on {date}" tooltip).
+  function recordSupporter(s, now) {
+    return { ...s, supporter: true, supportedUtc: s.supportedUtc || now.toISOString() };
   }
 
   // Storage is injected (pass window.localStorage). Private windows and
