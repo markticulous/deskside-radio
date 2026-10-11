@@ -177,12 +177,14 @@ if ($npMine) {
         # At most four title blocks -- a station sending only ads and blanks
         # costs 64 KB and gets nothing -- and eight seconds.
         function Sip([string]$url) {
-            $res = $null
+            $res = $null; $req = $null
             try {
                 $req = [System.Net.HttpWebRequest]::Create($url)
                 $req.Headers.Add('Icy-MetaData', '1')
                 $req.UserAgent = 'DesksideRadio'
                 $req.Timeout = 8000; $req.ReadWriteTimeout = 8000
+                # Not kept for reuse: a stream has nothing to reuse it for.
+                $req.KeepAlive = $false
                 $res = $req.GetResponse()
                 $mi = [int]$res.Headers['icy-metaint']
                 if ($mi -le 0) { return '' }
@@ -212,7 +214,13 @@ if ($npMine) {
                     }
                 }
                 return ''
-            } catch { return '' } finally { if ($res) { $res.Close() } }
+            } catch { return '' } finally {
+                # Aborted first, which drops the socket at once. Closing alone
+                # was seen to leave one connection to a station open for about
+                # a hundred seconds, counted as a listener the whole time.
+                if ($req) { try { $req.Abort() } catch { } }
+                if ($res) { $res.Close() }
+            }
         }
 
         $cache = @{}

@@ -48,6 +48,20 @@
 (function () {
   'use strict';
 
+  /* Every position here is worked out from a rect and written back as a
+     length, so the rect has to be in the pixels the page is written in. Under
+     CSS zoom getBoundingClientRect answers in the zoomed ones, and a scene
+     laid out from those lands short of its mark by the zoom. Same as
+     TunerUI.rect, kept here so that this file still needs nothing else. */
+  function rect(node) {
+    var r = node.getBoundingClientRect();
+    var d = node.ownerDocument || document;
+    var z = parseFloat(d.documentElement.style.zoom) || 1;
+    if (z === 1) return r;
+    return { left: r.left / z, top: r.top / z, right: r.right / z, bottom: r.bottom / z,
+             width: r.width / z, height: r.height / z, x: r.x / z, y: r.y / z };
+  }
+
   var reduced = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   var rigs = [];
   var ABORT = {};
@@ -929,7 +943,7 @@
         b.textContent = text;
         stage.appendChild(b);
         // His window, from where the helicopter is drawn now (it bobs, and hx is not its box).
-        var hr = heli.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+        var hr = rect(heli), sr = rect(stage);
         var px = hr.left - sr.left + hr.width * 36 / HELI_W, py = hr.top - sr.top + hr.height * 49 / HELI_H;
         b.style.left = Math.max(6, px - b.offsetWidth - 14) + 'px';
         b.style.top = Math.max(4, py - b.offsetHeight / 2) + 'px';
@@ -983,7 +997,7 @@
       /* In from the right, sack on its back, comes the raccoon, and pulls up
          just short of the turkey. It faces left throughout (drawn mirrored),
          so it never has to turn round; its head does the looking. */
-      var S = stage.getBoundingClientRect(), tr0 = t.el.getBoundingClientRect();
+      var S = rect(stage), tr0 = rect(t.el);
       var tb = { l: tr0.left - S.left, r: tr0.right - S.left, t: tr0.top - S.top, b: tr0.bottom - S.top };
       var rw = 70 * 1.1, rh = 56 * 1.1, ry = H - TRIM - rh * 52 / 56;
       coon = document.createElement('div');
@@ -1002,7 +1016,7 @@
     }).then(ok).then(function () {
       /* The sack comes off its back and over its head, and lands on its side
          on the ground in front of it, mouth open to the turkey. */
-      var S = stage.getBoundingClientRect(), sr = coon.querySelector('.sack').getBoundingClientRect();
+      var S = rect(stage), sr = rect(coon.querySelector('.sack'));
       coon.draw(raccoonSvg('look', 0.55, true));
       var SZ = 66, k0 = sr.width / (SZ * 36 / 60);
       sack = document.createElement('div');
@@ -1029,7 +1043,7 @@
       var mouth = sack.querySelector('.mouth'), live = true;
       (function cut() {
         if (!live || rig.gen !== gen) return;
-        var m = mouth.getBoundingClientRect(), e = t.el.getBoundingClientRect();
+        var m = rect(mouth), e = rect(t.el);
         var local = (m.left + m.width / 2 - e.left) / (e.width / t.w);
         t.el.style.clipPath = 'inset(-60% ' + Math.max(0, t.w - local).toFixed(1) + 'px -60% -60%)';
         requestAnimationFrame(cut);
@@ -1075,7 +1089,7 @@
          60-unit square scaled by .64 at (6.6, -3.8) in the raccoon's 70-unit
          drawing, which is mirrored. (Measuring the drawn outline took its
          width for the square's, and the sack shrank smaller than it ends.) */
-      var S = stage.getBoundingClientRect(), cr = coon.getBoundingClientRect(), u = cr.width / 70;
+      var S = rect(stage), cr = rect(coon), u = cr.width / 70;
       var k1 = 0.64 * 60 * u / 66;
       var bx = cr.left - S.left + (70 - 6.6 - 0.64 * 60) * u, by = cr.top - S.top - 3.8 * u;
       return move(sack, [{ transform: tr(sack.gx, sack.gy, ' scale(1)') }, { transform: tr((sack.gx + bx) / 2, Math.min(sack.gy, by) - 30, ' scale(' + ((1 + k1) / 2).toFixed(3) + ') rotate(12deg)'), offset: 0.55 },
@@ -1128,7 +1142,7 @@
   function boxIn(rig, sel) {
     var el = rig.tuner.querySelector(sel);
     if (!el) return null;
-    var t = rig.tuner.getBoundingClientRect(), r = el.getBoundingClientRect();
+    var t = rect(rig.tuner), r = rect(el);
     return { x: r.left - t.left, y: r.top - t.top, w: r.width, h: r.height };
   }
 
@@ -2006,7 +2020,7 @@
         return up.finished.then(function () {
           if (rig.gen !== gen) return;
           // Let go: onto the window, exactly where it is now.
-          var r = p.getBoundingClientRect(), wr = ws.getBoundingClientRect();
+          var r = rect(p), wr = rect(ws);
           var sx = r.left - wr.left, sy = r.top - wr.top;
           up.cancel();
           p.classList.remove('st-inhand');
@@ -2312,17 +2326,17 @@
     var bed = t.querySelector('.sp-bed');
     if (!bed) return Promise.resolve();
     var ws = windowStage(rig), W = ws.W, H = ws.H, bw = 32, bh = 26;
-    var br = bed.getBoundingClientRect();
+    var br = rect(bed);
     var tulips = Array.prototype.map.call(bed.children, function (el, i) {
       return { el: el, i: i, w: parseFloat(el.style.getPropertyValue('--w')) || 1 };
     }).filter(function (o) {
-      var r = o.el.getBoundingClientRect();
+      var r = rect(o.el);
       return o.w > 0.8 && r.left > br.left + 20 && r.right < br.right - 20;
     });
     if (!tulips.length) return Promise.resolve();
     var pick = tulips[Math.floor(Math.random() * tulips.length)];
     function head() {
-      var r = pick.el.getBoundingClientRect(), d = ws.getBoundingClientRect();
+      var r = rect(pick.el), d = rect(ws);
       return { x: r.left - d.left + 15, y: r.top - d.top + FLOWER_TOP[pick.i % 4] + 2 };
     }
     var el = drawn(ws, 'st-butterfly', bw, bh, butterflySvg(0.16));
@@ -2695,7 +2709,7 @@
       if (!live || rig.gen !== gen) return;
       var el = target();
       if (el && el.isConnected) {
-        var k = knob.getBoundingClientRect(), e = el.getBoundingClientRect();
+        var k = rect(knob), e = rect(el);
         var ts = rigThumb(knob, k);
         var dx = e.left + e.width / 2 - ts.x, dy = e.top + e.height / 2 - ts.y, n = Math.hypot(dx, dy) || 1;
         knob.style.setProperty('--ex', (dx / n * 5).toFixed(2) + 'px');
@@ -2931,7 +2945,7 @@
     var exhaust = function (big) {
       // Stops itself if the scene is cut short.
       if (rig.gen !== gen || !fly.isConnected) { clearInterval(smoking); return; }
-      var r = fly.getBoundingClientRect(), d = ws.getBoundingClientRect();
+      var r = rect(fly), d = rect(ws);
       smokeRing(ws, r.left - d.left + 6 * S, r.top - d.top + 46 * S, big);
     };
     fly.style.transform = tr(-fw - 20, y0);
@@ -3236,7 +3250,7 @@
       var gone = move(ghost, [{ transform: tr(ghost.tx, ghost.ty, ' rotate(0deg)') }, { transform: tr(ghost.tx + 8, ghost.ty - 18, ' rotate(4deg)'), offset: 0.3 },
         { transform: tr(ghost.tx + 40, -gh, ' rotate(-3deg)') }], { duration: FADE, easing: 'ease-in-out' });
       var drop = wait(FADE * 0.42).then(ok).then(function () {
-        var wr = worn.getBoundingClientRect(), d = ws.getBoundingClientRect();
+        var wr = rect(worn), d = rect(ws);
         var hx = wr.left - d.left + wr.width / 2 - ghw / 2, hy = wr.top - d.top + wr.height / 2 - ghh / 2;
         worn.style.display = 'none';
         hat = drawn(ws, 'st-hat', ghw, ghh, hatSvg());
@@ -3827,11 +3841,11 @@
   function skeletonWalk(rig) {
     var stage = stageOf(rig), gen = rig.gen, ok = guard(rig, gen);
     var W = stage.clientWidth, H = stage.clientHeight;
-    var row = boxIn(rig, '.presets'), t = rig.tuner.getBoundingClientRect();
+    var row = boxIn(rig, '.presets'), t = rect(rig.tuner);
     if (!row) return Promise.resolve();
     // A station's stone wholly in view in the row, not the add button.
     var stones = Array.prototype.map.call(rig.tuner.querySelectorAll('.preset:not(.preset-add)'), function (el) {
-      var r = el.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+      var r = rect(el), w = el.offsetWidth, h = el.offsetHeight;
       var deg = parseFloat(getComputedStyle(el).rotate) || 0;
       // The bounding box is the turned stone's; its centre is the stone's centre.
       return { w: w, h: h, deg: deg, left: r.left - t.left + r.width / 2 - w / 2, top: r.top - t.top + r.height / 2 - h / 2, bt: r.top - t.top, bb: r.bottom - t.top };
@@ -4004,10 +4018,10 @@
   function scarecrow(rig) {
     var stage = stageOf(rig), gen = rig.gen, ok = guard(rig, gen);
     var W = stage.clientWidth, H = stage.clientHeight;
-    var row = boxIn(rig, '.presets'), t = rig.tuner.getBoundingClientRect();
+    var row = boxIn(rig, '.presets'), t = rect(rig.tuner);
     var key = rig.tuner.querySelector('.preset.is-active');
     if (!row || !key) return Promise.resolve();
-    var kr = key.getBoundingClientRect();
+    var kr = rect(key);
     var S = { w: kr.width, h: kr.height, left: kr.left - t.left, top: kr.top - t.top,
       r: parseFloat(getComputedStyle(key).borderTopLeftRadius) || 0 };
     // The key has to be wholly in view in the row, or he would rise out of nowhere.
@@ -4376,7 +4390,7 @@
     // About one visit in three he leaves a dropping before he goes.
     var poop = Math.random() < 0.33;
     var stage = stageOf(rig), gen = rig.gen;
-    var W = stage.clientWidth, t = rig.tuner.getBoundingClientRect();
+    var W = stage.clientWidth, t = rect(rig.tuner);
     var badges = rig.tuner.querySelectorAll('.scale-badge');
     if (!badges.length || !badges[0].offsetWidth) return Promise.resolve();
 
@@ -4386,7 +4400,7 @@
        him with every station, and the arch made him look too big. The
        badges are fixed and small, and a crow on one reads as a crow on a
        post. */
-    var m = badges[Math.floor(Math.random() * badges.length)].getBoundingClientRect();
+    var m = rect(badges[Math.floor(Math.random() * badges.length)]);
     var P = { x: m.left - t.left + m.width / 2, y: m.top - t.top };
 
     // A crow about twice the badge's height across.
@@ -4752,7 +4766,7 @@
     var disp = rig.tuner.querySelector('.display'), name = rig.tuner.querySelector('.display-name');
     if (!disp || !name) return;
     var line = name.querySelector('.name-line') || name;
-    var d = disp.getBoundingClientRect(), n = name.getBoundingClientRect(), l = line.getBoundingClientRect();
+    var d = rect(disp), n = rect(name), l = rect(line);
     var glyphs = [], range = document.createRange(), walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT), node;
     var cs = getComputedStyle(line), font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
     while ((node = walker.nextNode()) && glyphs.length < 6) {
@@ -4760,7 +4774,7 @@
         // Letters and digits only: a thread tied to a full stop or a dot between words hangs in the air.
         if (!/[\p{L}\p{N}]/u.test(node.data[i])) continue;
         range.setStart(node, i); range.setEnd(node, i + 1);
-        var r = range.getBoundingClientRect();
+        var r = rect(range);
         // Against the line the letters sit in, not where a scrolling name has carried them.
         if (r.width) glyphs.push({ x: r.left - l.left + n.left - d.left, w: r.width, ink: r.top - d.top + inkTop(node.data[i], font) });
       }
@@ -4857,7 +4871,7 @@
        Taken only while it is at rest: mid-drop the transform is an
        animation in flight and does not agree with web.len. */
     if (!web.busy) {
-      var sr = web.spider.getBoundingClientRect();
+      var sr = rect(web.spider);
       if (sr.height) {
         web.restTop = sr.top - d.top;
         web.restLen = web.len;

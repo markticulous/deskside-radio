@@ -5,6 +5,26 @@
   var S = root.Signal;
   var SVG = 'http://www.w3.org/2000/svg';
 
+  /* The zoom the page is drawn at, which is the one thing the browser does
+     not undo for us. Under CSS zoom the offset sizes and every authored
+     length stay in the page's own pixels, while getBoundingClientRect
+     answers in the zoomed ones. Everything here that measures a rect to
+     lay something out in authored pixels asks through rect(), which gives
+     the rect back in the page's own. The zoom is read off the document the
+     node lives in, since the floating strip is another document and is
+     never zoomed. */
+  function zoomOf(doc) {
+    var d = doc || root.document;
+    return (d && d.documentElement && parseFloat(d.documentElement.style.zoom)) || 1;
+  }
+  function rect(node) {
+    var r = node.getBoundingClientRect();
+    var z = zoomOf(node.ownerDocument);
+    if (z === 1) return r;
+    return { left: r.left / z, top: r.top / z, right: r.right / z, bottom: r.bottom / z,
+             width: r.width / z, height: r.height / z, x: r.x / z, y: r.y / z };
+  }
+
   var VU_R = 82;          // arc radius
   /* Inside the ticks, not among them. A major tick reaches in to VU_R-12,
      which is 70, and a figure centred at 65 puts its own box across that
@@ -334,12 +354,15 @@
          --vu-gap, which nothing writes to, so this stays put rather than
          creeping a little further each time it runs. */
       if (bar && cell > 0) {
-        var dpr = root.devicePixelRatio || 1;
+        /* A device pixel is 1/(dpr*zoom) of the page's own, so the grid is
+           snapped to that. The rect stays raw: it is in real pixels, which
+           is where the device pixel grid is. */
+        var dpr = (root.devicePixelRatio || 1) * zoomOf(bar.ownerDocument);
         var snap = function (px) { return Math.max(1, Math.round(px * dpr)) / dpr; };
         cell = snap(cell);
         bar.style.setProperty('--cell-dp', cell + 'px');
         if (gap > 0) bar.style.setProperty('--gap-dp', snap(gap) + 'px');
-        var left = bar.getBoundingClientRect().left * dpr;
+        var left = bar.getBoundingClientRect().left * (root.devicePixelRatio || 1);
         bar.style.setProperty('--cell-origin', (-(left - Math.floor(left)) / dpr).toFixed(4) + 'px');
       }
 
@@ -621,7 +644,7 @@
        held while it is empty; without that the line collapses to nothing
        and springs back open as the letters land. */
     for (var m = 0; m < chars.length; m++) {
-      var w = chars[m].getBoundingClientRect().width;
+      var w = rect(chars[m]).width;
       if (w) chars[m].style.minWidth = w.toFixed(2) + 'px';
       chars[m].textContent = '';
     }
@@ -782,7 +805,7 @@
   function contentSize(el) {
     var w = 0, h = 0;
     for (var i = 0; i < el.children.length; i++) {
-      var r = el.children[i].getBoundingClientRect();
+      var r = rect(el.children[i]);
       if (r.width > w) w = r.width;
       h += r.height;
     }
@@ -839,7 +862,7 @@
     }
 
     // Where the lines actually sit, so this holds whatever the alignment.
-    var blockTop = el.children[0].getBoundingClientRect().top - el.getBoundingClientRect().top;
+    var blockTop = rect(el.children[0]).top - rect(el).top;
     var halfLeading = (lineHeight - (ink.fontAscent + ink.fontDescent)) / 2;
     var firstBaseline = blockTop + halfLeading + ink.fontAscent;
     var inkTop = firstBaseline - ink.inkAscent;
@@ -1021,7 +1044,7 @@
     var r = document.createRange();
     r.setStart(node, 0);
     r.setEnd(node, 1);
-    var w = r.getBoundingClientRect().width;
+    var w = rect(r).width;
     r.detach();
     return w;
   }
@@ -1061,7 +1084,7 @@
        borrowed against. */
     var flaps = el.getElementsByClassName('flap-ch');
     if (flaps.length) {
-      var pitch = flaps[0].getBoundingClientRect().width;
+      var pitch = rect(flaps[0]).width;
       var n = pitch > 0 ? Math.ceil(over / pitch) : 1;
       startScroll(el, pitch > 0 ? n * pitch : over, n, true);
       return;
@@ -1169,6 +1192,7 @@
     setNeedle: setNeedle, setLevel: setLevel, refreshMeter: refreshMeter,
     scopeShowing: scopeShowing, drawBars: drawBars, clearScope: clearScope,
     setName: setName, fitName: fitName, watchName: watchName,
-    clearFit: clearFit, fitLine: fitLine, flapName: flapName, vfdReveal: vfdReveal
+    clearFit: clearFit, fitLine: fitLine, flapName: flapName, vfdReveal: vfdReveal,
+    rect: rect, zoomOf: zoomOf
   };
 })(window);

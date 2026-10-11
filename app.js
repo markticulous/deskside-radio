@@ -5,12 +5,17 @@
   var KEY = 'radio.v1';
   // One list, kept beside the season rules that decide which are on offer.
   var THEMES = Scheduler.THEMES;
+  /* The three window sizes, as the CSS zoom put on the page. Large is the
+     radio as it has always been. index.html carries the same three numbers
+     in its head, so the page is already the right size at first paint. */
+  var SIZES = { large: 1, medium: 0.85, small: 0.7 };
+  var SIZE_ORDER = ['large', 'medium', 'small'];
   /* Bump on release, in all three places: here, version.json (which is
      what every running copy checks once a day), and the placeholder in
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.7.0';
+  var APP_VERSION = '1.7.1';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -66,6 +71,10 @@
     // Where the window was left. Filled in once there is one to remember.
     windowBox: null,
     theme: 'dial',
+    /* How big the radio is drawn: large, medium or small. A page cannot
+       turn the browser's own zoom, so this is the same thing done to the
+       page, and the window is fitted to it afterwards. */
+    size: 'large',
     intendedPlaying: false,
     currentStationId: 'cfrb',
     volume: 50,
@@ -130,7 +139,18 @@
        more. */
     themeBeforeSeason: null,
     seasonHold: null,
-    seasonsSeen: []
+    seasonsSeen: [],
+    /* Whether the window-size control has been looked at. False on an
+       install that has just been updated to the release that brought it,
+       which lights the dot from the gear to the row; a fresh install has
+       nothing to announce and starts true. */
+    sizeSeen: false,
+    /* Whether the listener has picked a size, with the button, in Settings
+       or by importing a file that carries one. Until then the radio picks
+       for itself -- the largest size whose window fits the screen -- and
+       picks again as the theme changes, since the faces are not the same
+       height. Once chosen, a size is never changed for them. */
+    sizeChosen: false
   };
 
   /* Derived rather than typed, so renaming or reordering the three
@@ -295,6 +315,9 @@
       merged.stations = merged.stations.map(cleanStation).filter(Boolean);
       if (!merged.stations.length) merged.stations = clone(DEFAULTS.stations);
       if (THEMES.indexOf(merged.theme) === -1) merged.theme = DEFAULTS.theme;
+      if (!SIZES.hasOwnProperty(merged.size)) merged.size = DEFAULTS.size;
+      merged.sizeSeen = !!merged.sizeSeen;
+      merged.sizeChosen = !!merged.sizeChosen;
       if (!Array.isArray(merged.seasonsSeen)) merged.seasonsSeen = [];
       // A season that ended while the radio was closed is settled before it paints.
       merged.theme = Scheduler.themeFor(merged, seasonNow());
@@ -1899,7 +1922,7 @@
     if (!n.textContent) return;
     var range = document.createRange();
     range.selectNodeContents(n);
-    var w = range.getBoundingClientRect().width;
+    var w = TunerUI.rect(range).width;
     range.detach();
     /* Two pixels of slack. The rect is fractional and the box is not, and
        rounding a hair short costs a whole character to overflow: hidden. */
@@ -2028,7 +2051,7 @@
      the helper when it starts; with no helper, as on a Mac, there is no
      file, nothing is asked, and the tagline stays. HLS playlists carry no
      such titles and are not asked about. */
-  var NP_MS = 20000, NP_GRACE_MS = 30000, HELPER_MS = 60000, ROGERS_MS = 30000;
+  var NP_MS = 20000, NP_GRACE_MS = 30000, HELPER_MS = 60000, ROGERS_MS = 10000;
   var npSong = '', npUntil = 0, npTimer = 0, npUrl = '', npHelper = null;
   /* Which round of asking this is. A new station, or the music stopping,
      starts a new one, and an answer from an earlier round is thrown away.
@@ -2229,7 +2252,18 @@
      the line through the last part of the Bruno Mars song before it. A
      fixed figure, because nothing in the stream or the feed says how far
      -- right on average, and late now and then rather than early. */
-  var ROGERS_SRC = { every: ROGERS_MS, hold: 45000, match: rogersCall, ask: function (call) {
+  /* notice: how long after a song really changes this source lets us know
+     -- taken off the wait, which is counted from the studio change and not
+     from the moment it was noticed. Rogers builds the
+     feed once every thirty seconds (Cache-Control max-age=30, Last-Modified
+     and Expires thirty seconds apart), so a change sits unseen for fifteen
+     on average, and our own ask, every ten, adds five more. Counting the
+     wait from the noticing stacked that on top of the stream's lag and the
+     hold, and a title came up some while after its song had started. Thirty
+     is more than the twenty it averages and less than the forty it can
+     reach: if it is wrong, it should be the title that is a little late now
+     and then, and not a title that arrives before its song. */
+  var ROGERS_SRC = { every: ROGERS_MS, hold: 45000, notice: 30000, match: rogersCall, ask: function (call) {
     return getJson('https://radio.rogersdigitalmedia.com/service/now_playing').then(function (list) {
       var me = (Array.isArray(list) ? list : []).filter(function (x) { return x && x.call_letters === call; })[0];
       if (!me) return null;
@@ -2417,13 +2451,15 @@
       if (r === null) { npAt++; npPoll(); return; }
       if (r) {
         var next = r.song || '';
-        var until = next ? (r.until || Date.now() + link.src.every * 3) : 0;
+        // Three asks' worth, and never less than a minute: a quick source must not lose its title to one bad answer.
+        var until = next ? (r.until || Date.now() + Math.max(link.src.every * 3, 60000)) : 0;
         /* A change, on a stream playing well behind live, waits until the
            audio has caught up with it. The first song on tuning in does
            not: it has usually been on a while already. A change already
            waiting for the same song keeps its place in the queue rather
            than starting the wait again on every ask. */
-        var lag = npSong && next !== npSong ? streamLag() + (link.src.hold || 0) : 0;
+        var behind = npSong && next !== npSong ? streamLag() + (link.src.hold || 0) : 0;
+        var lag = behind > 0 ? Math.max(0, behind - (link.src.notice || 0)) : 0;
         if (lag > 0) {
           if (!npHeld || npHeld.song !== next) {
             clearTimeout(npHeldTimer);
@@ -2640,7 +2676,7 @@
     key.classList.add('is-wrapped');
     size(base);
     var other = el.presets.querySelector('.preset:not(.preset-add)');
-    var tall = other ? other.getBoundingClientRect().height : 0;
+    var tall = other ? TunerUI.rect(other).height : 0;
     if (tall) key.style.height = tall + 'px';
     var floor = Math.max(8, base * ADD_WRAP_FLOOR);
     var spills = function () { return over() || name.scrollHeight > name.clientHeight || key.scrollHeight > key.clientHeight; };
@@ -2752,13 +2788,13 @@
     var box = {
       x: window.screenX, y: window.screenY,
       w: window.outerWidth, h: window.outerHeight,
-      t: state.theme
+      t: state.theme, z: state.size
     };
     // Minimised, or caught mid-drag, is not a position worth keeping.
     if (!(box.w > 200 && box.h > 200)) return;
     var had = state.windowBox;
     if (had && had.x === box.x && had.y === box.y && had.w === box.w && had.h === box.h
-      && had.t === box.t) return;
+      && had.t === box.t && had.z === box.z) return;
     state.windowBox = box;
     save();
   }
@@ -2800,7 +2836,11 @@
        A box with no theme on it was written before 1.4.9 and cannot say,
        so it is trusted and checked instead: see the overflow test in
        sizeWindow, which is what catches a wrong one on the way past. */
-    var sized = onWindows() && (box.t == null || box.t === state.theme);
+    /* The size travels with the box for the same reason the theme does: a
+       height measured at one zoom is the wrong one at another. A box with no
+       size on it was written before sizes existed, so it was large. */
+    var sized = onWindows() && (box.t == null || box.t === state.theme)
+      && (box.z || 'large') === state.size;
     var w = sized ? Math.min(box.w, screen.availWidth) : window.outerWidth;
     var h = sized ? Math.min(box.h, screen.availHeight) : window.outerHeight;
     var x = Math.max(0, Math.min(box.x, screen.availWidth - w));
@@ -2826,7 +2866,10 @@
      then had to be corrected away from. Correcting it in front of the
      listener is the flicker. Take the bar out of the measurement and the
      first answer is the right one. */
-  function wantedBox() {
+  /* The window the radio would want at a given zoom, unclamped. The offset
+     sizes are in the page's own pixels whatever the zoom, so one
+     measurement answers for every size. */
+  function boxAt(z) {
     var root = document.documentElement;
     var hadOverflow = root.style.overflow;
     root.style.overflow = 'hidden';
@@ -2840,11 +2883,34 @@
 
     // A pixel of slack each way: a fractional layout would round up into a
     // scrollbar, which is the one thing this is meant to avoid.
-    var w = Math.min(Math.ceil(cap + padX) + frameW + 1, screen.availWidth);
-    var h = Math.min(Math.ceil(el.tuner.offsetHeight + padY) + frameH + 1, screen.availHeight);
+    var w = Math.ceil((cap + padX) * z) + frameW + 1;
+    var h = Math.ceil((el.tuner.offsetHeight + padY) * z) + frameH + 1;
 
     root.style.overflow = hadOverflow;
     return { w: w, h: h };
+  }
+
+  function wantedBox() {
+    var b = boxAt(zoomNow());
+    return { w: Math.min(b.w, screen.availWidth), h: Math.min(b.h, screen.availHeight) };
+  }
+
+  /* Until a size has been chosen, the largest one whose window fits the
+     screen. A 1366x768 laptop, or a 1080p one at 150%, has about 700px of
+     height to give, and the taller faces want more than that at Large:
+     the window used to be cut to the screen and the radio scrolled inside
+     it. Small if nothing fits. True when the size changed. */
+  function autoSize() {
+    if (state.sizeChosen) return false;
+    var pick = SIZE_ORDER[SIZE_ORDER.length - 1];
+    for (var i = 0; i < SIZE_ORDER.length; i++) {
+      var b = boxAt(SIZES[SIZE_ORDER[i]]);
+      if (b.w <= screen.availWidth && b.h <= screen.availHeight) { pick = SIZE_ORDER[i]; break; }
+    }
+    if (pick === state.size) return false;
+    state.size = pick;
+    save();
+    return true;
   }
 
   /* How far out a remembered box may be before it is treated as wrong
@@ -2868,6 +2934,9 @@
        then remember the borrowed size as the listener's own. */
     if (borrowedBox) return;
     pass = pass || 0;
+
+    // A new size is a new look: applyLook paints it and asks for this fit again.
+    if (autoSize()) { applyLook(); return; }
 
     var want = wantedBox();
     /* Two ways a fit used to fight itself for seconds on end, seen on a
@@ -2956,14 +3025,18 @@
     var wantOuter = Math.min(needInner + frameH, room);
     if (wantOuter <= window.outerHeight + 1) return false;
 
-    borrowedBox = { x: window.screenX, y: window.screenY, w: window.outerWidth, h: window.outerHeight };
+    var alreadyOnLoan = borrowedBox;
+    /* A second request while the drawer is still open -- the size was
+       changed under it -- must not replace the box with the one already
+       grown: that is not the window to give back. */
+    borrowedBox = alreadyOnLoan || { x: window.screenX, y: window.screenY, w: window.outerWidth, h: window.outerHeight };
     // Grows downwards, and only climbs when the foot would leave the desk.
     var y = window.screenY;
     if (y + wantOuter > top0 + room) y = Math.max(top0, top0 + room - wantOuter);
     try {
       window.resizeTo(window.outerWidth, wantOuter);
       if (y !== window.screenY) window.moveTo(window.screenX, y);
-    } catch (e) { borrowedBox = null; return false; }
+    } catch (e) { borrowedBox = alreadyOnLoan; return false; }
     return true;
   }
 
@@ -3010,6 +3083,11 @@
          arrive. */
       var checkFits = function () {
         if (borrowedBox || !keepBox || !windowIsOurs() || !el.tuner) return;
+        /* A size the radio picked for itself is picked again here, now the
+           fonts have landed: a laptop given Small on its own screen, then
+           opened on a big monitor, should not stay Small for ever because
+           the box it restored happens to fit. */
+        if (autoSize()) { keepBox = false; applyLook(); return; }
         var tooSmall = document.documentElement.scrollHeight > window.innerHeight + 1;
         var tooBig = window.outerHeight - wantedBox().h > BOX_SLACK;
         if (!tooSmall && !tooBig) return;
@@ -3078,9 +3156,76 @@
     }, { once: true });
   }
 
+  /* The zoom the page is drawn at. Measured in Edge: under CSS zoom the
+     offset sizes, padding and custom properties stay in the authored
+     pixels, getBoundingClientRect comes back in the zoomed ones, and the
+     window and its inner size are always real pixels. So anything that
+     sizes the window multiplies by this, and anything that reads a rect to
+     lay something out in authored pixels divides by it (TunerUI.rect). */
+  function zoomNow() { return SIZES[state.size] || 1; }
+
+  /* Put on the page. --z is for the stylesheet, whose viewport units are
+     not scaled with the rest and so have to be divided by it; data-size is
+     for the one media query that would otherwise mistake a zoomed-down
+     window for a narrow one. The stowed placard is left at full size: it
+     is a few words in a 440px window, and has nothing to be made smaller. */
+  function paintZoom() {
+    var z = document.body.classList.contains('is-stowed') ? 1 : zoomNow();
+    var root = document.documentElement;
+    root.style.zoom = z === 1 ? '' : String(z);
+    root.style.setProperty('--z', String(z));
+    root.setAttribute('data-size', state.size);
+    paintSizeControls();
+  }
+
+  /* ---------- window size ----------
+     Two ways in, one result: a row in Settings and a button in the header
+     that steps through the three. Neither goes through the drawer's draft.
+     A size is a property of the window rather than of what is being edited,
+     and a drawer that held it back until Save would leave the radio at one
+     size and the control at another for as long as it was open. */
+  var SIZE_LABEL = { large: 'Large', medium: 'Medium', small: 'Small' };
+  // The dot on the row itself, held for the visit like the season card's.
+  var sizeNews = false;
+
+  function paintSizeControls() {
+    var btn = $('sizeBtn');
+    if (btn) {
+      var next = SIZE_ORDER[(SIZE_ORDER.indexOf(state.size) + 1) % SIZE_ORDER.length];
+      var tip = 'Window size: ' + SIZE_LABEL[state.size] + ' — click for ' + SIZE_LABEL[next];
+      btn.setAttribute('aria-label', tip);
+      btn.setAttribute('data-tip', tip);
+    }
+    var radios = el.settings ? el.settings.querySelectorAll('input[name="winsize"]') : [];
+    for (var i = 0; i < radios.length; i++) radios[i].checked = radios[i].value === state.size;
+    var dot = $('sizeDot');
+    if (dot) dot.hidden = state.sizeSeen && !sizeNews;
+  }
+
+  function setSize(next) {
+    if (!SIZES.hasOwnProperty(next) || next === state.size) return;
+    state.size = next;
+    state.sizeSeen = true;
+    state.sizeChosen = true;
+    save();
+    // The same pass a theme change makes: everything measured is measured again.
+    applyLook();
+    syncGearDot();
+    // Settings has the window on loan, sized for the old zoom.
+    if (el.settings.open) requestAnimationFrame(function () { sizeDrawer(); });
+  }
+
+  $('sizeBtn').addEventListener('click', function () {
+    setSize(SIZE_ORDER[(SIZE_ORDER.indexOf(state.size) + 1) % SIZE_ORDER.length]);
+  });
+  el.settings.addEventListener('change', function (e) {
+    if (e.target.name === 'winsize') setSize(e.target.value);
+  });
+
   function applyLook() {
     var from = lookWas;
     lookWas = state.theme;
+    paintZoom();
     if (SEASON_VIZ[state.theme] && from && from !== state.theme) state.miniViz = SEASON_VIZ[state.theme];
     if (strip && strip.viz) strip.viz.setAttribute('data-viz', vizName(state.miniViz));
     // Measured per look; see lampWidth.
@@ -3269,12 +3414,32 @@
     "  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;",
     "}",
     ".dr-now {",
-    "  margin-top: 1px; font-size: 9.5px; opacity: .6;",
-    "  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;",
+    "  margin-top: 3px; font-size: 10px; opacity: .6;",
+    "  white-space: nowrap; display: flex;",
     "  /* A line's height with nothing on it, so the row does not move when a",
     "     song comes and goes. */",
     "  min-height: 1.25em;",
     "}",
+    "/* The song has the line to itself and the countdown keeps its own place at",
+    "   the end of it, so neither pushes the other out of sight. */",
+    ".dr-songbox { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }",
+    ".dr-note { flex: none; }",
+    "/* A song too long for the line travels along it, slowly and for good: the",
+    "   text, then a gap, then the text again, moved by exactly one text and one",
+    "   gap so that the second copy ends where the first began. Both lengths are",
+    "   measured in script and arrive as properties. The edges fade, so a letter",
+    "   is not sliced off at the line. */",
+    ".dr-songbox.is-scrolling {",
+    "  text-overflow: clip;",
+    "  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7px, #000 calc(100% - 7px), transparent);",
+    "  mask-image: linear-gradient(90deg, transparent, #000 7px, #000 calc(100% - 7px), transparent);",
+    "}",
+    ".dr-songbox.is-scrolling .dr-song {",
+    "  display: inline-block; will-change: transform;",
+    "  animation: dr-song-scroll var(--dr-ms, 12s) linear 2s infinite;",
+    "}",
+    ".dr-songbox.is-scrolling .dr-song::after { content: attr(data-text); padding-left: var(--dr-gap, 44px); }",
+    "@keyframes dr-song-scroll { to { transform: translateX(var(--dr-by, 0)); } }",
     "/* In the corner, level with the buttons opposite and as quiet as them. */",
     ".dr-status {",
     "  position: absolute; top: 7px; left: 10px; z-index: 1;",
@@ -3302,7 +3467,7 @@
     ".dr-note { opacity: 0; transition: opacity .22s ease; }",
     ".dr-strip.is-noting .dr-note { opacity: 1; }",
     "/* A separator only when there is a song to separate it from. */",
-    ".dr-song:not(:empty) + .dr-note:not(:empty)::before { content: \"\\00a0\\00b7\\00a0\"; }",
+    ".dr-songbox:has(.dr-song:not(:empty)) + .dr-note:not(:empty)::before { content: \"\\00a0\\00b7\\00a0\"; }",
     "/* One number per frame, whichever of the four is showing: --dr-vu is the",
     "   level, written on the button that holds them all, and every child reads",
     "   it by inheritance. The same bargain .tuner strikes with its own --vu, and",
@@ -3639,7 +3804,7 @@
       '</button>' +
       '<div class="dr-who">' +
         '<div class="dr-station"></div>' +
-        '<div class="dr-now"><span class="dr-song"></span><span class="dr-note"></span></div>' +
+        '<div class="dr-now"><span class="dr-songbox"><span class="dr-song"></span></span><span class="dr-note"></span></div>' +
       '</div>' +
       '<button type="button" class="dr-viz" data-viz="bars"' +
         ' aria-label="Change the visualisation" data-tip="Change the visualisation">' +
@@ -3776,11 +3941,54 @@
       viz: root.querySelector('.dr-viz'),
       station: root.querySelector('.dr-station'),
       now: root.querySelector('.dr-status-text'),
+      songBox: root.querySelector('.dr-songbox'),
       song: root.querySelector('.dr-song'),
       note: root.querySelector('.dr-note'),
       play: root.querySelector('.dr-play'),
       vol: root.querySelector('.dr-vol')
     };
+
+    /* A song too long for its line scrolls along it, slowly and without a
+       stop, with a gap before the head comes round again. Measured with the
+       text standing still and inline, where its width is its own; the copy
+       that follows it is drawn from data-text, so the text itself is never
+       doubled and paintStrip can go on comparing it.
+
+       Run again whenever the room changes, not only the song: the countdown
+       takes its share of the line when it arrives and gives it back when it
+       goes, and a webfont landing changes the width of every word.
+
+       Left standing, and ellipsised, for anybody whose system asks for less
+       motion -- unless they have said, in Settings, that a name they cannot
+       read is worse. */
+    var SONG_PX_PER_S = 26, SONG_GAP_PX = 44;
+    o.fitSong = function () {
+      var box = o.songBox, song = o.song;
+      box.classList.remove('is-scrolling');
+      song.removeAttribute('data-text');
+      song.style.removeProperty('--dr-by');
+      song.style.removeProperty('--dr-ms');
+      song.style.removeProperty('--dr-gap');
+      if (!song.textContent) return;
+      var view = doc.defaultView || window;
+      var calm = view.matchMedia && view.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (calm && !state.scrollAnyway) return;
+      if (box.scrollWidth <= box.clientWidth + 1) return;
+      var by = song.offsetWidth + SONG_GAP_PX;
+      song.setAttribute('data-text', song.textContent);
+      song.style.setProperty('--dr-gap', SONG_GAP_PX + 'px');
+      song.style.setProperty('--dr-by', '-' + by + 'px');
+      song.style.setProperty('--dr-ms', Math.round(by / SONG_PX_PER_S * 1000) + 'ms');
+      box.classList.add('is-scrolling');
+    };
+    var fitSoon;
+    o.fitSongSoon = function () {
+      var view = doc.defaultView || window;
+      view.clearTimeout(fitSoon);
+      fitSoon = view.setTimeout(o.fitSong, 60);
+    };
+    if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(o.fitSongSoon);
+    if (doc.defaultView) doc.defaultView.addEventListener('resize', o.fitSongSoon);
 
     /* The chosen one, and the click that moves to the next. Saved rather
        than kept in the strip, which is torn down at every unpin. */
@@ -3915,7 +4123,10 @@
     if (strip.now.textContent !== statusText) strip.now.textContent = statusText;
     // The song on the line under the name, while there is one playing.
     var song = status === 'live' ? shownSong : '';
-    if (strip.song && strip.song.textContent !== song) strip.song.textContent = song;
+    if (strip.song && strip.song.textContent !== song) {
+      strip.song.textContent = song;
+      strip.fitSongSoon();
+    }
     strip.play.setAttribute('aria-pressed', playing ? 'true' : 'false');
     strip.play.setAttribute('aria-label', playing ? 'Pause' : 'Play');
     strip.root.classList.toggle('is-live', status === 'live');
@@ -3953,7 +4164,10 @@
   function paintStripNote() {
     if (!strip) return;
     if (stripNote) {
-      strip.note.textContent = stripNote;
+      if (strip.note.textContent !== stripNote) {
+        strip.note.textContent = stripNote;
+        strip.fitSongSoon();
+      }
       strip.root.classList.add('is-noting');
       return;
     }
@@ -3962,7 +4176,7 @@
        window's clock: the radio's is behind it and throttled. */
     var w = (pipWin && !pipWin.closed) ? pipWin : window;
     w.setTimeout(function () {
-      if (!stripNote && strip) strip.note.textContent = '';
+      if (!stripNote && strip && strip.note.textContent) { strip.note.textContent = ''; strip.fitSongSoon(); }
     }, 260);
   }
 
@@ -4361,11 +4575,13 @@
     mainStub.hidden = false;
     stowedAt = Date.now();
     document.body.classList.add('is-stowed');
+    paintZoom();
   }
 
   function hideStub() {
     if (mainStub) mainStub.hidden = true;
     document.body.classList.remove('is-stowed');
+    paintZoom();
   }
 
   /* Clamped into the strip's rectangle rather than merely centred on it:
@@ -4681,9 +4897,11 @@
     box.style.top = '0px';
     box.removeAttribute('data-side');
 
-    var r = node.getBoundingClientRect();
-    var t = box.getBoundingClientRect();
-    var vw = win.innerWidth, vh = win.innerHeight;
+    // In the page's own pixels, which are what the box is placed in.
+    var r = TunerUI.rect(node);
+    var t = TunerUI.rect(box);
+    var tz = TunerUI.zoomOf(win.document);
+    var vw = win.innerWidth / tz, vh = win.innerHeight / tz;
     var side, left, top;
 
     if (r.top - t.height - TIP_GAP >= TIP_EDGE) {
@@ -5122,6 +5340,14 @@
       save();
       syncGearDot();
     }
+    // Same for the window-size row, which lives on the same tab.
+    if (pane === 'look' && !state.sizeSeen) {
+      sizeNews = true;
+      state.sizeSeen = true;
+      save();
+      syncGearDot();
+    }
+    paintSizeControls();
   }
 
   /* ---------- how tall the dialog opens ----------
@@ -5189,12 +5415,16 @@
        being clamped at the time. */
     var body = form.querySelector('.drawer-body');
     var frame = form.offsetHeight - body.clientHeight;
-    var want = Math.min(frame + tallest + DRAWER_SLACK, drawerRoom());
+    /* `want` is in the page's own pixels, which at a zoomed size are not the
+       screen's: the room on the desk is divided down into them, and the
+       window it is shown in is multiplied back up. */
+    var z = zoomNow();
+    var want = Math.min(frame + tallest + DRAWER_SLACK, drawerRoom() / z);
 
     /* The stylesheet will not let the dialog past 92vh, so showing `want`
        needs a window that much taller again. Asked for before the height
        is set, so the clamp has already relaxed by the time it is. */
-    growForDrawer(Math.ceil(want / 0.92));
+    growForDrawer(Math.ceil(want * z / 0.92));
     form.style.height = want + 'px';
   }
 
@@ -5239,7 +5469,9 @@
     paintMotion();
     renderUpdateLine();
     seasonNewsCard = null;
+    sizeNews = false;
     renderDrawer();
+    paintSizeControls();
     // Snapshot after the render, which fills in any blanks of its own.
     draftClean = draftSnapshot();
     resetFinder();
@@ -6060,7 +6292,7 @@
       var kids = box.children;
       for (var k = 0; k < kids.length; k++) {
         var st = draft.stations[k];
-        if (st) first[st.id] = kids[k].getBoundingClientRect().top;
+        if (st) first[st.id] = TunerUI.rect(kids[k]).top;
       }
 
       draft.stations.splice(j, 0, draft.stations.splice(i, 1)[0]);
@@ -6073,7 +6305,7 @@
         var id = draft.stations[m] && draft.stations[m].id;
         var was = first[id];
         if (was == null) continue;
-        var dy = was - next[m].getBoundingClientRect().top;
+        var dy = was - TunerUI.rect(next[m]).top;
         if (!dy) continue;
         next[m].classList.add('is-sliding');
         if (id === moved) next[m].classList.add('is-lead');
@@ -6465,7 +6697,7 @@
       var c = box.children[i];
       if (!c.dataset || !c.dataset.id) continue;
       cards[c.dataset.id] = c;
-      was[c.dataset.id] = c.getBoundingClientRect().top;
+      was[c.dataset.id] = TunerUI.rect(c).top;
     }
 
     /* Moved only when it is in the wrong place, which it usually is not.
@@ -6501,7 +6733,7 @@
 
     if (stillMotion()) return;
     for (var m = 0; m < moved.length; m++) {
-      var dy = was[moved[m].dataset.id] - moved[m].getBoundingClientRect().top;
+      var dy = was[moved[m].dataset.id] - TunerUI.rect(moved[m]).top;
       if (!dy) continue;
       moved[m].style.transition = 'none';
       moved[m].style.transform = 'translateY(' + dy + 'px)';
@@ -7404,10 +7636,11 @@
      going quiet cannot put out a dot another source still needs. */
   function syncGearDot() {
     var season = !!seasonUnseen();
+    var size = !state.sizeSeen;
     var gear = $('openSettings');
-    if (gear) gear.classList.toggle('has-update', updateAvailable() || season);
+    if (gear) gear.classList.toggle('has-update', updateAvailable() || season || size);
     var look = $('tabLook');
-    if (look) look.classList.toggle('has-update', season);
+    if (look) look.classList.toggle('has-update', season || size);
   }
 
   /* What is on disk, as against what is running.
@@ -7871,7 +8104,7 @@
        it is and what wrote it, readable without knowing the format. app
        is also the only honest way to refuse somebody else's JSON: an
        array called stations is not a rare thing to find in a file. */
-    var body = 'window.DESKSIDE_SEED = ' + JSON.stringify({ app: SEED_APP, appVersion: APP_VERSION, seedV: SEED_V, exportedAt: stampNow(), stations: state.stations, schedule: state.schedule, scheduleEnds: state.scheduleEnds, scheduleV: state.scheduleV || 2, schedulerEnabled: !!state.schedulerEnabled, theme: state.theme, volume: state.volume, volumeCurve: 3, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId, miniViz: state.miniViz, miniLight: !!state.miniLight, versionCheck: !!state.versionCheck, songTitles: state.songTitles !== false, songHelper: !!state.songHelper, scrollAnyway: !!state.scrollAnyway, lastCity: state.lastCity || null }, null, 2) + ';\n';
+    var body = 'window.DESKSIDE_SEED = ' + JSON.stringify({ app: SEED_APP, appVersion: APP_VERSION, seedV: SEED_V, exportedAt: stampNow(), stations: state.stations, schedule: state.schedule, scheduleEnds: state.scheduleEnds, scheduleV: state.scheduleV || 2, schedulerEnabled: !!state.schedulerEnabled, theme: state.theme, size: state.sizeChosen ? state.size : undefined, volume: state.volume, volumeCurve: 3, bass: state.bass, treble: state.treble, autoplay: state.autoplay, autoplayStationId: state.autoplayStationId, miniViz: state.miniViz, miniLight: !!state.miniLight, versionCheck: !!state.versionCheck, songTitles: state.songTitles !== false, songHelper: !!state.songHelper, scrollAnyway: !!state.scrollAnyway, lastCity: state.lastCity || null }, null, 2) + ';\n';
     var blob = new Blob([body], { type: 'text/javascript' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -7977,6 +8210,8 @@
     if (typeof data.treble === 'number') target.treble = clampTone(data.treble);
 
     if (THEMES.indexOf(data.theme) !== -1) target.theme = data.theme;
+    // A file only carries a size somebody chose; see the export.
+    if (SIZES.hasOwnProperty(data.size)) { target.size = data.size; target.sizeChosen = true; }
     target.autoplay = !!data.autoplay;
     target.autoplayStationId = data.autoplayStationId || null;
 
@@ -8184,6 +8419,7 @@
     var ranBefore = state.ranVersion;
     if (ranBefore !== APP_VERSION) {
       var wasHere = ranBefore || stored !== null;
+      if (!wasHere) state.sizeSeen = true;
       state.ranVersion = APP_VERSION;
       save();
       /* Updating from before song titles came in: say so, once, on the
