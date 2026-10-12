@@ -2251,7 +2251,12 @@
      ones on air the stream falls behind the feed: Carly Rae Jepsen was on
      the line through the last part of the Bruno Mars song before it. A
      fixed figure, because nothing in the stream or the feed says how far
-     -- right on average, and late now and then rather than early. */
+     -- right on average, and late now and then rather than early.
+     Forty-five was not enough: on KISS 92.5, "Patient Zero" came up some
+     twenty seconds before the song, on a stream that had slipped further
+     behind its feed than that allowed for (the feed itself was unchanged,
+     still built every thirty seconds). Sixty-five, so that the slip has
+     room, and a title that is wrong is late rather than early. */
   /* notice: how long after a song really changes this source lets us know
      -- taken off the wait, which is counted from the studio change and not
      from the moment it was noticed. Rogers builds the
@@ -2263,7 +2268,7 @@
      is more than the twenty it averages and less than the forty it can
      reach: if it is wrong, it should be the title that is a little late now
      and then, and not a title that arrives before its song. */
-  var ROGERS_SRC = { every: ROGERS_MS, hold: 45000, notice: 30000, match: rogersCall, ask: function (call) {
+  var ROGERS_SRC = { every: ROGERS_MS, hold: 65000, notice: 30000, match: rogersCall, ask: function (call) {
     return getJson('https://radio.rogersdigitalmedia.com/service/now_playing').then(function (list) {
       var me = (Array.isArray(list) ? list : []).filter(function (x) { return x && x.call_letters === call; })[0];
       if (!me) return null;
