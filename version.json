@@ -1,6 +1,6 @@
 {
   "version": "1.8.1",
   "released": "2026-10-12",
-  "notes": "## New features & enhancements\n\n- The heart on the Support button in Settings → Service is now orange, matching the heart in the thank-you box.\n- The heart is drawn rather than typed, so it looks the same on every system.\n\n## Bug fixes\n\n- On KISS 92.5 and other Rogers stations, a song’s title no longer appears ahead of the song. Titles are now held back about twenty seconds longer.",
+  "notes": "## New features & enhancements\n\n- The heart on the Support button in Settings → Service is now orange, matching the heart in the thank-you box.\n- The heart is drawn rather than typed, so it looks the same on every system.\n\n## Bug fixes\n\n- On KISS 92.5 and other Rogers stations, a song’s title no longer appears ahead of the song. Titles are now held back about twenty seconds longer.\n- A song title that repeats part of itself, such as a featured artist added twice, now shows it once: \"Dangerous (feat. Akon) [feat. Akon]\" reads \"Dangerous (feat. Akon)\".",
   "url": "https://github.com/Markticulous/deskside-radio/releases/latest"
 }
