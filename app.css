@@ -4681,4 +4681,4 @@ body.app.is-stowed .tuner { display: none; }
 
 /* The heart on the Support button: a third larger and 4px further left, with the label kept where it was.
    The margins cancel (-4 and +4) apart from the extra width the bigger heart takes. */
-.support-heart { display: inline-block; font-size: 1.15em; line-height: 1; margin: 0 4px 0 -4px; vertical-align: -.1em; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.support-heart { display: inline-block; font-size: 1.05em; line-height: 1; margin: 0 4px 0 -4px; vertical-align: -.1em; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
