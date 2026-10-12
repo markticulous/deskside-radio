@@ -138,9 +138,9 @@ test('the temporary #support-test switch has been removed', () => {
 });
 
 test('the heart on the Support button is larger and sits further left', () => {
-  assert.ok(read('index.html').includes('<span class="support-heart" aria-hidden="true">\u{1F499}</span> Support Markticulous'), 'the blue heart emoji');
+  assert.ok(/<svg class="support-heart"[^>]*><path fill="#e68538" d="M12 17\.6s/.test(read('index.html')), 'a drawn heart in #E68538, the last-chance dialog\'s colour');
   const rule = /\.support-heart \{([^}]*)\}/.exec(read('app.css'))[1];
-  assert.match(rule, /font-size:\s*1em/);
-  assert.match(rule, /vertical-align:\s*0;/);
+  assert.match(rule, /width:\s*1em/);
+  assert.match(rule, /vertical-align:\s*-\.08em/);
   assert.match(rule, /margin:\s*0 4px 0 -4px/);
 });
