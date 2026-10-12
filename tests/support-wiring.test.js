@@ -136,3 +136,10 @@ test('the temporary #support-test switch has been removed', () => {
   assert.ok(!read('app.js').includes('support-test'), 'app.js still carries the test switch');
   assert.ok(!read('tools/build-dist.js').includes('dev-support-test'), 'build-dist still has the dev-block stripper');
 });
+
+test('the heart on the Support button is larger and sits further left', () => {
+  assert.ok(read('index.html').includes('<span class="support-heart" aria-hidden="true">&hearts;</span> Support Markticulous'));
+  const rule = /\.support-heart \{([^}]*)\}/.exec(read('app.css'))[1];
+  assert.match(rule, /font-size:\s*1\.3em/);
+  assert.match(rule, /margin:\s*0 4px 0 -4px/);
+});

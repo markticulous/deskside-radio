@@ -7,7 +7,8 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const js = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+// Normalised to LF: a Windows checkout with autocrlf makes app.js CRLF, and the slice below looks for \n.
+const js = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8').replace(/\r\n/g, '\n');
 const start = js.indexOf('  function tritonMount(url) {');
 const end = js.indexOf('\n  }\n', start) + 4;
 // eslint-disable-next-line no-new-func
