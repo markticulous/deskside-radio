@@ -42,7 +42,41 @@ rem Every difference is in this one variable, so the thing that runs
 rem unattended is the same script that has been run by hand for months.
 if defined DESKSIDE_QUIET set "DESKSIDE_NOPAUSE=1"
 
+rem ---- where the window goes -------------------------------------------
+rem A console opens wherever Windows likes, usually a few lines tall, and
+rem this prints a good deal. So, run by hand, it moves itself to the left
+rem edge of the screen and takes the full height of the work area -- the
+rem taskbar stays clear -- at a width that fits a hundred columns and no
+rem more, which leaves the rest of the screen for the radio.
+rem
+rem GetAncestor with GA_ROOTOWNER, not the console window itself: under
+rem Windows Terminal, which Windows 11 uses by default, the console window
+rem is a hidden stand-in, owned by the real one. Asked in physical pixels,
+rem or a scaled display would put it in the wrong place. Any failure is
+rem swallowed: a window that stays where it opened is the old behaviour.
 if not defined DESKSIDE_QUIET (
+  "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -Command ^
+    "try {" ^
+    "  $q = [char]34; $u = $q + 'user32.dll' + $q; $k = $q + 'kernel32.dll' + $q;" ^
+    "  Add-Type -Name W -Namespace Ds -MemberDefinition (" ^
+    "    '[DllImport(' + $u + ')] public static extern bool SetProcessDPIAware();' +" ^
+    "    '[DllImport(' + $k + ')] public static extern System.IntPtr GetConsoleWindow();' +" ^
+    "    '[DllImport(' + $u + ')] public static extern System.IntPtr GetAncestor(System.IntPtr h, uint f);' +" ^
+    "    '[DllImport(' + $u + ')] public static extern bool SystemParametersInfo(uint a, uint b, int[] r, uint c);' +" ^
+    "    '[DllImport(' + $u + ')] public static extern bool ShowWindow(System.IntPtr h, int c);' +" ^
+    "    '[DllImport(' + $u + ')] public static extern bool MoveWindow(System.IntPtr h, int x, int y, int w, int t, bool p);'" ^
+    "  );" ^
+    "  [void][Ds.W]::SetProcessDPIAware();" ^
+    "  $c = [Ds.W]::GetConsoleWindow();" ^
+    "  if ($c -ne [System.IntPtr]::Zero) {" ^
+    "    $h = [Ds.W]::GetAncestor($c, 3); if ($h -eq [System.IntPtr]::Zero) { $h = $c };" ^
+    "    $r = New-Object int[] 4; [void][Ds.W]::SystemParametersInfo(48, 0, $r, 0);" ^
+    "    $aw = $r[2] - $r[0]; $ah = $r[3] - $r[1];" ^
+    "    $w = [Math]::Min($aw, [Math]::Min(1000, [Math]::Max(760, [int]($aw * 0.45))));" ^
+    "    [void][Ds.W]::ShowWindow($h, 9);" ^
+    "    [void][Ds.W]::MoveWindow($h, $r[0], $r[1], $w, $ah, $true);" ^
+    "  }" ^
+    "} catch { }"
   echo.
   echo   DESKSIDE RADIO - INSTALL OR UPDATE
   echo.
