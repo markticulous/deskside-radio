@@ -2141,6 +2141,22 @@
       return lead + done;
     }).join('');
   }
+  /* A bracketed part that says again what an earlier one already said.
+     Some feeds add the featured artist to a title that carries it already:
+     "Dangerous (feat. Akon) [feat. Akon]". Compared without case, spacing
+     or the bracket used, and with feat., ft. and featuring read as one
+     word, so "(ft. Akon)" after "(feat. Akon)" goes too. Different parts
+     -- "(Live) [Remastered]" -- are both kept. */
+  function dropRepeats(text) {
+    var seen = {};
+    return String(text || '').replace(/\s*[(\[{]([^()\[\]{}]*)[)\]}]/g, function (whole, inner) {
+      var key = inner.toLowerCase().replace(/\b(featuring|feat|ft)\b\.?/g, 'feat').replace(/[^a-z0-9]+/g, ' ').trim();
+      if (!key) return whole;
+      if (seen[key]) return '';
+      seen[key] = true;
+      return whole;
+    }).trim();
+  }
   var shownSong = '';
 
   /* The one-time note that song titles have arrived, shown to anybody
@@ -2205,7 +2221,7 @@
       return;
     }
     var st = currentStation();
-    var song = npSong && Date.now() < npUntil ? tidyCase(npSong) : '';
+    var song = npSong && Date.now() < npUntil ? tidyCase(dropRepeats(npSong)) : '';
     el.tag.textContent = song || (st && st.tag) || '';
     el.tag.classList.toggle('is-song', !!song);
     /* Blinks when a song arrives or changes -- not on every lookup that

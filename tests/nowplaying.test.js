@@ -97,6 +97,24 @@ test('a Rogers stream is looked up by its call letters', () => {
   assert.strictEqual(rogersCall('http://newcap.leanstream.co/CHBMFM'), null);
 });
 
+/* A feed that repeats the featured artist in a second bracket shows it once. */
+test('a bracketed part that repeats an earlier one is dropped', () => {
+  const a = js.indexOf('  function dropRepeats');
+  const b = js.indexOf('  var shownSong');
+  // eslint-disable-next-line no-new-func
+  const drop = new Function(js.slice(a, b) + '\nreturn dropRepeats;')();
+  const cases = {
+    'Kardinal Offishall \u2014 Dangerous (feat. Akon) [feat. Akon]': 'Kardinal Offishall \u2014 Dangerous (feat. Akon)',
+    'Artist \u2014 Song (ft. Someone) (Feat. Someone)': 'Artist \u2014 Song (ft. Someone)',
+    'Artist \u2014 Song (featuring Someone) [feat Someone]': 'Artist \u2014 Song (featuring Someone)',
+    'Artist \u2014 Song (Live) [Remastered]': 'Artist \u2014 Song (Live) [Remastered]',
+    'Artist \u2014 Song (Radio Edit)': 'Artist \u2014 Song (Radio Edit)',
+    'Artist \u2014 Song': 'Artist \u2014 Song'
+  };
+  Object.keys(cases).forEach((t) => assert.strictEqual(drop(t), cases[t], t));
+  assert.ok(/tidyCase\(dropRepeats\(npSong\)\)/.test(js), 'the line is drawn without dropping repeats');
+});
+
 /* Titles sent in capitals are shown in title case; anything with a small
    letter in it is the station's own spelling and is left alone. */
 test('a title sent in capitals is put into title case', () => {
