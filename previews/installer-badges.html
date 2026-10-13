@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Installer icon options</title>
+<style>
+  :root { --bg: #f3f1ec; --ink: #1b1b19; --mute: #6c6a64; --card: #fff; --line: #e1ddd4; }
+  body { margin: 0; padding: 28px 24px 48px; background: var(--bg); color: var(--ink); font: 14px/1.45 "Segoe UI", system-ui, sans-serif; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.lead { margin: 0 0 22px; color: var(--mute); max-width: 70ch; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+  .opt { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .opt h2 { font-size: 15px; margin: 0 0 2px; }
+  .opt p { margin: 0 0 12px; color: var(--mute); font-size: 13px; }
+  .row { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; }
+  .desk { display: flex; align-items: flex-end; gap: 14px; padding: 12px; border-radius: 8px; margin-top: 10px; }
+  .desk.dark { background: #1e2a3a; }
+  .desk.light { background: #dfe7ef; }
+  .ic { position: relative; flex: none; }
+  .ic img, .ic svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .ic img { image-rendering: auto; }
+  .lbl { font-size: 11px; color: var(--mute); text-align: center; margin-top: 4px; }
+  .cell { display: flex; flex-direction: column; align-items: center; }
+  .desk .lbl { color: #9fb0c4; }
+  .desk.light .lbl { color: #4a5868; }
+  .shortcut { width: 76px; text-align: center; font-size: 11.5px; line-height: 1.25; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  .desk.light .shortcut { color: #111; text-shadow: none; }
+  .shortcut .ic { margin: 0 auto 4px; }
+  .ref { margin-top: 26px; }
+</style>
+</head>
+<body>
+<h1>Installer icon options</h1>
+<p class="lead">For the <b>Deskside Radio - Update</b> shortcut in the Start menu. Same build as the browser shortcuts: the radio's dial icon with a badge top-left, 42% of the icon, on the same thin dark disc &mdash; but carrying an install/update symbol instead of a browser logo. Shown at 256, 48, 32 and 16&nbsp;px, and as a desktop shortcut on a dark and a light wallpaper. The Chrome-badged shortcut is at the bottom for comparison.</p>
+
+<div class="grid" id="grid"></div>
+
+<div class="opt ref">
+  <h2>For comparison: the existing Chrome shortcut icon</h2>
+  <div class="row" id="ref"></div>
+</div>
+
+<script>
+/* Badge geometry, on a 100-unit square, copied from assets\shortcut-icon.ps1:
+   pad 2%, logo 42%, ring 2% -> a dark disc 46 across with its corner at 2,2,
+   centred on 25,25. The symbol sits on a coloured disc where the logo goes. */
+var C = 25, DISC = 23, FACE = 21;
+
+function arc(r, a0, a1) {   // degrees, clockwise from 12 o'clock
+  var p = function (a) { var t = (a - 90) * Math.PI / 180; return [C + r * Math.cos(t), C + r * Math.sin(t)]; };
+  var s = p(a0), e = p(a1), big = ((a1 - a0 + 360) % 360) > 180 ? 1 : 0;
+  return 'M' + s[0].toFixed(2) + ' ' + s[1].toFixed(2) + 'A' + r + ' ' + r + ' 0 ' + big + ' 1 ' + e[0].toFixed(2) + ' ' + e[1].toFixed(2);
+}
+function head(r, a, size) {   // arrowhead at angle a on a circle of radius r, pointing clockwise
+  var t = (a - 90) * Math.PI / 180, x = C + r * Math.cos(t), y = C + r * Math.sin(t);
+  var tx = -Math.sin(t), ty = Math.cos(t);          // tangent, clockwise
+  var nx = Math.cos(t), ny = Math.sin(t);           // outward
+  var b = size, w = size * 0.75;
+  return 'M' + (x - tx * b + nx * w).toFixed(2) + ' ' + (y - ty * b + ny * w).toFixed(2) +
+    'L' + x.toFixed(2) + ' ' + y.toFixed(2) +
+    'L' + (x - tx * b - nx * w).toFixed(2) + ' ' + (y - ty * b - ny * w).toFixed(2);
+}
+
+var OPTIONS = [
+  { key: 'a', name: 'A. Arrow into a tray', note: 'The usual "download and install" symbol. Orange, the radio\'s own accent.',
+    face: '#f07a1c', glyph: '<path d="M25 13.5V28.5M18.5 22.5L25 29L31.5 22.5M15.5 29.5V34.5H34.5V29.5"/>' },
+  { key: 'b', name: 'B. Refresh arrows', note: 'Reads as "update" first. Green, like the radio\'s on-air lamp.',
+    face: '#1f9d55', glyph: function () { return '<path d="' + arc(9.5, 30, 300) + '"/><path d="' + head(9.5, 300, 4.6) + '"/>'; } },
+  { key: 'c', name: 'C. Down arrow', note: 'The plainest. Blue, like Windows Update. Holds up best at 16 px.',
+    face: '#2f74d8', glyph: '<path d="M25 13V35M16.5 26.5L25 35L33.5 26.5"/>', width: 4.4 },
+  { key: 'd', name: 'D. Refresh around a down arrow', note: 'Both ideas at once: install and update. Orange.',
+    face: '#f07a1c', glyph: function () { return '<path d="' + arc(10.5, 40, 320) + '"/><path d="' + head(10.5, 320, 4) + '"/><path d="M25 19V30M21 26L25 30L29 26"/>'; }, width: 2.9 }
+];
+
+function badge(o) {
+  var g = typeof o.glyph === 'function' ? o.glyph() : o.glyph;
+  return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+    '<circle cx="' + C + '" cy="' + C + '" r="' + DISC + '" fill="rgba(22,23,26,.92)"/>' +
+    '<circle cx="' + C + '" cy="' + C + '" r="' + FACE + '" fill="' + o.face + '"/>' +
+    '<g fill="none" stroke="#fff" stroke-width="' + (o.width || 3.6) + '" stroke-linecap="round" stroke-linejoin="round">' + g + '</g></svg>';
+}
+function icon(px, top) {
+  var src = 'browser-badges/dial-' + (px > 48 ? 256 : px) + '.png';
+  return '<div class="ic" style="width:' + px + 'px;height:' + px + 'px"><img src="' + src + '" alt="">' + (top || '') + '</div>';
+}
+function sizes(o) {
+  return [128, 48, 32, 16].map(function (px) {
+    return '<div class="cell">' + icon(px, o ? badge(o) : '') + '<div class="lbl">' + (px === 128 ? '256 (shown half)' : px) + '</div></div>';
+  }).join('');
+}
+function desk(o, cls) {
+  return '<div class="desk ' + cls + '">' +
+    '<div class="shortcut">' + icon(48, badge(o)) + 'Deskside Radio - Update</div>' +
+    '<div class="cell">' + icon(32, badge(o)) + '<div class="lbl">32</div></div>' +
+    '<div class="cell">' + icon(16, badge(o)) + '<div class="lbl">16</div></div></div>';
+}
+document.getElementById('grid').innerHTML = OPTIONS.map(function (o) {
+  return '<div class="opt"><h2>' + o.name + '</h2><p>' + o.note + '</p><div class="row">' + sizes(o) + '</div>' +
+    desk(o, 'dark') + desk(o, 'light') + '</div>';
+}).join('');
+document.getElementById('ref').innerHTML = [48, 32, 16].map(function (px) {
+  return '<div class="cell"><div class="ic" style="width:' + px + 'px;height:' + px + 'px"><img src="browser-badges/chrome-a-' + px + '.png" alt=""></div><div class="lbl">' + px + '</div></div>';
+}).join('');
+</script>
+</body>
+</html>
