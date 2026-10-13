@@ -15,7 +15,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.8.1';
+  var APP_VERSION = '1.8.2';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -2146,12 +2146,25 @@
      "Dangerous (feat. Akon) [feat. Akon]". Compared without case, spacing
      or the bracket used, and with feat., ft. and featuring read as one
      word, so "(ft. Akon)" after "(feat. Akon)" goes too. Different parts
-     -- "(Live) [Remastered]" -- are both kept. */
+     -- "(Live) [Remastered]" -- are both kept.
+
+     A featured artist already named outside the brackets counts as said:
+     "Shakira featuring Wyclef Jean -- Hips Don't Lie (Featuring Wyclef
+     Jean)" loses the bracket. And a part that only says which release the
+     recording is from -- [Album Version], (Single Version), (Explicit) --
+     says nothing about the song and goes too. */
+  var RELEASE_ONLY = /^(album|single|lp|original|explicit|clean)( (version|edit))?$|^(explicit|clean) version$/;
   function dropRepeats(text) {
     var seen = {};
+    var norm = function (t) { return t.toLowerCase().replace(/\b(featuring|feat|ft)\b\.?/g, 'feat').replace(/[^a-z0-9]+/g, ' ').trim(); };
+    String(text || '').replace(/[(\[{][^()\[\]{}]*[)\]}]/g, ' ').replace(/\b(?:featuring|feat\.?|ft\.?)\s+([^()\[\]{}\u2013\u2014]+)/gi, function (m, who) {
+      seen[norm('feat ' + who)] = true;
+      return m;
+    });
     return String(text || '').replace(/\s*[(\[{]([^()\[\]{}]*)[)\]}]/g, function (whole, inner) {
-      var key = inner.toLowerCase().replace(/\b(featuring|feat|ft)\b\.?/g, 'feat').replace(/[^a-z0-9]+/g, ' ').trim();
+      var key = norm(inner);
       if (!key) return whole;
+      if (RELEASE_ONLY.test(key)) return '';
       if (seen[key]) return '';
       seen[key] = true;
       return whole;
@@ -2208,6 +2221,39 @@
   if (el.tag) el.tag.addEventListener('animationend', function (e) {
     if (e.animationName === 'song-flash') el.tag.classList.remove('is-new-song');
   });
+  /* A song too long for the line under the name travels along it, as the
+     mini radio's does: the text, a gap, the text again, moved by exactly one
+     text and one gap so the second copy ends where the first began, slowly
+     and for good. It waits for the blink that says the song is new to have
+     finished. The copy after the gap is drawn from data-text, so the text
+     is never doubled for anything that reads it. Measured standing still,
+     and again when the window or the type changes. Left standing, and
+     ellipsised, where the system asks for less motion -- unless Settings
+     says a line that cannot be read is worse. */
+  var TAG_PX_PER_S = 30, TAG_GAP_EM = 3.5, TAG_WAIT_MS = 2800;
+  function fitTag() {
+    var run = el.tag && el.tag.querySelector('.tag-run');
+    el.tag.classList.remove('is-scrolling');
+    if (!run) return;
+    run.removeAttribute('data-text');
+    ['--tag-by', '--tag-ms', '--tag-gap'].forEach(function (p) { run.style.removeProperty(p); });
+    var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (calm && !state.scrollAnyway) return;
+    if (el.tag.scrollWidth <= el.tag.clientWidth + 1) return;
+    var gap = Math.round(parseFloat(getComputedStyle(el.tag).fontSize) * TAG_GAP_EM);
+    var by = run.offsetWidth + gap;
+    run.setAttribute('data-text', run.textContent);
+    run.style.setProperty('--tag-gap', gap + 'px');
+    run.style.setProperty('--tag-by', '-' + by + 'px');
+    run.style.setProperty('--tag-ms', Math.round(by / TAG_PX_PER_S * 1000) + 'ms');
+    run.style.setProperty('--tag-wait', TAG_WAIT_MS + 'ms');
+    el.tag.classList.add('is-scrolling');
+  }
+  var fitTagTimer = 0;
+  function fitTagSoon() { clearTimeout(fitTagTimer); fitTagTimer = setTimeout(fitTag, 60); }
+  window.addEventListener('resize', fitTagSoon);
+  if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', fitTagSoon);
+
   function showTag() {
     // The note itself is not written over.
     if (el.tag.classList.contains('is-feature-note')) return;
@@ -2222,7 +2268,25 @@
     }
     var st = currentStation();
     var song = npSong && Date.now() < npUntil ? tidyCase(dropRepeats(npSong)) : '';
-    el.tag.textContent = song || (st && st.tag) || '';
+    /* A song is written into a run of its own, which is what scrolls when
+       it is too long for the line; a tagline is plain text. Rewritten only
+       when it changes, so a lookup that finds the same song still playing
+       does not throw a scroll back to its start. */
+    var run = el.tag.querySelector('.tag-run');
+    if (song) {
+      if (!run || run.textContent !== song) {
+        el.tag.textContent = '';
+        run = document.createElement('span');
+        run.className = 'tag-run';
+        run.textContent = song;
+        el.tag.appendChild(run);
+        fitTagSoon();
+      }
+    } else {
+      var line = (st && st.tag) || '';
+      if (run || el.tag.textContent !== line) el.tag.textContent = line;
+      el.tag.classList.remove('is-scrolling');
+    }
     el.tag.classList.toggle('is-song', !!song);
     /* Blinks when a song arrives or changes -- not on every lookup that
        finds the same one still playing. Back from the tagline, the same
@@ -3279,6 +3343,8 @@
     // After the theme has painted, so the new height is the one measured.
     requestAnimationFrame(function () { sizeWindow(); });
     measurePresetNames();
+    // A different face sets the song line in a different type and width.
+    fitTagSoon();
   }
 
   /* Every way a theme is chosen comes through here -- the drawer, a
@@ -3437,10 +3503,12 @@
     ".dr-now {",
     "  margin-top: 3px; font-size: 10px; opacity: .6;",
     "  white-space: nowrap; display: flex;",
-    "  /* A line's height with nothing on it, so the row does not move when a",
-    "     song comes and goes. */",
     "  min-height: 1.25em;",
     "}",
+    "/* With no song and no countdown there is no second line at all, and the",
+    "   station name centres itself on the play button rather than sitting",
+    "   above an empty one. It moves a few pixels when a song comes and goes. */",
+    ".dr-now:has(> .dr-songbox > .dr-song:empty):has(> .dr-note:empty) { display: none; }",
     "/* The song has the line to itself and the countdown keeps its own place at",
     "   the end of it, so neither pushes the other out of sight. */",
     ".dr-songbox { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }",

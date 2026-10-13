@@ -202,8 +202,16 @@ if not errorlevel 1 goto :newest
 echo   A newer installer has been published. Running that one instead.
 echo.
 set "DESKSIDE_FRESH=1"
-call "%NEWCMD%" "%APPROOT%"
-exit /b %errorlevel%
+rem The exit is on the same line as the call, and has to be. The newer
+rem installer's own job is to unpack over the app folder, which holds the
+rem copy of this file that is running now when it was started from the Start
+rem menu. cmd reads a batch file as it goes, by position: a line after the
+rem call would be read from the NEW file at the OLD position, landing partway
+rem into it and running the install a second time in the same window -- what
+rem "Press any key" followed by the whole update again was. One line is read
+rem in full before it runs, so nothing is read from the file afterwards.
+rem exit /b with no number keeps the child's exit code.
+call "%NEWCMD%" "%APPROOT%" & exit /b
 :newest
 
 echo.
