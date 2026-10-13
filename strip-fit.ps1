@@ -89,7 +89,11 @@ $WANT_W = 340 + 14
 $WANT_H = 88 + 41
 
 # Nothing runs for ever. The radio going away ends this in well under a
-# second; this is the backstop for the case where that check never fires.
+# second; this is the backstop for the case where that check never fires --
+# a radio this never managed to see. Once it has seen one, the radio closing
+# is what ends it, however long that takes: the song-title helper lives in
+# this script, and a radio left on all day at work lost its titles at the
+# twelve-hour mark while it went on playing.
 $MAX_MINUTES = 720
 
 # One at a time. The launcher starts this with the radio, and a radio opened
@@ -406,7 +410,7 @@ $goneSince = $null
 $lastSeen = ''
 
 while ($true) {
-    if ((Get-Date) -gt $until) { Note "twelve hours; stopping"; break }
+    if (-not $sawRadio -and (Get-Date) -gt $until) { Note "twelve hours and never saw the radio; stopping"; break }
 
     $wins = Get-RadioWindows
     # Only this mode's own browser. Firefox names every window with its own

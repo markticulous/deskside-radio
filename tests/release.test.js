@@ -3683,3 +3683,16 @@ test('until a size is chosen, the radio picks the largest that fits the screen, 
   assert.ok(/target\.size = data\.size; target\.sizeChosen = true;/.test(app), 'an imported size is not kept as a choice');
   assert.ok(/size: state\.sizeChosen \? state\.size : undefined/.test(app), 'an export carries a size picked for this screen, which would fix it on another');
 });
+
+test('the installer exits on the same line as the hand-over to a newer installer', () => {
+  /* The newer installer unpacks over the app folder, which holds the copy of
+     this file that is running when it was started from the Start menu. cmd
+     reads a batch file by position as it goes, so a line after the call is
+     read from the new file at the old position -- and the install ran a
+     second time in the same window, after "Press any key". */
+  const src = read(INSTALLER);
+  assert.ok(/^call "%NEWCMD%" "%APPROOT%" & exit \/b\r?$/m.test(src),
+    'the hand-over no longer exits on the line it is called from');
+  assert.ok(!/^call "%NEWCMD%"[^\n]*\r?\n\s*exit/m.test(src),
+    'an exit on the line after the hand-over is read from the replaced file');
+});

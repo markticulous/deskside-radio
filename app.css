@@ -381,6 +381,19 @@ html:not([data-size]) .size-btn .sz-large { display: block; }
    tagline, so a long title cannot add a line to the readout and set the
    window refitting. The line keeps a line's height with nothing on it. */
 .display-tag.is-song { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 100%; }
+/* A song too long for the line travels along it; see fitTag. Soft edges, so
+   a letter is not sliced off at either end. */
+.display-tag.is-song.is-scrolling {
+  text-overflow: clip;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 .6em, #000 calc(100% - .6em), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 .6em, #000 calc(100% - .6em), transparent);
+}
+.display-tag.is-scrolling .tag-run {
+  display: inline-block; will-change: transform;
+  animation: tag-scroll var(--tag-ms, 15s) linear var(--tag-wait, 2.8s) infinite;
+}
+.display-tag.is-scrolling .tag-run::after { content: attr(data-text); padding-left: var(--tag-gap, 2.5em); }
+@keyframes tag-scroll { to { transform: translateX(var(--tag-by, 0)); } }
 .display-tag.has-np:empty::before { content: "\200b"; }
 /* A new song pulses four times as it arrives, to say the line has
    changed: a quick fade out and back in, each. By filter rather than
@@ -858,7 +871,6 @@ html.is-fitting, html.is-fitting body { overflow: hidden !important; }
   width: 13px; height: 13px; padding: 0;
   border: 1px solid currentColor; border-radius: 50%;
   background: none; color: inherit; cursor: pointer;
-  font: 400 11px/1 "Helvetica Neue", Arial, sans-serif; letter-spacing: 0;
   opacity: var(--x-rest, .55); transition: opacity .16s ease;
   -webkit-appearance: none; appearance: none;
 }
@@ -869,9 +881,14 @@ html.is-fitting, html.is-fitting body { overflow: hidden !important; }
 [data-theme="console"] .update-pill,
 [data-theme="retro"] .update-pill,
 [data-theme="departures"] .update-pill { --x-rest: .8; }
-/* The multiplication sign does not sit centred on its own em box, so it
-   is nudged onto the middle of the ring rather than left riding low. */
-.update-pill .update-pill-x > span { display: block; margin-top: -1px; }
+/* The cross is drawn, on an 8-unit square with the ring's centre at its
+   middle, rather than typed: a typed multiplication sign sits where its
+   font puts it, which was low in the ring on some systems and nudged
+   back by hand on others. Drawn, it is centred on every one. */
+.update-pill .update-pill-x svg {
+  display: block; width: 7px; height: 7px;
+  fill: none; stroke: currentColor; stroke-width: 1.1; stroke-linecap: round;
+}
 .update-pill .update-pill-x:hover { opacity: 1; }
 .update-pill .update-pill-x:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; opacity: 1; }
 

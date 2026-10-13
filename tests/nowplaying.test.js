@@ -99,7 +99,7 @@ test('a Rogers stream is looked up by its call letters', () => {
 
 /* A feed that repeats the featured artist in a second bracket shows it once. */
 test('a bracketed part that repeats an earlier one is dropped', () => {
-  const a = js.indexOf('  function dropRepeats');
+  const a = js.indexOf('  var RELEASE_ONLY');
   const b = js.indexOf('  var shownSong');
   // eslint-disable-next-line no-new-func
   const drop = new Function(js.slice(a, b) + '\nreturn dropRepeats;')();
@@ -109,7 +109,12 @@ test('a bracketed part that repeats an earlier one is dropped', () => {
     'Artist \u2014 Song (featuring Someone) [feat Someone]': 'Artist \u2014 Song (featuring Someone)',
     'Artist \u2014 Song (Live) [Remastered]': 'Artist \u2014 Song (Live) [Remastered]',
     'Artist \u2014 Song (Radio Edit)': 'Artist \u2014 Song (Radio Edit)',
-    'Artist \u2014 Song': 'Artist \u2014 Song'
+    'Artist \u2014 Song': 'Artist \u2014 Song',
+    // A featured artist already named outside the brackets, and parts that only name the release.
+    "Shakira featuring Wyclef Jean \u2014 Hips Don't Lie (Featuring Wyclef Jean) [Album Version]": "Shakira featuring Wyclef Jean \u2014 Hips Don't Lie",
+    'Artist ft. Drake \u2014 Song (feat. Drake)': 'Artist ft. Drake \u2014 Song',
+    'Artist \u2014 Song (Explicit Version)': 'Artist \u2014 Song',
+    'Artist \u2014 Song (feat. Someone Else)': 'Artist \u2014 Song (feat. Someone Else)'
   };
   Object.keys(cases).forEach((t) => assert.strictEqual(drop(t), cases[t], t));
   assert.ok(/tidyCase\(dropRepeats\(npSong\)\)/.test(js), 'the line is drawn without dropping repeats');
@@ -153,4 +158,23 @@ test('a song change on a chunked stream waits for the audio to catch up', () => 
   assert.ok(/if \(!npHeld \|\| npHeld\.song !== next\)/.test(js),
     'every ask restarts the wait, so on a stream further behind than the asking interval the song never changes');
   assert.ok(/if \(!a \|\| !\/\\.m3u8/.test(js), 'the hold applies to continuous streams as well');
+});
+
+test('a long song title scrolls on the main radio, and a repeat lookup does not restart it', () => {
+  assert.ok(/function fitTag\(\) \{/.test(js), 'the main radio no longer fits its song line');
+  assert.ok(/if \(!run \|\| run\.textContent !== song\) \{/.test(js),
+    'the song line is rewritten on every lookup, which throws the scroll back to its start');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'app.css'), 'utf8');
+  assert.ok(/\.display-tag\.is-scrolling \.tag-run \{[^}]*animation: tag-scroll/.test(css), 'the song line has no scroll');
+});
+
+test('the helper is not stopped at twelve hours while the radio is open', () => {
+  const ps = fs.readFileSync(path.join(__dirname, '..', 'strip-fit.ps1'), 'utf8');
+  assert.ok(/if \(-not \$sawRadio -and \(Get-Date\) -gt \$until\)/.test(ps),
+    'the twelve-hour backstop stops the watcher, and the song-title helper in it, on a radio still playing');
+});
+
+test('the mini radio drops an empty song line so the name centres on the button', () => {
+  assert.ok(js.indexOf('.dr-now:has(> .dr-songbox > .dr-song:empty):has(> .dr-note:empty) { display: none; }') !== -1,
+    'an empty song line still holds its space under the name');
 });
