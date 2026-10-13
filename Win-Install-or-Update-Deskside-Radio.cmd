@@ -810,7 +810,9 @@ if exist "%SELF%" (
     "if (Test-Path -LiteralPath $dir) {" ^
     "  $link = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $dir 'Deskside Radio - Update.lnk'));" ^
     "  $link.TargetPath = $env:SELF;" ^
-    "  $link.IconLocation = $env:APPDIR + 'assets\favicon-dial.ico,0';" ^
+    "  $icon = $env:APPDIR + 'assets\favicon-install.ico';" ^
+    "  if (-not (Test-Path -LiteralPath $icon)) { $icon = $env:APPDIR + 'assets\favicon-dial.ico' };" ^
+    "  $link.IconLocation = $icon + ',0';" ^
     "  $link.WorkingDirectory = $env:APPROOT;" ^
     "  $link.Description = 'Check for and install a newer Deskside Radio';" ^
     "  $link.Save();" ^
