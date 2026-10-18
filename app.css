@@ -1304,10 +1304,16 @@ html.is-fitting, html.is-fitting body { overflow: hidden !important; }
 
 [data-theme="dial"] .tuner-bar { color: var(--brass); }
 [data-theme="dial"] .brand-name {
-  font-size: 15px; letter-spacing: .28em; text-transform: uppercase; font-weight: 700;
+  font-size: 15px; line-height: 1; letter-spacing: .28em; text-transform: uppercase; font-weight: 700;
   color: var(--ink);
+  /* The official Deskside Radio wordmark (same as the Markticulous hub card):
+     a light catch under each letter so it reads as inset, and padding
+     measured so the capitals sit centred (letter-spacing leaves room after
+     the last letter; the line box leaves more above the capitals), then
+     0.5px lower by eye. */
+  text-shadow: 0 1px 0 rgba(255, 240, 200, .55);
   background: linear-gradient(#e2c06a, #a9832f);
-  padding: 6px 12px 5px; border-radius: 2px;
+  padding: 7.25px 9.875px 5.75px 14.125px; border-radius: 2px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 1px 2px rgba(0,0,0,.6);
 }
 [data-theme="dial"] .brand-mark { display: none; }
