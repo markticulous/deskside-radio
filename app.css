@@ -4194,6 +4194,11 @@ body.app .tuner { width: min(var(--tuner-max), 100%); }
 #confirmSupportLast .primary { background: #0067c0; border-color: transparent; color: #fff; text-decoration: none; }
 #confirmSupportLast .primary:hover { background: #005a9e; }
 #confirmSupportLast .primary:active { background: #004e8a; }
+.support-thanks, .support-thanks-line { color: #099CBD; }
+.support-thanks-line { display: block; }
+#confirmSupportVerify label { font-size: 13px; color: var(--ui-mute); }
+#confirmSupportVerify input { padding: 7px 9px; font: inherit; color: var(--ui-fg); background: var(--ui-field); border: 1px solid var(--ui-line); border-radius: 4px; }
+#confirmSupportVerify .hint.is-error { color: #c0392b; }
 .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
 
 /* The shortcut panel: two numbered ways out, and a path long enough that it

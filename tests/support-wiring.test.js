@@ -15,11 +15,14 @@ test('support.js loads before app.js, in the page and in the build', () => {
   const a = html.indexOf('<script src="app.js"></script>');
   assert.ok(s !== -1, 'index.html does not load support.js');
   assert.ok(s < a, 'support.js must load before app.js');
+  const v = html.indexOf('<script src="support-verify.js"></script>');
+  assert.ok(v > s && v < a, 'support-verify.js must load after support.js and before app.js');
 
   const m = /const SCRIPTS = \[([^\]]*)\]/.exec(read('tools/build-dist.js'));
   const list = m[1].split(',').map((x) => x.trim().replace(/'/g, ''));
   assert.ok(list.indexOf('support.js') !== -1, 'build-dist does not inline support.js');
   assert.ok(list.indexOf('support.js') < list.indexOf('app.js'), 'build-dist order differs from the page');
+  assert.ok(list.indexOf('support-verify.js') === list.indexOf('support.js') + 1, 'build-dist must inline support-verify.js right after support.js');
 });
 
 test('the shipped support.js is the Support Kit file, unchanged', () => {
@@ -143,4 +146,55 @@ test('the heart on the Support button is larger and sits further left', () => {
   assert.match(rule, /width:\s*1em/);
   assert.match(rule, /vertical-align:\s*-\.08em/);
   assert.match(rule, /margin:\s*0 4px 0 -4px/);
+});
+
+test('the shipped support-verify.js is the Support Kit file, unchanged', () => {
+  const kit = path.join(ROOT, '..', 'Support Markticulous Apps', 'kit', 'js', 'support-verify.js');
+  if (!fs.existsSync(kit)) return;
+  const norm = (s) => s.replace(/\r\n/g, '\n');
+  assert.equal(norm(read('support-verify.js')), norm(fs.readFileSync(kit, 'utf8')));
+});
+
+test("Don't ask again is hidden until the rules offer it, decided after the card is recorded", () => {
+  const app = read('app.js');
+  const i = app.indexOf('support = SUPPORT.recordShown(support, new Date())');
+  const j = app.indexOf("$('supportCardNever').hidden = !SUPPORT.offersNeverAsk(support);");
+  assert.ok(j !== -1, 'the hidden toggle is missing');
+  assert.ok(i !== -1 && j > i, 'the toggle must come after recordShown');
+});
+
+test('the supporter check dialog exists with its controls and wording', () => {
+  const html = read('index.html');
+  const start = html.indexOf('<dialog class="confirm" id="confirmSupportVerify">');
+  assert.ok(start !== -1, 'dialog missing');
+  const dlg = html.slice(start, html.indexOf('</dialog>', start));
+  ['supportVerifyEmail', 'supportVerifyStatus', 'supportVerifyCheck', 'supportVerifySkip', 'supportVerifyCancel'].forEach((id) => {
+    assert.ok(dlg.includes('id="' + id + '"'), 'dialog is missing #' + id);
+  });
+  assert.ok(dlg.includes('Thank you for supporting'));
+  assert.ok(dlg.includes('Email used on Ko-fi'));
+  assert.ok(dlg.includes('Skip the check'));
+  assert.match(dlg, /id="supportVerifyCheck" disabled/);
+  assert.match(dlg, /type="email" id="supportVerifyEmail" autocomplete="email"/);
+});
+
+test('both Done buttons open the check instead of marking a supporter directly', () => {
+  const app = read('app.js');
+  assert.match(app, /\$\('supportCardDone'\)\.addEventListener\('click', openSupportVerify\)/);
+  assert.match(app, /\$\('supportDoneBtn'\)\.addEventListener\('click', openSupportVerify\)/);
+  assert.doesNotMatch(app, /(supportCardDone|supportDoneBtn)'\)\.addEventListener\('click', markSupporter\)/);
+  assert.match(app, /MarkticulousVerify\.check\(/);
+  assert.match(app, /support\.verified = true;/);
+  assert.ok(app.includes('That email is not on the Ko-fi list yet.'));
+  assert.ok(app.includes('Could not reach the check. Try again later, or skip the check.'));
+});
+
+test('the thanks line is teal, with a verified second line only for verified supporters', () => {
+  const html = read('index.html');
+  assert.ok(html.includes("Thank you! You're the reason this app stays free. ♥</p>"));
+  assert.ok(!/id="supportThanks"[^>]*>[^<]*&hearts;/.test(html), 'no heart in the thanks line');
+  assert.match(read('app.css'), /\.support-thanks[^{]*\{[^}]*color:\s*#099CBD/i);
+  const app = read('app.js');
+  assert.match(app, /if \(on && support\.verified\)/);
+  assert.ok(app.includes('Supporter \u2022 verified \u2665'));
 });

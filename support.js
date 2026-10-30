@@ -10,8 +10,9 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   const DAY = 86400000;
   const MIN_DAYS_SINCE_FIRST_RUN = 14;
-  const MIN_DAYS_BETWEEN_ASKS = 90;
-  const MAX_ASKS = 3;
+  const MIN_DAYS_BETWEEN_ASKS = 45;
+  const MAX_ASKS = 6;
+  const CARDS_WITHOUT_NEVER_ASK = 2;
   const KEY = 'markticulous.support';
 
   function emptyState() {
@@ -56,6 +57,11 @@
     return { ...s, lastAskUtc: now.toISOString(), askCount: s.askCount + 1 };
   }
 
+  // Whether the card just shown (call after recordShown) offers "Don't ask again". The first two only offer Later.
+  function offersNeverAsk(s) {
+    return s.askCount > CARDS_WITHOUT_NEVER_ASK;
+  }
+
   function recordNeverAsk(s) {
     return { ...s, dismissedForever: true };
   }
@@ -87,6 +93,6 @@
 
   return {
     emptyState, ensureFirstRun, markMilestone, shouldShowCard,
-    recordShown, recordNeverAsk, recordSupporter, load, save,
+    recordShown, offersNeverAsk, recordNeverAsk, recordSupporter, load, save,
   };
 });

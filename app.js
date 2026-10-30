@@ -7673,6 +7673,14 @@
     var on = !!support.supporter;
     $('supporterMark').hidden = !on;
     $('supportThanks').hidden = !on;
+    var vl = $('supportThanks').querySelector('.support-thanks-line');
+    if (vl) vl.remove();
+    if (on && support.verified) {
+      vl = document.createElement('span');
+      vl.className = 'support-thanks-line';
+      vl.textContent = 'Supporter • verified ♥';
+      $('supportThanks').appendChild(vl);
+    }
     $('supportDoneBtn').hidden = on;
     $('adornPick').hidden = !on;
     paintAdornment();
@@ -7696,8 +7704,8 @@
     if (on) {
       $('adorn').querySelector('use').setAttribute('href', '#i-' + id);
       tipOn($('adorn'), support.supportedUtc
-        ? 'I supported Deskside Radio on ' + new Date(support.supportedUtc).toLocaleDateString() + '.'
-        : 'I supported Deskside Radio.');
+        ? 'I supported Markticulous on ' + new Date(support.supportedUtc).toLocaleDateString() + '.'
+        : 'I supported Markticulous.');
     }
     var chips = $('adornChips').children;
     for (var i = 0; i < chips.length; i++) {
@@ -7740,6 +7748,7 @@
     $('supportCardText').textContent = 'You’ve spent ' + hours + ' hours with Deskside Radio. 🎶 ' +
       'It’s free, with no ads and no tracking. If it keeps you company, a coffee keeps it going.';
     support = SUPPORT.recordShown(support, new Date());
+    $('supportCardNever').hidden = !SUPPORT.offersNeverAsk(support);
     saveSupport();
     $('supportCard').hidden = false;
   }
@@ -7772,8 +7781,55 @@
     var last = $('confirmSupportLast');
     if (last && !last.open) last.showModal();
   });
-  $('supportCardDone').addEventListener('click', markSupporter);
-  $('supportDoneBtn').addEventListener('click', markSupporter);
+  /* "I've already supported" opens the check. Check asks markticulous.com
+     (only a hash of the email leaves); Skip is the honor system as before;
+     Cancel and Escape save nothing. */
+  var verifyDlg = $('confirmSupportVerify');
+  var verifyInput = $('supportVerifyEmail');
+  var verifyGo = $('supportVerifyCheck');
+  var verifyStatus = $('supportVerifyStatus');
+  function syncVerifyGo() { verifyGo.disabled = verifyInput.value.indexOf('@') === -1; }
+  function openSupportVerify() {
+    verifyInput.value = '';
+    verifyInput.disabled = false;
+    verifyStatus.hidden = true;
+    syncVerifyGo();
+    if (!verifyDlg.open) verifyDlg.showModal();
+    verifyInput.focus();
+  }
+  function runSupportVerify() {
+    if (verifyGo.disabled) return;
+    verifyInput.disabled = true;
+    verifyGo.disabled = true;
+    verifyStatus.hidden = true;
+    window.MarkticulousVerify.check(verifyInput.value.trim()).then(function (res) {
+      if (res === 'found') {
+        verifyDlg.close();
+        markSupporter();
+        support.verified = true;
+        saveSupport();
+        paintSupport();
+        return;
+      }
+      verifyInput.disabled = false;
+      syncVerifyGo();
+      verifyStatus.classList.toggle('is-error', res !== 'not-found');
+      verifyStatus.textContent = res === 'not-found'
+        ? 'That email is not on the Ko-fi list yet. Payments can take a minute to arrive, and older ones may be under another email. You can try another email, or skip the check.'
+        : 'Could not reach the check. Try again later, or skip the check.';
+      verifyStatus.hidden = false;
+      verifyInput.focus();
+    });
+  }
+  verifyInput.addEventListener('input', syncVerifyGo);
+  verifyInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); runSupportVerify(); }
+  });
+  verifyGo.addEventListener('click', runSupportVerify);
+  $('supportVerifySkip').addEventListener('click', function () { verifyDlg.close(); markSupporter(); });
+  $('supportVerifyCancel').addEventListener('click', function () { verifyDlg.close(); });
+  $('supportCardDone').addEventListener('click', openSupportVerify);
+  $('supportDoneBtn').addEventListener('click', openSupportVerify);
 
   /* The maker plate opens Settings at Service, where the support links
      are. The radio has no About box; that tab is the nearest thing. */

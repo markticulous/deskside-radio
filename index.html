@@ -326,7 +326,7 @@
 
 <!-- The one time the radio asks for anything. Not a dialog: it takes no
      focus, blocks nothing and sits in a corner until it is answered or
-     ignored. Shown at most three times, ever, by the rules in support.js.
+     ignored. Shown at most six times, ever, 45 days apart at least, by the rules in support.js. The first two offer only Later; Don't ask again appears from the third.
      Support is the button; the other three are said quietly on purpose. -->
 <aside class="support-card" id="supportCard" role="status" aria-live="polite" hidden>
   <!-- Left column: the app's own logo (icon-small.svg, inlined with its own
@@ -625,7 +625,7 @@
             <a class="ghost" id="supportHubLink" target="_blank" rel="noopener">Why I build these</a>
             <button type="button" class="ghost" id="supportDoneBtn">I've already supported</button>
           </div>
-          <p class="hint" id="supportThanks" hidden>Thank you. You're the reason this stays free. &hearts;</p>
+          <p class="hint support-thanks" id="supportThanks" hidden>Thank you! You're the reason this app stays free. ♥</p>
           <div id="adornPick" hidden>
             <h4>Supporter adornment</h4>
             <p class="hint">A thank-you for supporting. Pick an adornment that sits beside the Markticulous plate.</p>
@@ -727,6 +727,25 @@
     <div class="confirm-actions">
       <button type="submit" value="no" class="ghost" id="supportLateNo">Not at this time</button>
       <a class="primary" id="supportLateGo" target="_blank" rel="noopener">Sure, I'll support</a>
+    </div>
+  </form>
+</dialog>
+
+<!-- Supporter check: Check sends only a hash of the email to markticulous.com.
+     Skip the check is the honor system; Escape is Cancel and saves nothing. -->
+<dialog class="confirm" id="confirmSupportVerify">
+  <form method="dialog" class="confirm-box" id="supportVerifyForm">
+    <div class="confirm-head">
+      <h2>Thank you for supporting</h2>
+    </div>
+    <p>Type the email you used on Ko-fi and Deskside Radio will check it. Only a scrambled version of the email (a hash) is sent, nothing else.</p>
+    <label for="supportVerifyEmail">Email used on Ko-fi</label>
+    <input type="email" id="supportVerifyEmail" autocomplete="email">
+    <p class="hint" id="supportVerifyStatus" hidden></p>
+    <div class="confirm-actions">
+      <button type="button" class="primary" id="supportVerifyCheck" disabled>Check</button>
+      <button type="button" class="ghost" id="supportVerifySkip">Skip the check</button>
+      <button type="button" class="ghost" id="supportVerifyCancel">Cancel</button>
     </div>
   </form>
 </dialog>
@@ -845,6 +864,7 @@
 <script src="scheduler.js"></script>
 <script src="tuner-ui.js"></script>
 <script src="support.js"></script>
+<script src="support-verify.js"></script>
 <script src="app.js"></script>
 <script src="seasonal.js"></script>
 </body>
