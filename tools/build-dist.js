@@ -85,7 +85,7 @@ html = html.replace(SEASONAL_TAG, function () {
   return '<style>\n' + styleSafe(lean) + '\n</style>';
 });
 
-const SCRIPTS = ['signal.js', 'radio-directory.js', 'scheduler.js', 'tuner-ui.js', 'support.js', 'app.js', 'seasonal.js'];
+const SCRIPTS = ['signal.js', 'radio-directory.js', 'scheduler.js', 'tuner-ui.js', 'support.js', 'support-verify.js', 'app.js', 'seasonal.js'];
 SCRIPTS.forEach(function (src) {
   const tag = '<script src="' + src + '"></script>';
   if (html.indexOf(tag) === -1) throw new Error('index.html no longer loads ' + src);

@@ -6,7 +6,7 @@ Deskside Radio is a webpage-based application. There is nothing to install, no a
 
 The eight themes are laid out side by side in [previews/preview.html](previews/preview.html) — open it in a browser.
 
-Deskside Radio is free and always will be. If it keeps you company, you can [buy me a coffee on Ko-fi](https://ko-fi.com/markticulous) ([why I build these](https://markticulous.github.io/support/?app=deskside-radio)). Supporters are thanked in [SUPPORTERS.md](SUPPORTERS.md).
+Deskside Radio is free and always will be. If it keeps you company, you can [buy me a coffee on Ko-fi](https://ko-fi.com/markticulous) ([why I build these](https://markticulous.github.io/support/?app=deskside-radio)). Supporters are thanked in [SUPPORTERS.md](SUPPORTERS.md). A supporter can confirm it by typing the Ko-fi email; only a scrambled version (a hash) is sent to markticulous.com, and only when Check is pressed. Skipping the check is fine.
 
 ## Running it
 

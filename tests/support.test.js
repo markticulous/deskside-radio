@@ -28,16 +28,16 @@ test('day 13 blocks, day 14 allows', () => {
   assert.equal(S.shouldShowCard(eligible(), at(14), false), true);
 });
 
-test('ask gap is 90 days', () => {
+test('ask gap is 45 days', () => {
   const asked = { ...eligible(), lastAskUtc: iso(20), askCount: 1 };
-  assert.equal(S.shouldShowCard(asked, at(109), false), false);
-  assert.equal(S.shouldShowCard(asked, at(110), false), true);
+  assert.equal(S.shouldShowCard(asked, at(64), false), false);
+  assert.equal(S.shouldShowCard(asked, at(65), false), true);
 });
 
-test('third ask is the last', () => {
-  const two = { ...eligible(), lastAskUtc: iso(20), askCount: 2 };
-  assert.equal(S.shouldShowCard(two, at(110), false), true);
-  assert.equal(S.shouldShowCard({ ...two, askCount: 3 }, at(900), false), false);
+test('sixth ask is the last', () => {
+  const five = { ...eligible(), lastAskUtc: iso(20), askCount: 5 };
+  assert.equal(S.shouldShowCard(five, at(65), false), true);
+  assert.equal(S.shouldShowCard({ ...five, askCount: 6 }, at(900), false), false);
 });
 
 test('clock before first run or last ask blocks', () => {
