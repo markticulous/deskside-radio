@@ -201,7 +201,7 @@ test('both Done buttons open the check instead of marking a supporter directly',
 
 test('the thanks line is teal, with a verified second line only for verified supporters', () => {
   const html = read('index.html');
-  assert.ok(html.includes("Thank you! You're the reason this app stays free. ♥</p>"));
+  assert.ok(html.includes("Thank you! You're the reason this app stays free.</p>"));
   assert.ok(!/id="supportThanks"[^>]*>[^<]*&hearts;/.test(html), 'no heart in the thanks line');
   assert.match(read('app.css'), /\.support-thanks[^{]*\{[^}]*color:\s*#099CBD/i);
   const app = read('app.js');
