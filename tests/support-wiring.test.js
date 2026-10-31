@@ -39,9 +39,19 @@ test('the page carries every element the support code looks up', () => {
   const html = read('index.html');
   ['supportCard', 'supportCardText', 'supportCardGo', 'supportCardLater', 'supportCardNever',
    'supportCardDone', 'supportBlock', 'supporterMark', 'supportLink', 'supportHubLink',
-   'supportDoneBtn', 'supportThanks'].forEach((id) => {
+   'supportDoneBtn', 'supportThanks', 'supportConfirmBtn'].forEach((id) => {
     assert.ok(html.includes('id="' + id + '"'), 'index.html is missing #' + id);
   });
+});
+
+test('supporters not yet verified get a Confirm with Ko-fi link into the check', () => {
+  const html = read('index.html');
+  assert.match(html, /<button type="button" class="ghost" id="supportConfirmBtn" hidden>Confirm with Ko-fi<\/button>/);
+  const app = read('app.js');
+  assert.match(app, /\$\('supportConfirmBtn'\)\.hidden = !\(on && !support\.verified\)/);
+  assert.match(app, /\$\('supportConfirmBtn'\)\.addEventListener\('click', openSupportVerify\)/);
+  // Skip from an existing supporter just closes: markSupporter is only reached when not already one.
+  assert.match(app, /var already = !!support\.supporter;[\s\S]*?verifyDlg\.close\(\);\s*if \(!already\) markSupporter\(\);/);
 });
 
 test('app.js wires the support rules the way the kit says to', () => {
