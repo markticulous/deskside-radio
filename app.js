@@ -15,7 +15,7 @@
      index.html -- that one is overwritten at boot and so is never seen,
      but a number that is wrong in the markup is a number that will be
      believed by whoever reads it next. */
-  var APP_VERSION = '1.8.2';
+  var APP_VERSION = '1.9.0';
   /* Stamped into every export. SEED_APP is what makes "is this one of
      ours" a question with an answer; SEED_V is the shape of the file,
      bumped only if a future version has to read an old one differently
@@ -7682,6 +7682,7 @@
       $('supportThanks').appendChild(vl);
     }
     $('supportDoneBtn').hidden = on;
+    $('supportConfirmBtn').hidden = !(on && !support.verified);
     $('adornPick').hidden = !on;
     paintAdornment();
   }
@@ -7826,10 +7827,15 @@
     if (e.key === 'Enter') { e.preventDefault(); runSupportVerify(); }
   });
   verifyGo.addEventListener('click', runSupportVerify);
-  $('supportVerifySkip').addEventListener('click', function () { verifyDlg.close(); markSupporter(); });
+  $('supportVerifySkip').addEventListener('click', function () {
+    var already = !!support.supporter;   // already a supporter: Skip changes nothing
+    verifyDlg.close();
+    if (!already) markSupporter();
+  });
   $('supportVerifyCancel').addEventListener('click', function () { verifyDlg.close(); });
   $('supportCardDone').addEventListener('click', openSupportVerify);
   $('supportDoneBtn').addEventListener('click', openSupportVerify);
+  $('supportConfirmBtn').addEventListener('click', openSupportVerify);
 
   /* The maker plate opens Settings at Service, where the support links
      are. The radio has no About box; that tab is the nearest thing. */
