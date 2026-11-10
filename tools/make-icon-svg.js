@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { toPlate } = require('./plate');
 const path = require('path');
 const ROOT = path.join(__dirname, '..') + path.sep;
 const L = (...lines) => lines.join('\n');
@@ -120,7 +121,7 @@ const marked = build(Object.assign({}, base, {
   scale: { x0: 52, x1: 204, step: 9.5, majorEvery: 4, rule: 2.6, minorH: 9, majorH: 17, minorW: 2, majorW: 3.4 }
 }));
 
-fs.writeFileSync(ROOT + 'icon.svg', plain, 'utf8');
-fs.writeFileSync(ROOT + 'icon-small.svg', small, 'utf8');
-fs.writeFileSync(ROOT + 'icon-wordmark.svg', marked, 'utf8');
+fs.writeFileSync(ROOT + 'icon.svg', toPlate(plain), 'utf8');
+fs.writeFileSync(ROOT + 'icon-small.svg', toPlate(small), 'utf8');
+fs.writeFileSync(ROOT + 'icon-wordmark.svg', toPlate(marked), 'utf8');
 console.log('icon.svg, icon-small.svg, icon-wordmark.svg written');

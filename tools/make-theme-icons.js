@@ -15,6 +15,7 @@
      node tools/make-theme-icons.js <outdir>
    render-theme-icons then screenshots the wrappers. */
 const fs = require('fs');
+const { toPlate } = require('./plate');
 const path = require('path');
 
 const OUT = process.argv[2];
@@ -49,7 +50,7 @@ function consoleSvg(small) {
   const gap = small ? 10 : 4;
   const totalW = n * sw + (n - 1) * gap;
   const sx = 128 - totalW / 2;
-  const sy = small ? 158 : 160;
+  const sy = small ? 158 : 78;
   const sh = small ? 26 : 18;
   for (let i = 0; i < n; i++) {
     const t = i / (n - 1);
@@ -93,10 +94,10 @@ function consoleSvg(small) {
           `  <rect x="46" y="76" width="164" height="34" rx="3" fill="${C.amber}"/>`,
           `  <rect x="46" y="122" width="104" height="14" rx="3" fill="${C.amberDim}"/>`)
       : L('  <!-- readout -->',
-          `  <text x="128" y="118" text-anchor="middle" fill="${C.amber}"` +
+          `  <text x="128" y="186" text-anchor="middle" fill="${C.amber}"` +
           ' font-family="Barlow Condensed, Arial Narrow, sans-serif"' +
           ' font-size="52" font-weight="700" letter-spacing="3">DESKSIDE</text>',
-          `  <text x="128" y="142" text-anchor="middle" fill="${C.amberDim}"` +
+          `  <text x="128" y="124" text-anchor="middle" fill="${C.amberDim}"` +
           ' font-family="IBM Plex Mono, monospace" font-size="17" letter-spacing="2">ON AIR</text>'),
     '',
     '  <!-- VU strip -->',
@@ -152,7 +153,7 @@ function ramsSvg(small) {
     '',
     small ? '' : L('  <!-- brand dot -->',
       `  <circle cx="38" cy="40" r="9" fill="${C.orange}"/>`,
-      `  <rect x="58" y="36" width="70" height="8" rx="4" fill="${C.ink}" opacity=".85"/>`,
+      `  <rect x="58" y="36" width="52" height="8" rx="4" fill="${C.ink}" opacity=".85"/>`,
       `  <rect x="58" y="52" width="44" height="6" rx="3" fill="${C.mute}" opacity=".6"/>`),
     '',
     '  <!-- scale -->',
@@ -196,7 +197,7 @@ function editorialSvg(small) {
     '',
     small ? '' : L('  <!-- bar -->',
       `  <rect x="26" y="34" width="13" height="13" fill="${C.block}"/>`,
-      `  <rect x="49" y="36" width="82" height="9" rx="1" fill="${C.ink}"/>`,
+      `  <rect x="49" y="36" width="61" height="9" rx="1" fill="${C.ink}"/>`,
       `  <rect x="0" y="66" width="256" height="2" fill="${C.rule}"/>`),
     '',
     '  <!-- colour block -->',
@@ -243,7 +244,7 @@ function retroSvg(small) {
   const gap = small ? 10 : 5;
   const totalW = n * cw + (n - 1) * gap;
   const sx = 128 - totalW / 2;
-  const sy = small ? 188 : 196;
+  const sy = small ? 188 : 66;
   const ch = small ? 34 : 22;
   const cells = [];
   for (let i = 0; i < n; i++) {
@@ -274,9 +275,9 @@ function retroSvg(small) {
           '  <text x="128" y="158" text-anchor="middle" fill="' + C.ink + '"' +
           ` font-family="${PS2P}" font-size="132">D</text>`)
       : L('  <!-- the name, set in the face the theme actually uses -->',
-          '  <text x="128" y="112" text-anchor="middle" fill="' + C.ink + '"' +
+          '  <text x="128" y="170" text-anchor="middle" fill="' + C.ink + '"' +
           ` font-family="${PS2P}" font-size="42">DESK</text>`,
-          '  <text x="128" y="160" text-anchor="middle" fill="' + C.sky + '"' +
+          '  <text x="128" y="218" text-anchor="middle" fill="' + C.sky + '"' +
           ` font-family="${PS2P}" font-size="42">SIDE</text>`),
     '',
     '  <!-- level, in cells -->',
@@ -315,7 +316,7 @@ function departuresSvg(small) {
     const totalW = n * sw + (n - 1) * gap;
     const sx = 128 - totalW / 2;
     for (let i = 0; i < n; i++) {
-      segs.push(`<rect x="${sx + i * (sw + gap)}" y="204" width="${sw}" height="16" fill="${i < 7 ? C.lime : '#1b1c20'}"/>`);
+      segs.push(`<rect x="${sx + i * (sw + gap)}" y="74" width="${sw}" height="16" fill="${i < 7 ? C.lime : '#1b1c20'}"/>`);
     }
   }
 
@@ -329,7 +330,7 @@ function departuresSvg(small) {
       ? L('  <!-- one flap, filling the frame -->', flap(22, 34, 212, 188, 'D', 150))
       : L('  <!-- the name across four flaps -->',
           [0, 1, 2, 3].map(function (i) {
-            return flap(18 + i * 56, 58, 50, 104, 'DESK'[i], 62);
+            return flap(18 + i * 56, 124, 50, 104, 'DESK'[i], 62);
           }).join('\n'),
           '',
           '  <!-- the meter, built from the same flaps -->',
@@ -351,9 +352,9 @@ const MARCONI = {
 
 function marconiSvg(small) {
   const C = MARCONI;
-  const cx = 128, cy = small ? 122 : 138;
+  const cx = 128, cy = small ? 122 : 100;
   const n = small ? 10 : 34;
-  const r0 = small ? 48 : 34, r1 = small ? 122 : 112;
+  const r0 = small ? 48 : 34, r1 = small ? 122 : 96;
   const w = small ? 15 : 4;
 
   const rays = [];
@@ -365,7 +366,7 @@ function marconiSvg(small) {
 
   // The dial arc, and the pointer sitting on it.
   const ar = small ? 86 : 78;
-  const ay = small ? 206 : 214;
+  const ay = small ? 206 : 166;
   const arc = `M ${cx - ar} ${ay} A ${ar} ${ar} 0 0 1 ${cx + ar} ${ay}`;
 
   return L(
@@ -391,9 +392,9 @@ function marconiSvg(small) {
     small
       ? ''
       : L('  <!-- the name, in the theme\'s own serif -->',
-          '  <text x="128" y="152" text-anchor="middle" fill="url(#leaf)"' +
+          '  <text x="128" y="224" text-anchor="middle" fill="url(#leaf)"' +
           ' font-family="Cinzel, Cormorant Garamond, serif"' +
-          ' font-size="40" font-weight="700" letter-spacing="3">DESKSIDE</text>'),
+          ' font-size="34" font-weight="700" letter-spacing="3">DESKSIDE</text>'),
     '',
     '  <!-- dial arc and pointer -->',
     `  <path d="${arc}" fill="none" stroke="${C.gold}" stroke-width="${small ? 11 : 4}"/>`,
@@ -496,34 +497,27 @@ function tivoliSvg(small) {
     );
   }
 
-  const ticks = [];
-  for (let i = 0; i < 17; i++) {
-    const x = 126 + i * 3.6;
-    ticks.push(`<line x1="${x.toFixed(1)}" y1="${i % 4 === 0 ? 150 : 154}" x2="${x.toFixed(1)}" y2="158" stroke="#b9b1a0" stroke-width="1.4"/>`);
-  }
-
+  // Large cut: the two parts a Model One is known by over the name, the
+  // driver and the knob. The tuning plate is left out: at icon size it
+  // reads as clutter between the two round shapes.
+  const dx = 84, dy = 108, dr = 58;
   return L(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Deskside Radio">',
     defs,
     wood,
     '',
-    '  <!-- the driver -->',
-    `  <circle cx="64" cy="128" r="48" fill="url(#tv-weave)" stroke="${C.cherryLo}" stroke-width="6"/>`,
-    `  <circle cx="64" cy="128" r="12" fill="#20120a" fill-opacity=".22"/>`,
-    `  <circle cx="64" cy="128" r="26" fill="none" stroke="#fff8e8" stroke-opacity=".28" stroke-width="3"/>`,
-    `  <circle cx="64" cy="128" r="38" fill="none" stroke="#fff8e8" stroke-opacity=".16" stroke-width="2"/>`,
+    '  <!-- the name -->',
+    `  <text x="128" y="222" text-anchor="middle" fill="${C.cream}" font-family="Jost, Futura, sans-serif"` +
+    ' font-size="34" font-weight="500" letter-spacing="7">DESKSIDE</text>',
     '',
-    '  <!-- the plate -->',
-    `  <rect x="116" y="86" width="80" height="84" rx="3" fill="${C.cream}" stroke="#2f1408" stroke-opacity=".5" stroke-width="2"/>`,
-    `  <circle cx="126" cy="100" r="4" fill="${C.amber}"/>`,
-    `  <rect x="136" y="96" width="50" height="9" rx="2" fill="${C.ink}" fill-opacity=".82"/>`,
-    `  <rect x="126" y="116" width="60" height="7" rx="2" fill="${C.mute}" fill-opacity=".55"/>`,
-    '  ' + ticks.join(''),
-    `  <line x1="126" y1="158" x2="186" y2="158" stroke="#b9b1a0" stroke-width="1.6"/>`,
-    `  <line x1="150" y1="146" x2="150" y2="162" stroke="${C.red}" stroke-width="3"/>`,
+    '  <!-- the driver -->',
+    `  <circle cx="${dx}" cy="${dy}" r="${dr}" fill="url(#tv-weave)" stroke="${C.cherryLo}" stroke-width="7"/>`,
+    `  <circle cx="${dx}" cy="${dy}" r="${(dr * 0.25).toFixed(1)}" fill="#20120a" fill-opacity=".22"/>`,
+    `  <circle cx="${dx}" cy="${dy}" r="${(dr * 0.54).toFixed(1)}" fill="none" stroke="#fff8e8" stroke-opacity=".28" stroke-width="3.5"/>`,
+    `  <circle cx="${dx}" cy="${dy}" r="${(dr * 0.79).toFixed(1)}" fill="none" stroke="#fff8e8" stroke-opacity=".16" stroke-width="2.4"/>`,
     '',
     '  <!-- the knob -->',
-    tivoliKnob(222, 128, 28),
+    tivoliKnob(194, dy, 38),
     '</svg>',
     ''
   );
@@ -566,7 +560,7 @@ const CUTS = {
 
 Object.keys(CUTS).forEach(function (theme) {
   Object.keys(CUTS[theme]).forEach(function (cut) {
-    const svg = CUTS[theme][cut];
+    const svg = toPlate(CUTS[theme][cut]);
     fs.writeFileSync(path.join(OUT, theme + '-' + cut + '.svg'), svg, 'utf8');
     fs.writeFileSync(path.join(OUT, theme + '-' + cut + '.html'), wrapper(svg), 'utf8');
   });

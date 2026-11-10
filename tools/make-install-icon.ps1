@@ -38,7 +38,14 @@ foreach ($i in 0..($count - 1)) {
   # The browser badge's geometry, exactly: see shortcut-icon.ps1.
   $bs = [Math]::Max(7, [int][Math]::Round($s * 0.42))
   $ring = [Math]::Max(1, [int][Math]::Round($s * 0.02))
-  $pad = [int][Math]::Floor($s * 0.02)
+  $pad = 0
+  # The disc sits in the very corner, and the icon is erased behind the
+  # square from the corner to the disc's centre so none of it peeks out
+  # around the disc's upper-left edge.
+  $mid = [single]($ring + $bs / 2.0)
+  $g.CompositingMode = 'SourceCopy'; $g.SmoothingMode = 'None'
+  $g.FillRectangle((New-Object Drawing.SolidBrush ([Drawing.Color]::Transparent)), 0, 0, $mid, $mid)
+  $g.CompositingMode = 'SourceOver'; $g.SmoothingMode = 'AntiAlias'
   $disc = New-Object Drawing.SolidBrush ([Drawing.Color]::FromArgb(235, 22, 23, 26))
   $g.FillEllipse($disc, $pad, $pad, $bs + 2 * $ring, $bs + 2 * $ring)
   # Where the logo would go: an orange face, and the symbol on it.
